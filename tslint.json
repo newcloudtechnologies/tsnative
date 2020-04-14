@@ -1,0 +1,23 @@
+{
+  "defaultSeverity": "error",
+  "extends": [
+    "tslint:latest",
+    "tslint-config-prettier"
+  ],
+  "rules": {
+    "interface-name": [true, "never-prefix"],
+    "max-classes-per-file": false,
+    "member-access": [true, "no-public"],
+    "no-bitwise": false,
+    "no-console": false,
+    "no-implicit-dependencies": false,
+    "no-relative-imports": [true, "allow-siblings"],
+    "no-shadowed-variable": [true, { "temporalDeadZone": false }],
+    "no-submodule-imports": [true, "module-alias/register"],
+    "no-unused-variable": [true, "check-parameters"],
+    "prefer-readonly": true,
+    "prettier": true,
+    "variable-name": true
+  },
+  "rulesDirectory": ["tslint-plugin-prettier"]
+}

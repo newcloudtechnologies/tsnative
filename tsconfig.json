@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["es2016"],
+    "baseUrl": ".",
+    "paths": {
+      "@builtins": [ "src/tsbuiltins" ],
+      "@cpp": [ "src/cppintegration" ],
+      "@emitter": [ "src/emitter" ],
+      "@emitter/*": [ "src/emitter/*" ],
+      "@generator": [ "src/generator" ],
+      "@mangling": [ "src/mangling" ],
+      "@scope": [ "src/scope" ],
+      "@utils": [ "src/utils" ]
+    },
+    "module": "commonjs",
+    "outDir": "build",
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "pretty": true
+  },
+  "cppDirs": [],
+  "include": [
+    "lib/*",
+    "src/*",
+    "test/unit/*",
+    "test/*"
+  ]
+}
