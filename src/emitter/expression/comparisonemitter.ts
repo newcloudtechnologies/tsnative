@@ -50,7 +50,7 @@ export class ComparisonEmitter {
 
     if (isLLVMString(left.type) && isLLVMString(right.type)) {
       const compare = getBuiltin("string__compare", generator.context, generator.module);
-      return generator.builder.createCall(compare, [left, right]);
+      return generator.builder.createCall(compare.callee, [left, right]);
     }
 
     return error(`Invalid operand types to strict equals ${left.type.typeID} ${right.type.typeID}`);
@@ -82,7 +82,7 @@ export class ComparisonEmitter {
 
     if (isLLVMString(left.type) && isLLVMString(right.type)) {
       const compare = getBuiltin("string__compare", generator.context, generator.module);
-      return generator.builder.createNot(generator.builder.createCall(compare, [left, right]));
+      return generator.builder.createNot(generator.builder.createCall(compare.callee, [left, right]));
     }
 
     return error("Invalid operand types to strict not equals");

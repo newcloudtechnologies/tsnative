@@ -23,9 +23,6 @@
   },
   "cppDirs": [],
   "include": [
-    "lib/*",
-    "src/*",
-    "test/unit/*",
-    "test/*"
+    "src/*"
   ]
 }

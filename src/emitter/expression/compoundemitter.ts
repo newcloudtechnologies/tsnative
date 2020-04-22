@@ -24,7 +24,7 @@ export class CompoundEmitter {
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => generator.builder.createAdd(l, r);
     const sHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       const concat = getBuiltin("string__concat", generator.context, generator.module);
-      return generator.builder.createCall(concat, [l, r]);
+      return generator.builder.createCall(concat.callee, [l, r]);
     };
     return this.handleCompoundAssignment(lhs, rhs, generator, fpHandler, iHandler, sHandler);
   }

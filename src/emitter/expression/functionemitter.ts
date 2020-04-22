@@ -90,7 +90,7 @@ export class FunctionEmitter {
         const argumentTypes = expression.arguments!.map(generator.checker.getTypeAtLocation);
 
         const thisType = generator.checker.getTypeAtLocation(expression);
-        const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker);
+        const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
         const preExisting = generator.module.getTypeByName(mangledTypename);
         if (!preExisting) {
             const type = getStructType(thisType as ts.ObjectType, expression, generator);

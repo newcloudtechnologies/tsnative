@@ -70,7 +70,7 @@ export function emitAsBoolean(value: llvm.Value, generator: LLVMGenerator): llvm
 
   if (isLLVMString(value.type)) {
     const strlen = getBuiltin("string__length", generator.context, generator.module);
-    const length = generator.builder.createCall(strlen, [value]);
+    const length = generator.builder.createCall(strlen.callee, [value]);
     return generator.builder.createICmpNE(length, llvm.Constant.getNullValue(length.type));
   }
 

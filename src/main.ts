@@ -9,6 +9,8 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
+import { DEFINITIONS } from "stdlib/constants";
+
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
 import { error, writeBitcodeToFile, writeExecutableToFile, writeIRToFile } from "@utils";
 
@@ -20,14 +22,15 @@ argv
   .option("--emitBitcode", "write LLVM bitcode to file")
   .option("--target [value]", "generate code for the given target")
   .option("--output [value]", "specify output file for final executable")
+  .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
   .parse(process.argv);
 
 function parseTSConfig(): Promise<any> {
   let tsconfig;
   try {
-    tsconfig = JSON.parse(fs.readFileSync("tsconfig.json").toString());
+    tsconfig = JSON.parse(fs.readFileSync(argv.tsconfig).toString());
   } catch (e) {
-    error("Failed to parse tsconfig");
+    error("Failed to parse tsconfig:" + e);
   }
 
   return Promise.resolve(tsconfig);
@@ -52,7 +55,7 @@ async function main(dependencies: string[]) {
 
   const tsconfig = await parseTSConfig(); // @todo already parsed
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
-  options.lib = [path.join(__dirname, "..", "lib", "lib.ts-llvm.d.ts")];
+  options.lib = [DEFINITIONS];
   options.types = [];
   options.traceResolution = true;
 

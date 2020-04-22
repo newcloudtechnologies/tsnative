@@ -1,7 +1,7 @@
 import "module-alias/register";
 
 import { replaceOrAddExtension } from "@utils";
-import chalk from "chalk";
+import * as chalk from "chalk";
 import * as child_process from "child_process";
 import { diffLines } from "diff";
 import * as fs from "fs";

@@ -1,0 +1,2 @@
+# Without this file npm use .gitignore to figure out what to ignore.
+# Override this behavior to make `build` folder appear in final package.

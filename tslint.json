@@ -13,7 +13,7 @@
     "no-implicit-dependencies": false,
     "no-relative-imports": [true, "allow-siblings"],
     "no-shadowed-variable": [true, { "temporalDeadZone": false }],
-    "no-submodule-imports": [true, "module-alias/register"],
+    "no-submodule-imports": [true, "module-alias/register", "stdlib/constants"],
     "no-unused-variable": [true, "check-parameters"],
     "prefer-readonly": true,
     "prettier": true,

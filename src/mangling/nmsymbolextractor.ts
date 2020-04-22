@@ -15,14 +15,10 @@ import * as fs from "fs";
 import * as path from "path";
 import * as R from "ramda";
 
+import { STDLIB } from "stdlib/constants";
+
 export class NmSymbolExtractor {
   extractSymbols(cppDirs: string[]) {
-    const runtimeLibPath = path.join(__dirname, "../../", "lib", "runtime");
-    const runtimeLibFiles = fs
-      .readdirSync(runtimeLibPath)
-      .filter(file => path.extname(file) === ".cpp")
-      .map(file => path.join(runtimeLibPath, file));
-
     const cppDependencies = cppDirs.map(dir => {
       return fs
         .readdirSync(dir)
@@ -30,7 +26,7 @@ export class NmSymbolExtractor {
         .map(file => path.join(dir, file));
     });
 
-    const dependencies = runtimeLibFiles.concat(R.flatten<string>(cppDependencies));
+    const dependencies = R.flatten<string>(cppDependencies);
 
     const optimizationLevel = "-O3";
     const outPath = fs.mkdtempSync(process.pid.toString());
@@ -49,6 +45,8 @@ export class NmSymbolExtractor {
       throw e;
     }
 
+    dependencyObjects.push(STDLIB);
+
     const mangledSymbols: string[] = Array.prototype.concat.apply(
       [],
       dependencyObjects.map(libObj => {
@@ -64,9 +62,14 @@ export class NmSymbolExtractor {
       })
     );
     for (const libObj of dependencyObjects) {
-      fs.unlinkSync(libObj);
+      if (libObj !== STDLIB) {
+        fs.unlinkSync(libObj);
+      }
     }
     fs.rmdirSync(outPath);
+
+    dependencies.push(STDLIB);
+
     return { mangledSymbols, demangledSymbols, dependencies };
   }
   private getExportedSymbols(rawOutput: string): string[] {

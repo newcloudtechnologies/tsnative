@@ -39,7 +39,7 @@ export class FunctionMangler {
       };
     }
     if (thisType) {
-      parentName = TypeMangler.mangle(thisType, checker);
+      parentName = TypeMangler.mangle(thisType, checker, declaration);
     } else if (ts.isModuleBlock(parent)) {
       parentName = parent.parent.name.text;
     }

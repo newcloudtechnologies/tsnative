@@ -44,7 +44,7 @@ export class ArithmeticEmitter {
 
     if (isLLVMString(left.type) && isLLVMString(right.type)) {
       const concat = getBuiltin("string__concat", generator.context, generator.module);
-      return generator.builder.createCall(concat, [left, right]);
+      return generator.builder.createCall(concat.callee, [left, right]);
     }
 
     return error("Invalid operand types to binary plus");
