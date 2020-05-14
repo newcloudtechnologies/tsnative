@@ -5,14 +5,14 @@ target triple = "x86_64"
 
 %B__class = type { double }
 %A__class = type { %B__class*, double }
-%string = type { i8*, i32 }
+%string = type { i256 }
 
 @0 = private unnamed_addr constant [4 x i8] c"foo\00"
 
 define i32 @main() {
 entry:
   %x = alloca %B__class*
-  %a = call %A__class* @A__class__constructor(double 4.000000e+00)
+  %a = call %A__class* @A__class__(double 4.000000e+00)
   %c = getelementptr inbounds %A__class, %A__class* %a, i32 0, i32 1
   store double 1.000000e+00, double* %c
   %b = getelementptr inbounds %A__class, %A__class* %a, i32 0, i32 0
@@ -22,13 +22,13 @@ entry:
   ret i32 0
 }
 
-define %A__class* @A__class__constructor(double %b) {
+define %A__class* @A__class__(double %b) {
 entry:
   %a = alloca double
-  %0 = call i8* @gc__allocate(i32 16)
+  %0 = call i8* @_ZN2GC8allocateEj(i32 16)
   %1 = bitcast i8* %0 to %A__class*
   %b1 = getelementptr inbounds %A__class, %A__class* %1, i32 0, i32 0
-  %2 = call %B__class* @B__class__constructor()
+  %2 = call %B__class* @B__class__()
   store %B__class* %2, %B__class** %b1
   %c = getelementptr inbounds %A__class, %A__class* %1, i32 0, i32 1
   store double 0.000000e+00, double* %c
@@ -36,11 +36,11 @@ entry:
   ret %A__class* %1
 }
 
-declare i8* @gc__allocate(i32)
+declare i8* @_ZN2GC8allocateEj(i32)
 
-define %B__class* @B__class__constructor() {
+define %B__class* @B__class__() {
 entry:
-  %0 = call i8* @gc__allocate(i32 8)
+  %0 = call i8* @_ZN2GC8allocateEj(i32 8)
   %1 = bitcast i8* %0 to %B__class*
   ret %B__class* %1
 }
@@ -53,8 +53,13 @@ entry:
   %c = getelementptr inbounds %A__class, %A__class* %this, i32 0, i32 1
   %c.load = load double, double* %c
   store double %c.load, double* %b1
-  call void @_ZN7console3logI6stringEEvT_(%string { i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0), i32 3 })
+  %0 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %1 = bitcast i8* %0 to %string*
+  %2 = call %string* @_ZN6stringC1EPKa(%string* %1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0))
+  call void @_ZN7console3logIRK6stringEEvT_(%string* %1)
   ret void
 }
 
-declare void @_ZN7console3logI6stringEEvT_(%string)
+declare void @_ZN7console3logIRK6stringEEvT_(%string*)
+
+declare %string* @_ZN6stringC1EPKa(%string*, i8*)

@@ -10,14 +10,26 @@
  */
 
 import * as ts from "typescript";
-import { isProperty } from "./tsc-utils";
+import { checkIfProperty } from "./tsc-utils";
+
+const returnsValueTypeDecorator: string = "ReturnsValueType";
+export function checkIfReturnsValueType(declaration: ts.FunctionLikeDeclaration): boolean {
+  return Boolean(
+    declaration.decorators?.some((decorator) => decorator.expression.getText() === returnsValueTypeDecorator)
+  );
+}
+
+const valueTypeDecorator: string = "ValueType";
+export function checkIfValueTypeProperty(declaration: ts.Declaration): boolean {
+  return Boolean(declaration.decorators?.some((decorator) => decorator.getText() === valueTypeDecorator));
+}
 
 export function getExpressionTypename(expression: ts.Expression, checker: ts.TypeChecker): string {
   return checker.typeToString(checker.getTypeAtLocation(expression));
 }
 
-export function getStoredProperties(type: ts.Type, checker: ts.TypeChecker) {
-  return checker.getPropertiesOfType(type).filter(isProperty);
+export function getProperties(type: ts.Type, checker: ts.TypeChecker) {
+  return checker.getPropertiesOfType(type).filter(checkIfProperty);
 }
 
 export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeChecker) {

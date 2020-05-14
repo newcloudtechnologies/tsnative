@@ -5,7 +5,6 @@ import * as argv from "commander";
 import * as fs from "fs";
 import * as llvm from "llvm-node";
 import * as path from "path";
-// @ts-ignore
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
@@ -38,14 +37,14 @@ function parseTSConfig(): Promise<any> {
 
 // entry point
 parseTSConfig()
-  .then(tsconfig => prepareExternalSymbols(tsconfig.cppDirs))
-  .then(result => {
+  .then((tsconfig) => prepareExternalSymbols(tsconfig.cppDirs))
+  .then((result) => {
     const { mangledSymbols, demangledSymbols, dependencies } = result;
     injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
     return dependencies;
   })
   .then(main)
-  .catch(e => {
+  .catch((e) => {
     console.log(e.stack);
     process.exit(1);
   });
@@ -74,7 +73,7 @@ async function main(dependencies: string[]) {
   llvm.initializeAllAsmParsers();
   llvm.initializeAllAsmPrinters();
 
-  const llvmModule = new LLVMGenerator(program).emitProgram();
+  const llvmModule = new LLVMGenerator(program).createModule();
 
   if (argv.target) {
     const targetTriple = argv.target;

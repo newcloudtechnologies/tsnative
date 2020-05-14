@@ -1,38 +1,219 @@
 import { LLVMGenerator } from "@generator";
-import { error, getSize, getStringType, isValueType } from "@utils";
+import { error, getTypeSize, isValueTy, createLLVMFunction } from "@utils";
 import * as llvm from "llvm-node";
+import * as ts from "typescript";
+import { ThisData, Scope } from "@scope";
+import { FunctionMangler } from "@mangling";
+import { SIZEOF_STRING } from "@cpp";
 
-type BuiltinName = "gc__allocate" | "string__concat" | "string__compare" | "string__length";
+export class GC {
+  private readonly allocateFn: llvm.Function;
+  private readonly generator: LLVMGenerator;
 
-function getBuiltinFunctionType(name: BuiltinName, context: llvm.LLVMContext) {
-  switch (name) {
-    case "gc__allocate":
-      return llvm.FunctionType.get(llvm.Type.getInt8PtrTy(context), [llvm.Type.getInt32Ty(context)], false);
-    case "string__concat":
-      return llvm.FunctionType.get(getStringType(context), [getStringType(context), getStringType(context)], false);
-    case "string__compare":
-      return llvm.FunctionType.get(
-        llvm.Type.getInt1Ty(context),
-        [getStringType(context), getStringType(context)],
-        false
-      );
-    case "string__length":
-      return llvm.FunctionType.get(llvm.Type.getInt32Ty(context), [getStringType(context)], false);
+  constructor(declaration: ts.ClassDeclaration, generator: LLVMGenerator) {
+    this.generator = generator;
+
+    const allocateDeclaration = declaration.members.find(
+      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "allocate"
+    )!;
+
+    const thisType = this.generator.checker.getTypeAtLocation(declaration);
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      allocateDeclaration,
+      undefined,
+      thisType,
+      [this.generator.builtinUInt32.getTSType()],
+      this.generator.checker
+    );
+
+    const llvmReturnType = llvm.Type.getInt8PtrTy(this.generator.context);
+    const llvmArgumentTypes = [llvm.Type.getInt32Ty(this.generator.context)];
+    const { fn: allocateFn } = createLLVMFunction(
+      llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName,
+      this.generator.module
+    );
+
+    this.allocateFn = allocateFn;
+  }
+
+  allocate(type: llvm.Type) {
+    if (isValueTy(type)) {
+      return error("Expected non-value type");
+    }
+
+    const size = getTypeSize(type, this.generator.module);
+    const returnValue = this.generator.builder.createCall(this.allocateFn, [
+      llvm.ConstantInt.get(this.generator.context, size > 0 ? size : 1, 32),
+    ]);
+
+    return this.generator.builder.createBitCast(returnValue, type.getPointerTo());
   }
 }
 
-export function getBuiltin(name: BuiltinName, context: llvm.LLVMContext, module: llvm.Module) {
-  return module.getOrInsertFunction(name, getBuiltinFunctionType(name, context));
+class Builtin {
+  readonly name: string;
+  readonly generator: LLVMGenerator;
+  thisData: ThisData | undefined;
+
+  constructor(name: string, generator: LLVMGenerator) {
+    this.name = name;
+    this.generator = generator;
+  }
+
+  getTSType(): ts.Type {
+    if (!this.thisData) {
+      this.init();
+    }
+    const { checker } = this.generator;
+    return checker.getTypeAtLocation(this.thisData!.declaration);
+  }
+
+  getLLVMType(): llvm.PointerType | llvm.IntegerType {
+    if (!this.thisData) {
+      this.init();
+    }
+    return this.thisData!.type as llvm.PointerType;
+  }
+
+  getDeclaration(): ts.ClassDeclaration {
+    if (!this.thisData) {
+      this.init();
+    }
+    return this.thisData!.declaration as ts.ClassDeclaration;
+  }
+
+  private init(): void {
+    const clazz = this.generator.symbolTable.get(this.name);
+    this.thisData = (clazz as Scope).thisData;
+  }
 }
 
-export function createGCAllocate(type: llvm.Type, generator: LLVMGenerator) {
-  if (isValueType(type)) {
-    return error(`Allocating value types not supported, tried to allocate '${type}'`);
+export class BuiltinInt8 extends Builtin {
+  constructor(generator: LLVMGenerator) {
+    super("int8_t", generator);
   }
-  const size = getSize(type, generator.module);
-  const allocate = getBuiltin("gc__allocate", generator.context, generator.module);
-  const returnValue = generator.builder.createCall(allocate.callee, [
-    llvm.ConstantInt.get(generator.context, size, 32)
-  ]);
-  return generator.builder.createBitCast(returnValue, type.getPointerTo());
+
+  getLLVMType(): llvm.IntegerType {
+    return llvm.Type.getInt8Ty(this.generator.context);
+  }
+}
+
+export class BuiltinUInt32 extends Builtin {
+  constructor(generator: LLVMGenerator) {
+    super("uint32_t", generator);
+  }
+
+  getLLVMType(): llvm.IntegerType {
+    return llvm.Type.getInt32Ty(this.generator.context);
+  }
+}
+
+export class BuiltinString extends Builtin {
+  private readonly llvmType: llvm.PointerType;
+  constructor(generator: LLVMGenerator) {
+    super("string", generator);
+    const structType = llvm.StructType.create(generator.context, "string");
+    structType.setBody([llvm.Type.getIntNTy(generator.context, SIZEOF_STRING * 8)]);
+    this.llvmType = structType.getPointerTo();
+  }
+
+  getLLVMType(): llvm.PointerType {
+    return this.llvmType;
+  }
+
+  getLLVMConstructor(expression: ts.Expression): llvm.Function {
+    const declaration = this.getDeclaration();
+    const llvmThisType = this.getLLVMType();
+
+    const constructorDeclaration = declaration.members.find(ts.isConstructorDeclaration)!;
+    const thisType = this.generator.checker.getTypeAtLocation(expression);
+    const { qualifiedName } = FunctionMangler.mangle(
+      constructorDeclaration,
+      undefined,
+      thisType,
+      [this.generator.builtinInt8.getTSType()],
+      this.generator.checker
+    );
+    const llvmReturnType = llvmThisType;
+    const llvmArgumentTypes = [llvmThisType, this.generator.builtinInt8.getLLVMType().getPointerTo()];
+    const { fn: constructor } = createLLVMFunction(
+      llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName,
+      this.generator.module
+    );
+
+    return constructor;
+  }
+
+  getLLVMConcat(expression: ts.Expression): llvm.Function {
+    const declaration = this.getDeclaration();
+    const thisType = this.generator.checker.getTypeAtLocation(expression);
+    const llvmThisType = this.getLLVMType();
+
+    const concatDeclaration = declaration.members.find(
+      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "concat"
+    );
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      concatDeclaration!,
+      undefined,
+      thisType,
+      [],
+      this.generator.checker
+    );
+
+    const llvmReturnType = llvmThisType;
+    const llvmArgumentTypes = [llvmThisType, llvmThisType, llvmThisType];
+    const { fn: concat } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+    return concat;
+  }
+
+  getLLVMLength(expression: ts.Expression): llvm.Function {
+    const declaration = this.getDeclaration();
+    const thisType = this.generator.checker.getTypeAtLocation(expression);
+    const llvmThisType = this.getLLVMType();
+
+    const lengthDeclaration = declaration.members.find((m) => ts.isGetAccessor(m) && m.name.getText() === "length");
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      lengthDeclaration!,
+      undefined,
+      thisType,
+      [],
+      this.generator.checker
+    );
+
+    const llvmReturnType = llvm.Type.getInt32Ty(this.generator.context);
+    const llvmArgumentTypes = [llvmThisType];
+    const { fn: length } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+    return length;
+  }
+
+  getLLVMEquals(expression: ts.Expression): llvm.Function {
+    const declaration = this.getDeclaration();
+    const thisType = this.generator.checker.getTypeAtLocation(expression);
+    const llvmThisType = this.getLLVMType();
+
+    const equalsDeclaration = declaration.members.find(
+      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "equals"
+    );
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      equalsDeclaration!,
+      undefined,
+      thisType,
+      [thisType],
+      this.generator.checker,
+      "operator=="
+    );
+
+    const llvmReturnType = llvm.Type.getInt1Ty(this.generator.context);
+    const llvmArgumentTypes = [llvmThisType, llvmThisType];
+    const { fn: equals } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+    return equals;
+  }
 }

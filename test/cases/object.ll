@@ -11,7 +11,7 @@ entry:
 
 define void @foo() {
 entry:
-  %0 = call i8* @gc__allocate(i32 16)
+  %0 = call i8* @_ZN2GC8allocateEj(i32 16)
   %a1 = bitcast i8* %0 to { double, double }*
   %a = getelementptr inbounds { double, double }, { double, double }* %a1, i32 0, i32 0
   store double 1.000000e+00, double* %a
@@ -24,4 +24,4 @@ entry:
   ret void
 }
 
-declare i8* @gc__allocate(i32)
+declare i8* @_ZN2GC8allocateEj(i32)

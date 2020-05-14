@@ -1,40 +1,65 @@
-import { LLVMEmitter } from "@emitter";
-import { addInterfaceScope, Scope, SymbolTable } from "@scope";
-import { createLLVMFunction, error, isValueType } from "@utils";
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+import { ExpressionHandlerChain } from "@handlers/expression";
+import { NodeHandlerChain } from "@handlers/node";
+import { Scope, SymbolTable } from "@scope";
+import { createLLVMFunction, error, isValueTy } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
+import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC } from "@builtins";
 
 export class LLVMGenerator {
   readonly checker: ts.TypeChecker;
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
-  readonly builder: llvm.IRBuilder;
-  readonly emitter: LLVMEmitter;
   readonly symbolTable: SymbolTable;
   readonly program: ts.Program;
+
+  private irBuilder: llvm.IRBuilder;
+
+  readonly expressionHandlerChain = new ExpressionHandlerChain(this);
+  readonly nodeHandlerChain = new NodeHandlerChain(this);
+
+  readonly builtinInt8: BuiltinInt8;
+  readonly builtinUInt32: BuiltinUInt32;
+  readonly builtinString: BuiltinString;
+
+  private garbageCollector: GC | undefined;
 
   constructor(program: ts.Program) {
     this.program = program;
     this.checker = program.getTypeChecker();
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
-    this.builder = new llvm.IRBuilder(this.context);
-    this.emitter = new LLVMEmitter();
+    this.irBuilder = new llvm.IRBuilder(this.context);
     this.symbolTable = new SymbolTable();
+
+    this.builtinInt8 = new BuiltinInt8(this);
+    this.builtinUInt32 = new BuiltinUInt32(this);
+    this.builtinString = new BuiltinString(this);
   }
 
-  emitProgram(): llvm.Module {
+  createModule(): llvm.Module {
     const mainReturnType = llvm.Type.getInt32Ty(this.context);
-    const main = createLLVMFunction(mainReturnType, [], "main", this.module);
+    const { fn: main } = createLLVMFunction(mainReturnType, [], "main", this.module);
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main);
 
     this.builder.setInsertionPoint(entryBlock);
-    // @todo keep original file ordering
     for (const sourceFile of this.program.getSourceFiles()) {
-      this.emitSourceFile(sourceFile);
+      this.symbolTable.addScope(sourceFile.fileName);
+      sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
 
-    this.builder.createRet(llvm.Constant.getNullValue(mainReturnType));
+    this.builder.createRet(llvm.ConstantInt.get(this.context, 0));
 
     try {
       llvm.verifyModule(this.module);
@@ -46,118 +71,72 @@ export class LLVMGenerator {
     return this.module;
   }
 
-  emitSourceFile(sourceFile: ts.SourceFile) {
-    this.symbolTable.pushScope(sourceFile.fileName);
-    sourceFile.forEachChild(node => this.emitNode(node, this.symbolTable.currentScope));
-  }
-
-  emitNode(node: ts.Node, parentScope: Scope): void {
-    switch (node.kind) {
-      case ts.SyntaxKind.FunctionDeclaration:
-      case ts.SyntaxKind.MethodDeclaration:
-      case ts.SyntaxKind.IndexSignature:
-      case ts.SyntaxKind.Constructor:
-        // Declarations have no actual arguments. Emit them when called.
-        break;
-      case ts.SyntaxKind.InterfaceDeclaration:
-        addInterfaceScope(node as ts.InterfaceDeclaration, parentScope, this);
-        break;
-      case ts.SyntaxKind.ClassDeclaration:
-        this.emitter.class.emitClassDeclaration(node as ts.ClassDeclaration, [], parentScope, this);
-        break;
-      case ts.SyntaxKind.ModuleDeclaration:
-        this.emitter.module.emitModuleDeclaration(node as ts.ModuleDeclaration, parentScope, this);
-        break;
-      case ts.SyntaxKind.Block:
-        this.emitter.block.emitBlock(node as ts.Block, this);
-        break;
-      case ts.SyntaxKind.ExpressionStatement:
-        this.emitter.expressionStatement.emitExpressionStatement(node as ts.ExpressionStatement, this);
-        break;
-      case ts.SyntaxKind.IfStatement:
-        this.emitter.branch.emitIfStatement(node as ts.IfStatement, parentScope, this);
-        break;
-      case ts.SyntaxKind.WhileStatement:
-        this.emitter.loop.emitWhileStatement(node as ts.WhileStatement, this);
-        break;
-      case ts.SyntaxKind.ForStatement:
-        this.emitter.loop.emitForStatement(node as ts.ForStatement, this);
-        break;
-      case ts.SyntaxKind.ContinueStatement:
-        this.emitter.loop.emitContinueStatement(node as ts.ContinueStatement, this);
-        break;
-      case ts.SyntaxKind.BreakStatement:
-        this.emitter.loop.emitBreakStatement(node as ts.BreakStatement, this);
-        break;
-      case ts.SyntaxKind.ReturnStatement:
-        this.emitter.return.emitReturnStatement(node as ts.ReturnStatement, this);
-        break;
-      case ts.SyntaxKind.VariableStatement:
-        this.emitter.variable.emitVariableStatement(node as ts.VariableStatement, parentScope, this);
-        break;
-      case ts.SyntaxKind.VariableDeclarationList:
-        this.emitter.variable.emitVariableDeclarationList(node as ts.VariableDeclarationList, parentScope, this);
-        break;
-      case ts.SyntaxKind.EndOfFileToken:
-        break;
-      case ts.SyntaxKind.EnumDeclaration:
-        break;
-      case ts.SyntaxKind.ImportDeclaration:
-        break;
-      case ts.SyntaxKind.ExportAssignment:
-        break;
-      default:
-        error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
+  initGC(): void {
+    const stdlib = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName.endsWith("lib.std.d.ts"));
+    if (!stdlib) {
+      error("Standard library not found");
+    }
+    stdlib.forEachChild((node) => {
+      if (ts.isClassDeclaration(node)) {
+        const clazz = node as ts.ClassDeclaration;
+        const clazzName = this.checker.getTypeAtLocation(clazz).getSymbol()!.escapedName;
+        if (clazzName === "GC") {
+          this.garbageCollector = new GC(clazz, this);
+        }
+      }
+    });
+    if (!this.garbageCollector) {
+      error("GC declaration not found");
     }
   }
 
-  emitValueExpression(expression: ts.Expression): llvm.Value {
-    switch (expression.kind) {
-      case ts.SyntaxKind.PrefixUnaryExpression:
-        return this.emitter.unary.emitPrefixUnaryExpression(expression as ts.PrefixUnaryExpression, this);
-      case ts.SyntaxKind.PostfixUnaryExpression:
-        return this.emitter.unary.emitPostfixUnaryExpression(expression as ts.PostfixUnaryExpression, this);
-      case ts.SyntaxKind.BinaryExpression:
-        return this.emitter.binary.emit(expression as ts.BinaryExpression, this);
-      case ts.SyntaxKind.CallExpression:
-        return this.emitter.func.emitCallExpression(expression as ts.CallExpression, this);
-      case ts.SyntaxKind.PropertyAccessExpression:
-        return this.emitter.access.emitPropertyAccessExpression(expression as ts.PropertyAccessExpression, this);
-      case ts.SyntaxKind.ElementAccessExpression:
-        return this.emitter.access.emitElementAccessExpression(expression as ts.ElementAccessExpression, this);
-      case ts.SyntaxKind.Identifier:
-        return this.emitter.identifier.emitIdentifier(expression as ts.Identifier, this);
-      case ts.SyntaxKind.ThisKeyword:
-        return this.emitter.identifier.emitThis(this);
-      case ts.SyntaxKind.TrueKeyword:
-      case ts.SyntaxKind.FalseKeyword:
-        return this.emitter.literal.emitBooleanLiteral(expression as ts.BooleanLiteral, this);
-      case ts.SyntaxKind.NumericLiteral:
-        return this.emitter.literal.emitNumericLiteral(expression as ts.NumericLiteral, this);
-      case ts.SyntaxKind.StringLiteral:
-        return this.emitter.literal.emitStringLiteral(expression as ts.StringLiteral, this);
-      case ts.SyntaxKind.ArrayLiteralExpression:
-        return this.emitter.literal.emitArrayLiteralExpression(expression as ts.ArrayLiteralExpression, this);
-      case ts.SyntaxKind.ObjectLiteralExpression:
-        return this.emitter.literal.emitObjectLiteralExpression(expression as ts.ObjectLiteralExpression, this);
-      case ts.SyntaxKind.NewExpression:
-        return this.emitter.func.emitNewExpression(expression as ts.NewExpression, this);
-      case ts.SyntaxKind.ParenthesizedExpression:
-        return this.emitValueExpression((expression as ts.ParenthesizedExpression).expression);
-      default:
-        return error(`Unhandled ts.Expression '${ts.SyntaxKind[expression.kind]}'`);
-    }
+  withLocalBuilder<R>(action: () => R): R {
+    const builder = this.builder;
+    this.irBuilder = new llvm.IRBuilder(this.currentFunction.getEntryBlock()!);
+    const result: R = action();
+    this.irBuilder = builder;
+    return result;
   }
 
-  emitExpression(expression: ts.Expression): llvm.Value {
-    return this.createLoadIfNecessary(this.emitValueExpression(expression));
+  withInsertBlockKeeping<R>(action: () => R): R {
+    const insertBlock = this.builder.getInsertBlock();
+    const result = action();
+    this.builder.setInsertionPoint(insertBlock!);
+    return result;
+  }
+
+  handleNode(node: ts.Node, parentScope: Scope): void {
+    if (!this.nodeHandlerChain.handle(node, parentScope))
+      error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
+  }
+
+  handleValueExpression(expression: ts.Expression): llvm.Value {
+    const value = this.expressionHandlerChain.handle(expression);
+    if (value) {
+      return value;
+    }
+
+    return error(`Unhandled expression of kind ${expression.kind}`);
+  }
+
+  handleExpression(expression: ts.Expression): llvm.Value {
+    const value = this.handleValueExpression(expression);
+    return this.createLoadIfNecessary(value);
   }
 
   createLoadIfNecessary(value: llvm.Value) {
-    if (value.type.isPointerTy() && isValueType(value.type.elementType)) {
+    if (value.type.isPointerTy() && isValueTy(value.type.elementType)) {
       return this.builder.createLoad(value, value.name + ".load");
     }
     return value;
+  }
+
+  get builder(): llvm.IRBuilder {
+    return this.irBuilder;
+  }
+
+  get isCurrentBlockTerminated(): boolean {
+    return Boolean(this.builder.getInsertBlock()?.getTerminator());
   }
 
   get currentFunction(): llvm.Function {
@@ -166,5 +145,12 @@ export class LLVMGenerator {
       return error("Cannot get current LLVM function: no insert block");
     }
     return insertBlock.parent!;
+  }
+
+  get gc(): GC {
+    if (!this.garbageCollector) {
+      this.initGC();
+    }
+    return this.garbageCollector!;
   }
 }

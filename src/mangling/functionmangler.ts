@@ -1,54 +1,56 @@
-import { ExternalSymbolsProvider, getDeclarationBaseName, TypeMangler } from "@mangling";
-import { error } from "@utils";
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+import { ExternalSymbolsProvider, TypeMangler } from "@mangling";
+import { getDeclarationNamespace } from "@utils";
 import * as ts from "typescript";
 
 export class FunctionMangler {
   static mangle(
     declaration: ts.NamedDeclaration,
-    expression:
-      | ts.NewExpression
-      | ts.CallExpression
-      | ts.ArrayLiteralExpression
-      | ts.ElementAccessExpression
-      | ts.Expression,
+    expression: ts.Expression | undefined,
     thisType: ts.Type | undefined,
     argumentTypes: ts.Type[],
-    checker: ts.TypeChecker
+    checker: ts.TypeChecker,
+    knownMethodName?: string
   ): { isExternalSymbol: boolean; qualifiedName: string } {
-    const { parent } = declaration;
-    let parentName: string | undefined;
-
-    if (!thisType && (ts.isClassDeclaration(parent) || ts.isInterfaceDeclaration(parent))) {
-      return error("Mangling methods requires thisType");
-    }
-
     const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
       declaration,
       expression as ts.CallExpression | ts.NewExpression,
       argumentTypes,
       thisType,
-      checker
+      checker,
+      knownMethodName
     );
-
     const mangled: string | undefined = provider.tryGet(declaration);
-
     if (mangled) {
       return {
         isExternalSymbol: true,
-        qualifiedName: mangled
+        qualifiedName: mangled,
       };
     }
+
+    const { parent } = declaration;
+    let parentName: string | undefined;
     if (thisType) {
       parentName = TypeMangler.mangle(thisType, checker, declaration);
     } else if (ts.isModuleBlock(parent)) {
-      parentName = parent.parent.name.text;
+      parentName = getDeclarationNamespace(declaration).join("__");
     }
 
     const scopePrefix = parentName ? parentName + "__" : "";
-    const baseName = getDeclarationBaseName(declaration);
+    const baseName = declaration.name?.getText() || "";
     return {
       isExternalSymbol: false,
-      qualifiedName: scopePrefix + baseName
+      qualifiedName: scopePrefix + baseName,
     };
   }
 }

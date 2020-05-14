@@ -48,7 +48,7 @@ export function writeExecutableToFile(
       "-o",
       executableFile,
       "-std=c++11",
-      "-Werror"
+      "-Werror",
     ]);
   } finally {
     fs.unlinkSync(bitcodeFile);

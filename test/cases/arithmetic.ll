@@ -38,7 +38,7 @@ entry:
 
 define void @fooObj() {
 entry:
-  %0 = call i8* @gc__allocate(i32 8)
+  %0 = call i8* @_ZN2GC8allocateEj(i32 8)
   %a = bitcast i8* %0 to { double }*
   %b = getelementptr inbounds { double }, { double }* %a, i32 0, i32 0
   store double 0.000000e+00, double* %b
@@ -61,7 +61,7 @@ entry:
   ret void
 }
 
-declare i8* @gc__allocate(i32)
+declare i8* @_ZN2GC8allocateEj(i32)
 
 define void @bar(double %a, double %b) {
 entry:

@@ -9,30 +9,29 @@
  *
  */
 
-import { replaceOrAddExtension } from "@utils";
+import { flatten, replaceOrAddExtension } from "@utils";
 import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import * as R from "ramda";
 
 import { STDLIB } from "stdlib/constants";
 
 export class NmSymbolExtractor {
   extractSymbols(cppDirs: string[]) {
-    const cppDependencies = cppDirs.map(dir => {
+    const cppDependencies = cppDirs.map((dir) => {
       return fs
         .readdirSync(dir)
-        .filter(file => path.extname(file) === ".cpp")
-        .map(file => path.join(dir, file));
+        .filter((file) => path.extname(file) === ".cpp")
+        .map((file) => path.join(dir, file));
     });
 
-    const dependencies = R.flatten<string>(cppDependencies);
+    const dependencies = flatten(cppDependencies);
 
     const optimizationLevel = "-O3";
     const outPath = fs.mkdtempSync(process.pid.toString());
     const dependencyObjects: string[] = [];
     try {
-      dependencies.forEach(file => {
+      dependencies.forEach((file) => {
         const outFile = path.join(outPath, path.basename(replaceOrAddExtension(file, ".o")));
         execFileSync("g++", [optimizationLevel, file, "-c", "-o", outFile, "-std=c++11", "-Werror"]);
         dependencyObjects.push(outFile);
@@ -47,16 +46,14 @@ export class NmSymbolExtractor {
 
     dependencyObjects.push(STDLIB);
 
-    const mangledSymbols: string[] = Array.prototype.concat.apply(
-      [],
-      dependencyObjects.map(libObj => {
+    const mangledSymbols: string[] = flatten(
+      dependencyObjects.map((libObj) => {
         const output = execFileSync("nm", [libObj]).toString();
         return this.getExportedSymbols(output);
       })
     );
-    const demangledSymbols: string[] = Array.prototype.concat.apply(
-      [],
-      dependencyObjects.map(libObj => {
+    const demangledSymbols: string[] = flatten(
+      dependencyObjects.map((libObj) => {
         const output = execFileSync("nm", ["-C", libObj]).toString();
         return this.getExportedSymbols(output);
       })
@@ -74,7 +71,7 @@ export class NmSymbolExtractor {
   }
   private getExportedSymbols(rawOutput: string): string[] {
     const lines = rawOutput.split("\n");
-    const symbols: Array<string | null> = lines.map(line => {
+    const symbols: (string | null)[] = lines.map((line) => {
       const trimmed = line.trim();
       const symbolTypePattern = new RegExp(/(?<=\s)\w(?=\s)/);
       const symbolTypeMatches = trimmed.match(symbolTypePattern);

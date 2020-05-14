@@ -14,22 +14,7 @@ import { error, getExpressionTypename } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
-export function isNumericType(type: string): boolean {
-  switch (type) {
-    case "int8_t":
-    case "int16_t":
-    case "int32_t":
-
-    case "uint8_t":
-    case "uint16_t":
-    case "uint32_t":
-      return true;
-    default:
-      return false;
-  }
-}
-
-export function isIntegralType(type: string): boolean {
+export function isCppNumericType(type: string): boolean {
   switch (type) {
     case "int8_t":
     case "int16_t":
@@ -117,33 +102,33 @@ const integralAdjust: {
 } = {
   int8_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt8Ty
+    typeGetter: llvm.Type.getInt8Ty,
   },
   int16_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt16Ty
+    typeGetter: llvm.Type.getInt16Ty,
   },
   int32_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt32Ty
+    typeGetter: llvm.Type.getInt32Ty,
   },
   uint8_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt8Ty
+    typeGetter: llvm.Type.getInt8Ty,
   },
   uint16_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt16Ty
+    typeGetter: llvm.Type.getInt16Ty,
   },
   uint32_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt32Ty
-  }
+    typeGetter: llvm.Type.getInt32Ty,
+  },
 };
 /* tslint:enable:object-literal-sort-keys */
 
 export function adjustValue(value: llvm.Value, typename: string, generator: LLVMGenerator): llvm.Value {
-  if (isIntegralType(typename)) {
+  if (isCppNumericType(typename)) {
     if (!value.type.isIntegerTy()) {
       const adjustParameters = integralAdjust[typename];
       // use the widest integral type to control overflow during initialization

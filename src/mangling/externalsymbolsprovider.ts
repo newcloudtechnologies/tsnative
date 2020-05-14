@@ -9,17 +9,16 @@
  *
  */
 
-import { getDeclarationBaseName, NmSymbolExtractor } from "@mangling";
-import { error, getDeclarationNamespace, getTypeArguments, getTypeBaseName, isTypeSupported } from "@utils";
-import { lookpath } from "lookpath"
-import * as R from "ramda";
+import { NmSymbolExtractor } from "@mangling";
+import { error, flatten, getDeclarationNamespace, getTypeGenericArguments, getTypename, isTypeSupported } from "@utils";
+import { lookpath } from "lookpath";
 import * as ts from "typescript";
 
 export let externalMangledSymbolsTable: string[] = [];
 export let externalDemangledSymbolsTable: string[] = [];
 export function injectExternalSymbolsTables(mangled: string[], demangled: string[]): void {
   if (mangled.length !== demangled.length) {
-    return error("Symbols tables size mismatch")
+    return error("Symbols tables size mismatch");
   }
 
   externalMangledSymbolsTable = mangled;
@@ -40,7 +39,7 @@ export async function prepareExternalSymbols(cppDirs: string[]) {
       }
 
       const extractor: NmSymbolExtractor = new NmSymbolExtractor();
-      return extractor.extractSymbols(cppDirs);
+      return extractor.extractSymbols(cppDirs || []);
     case "win32":
     default:
       error(`Unsupported platform ${process.platform}`);
@@ -55,7 +54,7 @@ type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
 export class ExternalSymbolsProvider {
   static jsTypeToCpp(type: ts.Type, checker: ts.TypeChecker): string {
     if (ts.isArrayTypeNode(checker.typeToTypeNode(type)!)) {
-      const elementType: ts.Type | undefined = getTypeArguments(type)[0];
+      const elementType: ts.Type | undefined = getTypeGenericArguments(type)[0];
       return `Array<${this.jsTypeToCpp(elementType!, checker)}>`;
     }
 
@@ -70,6 +69,8 @@ export class ExternalSymbolsProvider {
     }
 
     switch (typename) {
+      case "String": // @todo
+        return "string";
       case "number":
         return "double";
       case "boolean":
@@ -103,26 +104,23 @@ export class ExternalSymbolsProvider {
   private readonly functionTemplateParametersPattern: string;
   constructor(
     declaration: ts.Declaration,
-    expression:
-      | ts.NewExpression
-      | ts.CallExpression,
+    expression: ts.NewExpression | ts.CallExpression | undefined,
     argumentTypes: ts.Type[],
     thisType: ts.Type | undefined,
-    checker: ts.TypeChecker
+    checker: ts.TypeChecker,
+    knownMethodName?: string
   ) {
     const namespace = getDeclarationNamespace(declaration).join("::");
     this.namespace = namespace ? namespace + "::" : "";
     if (thisType) {
-      this.thisTypeName = getTypeBaseName(thisType, checker);
+      this.thisTypeName = getTypename(thisType, checker);
       this.baseTypeNames = this.extractBaseTypeNames(declaration);
-      this.classTemplateParametersPattern = getTypeArguments(thisType)
-        .map(type => this.jsStringTypeToCpp(checker.typeToString(type)))
+      this.classTemplateParametersPattern = getTypeGenericArguments(thisType)
+        .map((type) => this.jsStringTypeToCpp(checker.typeToString(type)))
         .join(",");
     }
-    this.methodName = getDeclarationBaseName(declaration).replace(/\[/g, "\\["); // special case for operator[], but handle it every time... @todo
-    this.parametersPattern = argumentTypes
-      .map(type => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
-      .join(",");
+    this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
+    this.parametersPattern = argumentTypes.map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker)).join(",");
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, checker);
   }
   tryGet(declaration: ts.NamedDeclaration): string | undefined {
@@ -134,7 +132,9 @@ export class ExternalSymbolsProvider {
 
     if (ts.isMethodDeclaration(declaration)) {
       for (const baseTypeName of this.baseTypeNames) {
-        const classMethodPattern = new RegExp(`(?=(^| )${this.namespace}${baseTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`);
+        const classMethodPattern = new RegExp(
+          `(?=(^| )${this.namespace}${baseTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+        );
         mangledName = this.handleDeclarationWithPredicate((cppSignature: string) => {
           return classMethodPattern.test(cppSignature);
         });
@@ -146,14 +146,23 @@ export class ExternalSymbolsProvider {
 
     return;
   }
+  private getDeclarationBaseName(declaration: ts.NamedDeclaration) {
+    switch (declaration.kind) {
+      case ts.SyntaxKind.IndexSignature:
+        return "operator\\[]";
+      default:
+        return declaration.name?.getText() || "";
+    }
+  }
   private extractBaseTypeNames(declaration: ts.Declaration): string[] {
     let baseTypeNames: string[] = [];
     const declarationHeritageClausesToTypeNames = (classLikeDeclaration: ts.ClassLikeDeclaration): string[] => {
-      return R.flatten<string>(
-        classLikeDeclaration.heritageClauses?.map(clause => {
-          return clause.types.map(expressionWithType => expressionWithType.getText());
-        }) || []);
-    }
+      return flatten(
+        classLikeDeclaration.heritageClauses?.map((clause) => {
+          return clause.types.map((expressionWithType) => expressionWithType.getText());
+        }) || []
+      );
+    };
     if (ts.isConstructorDeclaration(declaration)) {
       const parentConstructorDeclaration = (declaration as ts.ConstructorDeclaration).parent;
       baseTypeNames = declarationHeritageClausesToTypeNames(parentConstructorDeclaration);
@@ -165,8 +174,17 @@ export class ExternalSymbolsProvider {
     }
     return baseTypeNames;
   }
-  private extractFunctionTemplateParameters(declaration: ts.Declaration, expression: ts.Expression, checker: ts.TypeChecker): string {
+  private extractFunctionTemplateParameters(
+    declaration: ts.Declaration,
+    expression: ts.Expression | undefined,
+    checker: ts.TypeChecker
+  ): string {
     let functionTemplateParametersPattern: string = "";
+
+    if (!expression) {
+      return functionTemplateParametersPattern;
+    }
+
     const isConstructor = ts.isConstructorDeclaration(declaration);
     if (isConstructor) {
       return functionTemplateParametersPattern;
@@ -202,7 +220,7 @@ export class ExternalSymbolsProvider {
       const type = checker.getTypeOfSymbolAtLocation(parameter, expression);
       const typename = checker.typeToString(type);
 
-      if (isTypeSupported(type) || map[typename]) {
+      if (isTypeSupported(type, checker) || map[typename]) {
         continue;
       }
 
@@ -210,21 +228,19 @@ export class ExternalSymbolsProvider {
       map[typename] = actualType;
     }
 
-    const formalTypeParametersNames = formalTypeParameters.map(parameter => checker.typeToString(parameter));
+    const formalTypeParametersNames = formalTypeParameters.map((parameter) => checker.typeToString(parameter));
     // @todo: keep order?
     const readyTypes = Object.keys(map);
-    if (!R.equals(readyTypes, formalTypeParametersNames)) {
-      const diff = R.difference(readyTypes, formalTypeParametersNames);
-      if (diff.length > 1) {
-        return error("Cannot map generic type arguments to template arguments");
-      }
-
-      map[diff[0]] = resolvedSignature.getReturnType();
+    const difference = formalTypeParametersNames.filter((type) => !readyTypes.includes(type));
+    if (difference.length === 1) {
+      map[difference[0]] = resolvedSignature.getReturnType();
+    } else if (difference.length > 1) {
+      return error("Cannot map generic type arguments to template arguments");
     }
 
     for (const type in map) {
       if (map.hasOwnProperty(type)) {
-        templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(map[type!], checker));
+        templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(map[type], checker));
       }
     }
 
@@ -234,39 +250,48 @@ export class ExternalSymbolsProvider {
   private tryGetImpl(declaration: ts.NamedDeclaration): string | undefined {
     if (ts.isConstructorDeclaration(declaration)) {
       // `Ctor::Ctor(` or `Ctor<T>::Ctor(`
-      const constructorPattern = new RegExp(`(?=^${this.namespace}${this.thisTypeName}(<.*>::|::)${this.thisTypeName}\\()`);
+      const constructorPattern = new RegExp(
+        `(?=^${this.namespace}${this.thisTypeName}(<.*>::|::)${this.thisTypeName}\\()`,
+        "i" // @todo: potential pitfall, but handy for String-string case
+      );
       return this.handleDeclarationWithPredicate((cppSignature: string, mangledIndex: number) => {
-        return constructorPattern.test(cppSignature)
-          && externalMangledSymbolsTable[mangledIndex].includes(Itanium.completeObjectConstructor);
+        return (
+          constructorPattern.test(cppSignature) &&
+          externalMangledSymbolsTable[mangledIndex].includes(Itanium.completeObjectConstructor)
+        );
       });
-    }
-    else if (ts.isFunctionDeclaration(declaration)) {
+    } else if (ts.isFunctionDeclaration(declaration)) {
       // `.*methodName<T>(` or `.*methodName(`
       // @todo is it possible to use mangled form to figure out if this is a class method or free function wrapped in namespace?
       const freeFunctionPattern = new RegExp(`(?=(^| )${this.namespace}${this.methodName}(\\(|<.*>\\())`);
       return this.handleDeclarationWithPredicate((cppSignature: string) => {
-        return freeFunctionPattern.test(cppSignature)
+        return freeFunctionPattern.test(cppSignature);
       });
-    }
-    else if (ts.isMethodDeclaration(declaration) ||
+    } else if (
+      ts.isMethodDeclaration(declaration) ||
       ts.isIndexSignatureDeclaration(declaration) ||
-      ts.isPropertyDeclaration(declaration)) {
+      ts.isPropertyDeclaration(declaration) ||
+      ts.isGetAccessorDeclaration(declaration)
+    ) {
       // `.*( | ns)Class::method(`
       // `.*( | ns)Class::method<U>(`
       // `.*( | ns)Class<T>::method(`
       // `.*( | ns)Class<T>::method<U>(`
-      const classMethodPattern = new RegExp(`(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`);
+      const classMethodPattern = new RegExp(
+        `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+      );
       return this.handleDeclarationWithPredicate((cppSignature: string) => {
         return classMethodPattern.test(cppSignature);
       });
     }
-    return;
+
+    return error("Unhandled declaration");
   }
   private handleDeclarationWithPredicate(predicate: Predicate) {
-    let candidates: Array<{
+    let candidates: {
       index: number;
       signature: string;
-    }> = [];
+    }[] = [];
     for (let i = 0; i < externalDemangledSymbolsTable.length; ++i) {
       const candidate = externalDemangledSymbolsTable[i];
       if (predicate(candidate, i)) {
@@ -277,24 +302,22 @@ export class ExternalSymbolsProvider {
       return externalMangledSymbolsTable[candidates[0]?.index];
     }
 
-    candidates = candidates.filter(candidate => this.isMatching(candidate.signature));
+    candidates = candidates.filter((candidate) => this.isMatching(candidate.signature));
     if (candidates.length > 1) {
-      console.log(candidates)
+      console.log(candidates);
       return error("Ambiguous function call");
     }
     return externalMangledSymbolsTable[candidates[0]?.index];
   }
   private extractParameterTypes(cppSignature: string): string {
     // @todo: use lazy cache
-    return cppSignature.match(/(?<=\().*(?=\))/)![0]
-      .split(',')
-      .map(parameter => {
-        const unqualifiedParameter = parameter.replace(/(const|volatile|&|\*)/g, '')
-          .trim();
-        return unqualifiedParameter.slice(unqualifiedParameter.lastIndexOf(':') + 1);
+    return cppSignature
+      .match(/(?<=\().*(?=\))/)![0]
+      .split(",")
+      .map((parameter) => {
+        return parameter.replace(/(const|volatile|&|\*)/g, "").trim();
       })
-      .map(type => this.jsStringTypeToCpp(type))
-      .join(',');
+      .join(",");
   }
   private extractTemplateParameterTypes(cppSignature: string): string[] {
     // @todo: use lazy cache
@@ -305,12 +328,11 @@ export class ExternalSymbolsProvider {
     let functionTemplateParameters: string = "";
 
     const extractTypes = (parameters: string): string => {
-      return parameters.split(',')
-        .map(parameter => parameter.replace(/(const|volatile|&|\*)/g, '')
-          .trim())
-        .map(type => this.jsStringTypeToCpp(type))
-        .join(',');
-    }
+      return parameters
+        .split(",")
+        .map((parameter) => parameter.replace(/(const|volatile|&|\*)/g, "").trim())
+        .join(",");
+    };
 
     if (classTemplateParametersMatches) {
       classTemplateParameters = extractTypes(classTemplateParametersMatches[0]);
@@ -326,10 +348,14 @@ export class ExternalSymbolsProvider {
     const parameters: string = this.extractParameterTypes(cppSignature);
 
     let matching: boolean = parameters === this.parametersPattern;
-    if (matching && (this.classTemplateParametersPattern.length > 0 || this.functionTemplateParametersPattern.length > 0)) {
+    if (
+      matching &&
+      (this.classTemplateParametersPattern.length > 0 || this.functionTemplateParametersPattern.length > 0)
+    ) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
-      matching = (classTemplateParameters === this.classTemplateParametersPattern)
-        && (functionTemplateParameters === this.functionTemplateParametersPattern);
+      matching =
+        classTemplateParameters === this.classTemplateParametersPattern &&
+        functionTemplateParameters === this.functionTemplateParametersPattern;
     }
     return matching;
   }

@@ -1,18 +1,20 @@
-import { getNumericType, isNumericType } from "@cpp";
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+import { getNumericType, isCppNumericType, SizeOf } from "@cpp";
 import { LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
-import { error, getStoredProperties, isObject, isString } from "@utils";
+import { error, getProperties, checkIfObject, checkIfString, checkIfBoolean, checkIfNumber, checkIfVoid } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-
-export function keepInsertionPoint<T>(builder: llvm.IRBuilder, emit: () => T): T {
-  const backup = builder.getInsertBlock();
-  const result = emit();
-  if (backup) {
-    builder.setInsertionPoint(backup);
-  }
-  return result;
-}
 
 export function createLLVMFunction(
   returnType: llvm.Type,
@@ -20,103 +22,114 @@ export function createLLVMFunction(
   name: string,
   module: llvm.Module,
   linkage: llvm.LinkageTypes = llvm.LinkageTypes.ExternalLinkage
-) {
+): { fn: llvm.Function; existing: boolean } {
+  const existing = module.getFunction(name);
+  if (existing) {
+    return { fn: existing, existing: true };
+  }
+
   const type = llvm.FunctionType.get(returnType, parameterTypes, false);
-  return llvm.Function.create(type, linkage, name, module);
+  return { fn: llvm.Function.create(type, linkage, name, module), existing: false };
 }
 
-export function isLLVMString(type: llvm.Type) {
-  return type.isStructTy() && type.name === "string";
+export function checkIfLLVMString(type: llvm.Type) {
+  return (
+    (type.isPointerTy() && type.elementType.isStructTy() && type.elementType.name === "string") ||
+    (type.isStructTy() && type.name === "string")
+  );
 }
 
-export function isValueType(type: llvm.Type) {
-  return type.isDoubleTy() || type.isIntegerTy() || type.isPointerTy() || isLLVMString(type);
+export function checkIfLLVMArray(type: llvm.Type) {
+  return (
+    (type.isPointerTy() && type.elementType.isStructTy() && type.elementType.name?.startsWith("Array__")) ||
+    (type.isStructTy() && type.name?.startsWith("Array__"))
+  );
 }
 
-export function getSize(type: llvm.Type, module: llvm.Module): number {
+export function isValueTy(type: llvm.Type) {
+  return type.isDoubleTy() || type.isIntegerTy() || type.isPointerTy();
+}
+
+export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
+  const size = SizeOf.getByLLVMType(type);
+  if (size) {
+    return size;
+  }
   return module.dataLayout.getTypeStoreSize(type);
 }
 
-export function isTypeSupported(type: ts.Type): boolean {
-  return Boolean(
-    type.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral) ||
-      type.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral) ||
-      isString(type) ||
-      isObject(type) ||
-      type.flags & ts.TypeFlags.Void
+export function isTypeDeclared(thisType: ts.Type, declaration: ts.Declaration, generator: LLVMGenerator): boolean {
+  const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
+  return Boolean(generator.module.getTypeByName(mangledTypename));
+}
+
+export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean {
+  return (
+    checkIfBoolean(type) ||
+    checkIfNumber(type) ||
+    checkIfString(type, checker) ||
+    checkIfObject(type) ||
+    checkIfVoid(type)
   );
 }
 
 export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerator): llvm.Type {
   const { context, checker } = generator;
 
-  // TODO: Inline literal types where possible.
-
-  if (type.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral)) {
+  if (checkIfBoolean(type)) {
     return llvm.Type.getInt1Ty(context);
   }
 
-  if (type.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral)) {
+  if (checkIfNumber(type)) {
     return llvm.Type.getDoubleTy(context);
   }
 
-  if (isString(type)) {
-    return getStringType(context);
+  if (checkIfString(type, generator.checker)) {
+    return generator.builtinString.getLLVMType();
   }
 
-  if (isObject(type)) {
-    return getStructType(type, node, generator).getPointerTo();
+  if (checkIfObject(type)) {
+    return getStructType(type as ts.ObjectType, node, generator).getPointerTo();
   }
 
-  if (isNumericType(checker.typeToString(type))) {
-    return getNumericType(type, generator)!;
-  }
-
-  if (type.flags & ts.TypeFlags.Void) {
+  if (checkIfVoid(type)) {
     return llvm.Type.getVoidTy(context);
   }
 
-  if (type.flags & ts.TypeFlags.Any) {
-    return error("'any' type is not supported");
+  if (isCppNumericType(checker.typeToString(type))) {
+    return getNumericType(type, generator)!;
   }
 
-  return error(`Unhandled ts.Type '${checker.typeToString(type)}'`);
+  return error(`Unhandled type: '${checker.typeToString(type)}'`);
 }
 
 export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {
   const { context, module, checker } = generator;
 
-  const elements: llvm.Type[] = getStoredProperties(type, checker).map(property => {
-    return getLLVMType(checker.getTypeOfSymbolAtLocation(property, node), node, generator);
+  const elements: llvm.Type[] = getProperties(type, checker).map((property) => {
+    const llvmType = getLLVMType(checker.getTypeOfSymbolAtLocation(property, node), node, generator);
+    const valueType = property.valueDeclaration.decorators?.some((decorator) => decorator.getText() === "@ValueType");
+    return valueType ? (llvmType as llvm.PointerType).elementType : llvmType;
   });
+
   let struct: llvm.StructType | null;
-  const declaration = type.symbol.declarations[0];
+  const declaration = type.symbol.valueDeclaration;
   if (ts.isClassDeclaration(declaration)) {
     const name = TypeMangler.mangle(type, checker, declaration);
+
     struct = module.getTypeByName(name);
     if (!struct) {
       struct = llvm.StructType.create(context, name);
-      struct.setBody(elements);
+      const knownSize = SizeOf.getByName(name);
+      if (knownSize) {
+        struct.setBody([llvm.Type.getIntNTy(context, knownSize * 8)]);
+      } else {
+        struct.setBody(elements);
+      }
     }
   } else {
     struct = llvm.StructType.get(context, elements);
   }
 
   return struct;
-}
-
-let stringType: llvm.StructType | undefined;
-
-export function getStringType(context: llvm.LLVMContext): llvm.StructType {
-  if (!stringType) {
-    stringType = llvm.StructType.create(context, "string");
-    stringType.setBody([llvm.Type.getInt8PtrTy(context), llvm.Type.getInt32Ty(context)]);
-  }
-  return stringType;
-}
-
-export function createEntryBlockAlloca(type: llvm.Type, name: string, generator: LLVMGenerator): llvm.AllocaInst {
-  const builder = new llvm.IRBuilder(generator.currentFunction.getEntryBlock()!);
-  const arraySize = undefined;
-  return builder.createAlloca(type, arraySize, name);
 }

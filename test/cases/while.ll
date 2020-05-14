@@ -7,15 +7,21 @@ define i32 @main() {
 entry:
   br label %while.cond
 
-while.cond:                                       ; preds = %while.body, %entry
+while.cond:                                       ; preds = %while.body.latch, %entry
   %0 = call i1 @foo()
-  br i1 %0, label %while.body, label %while.end
+  br i1 %0, label %while.body, label %while.exiting
+
+while.body.latch:                                 ; preds = %while.body
+  br label %while.cond
+
+while.exiting:                                    ; preds = %while.cond
+  br label %while.end
 
 while.body:                                       ; preds = %while.cond
   %1 = call i1 @foo()
-  br label %while.cond
+  br label %while.body.latch
 
-while.end:                                        ; preds = %while.cond
+while.end:                                        ; preds = %while.exiting
   ret i32 0
 }
 

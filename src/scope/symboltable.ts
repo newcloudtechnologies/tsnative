@@ -9,66 +9,8 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
-import { error, getStringType } from "@utils";
-import * as llvm from "llvm-node";
-import * as R from "ramda";
-import * as ts from "typescript";
-
-type ScopeValue = llvm.Value | Scope;
-
-interface ScopeData {
-  readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration;
-  readonly type: llvm.StructType;
-}
-
-export function addInterfaceScope(declaration: ts.InterfaceDeclaration, parentScope: Scope, generator: LLVMGenerator) {
-  const name = declaration.name.text;
-  parentScope.set(name, new Scope(name));
-
-  if (name === "String") {
-    parentScope.set("string", new Scope(name, { declaration, type: getStringType(generator.context) }));
-  }
-}
-
-export class Scope extends Map<string, ScopeValue> {
-  readonly name: string | undefined;
-  readonly data: ScopeData | undefined;
-
-  constructor(name: string | undefined, data?: ScopeData) {
-    super();
-    this.name = name;
-    this.data = data;
-  }
-
-  get(identifier: string): ScopeValue {
-    const value = this.getOptional(identifier);
-    if (value) {
-      return value;
-    }
-    return error(`Unknown identifier '${identifier}'`);
-  }
-
-  getOptional(identifier: string): ScopeValue | undefined {
-    return super.get(identifier);
-  }
-
-  set(identifier: string, value: ScopeValue) {
-    if (!this.getOptional(identifier)) {
-      return super.set(identifier, value);
-    }
-
-    return error(`Overwriting identifier '${identifier}' in symbol table`);
-  }
-
-  overwrite(identifier: string, value: ScopeValue) {
-    if (this.getOptional(identifier)) {
-      return super.set(identifier, value);
-    }
-
-    return error(`Identifier '${identifier}' being overwritten not found in symbol table`);
-  }
-}
+import { Scope, ScopeValue } from "@scope";
+import { error, reverse } from "@utils";
 
 export class SymbolTable {
   private readonly scopes: Scope[];
@@ -82,21 +24,21 @@ export class SymbolTable {
     if (parts.length > 1) {
       const outerScope = this.get(parts[0]);
       if (!(outerScope instanceof Scope)) {
-        return error(`'${parts[0]}' is not a namespace`);
+        return error(`No namespace '${parts[0]}' found`);
       }
       return this.getNested(parts, outerScope);
     }
 
-    for (const scope of R.reverse(this.scopes)) {
-      const value = scope.getOptional(identifier);
+    for (const scope of reverse(this.scopes)) {
+      const value = scope.get(identifier);
       if (value) {
         return value;
       }
     }
-    return error(`Unknown identifier '${identifier}'`);
+    return error(`Identifier '${identifier}' not found`);
   }
 
-  pushScope(name: string): void {
+  addScope(name: string): void {
     const scope = new Scope(name);
     this.scopes.push(scope);
   }
@@ -109,19 +51,25 @@ export class SymbolTable {
     return this.scopes[this.scopes.length - 1];
   }
 
-  inLocalScope(scopeName: string | undefined, body: (scope: Scope) => void): void {
-    const scope = new Scope(scopeName);
+  withLocalScope(body: (scope: Scope) => void): void {
+    const scope = new Scope(undefined);
     this.scopes.push(scope);
     body(scope);
     this.scopes.pop();
   }
 
   private getNested(parts: string[], scope: Scope): ScopeValue {
+    if (!scope) {
+      return error(`No scope provided for '${parts}'`);
+    }
     if (parts.length === 1) {
       if (scope.name === parts[0]) {
         return scope;
       } else {
-        return scope.get(parts[0]);
+        const value = scope.get(parts[0]);
+        if (value) return value;
+
+        return error(`Identifier '${parts[0]}' not found`);
       }
     }
     return this.getNested(parts.slice(1), scope.get(parts[1]) as Scope);

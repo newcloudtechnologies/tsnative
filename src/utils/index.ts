@@ -10,7 +10,7 @@
  */
 
 export * from "./buildutils";
-export * from "./diagnostics";
+export * from "./common";
 export * from "./ts-utils";
 export * from "./tsc-utils";
 export * from "./llvm-utils";

@@ -9,13 +9,16 @@
  *
  */
 
-import { getTypeArguments, getTypeBaseName } from "@utils";
+import { getTypeGenericArguments, getTypename } from "@utils";
 import * as ts from "typescript";
 
 export class TypeMangler {
   static mangle(type: ts.Type, checker: ts.TypeChecker, declaration?: ts.Declaration): string {
     let suffix: string = "";
     const typename: string = checker.typeToString(type);
+    if (typename === "String") {
+      return "string";
+    }
     if (this.typeToSuffixMap[typename]) {
       suffix = this.typeToSuffixMap[typename];
     } else {
@@ -29,8 +32,8 @@ export class TypeMangler {
       this.typeToSuffixMap[typename] = suffix;
     }
 
-    const typeArguments = getTypeArguments(type).map(typeArgument => this.mangle(typeArgument, checker));
-    return [getTypeBaseName(type, checker), ...typeArguments].concat(suffix || []).join("__");
+    const typeArguments = getTypeGenericArguments(type).map((typeArgument) => this.mangle(typeArgument, checker));
+    return [getTypename(type, checker), ...typeArguments].concat(suffix || []).join("__");
   }
 
   private static readonly typeToSuffixMap: { [type: string]: string } = {};

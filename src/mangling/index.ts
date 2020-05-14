@@ -13,4 +13,3 @@ export * from "./externalsymbolsprovider";
 export * from "./functionmangler";
 export * from "./nmsymbolextractor";
 export * from "./typemangler";
-export * from "./utils";

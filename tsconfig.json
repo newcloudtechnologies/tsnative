@@ -6,8 +6,8 @@
     "paths": {
       "@builtins": [ "src/tsbuiltins" ],
       "@cpp": [ "src/cppintegration" ],
-      "@emitter": [ "src/emitter" ],
-      "@emitter/*": [ "src/emitter/*" ],
+      "@handlers": [ "src/handlers" ],
+      "@handlers/*": [ "src/handlers/*" ],
       "@generator": [ "src/generator" ],
       "@mangling": [ "src/mangling" ],
       "@scope": [ "src/scope" ],
