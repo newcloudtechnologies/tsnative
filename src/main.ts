@@ -8,10 +8,11 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { DEFINITIONS } from "stdlib/constants";
+import { DEFINITIONS, STDLIB } from "stdlib/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
 import { error, writeBitcodeToFile, writeExecutableToFile, writeIRToFile } from "@utils";
+import { TemplateInstantiator } from "@cpp";
 
 SegfaultHandler.registerHandler("ts-llvm-crash.log");
 
@@ -24,7 +25,7 @@ argv
   .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
   .parse(process.argv);
 
-function parseTSConfig(): Promise<any> {
+function parseTSConfig(): any {
   let tsconfig;
   try {
     tsconfig = JSON.parse(fs.readFileSync(argv.tsconfig).toString());
@@ -32,27 +33,23 @@ function parseTSConfig(): Promise<any> {
     error("Failed to parse tsconfig:" + e);
   }
 
-  return Promise.resolve(tsconfig);
+  return tsconfig;
 }
 
 // entry point
-parseTSConfig()
-  .then((tsconfig) => prepareExternalSymbols(tsconfig.cppDirs))
-  .then((result) => {
-    const { mangledSymbols, demangledSymbols, dependencies } = result;
-    injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
-    return dependencies;
-  })
-  .then(main)
-  .catch((e) => {
-    console.log(e.stack);
-    process.exit(1);
-  });
+main().catch((e) => {
+  console.log(e.stack);
+  if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
+    fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
+    fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
+  }
+  process.exit(1);
+});
 
-async function main(dependencies: string[]) {
+async function main() {
   const files = argv.args;
 
-  const tsconfig = await parseTSConfig(); // @todo already parsed
+  const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
   options.lib = [DEFINITIONS];
   options.types = [];
@@ -72,6 +69,18 @@ async function main(dependencies: string[]) {
   llvm.initializeAllTargetMCs();
   llvm.initializeAllAsmParsers();
   llvm.initializeAllAsmPrinters();
+
+  const { mangledSymbols, demangledSymbols, dependencies } = await prepareExternalSymbols(tsconfig.cppDirs, [STDLIB]);
+
+  const templateInstantiator = new TemplateInstantiator(program, demangledSymbols, tsconfig);
+  const instantiationResult = await templateInstantiator.instantiate();
+  if (instantiationResult) {
+    mangledSymbols.push(...instantiationResult.mangledSymbols);
+    demangledSymbols.push(...instantiationResult.demangledSymbols);
+    dependencies.push(...instantiationResult.dependencies);
+  }
+
+  injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
 
   const llvmModule = new LLVMGenerator(program).createModule();
 
@@ -97,5 +106,10 @@ async function main(dependencies: string[]) {
 
   if (!argv.printIR && !argv.emitIR && !argv.emitBitcode) {
     writeExecutableToFile(llvmModule, program, argv.output, dependencies);
+  }
+
+  if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
+    fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
+    fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
   }
 }

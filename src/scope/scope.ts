@@ -31,14 +31,14 @@ export function addClassScope(expression: ts.Expression, parentScope: Scope, gen
   }
 
   const type = getStructType(thisType, declaration, generator).getPointerTo();
-  const scope = new Scope(mangledTypename, { declaration, type });
+  const scope = new Scope(mangledTypename, undefined, { declaration, type });
   parentScope.set(mangledTypename, scope);
   for (const method of declaration.members.filter((member) => !ts.isPropertyDeclaration(member))) {
     generator.handleNode(method, scope);
   }
 }
 
-export type ScopeValue = llvm.Value | Scope;
+export type ScopeValue = llvm.Value | Scope | ts.Type;
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration;
@@ -50,15 +50,28 @@ export class Scope {
 
   readonly name: string | undefined;
   readonly thisData: ThisData | undefined;
+  readonly parent: Scope | undefined;
 
-  constructor(name: string | undefined, data?: ThisData) {
+  constructor(name: string | undefined, parent?: Scope, data?: ThisData) {
     this.map = new Map<string, ScopeValue>();
     this.name = name;
+    this.parent = parent;
     this.thisData = data;
   }
 
   get(identifier: string): ScopeValue | undefined {
     return this.map.get(identifier);
+  }
+
+  tryGetThroughParentChain(identifier: string): ScopeValue | undefined {
+    const value = this.map.get(identifier);
+    if (value) {
+      return value;
+    } else if (!value && this.parent) {
+      return this.parent.tryGetThroughParentChain(identifier);
+    }
+
+    return;
   }
 
   set(identifier: string, value: ScopeValue) {

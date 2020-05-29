@@ -10,7 +10,15 @@
  */
 
 import { NmSymbolExtractor } from "@mangling";
-import { error, flatten, getDeclarationNamespace, getTypeGenericArguments, getTypename, isTypeSupported } from "@utils";
+import {
+  error,
+  flatten,
+  getDeclarationNamespace,
+  getTypeGenericArguments,
+  getTypename,
+  checkIfFunction,
+  getGenericsToActualMapFromSignature,
+} from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
 
@@ -25,7 +33,7 @@ export function injectExternalSymbolsTables(mangled: string[], demangled: string
   externalDemangledSymbolsTable = demangled;
 }
 
-export async function prepareExternalSymbols(cppDirs: string[]) {
+export async function prepareExternalSymbols(cppDirs: string[], objectFiles?: string[]) {
   switch (process.platform) {
     case "aix":
     case "darwin":
@@ -39,7 +47,7 @@ export async function prepareExternalSymbols(cppDirs: string[]) {
       }
 
       const extractor: NmSymbolExtractor = new NmSymbolExtractor();
-      return extractor.extractSymbols(cppDirs || []);
+      return extractor.extractSymbols(cppDirs || [], objectFiles);
     case "win32":
     default:
       error(`Unsupported platform ${process.platform}`);
@@ -52,10 +60,24 @@ class Itanium {
 
 type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
 export class ExternalSymbolsProvider {
+  private static toCppFunctionSignature(type: ts.Type, checker: ts.TypeChecker): string {
+    const signature = checker.getSignaturesOfType(type, ts.SignatureKind.Call)[0];
+    const parameters = signature.getDeclaration().parameters;
+    const cppParameterTypes = parameters.map((parameter) => {
+      return ExternalSymbolsProvider.jsTypeToCpp(checker.getTypeFromTypeNode(parameter.type!), checker);
+    });
+    const cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(checker.getReturnTypeOfSignature(signature), checker);
+    const cppSignature = cppReturnType + " (*)(" + cppParameterTypes.join(",") + ")";
+    return cppSignature;
+  }
+
   static jsTypeToCpp(type: ts.Type, checker: ts.TypeChecker): string {
+    if (checkIfFunction(type)) {
+      return this.toCppFunctionSignature(type, checker);
+    }
     if (ts.isArrayTypeNode(checker.typeToTypeNode(type)!)) {
-      const elementType: ts.Type | undefined = getTypeGenericArguments(type)[0];
-      return `Array<${this.jsTypeToCpp(elementType!, checker)}>`;
+      const elementType = getTypeGenericArguments(type)[0]!;
+      return `Array<${this.jsTypeToCpp(elementType, checker)}>`;
     }
 
     let typename: string = "";
@@ -116,7 +138,7 @@ export class ExternalSymbolsProvider {
       this.thisTypeName = getTypename(thisType, checker);
       this.baseTypeNames = this.extractBaseTypeNames(declaration);
       this.classTemplateParametersPattern = getTypeGenericArguments(thisType)
-        .map((type) => this.jsStringTypeToCpp(checker.typeToString(type)))
+        .map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
         .join(",");
     }
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
@@ -176,7 +198,7 @@ export class ExternalSymbolsProvider {
   }
   private extractFunctionTemplateParameters(
     declaration: ts.Declaration,
-    expression: ts.Expression | undefined,
+    expression: ts.CallExpression | ts.NewExpression | undefined,
     checker: ts.TypeChecker
   ): string {
     let functionTemplateParametersPattern: string = "";
@@ -187,10 +209,6 @@ export class ExternalSymbolsProvider {
 
     const isConstructor = ts.isConstructorDeclaration(declaration);
     if (isConstructor) {
-      return functionTemplateParametersPattern;
-    }
-
-    if (!ts.isCallExpression(expression) && !ts.isNewExpression(expression)) {
       return functionTemplateParametersPattern;
     }
 
@@ -212,32 +230,8 @@ export class ExternalSymbolsProvider {
       return functionTemplateParametersPattern;
     }
 
-    const map: { [key: string]: ts.Type } = {};
-    const actualParameters = resolvedSignature.getParameters();
+    const map = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, checker);
     const templateTypes: string[] = [];
-    for (let i = 0; i < formalParameters.length; ++i) {
-      const parameter = formalParameters[i];
-      const type = checker.getTypeOfSymbolAtLocation(parameter, expression);
-      const typename = checker.typeToString(type);
-
-      if (isTypeSupported(type, checker) || map[typename]) {
-        continue;
-      }
-
-      const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
-      map[typename] = actualType;
-    }
-
-    const formalTypeParametersNames = formalTypeParameters.map((parameter) => checker.typeToString(parameter));
-    // @todo: keep order?
-    const readyTypes = Object.keys(map);
-    const difference = formalTypeParametersNames.filter((type) => !readyTypes.includes(type));
-    if (difference.length === 1) {
-      map[difference[0]] = resolvedSignature.getReturnType();
-    } else if (difference.length > 1) {
-      return error("Cannot map generic type arguments to template arguments");
-    }
-
     for (const type in map) {
       if (map.hasOwnProperty(type)) {
         templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(map[type], checker));
@@ -309,13 +303,17 @@ export class ExternalSymbolsProvider {
     }
     return externalMangledSymbolsTable[candidates[0]?.index];
   }
-  private extractParameterTypes(cppSignature: string): string {
+  static extractParameterTypes(cppSignature: string): string {
     // @todo: use lazy cache
-    return cppSignature
-      .match(/(?<=\().*(?=\))/)![0]
-      .split(",")
+    return this.unqualifyParameters(cppSignature.match(/(?<=\().*(?=\))/)![0].split(","));
+  }
+  static unqualifyParameters(parameters: string[]): string {
+    return parameters
       .map((parameter) => {
-        return parameter.replace(/(const|volatile|&|\*)/g, "").trim();
+        return parameter
+          .replace(/(const|volatile|&|(?<!\()\*)/g, "")
+          .trim()
+          .replace(/\s\)/g, ")");
       })
       .join(",");
   }
@@ -328,10 +326,7 @@ export class ExternalSymbolsProvider {
     let functionTemplateParameters: string = "";
 
     const extractTypes = (parameters: string): string => {
-      return parameters
-        .split(",")
-        .map((parameter) => parameter.replace(/(const|volatile|&|\*)/g, "").trim())
-        .join(",");
+      return ExternalSymbolsProvider.unqualifyParameters(parameters.split(","));
     };
 
     if (classTemplateParametersMatches) {
@@ -345,7 +340,7 @@ export class ExternalSymbolsProvider {
     return [classTemplateParameters, functionTemplateParameters];
   }
   private isMatching(cppSignature: string): boolean {
-    const parameters: string = this.extractParameterTypes(cppSignature);
+    const parameters: string = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
 
     let matching: boolean = parameters === this.parametersPattern;
     if (
@@ -353,20 +348,16 @@ export class ExternalSymbolsProvider {
       (this.classTemplateParametersPattern.length > 0 || this.functionTemplateParametersPattern.length > 0)
     ) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
-      matching =
-        classTemplateParameters === this.classTemplateParametersPattern &&
-        functionTemplateParameters === this.functionTemplateParametersPattern;
+      if (this.classTemplateParametersPattern.length > 0 && this.functionTemplateParametersPattern.length > 0) {
+        matching =
+          classTemplateParameters === this.classTemplateParametersPattern &&
+          functionTemplateParameters === this.functionTemplateParametersPattern;
+      } else if (this.classTemplateParametersPattern.length > 0) {
+        matching = classTemplateParameters === this.classTemplateParametersPattern;
+      } else if (this.functionTemplateParametersPattern.length > 0) {
+        matching = functionTemplateParameters === this.functionTemplateParametersPattern;
+      }
     }
     return matching;
-  }
-  private jsStringTypeToCpp(type: string): string {
-    switch (type) {
-      case "number":
-        return "double";
-      case "boolean":
-        return "bool";
-      default:
-        return type;
-    }
   }
 }

@@ -18,6 +18,8 @@ import {
   error,
   getAliasedSymbolIfNecessary,
   checkIfMethod,
+  getArgumentTypes,
+  getReturnType,
 } from "@utils";
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -70,7 +72,7 @@ export class SysVFunctionHandler {
   }
 
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string): llvm.Value {
-    const argumentTypes = expression.arguments.map(this.generator.checker.getTypeAtLocation);
+    const argumentTypes = getArgumentTypes(expression, this.generator);
     const isMethod = checkIfMethod(expression.expression, this.generator.checker);
 
     let thisType: ts.Type | undefined;
@@ -86,9 +88,7 @@ export class SysVFunctionHandler {
     const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
     const llvmThisType = thisType ? parentScope.thisData!.type : undefined;
 
-    const resolvedSignature = this.generator.checker.getResolvedSignature(expression)!;
-    const returnType: ts.Type = this.generator.checker.getReturnTypeOfSignature(resolvedSignature);
-
+    const returnType = getReturnType(expression, this.generator);
     const llvmReturnType = getLLVMType(returnType, expression, this.generator);
     const llvmArgumentTypes = argumentTypes.map((argumentType) => {
       const type = getLLVMType(argumentType, expression, this.generator);

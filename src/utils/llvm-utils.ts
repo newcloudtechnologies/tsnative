@@ -12,7 +12,17 @@
 import { getNumericType, isCppNumericType, SizeOf } from "@cpp";
 import { LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
-import { error, getProperties, checkIfObject, checkIfString, checkIfBoolean, checkIfNumber, checkIfVoid } from "@utils";
+import {
+  error,
+  flatten,
+  getProperties,
+  checkIfFunction,
+  checkIfObject,
+  checkIfString,
+  checkIfBoolean,
+  checkIfNumber,
+  checkIfVoid,
+} from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
@@ -88,6 +98,20 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
     return generator.builtinString.getLLVMType();
   }
 
+  if (checkIfFunction(type)) {
+    const signature = checker.getSignaturesOfType(type, ts.SignatureKind.Call)[0];
+    const tsReturnType = checker.getReturnTypeOfSignature(signature);
+    const tsParameters = signature.getDeclaration().parameters;
+
+    const llvmReturnType = getLLVMType(tsReturnType, node, generator);
+    const llvmParameters = tsParameters.map((parameter) => {
+      const tsType = checker.getTypeFromTypeNode(parameter.type!);
+      return getLLVMType(tsType, node, generator);
+    });
+
+    return llvm.FunctionType.get(llvmReturnType, llvmParameters, false);
+  }
+
   if (checkIfObject(type)) {
     return getStructType(type as ts.ObjectType, node, generator).getPointerTo();
   }
@@ -100,7 +124,29 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
     return getNumericType(type, generator)!;
   }
 
+  if (type.isIntersection()) {
+    return getIntersectionStructType(type, node, generator).getPointerTo();
+  }
+
   return error(`Unhandled type: '${checker.typeToString(type)}'`);
+}
+
+function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
+  const { context, checker } = generator;
+
+  const elements: llvm.Type[] = flatten(
+    type.types.map((t) => {
+      return getProperties(t, checker).map((property) => {
+        const llvmType = getLLVMType(checker.getTypeOfSymbolAtLocation(property, node), node, generator);
+        const valueType = property.valueDeclaration.decorators?.some(
+          (decorator) => decorator.getText() === "@ValueType"
+        );
+        return valueType ? (llvmType as llvm.PointerType).elementType : llvmType;
+      });
+    })
+  );
+
+  return llvm.StructType.get(context, elements);
 }
 
 export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {

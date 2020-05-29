@@ -23,7 +23,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
         const type = this.generator.checker.getTypeFromTypeNode(typeAlias.type);
         const symbol = getAliasedSymbolIfNecessary(type.getSymbol()!, this.generator.checker);
         const declaration = symbol.valueDeclaration as ts.ClassDeclaration | ts.InterfaceDeclaration;
-        const scope: Scope = new Scope(name, {
+        const scope: Scope = new Scope(name, undefined, {
           declaration,
           type: getLLVMType(type, typeAlias.type, this.generator) as llvm.StructType,
         });

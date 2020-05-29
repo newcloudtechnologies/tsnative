@@ -12,7 +12,7 @@ target triple = "x86_64"
 define i32 @main() {
 entry:
   %x = alloca %B__class*
-  %a = call %A__class* @A__class__(double 4.000000e+00)
+  %a = call %A__class* @A__class__constructor(double 4.000000e+00)
   %c = getelementptr inbounds %A__class, %A__class* %a, i32 0, i32 1
   store double 1.000000e+00, double* %c
   %b = getelementptr inbounds %A__class, %A__class* %a, i32 0, i32 0
@@ -22,13 +22,13 @@ entry:
   ret i32 0
 }
 
-define %A__class* @A__class__(double %b) {
+define %A__class* @A__class__constructor(double %b) {
 entry:
   %a = alloca double
   %0 = call i8* @_ZN2GC8allocateEj(i32 16)
   %1 = bitcast i8* %0 to %A__class*
   %b1 = getelementptr inbounds %A__class, %A__class* %1, i32 0, i32 0
-  %2 = call %B__class* @B__class__()
+  %2 = call %B__class* @B__class__constructor()
   store %B__class* %2, %B__class** %b1
   %c = getelementptr inbounds %A__class, %A__class* %1, i32 0, i32 1
   store double 0.000000e+00, double* %c
@@ -38,7 +38,7 @@ entry:
 
 declare i8* @_ZN2GC8allocateEj(i32)
 
-define %B__class* @B__class__() {
+define %B__class* @B__class__constructor() {
 entry:
   %0 = call i8* @_ZN2GC8allocateEj(i32 8)
   %1 = bitcast i8* %0 to %B__class*

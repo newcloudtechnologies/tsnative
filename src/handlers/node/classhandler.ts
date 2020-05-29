@@ -43,7 +43,7 @@ export class ClassHandler extends AbstractNodeHandler {
 
     const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
     const type = getStructType(thisType as ts.ObjectType, declaration, generator).getPointerTo();
-    const scope = new Scope(mangledTypename, { declaration, type });
+    const scope = new Scope(mangledTypename, undefined, { declaration, type });
     parentScope.set(mangledTypename, scope);
     const methods = declaration.members.filter((member) => !ts.isPropertyDeclaration(member));
     for (const method of methods) {

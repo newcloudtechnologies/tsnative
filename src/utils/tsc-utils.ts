@@ -48,6 +48,10 @@ export function checkIfObject(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Object);
 }
 
+export function checkIfFunction(type: ts.Type): boolean {
+  return Boolean(type.symbol?.flags & ts.SymbolFlags.Function);
+}
+
 export function checkIfArray(type: ts.Type): boolean {
   return type.symbol && type.symbol.name === "Array";
 }

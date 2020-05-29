@@ -51,11 +51,12 @@ export class SymbolTable {
     return this.scopes[this.scopes.length - 1];
   }
 
-  withLocalScope(body: (scope: Scope) => void): void {
-    const scope = new Scope(undefined);
+  withLocalScope<R>(body: (scope: Scope) => R, parentScope?: Scope): R {
+    const scope = new Scope(undefined, parentScope);
     this.scopes.push(scope);
-    body(scope);
+    const result = body(scope);
     this.scopes.pop();
+    return result;
   }
 
   private getNested(parts: string[], scope: Scope): ScopeValue {

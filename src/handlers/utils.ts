@@ -198,7 +198,7 @@ export function createArrayPush(
     generator.checker
   );
   const { fn: push } = createLLVMFunction(
-    llvm.Type.getVoidTy(generator.context),
+    llvm.Type.getDoubleTy(generator.context),
     [scope.thisData!.type, parameterType],
     qualifiedName,
     generator.module

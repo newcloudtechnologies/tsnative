@@ -14,10 +14,8 @@ import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
-import { STDLIB } from "stdlib/constants";
-
 export class NmSymbolExtractor {
-  extractSymbols(cppDirs: string[]) {
+  extractSymbols(cppDirs: string[], objectFiles?: string[]) {
     const cppDependencies = cppDirs.map((dir) => {
       return fs
         .readdirSync(dir)
@@ -44,28 +42,27 @@ export class NmSymbolExtractor {
       throw e;
     }
 
-    dependencyObjects.push(STDLIB);
-
     const mangledSymbols: string[] = flatten(
-      dependencyObjects.map((libObj) => {
+      dependencyObjects.concat(objectFiles || []).map((libObj) => {
         const output = execFileSync("nm", [libObj]).toString();
         return this.getExportedSymbols(output);
       })
     );
     const demangledSymbols: string[] = flatten(
-      dependencyObjects.map((libObj) => {
+      dependencyObjects.concat(objectFiles || []).map((libObj) => {
         const output = execFileSync("nm", ["-C", libObj]).toString();
         return this.getExportedSymbols(output);
       })
     );
+
     for (const libObj of dependencyObjects) {
-      if (libObj !== STDLIB) {
-        fs.unlinkSync(libObj);
-      }
+      fs.unlinkSync(libObj);
     }
     fs.rmdirSync(outPath);
 
-    dependencies.push(STDLIB);
+    if (objectFiles) {
+      dependencies.push(...objectFiles);
+    }
 
     return { mangledSymbols, demangledSymbols, dependencies };
   }

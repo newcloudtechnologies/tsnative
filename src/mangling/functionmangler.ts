@@ -10,7 +10,7 @@
  */
 
 import { ExternalSymbolsProvider, TypeMangler } from "@mangling";
-import { getDeclarationNamespace } from "@utils";
+import { getDeclarationNamespace, getTypename } from "@utils";
 import * as ts from "typescript";
 
 export class FunctionMangler {
@@ -47,10 +47,19 @@ export class FunctionMangler {
     }
 
     const scopePrefix = parentName ? parentName + "__" : "";
-    const baseName = declaration.name?.getText() || "";
+
+    let typeParametersNames = "";
+    const typeParameters = (declaration as ts.FunctionLikeDeclaration).typeParameters;
+    if (typeParameters?.length) {
+      typeParametersNames = argumentTypes.reduce((acc, curr) => {
+        return acc + "__" + getTypename(curr, checker);
+      }, "");
+    }
+
+    const baseName = ts.isConstructorDeclaration(declaration) ? "constructor" : declaration.name?.getText() || "";
     return {
       isExternalSymbol: false,
-      qualifiedName: scopePrefix + baseName,
+      qualifiedName: scopePrefix + baseName + typeParametersNames,
     };
   }
 }
