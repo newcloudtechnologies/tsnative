@@ -4,7 +4,7 @@ target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64"
 
 %Array__string__class = type { i64, i64, i64, i64, i64, i64, i64, i64, i64, i64 }
-%string = type { i256 }
+%string = type { i64, i64, i64, i64 }
 %Array__boolean__class = type { i64, i64, i64, i64, i64, i64, i64, i64, i64, i64 }
 %Array__number__class = type { i64, i64, i64, i64, i64, i64, i64, i64, i64, i64 }
 

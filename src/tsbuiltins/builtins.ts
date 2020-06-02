@@ -1,5 +1,5 @@
 import { LLVMGenerator } from "@generator";
-import { error, getTypeSize, isValueTy, createLLVMFunction } from "@utils";
+import { error, getTypeSize, isValueTy, createLLVMFunction, getSyntheticBody } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { ThisData, Scope } from "@scope";
@@ -116,7 +116,8 @@ export class BuiltinString extends Builtin {
   constructor(generator: LLVMGenerator) {
     super("string", generator);
     const structType = llvm.StructType.create(generator.context, "string");
-    structType.setBody([llvm.Type.getIntNTy(generator.context, SIZEOF_STRING * 8)]);
+    const syntheticBody = getSyntheticBody(SIZEOF_STRING, generator.context);
+    structType.setBody(syntheticBody);
     this.llvmType = structType.getPointerTo();
   }
 

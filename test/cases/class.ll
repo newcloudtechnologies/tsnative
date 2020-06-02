@@ -5,7 +5,7 @@ target triple = "x86_64"
 
 %B__class = type { double }
 %A__class = type { %B__class*, double }
-%string = type { i256 }
+%string = type { i64, i64, i64, i64 }
 
 @0 = private unnamed_addr constant [4 x i8] c"foo\00"
 
