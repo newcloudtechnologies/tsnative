@@ -166,9 +166,24 @@ export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLV
     struct = module.getTypeByName(name);
     if (!struct) {
       struct = llvm.StructType.create(context, name);
-      const knownSize = SizeOf.getByName(name);
+      let knownSize = SizeOf.getByName(name);
       if (knownSize) {
-        struct.setBody([llvm.Type.getIntNTy(context, knownSize * 8)]);
+        const syntheticBody = [];
+        while (knownSize > 8) {
+          // Consider int64_t is the widest available inttype.
+          syntheticBody.push(llvm.Type.getIntNTy(context, 8 * 8));
+          knownSize -= 8;
+        }
+
+        if (knownSize > 0) {
+          console.assert(
+            (knownSize & (knownSize - 1)) === 0,
+            `Expected 'knownSize' reminder to be a power of two, got ${knownSize}`
+          );
+          syntheticBody.push(llvm.Type.getIntNTy(context, knownSize * 8));
+        }
+
+        struct.setBody(syntheticBody);
       } else {
         struct.setBody(elements);
       }
