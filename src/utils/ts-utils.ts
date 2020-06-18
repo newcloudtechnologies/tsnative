@@ -10,8 +10,8 @@
  */
 
 import * as ts from "typescript";
-import { checkIfProperty } from "./tsc-utils";
-import { error, isTypeSupported } from "@utils";
+import { checkIfProperty, checkIfFunction } from "./tsc-utils";
+import { isTypeSupported, error } from "@utils";
 import { LLVMGenerator } from "@generator";
 
 const returnsValueTypeDecorator: string = "ReturnsValueType";
@@ -65,12 +65,13 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
 
 export function getGenericsToActualMapFromSignature(
   signature: ts.Signature,
-  expression: ts.CallExpression,
-  checker: ts.TypeChecker
+  expression: ts.Expression,
+  generator: LLVMGenerator
 ): { [_: string]: ts.Type } {
-  const formalTypeParameters = signature.getTypeParameters()!;
+  const { checker } = generator;
+  const formalTypeParameters = signature.getTypeParameters();
   const formalParameters = signature.getParameters();
-  const resolvedSignature = checker.getResolvedSignature(expression)!;
+  const resolvedSignature = checker.getResolvedSignature(expression as ts.CallLikeExpression)!;
   const map: { [key: string]: ts.Type } = {};
   const actualParameters = resolvedSignature.getParameters();
 
@@ -79,22 +80,34 @@ export function getGenericsToActualMapFromSignature(
     const type = checker.getTypeOfSymbolAtLocation(parameter, expression);
     const typename = checker.typeToString(type);
 
-    if (isTypeSupported(type, checker) || map[typename]) {
+    if ((isTypeSupported(type, checker) && !checkIfFunction(type)) || map[typename]) {
       continue;
     }
 
     const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
-    map[typename] = actualType;
+    if (checkIfFunction(actualType)) {
+      const parameterFormalParameters = type.getCallSignatures()[0].parameters;
+      for (let k = 0; k < parameterFormalParameters.length; ++k) {
+        const formalParameter = parameterFormalParameters[k];
+        const formalParameterType = checker.getTypeOfSymbolAtLocation(formalParameter, expression);
+        const formalParameterTypename = checker.typeToString(formalParameterType);
+        const actualParameter = actualType.getCallSignatures()[0].parameters[k];
+        const actualParameterType = generator.checker.getTypeOfSymbolAtLocation(actualParameter, expression);
+        map[formalParameterTypename] = actualParameterType;
+      }
+    } else {
+      map[typename] = actualType;
+    }
   }
 
-  const formalTypeParametersNames = formalTypeParameters.map((parameter) => checker.typeToString(parameter));
+  const formalTypeParametersNames = formalTypeParameters?.map((parameter) => checker.typeToString(parameter)) || [];
   // @todo: keep order?
   const readyTypes = Object.keys(map);
   const difference = formalTypeParametersNames.filter((type) => !readyTypes.includes(type));
-  if (difference.length === 1) {
+  if (difference.length === 1 && !map[difference[0]]) {
     map[difference[0]] = resolvedSignature.getReturnType();
   } else if (difference.length > 1) {
-    return error("Cannot map generic type arguments to template arguments");
+    console.log("Cannot map generic type arguments to template arguments.\nNot an external symbol?");
   }
 
   return map;
@@ -102,22 +115,61 @@ export function getGenericsToActualMapFromSignature(
 
 export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type[] {
   return expression.arguments.map((arg) => {
-    const type = generator.checker.getTypeAtLocation(arg);
+    let type = generator.checker.getTypeAtLocation(arg);
     if (Boolean(type.flags & ts.TypeFlags.TypeParameter)) {
       const typenameAlias = generator.checker.typeToString(type);
-      return generator.symbolTable.currentScope.tryGetThroughParentChain(typenameAlias)! as ts.Type;
+      type = generator.symbolTable.currentScope.tryGetThroughParentChain(typenameAlias) as ts.Type;
+      return type;
     } else {
-      return generator.checker.getTypeAtLocation(arg);
+      return type;
     }
   });
 }
 
 export function getReturnType(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type {
-  const resolvedSignature = generator.checker.getResolvedSignature(expression)!;
-  let returnType = generator.checker.getReturnTypeOfSignature(resolvedSignature);
+  const symbol = generator.checker.getTypeAtLocation(expression.expression).symbol;
+  const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
+    .valueDeclaration as ts.FunctionLikeDeclaration;
+  const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
+  let returnType = generator.checker.getReturnTypeOfSignature(signature);
   if (returnType.isTypeParameter()) {
     const typenameAlias = generator.checker.typeToString(returnType);
     returnType = generator.symbolTable.get(typenameAlias) as ts.Type;
   }
   return returnType;
+}
+
+export function tryResolveGenericTypeIfNecessary(tsType: ts.Type, generator: LLVMGenerator): ts.Type {
+  if (!isTypeSupported(tsType, generator.checker)) {
+    if (tsType.isUnionOrIntersection()) {
+      tsType.types = tsType.types.map((type) => {
+        if (!isTypeSupported(type, generator.checker)) {
+          const typename = generator.checker.typeToString(type);
+          return generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as ts.Type;
+        } else {
+          return type;
+        }
+      });
+    } else {
+      const typename = generator.checker.typeToString(tsType);
+      tsType = generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as ts.Type;
+    }
+    if (!tsType) {
+      return error(`Unsupported type: '${generator.checker.typeToString(tsType)}'`);
+    }
+  }
+
+  return tsType;
+}
+
+export function findIndexOfSubarray(arr: llvm.Type[], subarr: llvm.Type[]): number {
+  position_loop: for (let i = 0; i <= arr.length - subarr.length; ++i) {
+    for (let j = 0; j < subarr.length; ++j) {
+      if (!arr[i + j].equals(subarr[j])) {
+        continue position_loop;
+      }
+    }
+    return i;
+  }
+  return -1;
 }

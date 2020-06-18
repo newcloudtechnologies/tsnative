@@ -22,6 +22,7 @@ export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
   readonly symbolTable: SymbolTable;
+
   readonly program: ts.Program;
 
   private irBuilder: llvm.IRBuilder;
@@ -116,7 +117,9 @@ export class LLVMGenerator {
       return value;
     }
 
-    return error(`Unhandled expression of kind ${expression.kind}`);
+    return error(
+      `Unhandled expression of kind ${expression.kind}: '${ts.SyntaxKind[expression.kind]}' at ${expression.getText()}`
+    );
   }
 
   handleExpression(expression: ts.Expression): llvm.Value {

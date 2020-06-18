@@ -21,6 +21,7 @@ import {
 } from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
+import { LLVMGenerator } from "@generator";
 
 export let externalMangledSymbolsTable: string[] = [];
 export let externalDemangledSymbolsTable: string[] = [];
@@ -96,6 +97,8 @@ export class ExternalSymbolsProvider {
       case "number":
         return "double";
       case "boolean":
+      case "true":
+      case "false":
         return "bool";
       case "int8_t":
         return "signed char";
@@ -129,9 +132,10 @@ export class ExternalSymbolsProvider {
     expression: ts.NewExpression | ts.CallExpression | undefined,
     argumentTypes: ts.Type[],
     thisType: ts.Type | undefined,
-    checker: ts.TypeChecker,
+    generator: LLVMGenerator,
     knownMethodName?: string
   ) {
+    const { checker } = generator;
     const namespace = getDeclarationNamespace(declaration).join("::");
     this.namespace = namespace ? namespace + "::" : "";
     if (thisType) {
@@ -143,7 +147,7 @@ export class ExternalSymbolsProvider {
     }
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
     this.parametersPattern = argumentTypes.map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker)).join(",");
-    this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, checker);
+    this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }
   tryGet(declaration: ts.NamedDeclaration): string | undefined {
     let mangledName = this.tryGetImpl(declaration);
@@ -199,8 +203,9 @@ export class ExternalSymbolsProvider {
   private extractFunctionTemplateParameters(
     declaration: ts.Declaration,
     expression: ts.CallExpression | ts.NewExpression | undefined,
-    checker: ts.TypeChecker
+    generator: LLVMGenerator
   ): string {
+    const { checker } = generator;
     let functionTemplateParametersPattern: string = "";
 
     if (!expression) {
@@ -230,7 +235,7 @@ export class ExternalSymbolsProvider {
       return functionTemplateParametersPattern;
     }
 
-    const map = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, checker);
+    const map = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, generator);
     const templateTypes: string[] = [];
     for (const type in map) {
       if (map.hasOwnProperty(type)) {
@@ -279,7 +284,7 @@ export class ExternalSymbolsProvider {
       });
     }
 
-    return error("Unhandled declaration");
+    return;
   }
   private handleDeclarationWithPredicate(predicate: Predicate) {
     let candidates: {

@@ -11,10 +11,10 @@
 
 import { adjustValue, isCppNumericType } from "@cpp";
 import { Scope } from "@scope";
-import { getLLVMType, isConst, isValueTy } from "@utils";
-import { Argument } from "llvm-node";
+import { getLLVMType, isConst, isValueTy, checkIfUnion, initializeUnion } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
+import * as llvm from "llvm-node";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -40,7 +40,6 @@ export class VariableHandler extends AbstractNodeHandler {
     declarations.forEach((declaration) => {
       const name = declaration.name.getText();
       let initializer = this.generator.handleExpression(declaration.initializer!);
-
       const type = this.generator.checker.getTypeAtLocation(declaration);
       const typename = this.generator.checker.typeToString(type);
       if (isCppNumericType(typename)) {
@@ -48,19 +47,34 @@ export class VariableHandler extends AbstractNodeHandler {
       }
 
       if (isConst(declaration)) {
-        if (!(initializer instanceof Argument)) {
+        if (!(initializer instanceof llvm.Argument)) {
           initializer.name = name;
         }
         parentScope.set(name, initializer);
       } else {
         const alloca = this.generator.withLocalBuilder(() => {
-          const llvmType = getLLVMType(type, declaration, this.generator);
+          const isFunctionInitializer = initializer.type.isPointerTy() && initializer.type.elementType.isFunctionTy();
+          let node: ts.Node = declaration;
+          if (isFunctionInitializer && ts.isCallExpression(declaration.initializer!)) {
+            const symbol = this.generator.checker.getTypeAtLocation(
+              (declaration.initializer! as ts.CallExpression).expression
+            ).symbol;
+            node = symbol.valueDeclaration;
+          }
+
+          const llvmType = getLLVMType(type, node, this.generator);
           return this.generator.builder.createAlloca(
-            isValueTy(llvmType) ? llvmType : llvmType.getPointerTo(),
+            isValueTy(llvmType) || checkIfUnion(type) ? llvmType : llvmType.getPointerTo(),
             undefined,
             name
           );
         });
+
+        if (checkIfUnion(type)) {
+          const llvmUnionType = getLLVMType(type, declaration, this.generator) as llvm.StructType;
+          initializer = initializeUnion(llvmUnionType, initializer, this.generator);
+        }
+
         this.generator.builder.createStore(initializer, alloca);
         parentScope.set(name, alloca);
       }

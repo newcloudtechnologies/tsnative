@@ -24,7 +24,7 @@ export class GC {
       undefined,
       thisType,
       [this.generator.builtinUInt32.getTSType()],
-      this.generator.checker
+      this.generator
     );
 
     const llvmReturnType = llvm.Type.getInt8PtrTy(this.generator.context);
@@ -136,7 +136,7 @@ export class BuiltinString extends Builtin {
       undefined,
       thisType,
       [this.generator.builtinInt8.getTSType()],
-      this.generator.checker
+      this.generator
     );
     const llvmReturnType = llvmThisType;
     const llvmArgumentTypes = [llvmThisType, this.generator.builtinInt8.getLLVMType().getPointerTo()];
@@ -159,13 +159,7 @@ export class BuiltinString extends Builtin {
       (m) => ts.isMethodDeclaration(m) && m.name.getText() === "concat"
     );
 
-    const { qualifiedName } = FunctionMangler.mangle(
-      concatDeclaration!,
-      undefined,
-      thisType,
-      [],
-      this.generator.checker
-    );
+    const { qualifiedName } = FunctionMangler.mangle(concatDeclaration!, undefined, thisType, [], this.generator);
 
     const llvmReturnType = llvmThisType;
     const llvmArgumentTypes = [llvmThisType, llvmThisType, llvmThisType];
@@ -180,13 +174,7 @@ export class BuiltinString extends Builtin {
 
     const lengthDeclaration = declaration.members.find((m) => ts.isGetAccessor(m) && m.name.getText() === "length");
 
-    const { qualifiedName } = FunctionMangler.mangle(
-      lengthDeclaration!,
-      undefined,
-      thisType,
-      [],
-      this.generator.checker
-    );
+    const { qualifiedName } = FunctionMangler.mangle(lengthDeclaration!, undefined, thisType, [], this.generator);
 
     const llvmReturnType = llvm.Type.getInt32Ty(this.generator.context);
     const llvmArgumentTypes = [llvmThisType];
@@ -208,7 +196,7 @@ export class BuiltinString extends Builtin {
       undefined,
       thisType,
       [thisType],
-      this.generator.checker,
+      this.generator,
       "operator=="
     );
 

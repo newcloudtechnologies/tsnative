@@ -12,6 +12,7 @@
 import { ExternalSymbolsProvider, TypeMangler } from "@mangling";
 import { getDeclarationNamespace, getTypename } from "@utils";
 import * as ts from "typescript";
+import { LLVMGenerator } from "@generator";
 
 export class FunctionMangler {
   static mangle(
@@ -19,7 +20,7 @@ export class FunctionMangler {
     expression: ts.Expression | undefined,
     thisType: ts.Type | undefined,
     argumentTypes: ts.Type[],
-    checker: ts.TypeChecker,
+    generator: LLVMGenerator,
     knownMethodName?: string
   ): { isExternalSymbol: boolean; qualifiedName: string } {
     const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
@@ -27,7 +28,7 @@ export class FunctionMangler {
       expression as ts.CallExpression | ts.NewExpression,
       argumentTypes,
       thisType,
-      checker,
+      generator,
       knownMethodName
     );
     const mangled: string | undefined = provider.tryGet(declaration);
@@ -41,7 +42,7 @@ export class FunctionMangler {
     const { parent } = declaration;
     let parentName: string | undefined;
     if (thisType) {
-      parentName = TypeMangler.mangle(thisType, checker, declaration);
+      parentName = TypeMangler.mangle(thisType, generator.checker, declaration);
     } else if (ts.isModuleBlock(parent)) {
       parentName = getDeclarationNamespace(declaration).join("__");
     }
@@ -52,7 +53,7 @@ export class FunctionMangler {
     const typeParameters = (declaration as ts.FunctionLikeDeclaration).typeParameters;
     if (typeParameters?.length) {
       typeParametersNames = argumentTypes.reduce((acc, curr) => {
-        return acc + "__" + getTypename(curr, checker);
+        return acc + "__" + getTypename(curr, generator.checker);
       }, "");
     }
 

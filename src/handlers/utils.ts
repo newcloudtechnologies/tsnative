@@ -8,6 +8,8 @@ import {
   createLLVMFunction,
   getLLVMType,
   checkIfLLVMString,
+  isUnionLLVMValue,
+  initializeUnion,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -54,6 +56,11 @@ export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: L
   const typename: string = getIntegralLLVMTypeTypename((left as llvm.AllocaInst).allocatedType);
   if (typename) {
     right = adjustValue(right, typename, generator);
+  }
+
+  if (isUnionLLVMValue(left)) {
+    const unionType = (left.type.isPointerTy() ? left.type.elementType : left.type) as llvm.StructType;
+    right = initializeUnion(unionType, right, generator);
   }
 
   generator.builder.createStore(right, left);
@@ -151,7 +158,7 @@ export function getFunctionDeclarationScope(
   } else if (ts.isModuleBlock(parent)) {
     return generator.symbolTable.get(namespace.join(".")) as Scope;
   } else {
-    return error(`Unhandled function declaration parent kind '${ts.SyntaxKind[parent.kind]}'`);
+    return generator.symbolTable.currentScope;
   }
 }
 
@@ -164,13 +171,7 @@ export function createArrayConstructor(
   const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker).valueDeclaration;
   const constructorDeclaration = (valueDeclaration as ts.ClassDeclaration).members.find(ts.isConstructorDeclaration)!;
 
-  const { qualifiedName } = FunctionMangler.mangle(
-    constructorDeclaration,
-    expression,
-    arrayType,
-    [],
-    generator.checker
-  );
+  const { qualifiedName } = FunctionMangler.mangle(constructorDeclaration, expression, arrayType, [], generator);
 
   const parentScope = getFunctionDeclarationScope(constructorDeclaration, arrayType, generator);
   const thisValue = parentScope.thisData!.type;
@@ -190,13 +191,7 @@ export function createArrayPush(
   const pushDeclaration = pushSymbol.valueDeclaration;
   const parameterType = getLLVMType(elementType, expression, generator);
   const scope = getFunctionDeclarationScope(pushDeclaration, arrayType, generator);
-  const { qualifiedName } = FunctionMangler.mangle(
-    pushDeclaration,
-    expression,
-    arrayType,
-    [elementType],
-    generator.checker
-  );
+  const { qualifiedName } = FunctionMangler.mangle(pushDeclaration, expression, arrayType, [elementType], generator);
   const { fn: push } = createLLVMFunction(
     llvm.Type.getDoubleTy(generator.context),
     [scope.thisData!.type, parameterType],
@@ -212,13 +207,7 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
   const valueDeclaration = getAliasedSymbolIfNecessary(arrayType.symbol, generator.checker).valueDeclaration;
   const declaration = (valueDeclaration as ts.ClassDeclaration).members.find(ts.isIndexSignatureDeclaration)!;
 
-  const { qualifiedName } = FunctionMangler.mangle(
-    declaration,
-    expression,
-    arrayType,
-    [elementType],
-    generator.checker
-  );
+  const { qualifiedName } = FunctionMangler.mangle(declaration, expression, arrayType, [elementType], generator);
 
   const retType = getLLVMType(elementType, expression.expression, generator);
   const scope = getFunctionDeclarationScope(declaration, arrayType, generator);

@@ -49,7 +49,10 @@ export function checkIfObject(type: ts.Type): boolean {
 }
 
 export function checkIfFunction(type: ts.Type): boolean {
-  return Boolean(type.symbol?.flags & ts.SymbolFlags.Function);
+  return (
+    Boolean(type.symbol?.flags & ts.SymbolFlags.Function) ||
+    Boolean(type.symbol && type.symbol.members?.get(ts.InternalSymbolName.Call))
+  );
 }
 
 export function checkIfArray(type: ts.Type): boolean {
@@ -72,6 +75,10 @@ export function checkIfNumber(type: ts.Type): boolean {
 
 export function checkIfVoid(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Void);
+}
+
+export function checkIfUnion(type: ts.Type): boolean {
+  return type.isUnion() && (type.flags & ts.TypeFlags.BooleanLike) === 0;
 }
 
 export function checkIfProperty(symbol: ts.Symbol): boolean {

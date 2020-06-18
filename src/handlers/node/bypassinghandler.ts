@@ -25,6 +25,7 @@ export class BypassingHandler extends AbstractNodeHandler {
       case ts.SyntaxKind.EmptyStatement:
       case ts.SyntaxKind.EnumDeclaration:
       case ts.SyntaxKind.ImportDeclaration:
+      case ts.SyntaxKind.ExportDeclaration:
       case ts.SyntaxKind.InterfaceDeclaration:
       case ts.SyntaxKind.ExportAssignment:
       case ts.SyntaxKind.GetAccessor: // Gonna handle once called.

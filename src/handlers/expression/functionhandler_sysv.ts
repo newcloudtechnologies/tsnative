@@ -20,6 +20,7 @@ import {
   checkIfMethod,
   getArgumentTypes,
   getReturnType,
+  handleFunctionArgument,
 } from "@utils";
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -109,7 +110,7 @@ export class SysVFunctionHandler {
       return error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
-    const args = expression.arguments.map((argument) => this.generator.handleExpression(argument));
+    const args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator));
 
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
@@ -133,7 +134,7 @@ export class SysVFunctionHandler {
     const classDeclaration = getAliasedSymbolIfNecessary(thisType.symbol, this.generator.checker)
       .valueDeclaration as ts.ClassLikeDeclaration;
     const constructorDeclaration = classDeclaration.members.find(ts.isConstructorDeclaration)!;
-    const argumentTypes = expression.arguments!.map(this.generator.checker.getTypeAtLocation);
+    const argumentTypes = expression.arguments?.map(this.generator.checker.getTypeAtLocation) || [];
 
     const parentScope = getFunctionDeclarationScope(classDeclaration, thisType, this.generator);
     const llvmThisType: llvm.PointerType = parentScope.thisData!.type as llvm.PointerType;
@@ -148,7 +149,7 @@ export class SysVFunctionHandler {
     );
 
     const body = constructorDeclaration.body;
-    const args = expression.arguments!.map((argument) => this.generator.handleExpression(argument));
+    const args = expression.arguments?.map((argument) => handleFunctionArgument(argument, this.generator)) || [];
 
     let thisValue: llvm.Value | undefined;
     if (body && !existing) {

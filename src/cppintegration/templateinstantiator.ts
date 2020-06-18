@@ -13,7 +13,7 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { ExternalSymbolsProvider, prepareExternalSymbols } from "@mangling";
-import { checkIfArray, checkIfObject, checkIfString, checkIfFunction, error } from "@utils";
+import { checkIfArray, checkIfObject, checkIfString, checkIfFunction } from "@utils";
 
 export class TemplateInstantiator {
   private readonly templatesTable = ["console::log", "Array"];
@@ -52,7 +52,7 @@ export class TemplateInstantiator {
         let prefix = "";
         const symbol = this.checker.getSymbolAtLocation(callExpression.expression.expression);
 
-        if (symbol && ts.isModuleDeclaration(symbol.valueDeclaration)) {
+        if (symbol && symbol.valueDeclaration && ts.isModuleDeclaration(symbol.valueDeclaration)) {
           // access namespace's function
           prefix = symbol.escapedName.toString();
         } else if (
@@ -63,8 +63,6 @@ export class TemplateInstantiator {
             this.checker.getTypeAtLocation(callExpression.expression.expression),
             this.checker
           );
-        } else {
-          error(`Unhandled property access expression ${callExpression.expression.getText()}`);
         }
 
         tsFunctionName = prefix + "::" + callExpression.expression.name.getText();
@@ -123,6 +121,8 @@ export class TemplateInstantiator {
       !node.typeParameters
     ) {
       node.body.forEachChild(this.nodeVisitor.bind(this));
+    } else {
+      node.forEachChild(this.nodeVisitor.bind(this));
     }
   }
 
