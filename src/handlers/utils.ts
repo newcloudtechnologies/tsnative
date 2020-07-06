@@ -53,7 +53,7 @@ export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: L
     left = alloca;
   }
 
-  const typename: string = getIntegralLLVMTypeTypename((left as llvm.AllocaInst).allocatedType);
+  const typename: string = getIntegralLLVMTypeTypename(((left as llvm.CallInst).type as llvm.PointerType).elementType);
   if (typename) {
     right = adjustValue(right, typename, generator);
   }

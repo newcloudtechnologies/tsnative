@@ -16,50 +16,51 @@ import { error, checkIfLLVMString } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 type CompoundHandler = (lhs: llvm.Value, rhs: llvm.Value, generator?: LLVMGenerator) => llvm.Value;
 export class CompoundAssignmentHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.PlusEqualsToken:
-          return this.handleCompoundPlus(left, right);
+          return this.handleCompoundPlus(left, right, env);
         case ts.SyntaxKind.MinusEqualsToken:
-          return this.handleCompoundMinus(left, right);
+          return this.handleCompoundMinus(left, right, env);
         case ts.SyntaxKind.AsteriskEqualsToken:
-          return this.handleCompoundMultiply(left, right);
+          return this.handleCompoundMultiply(left, right, env);
         case ts.SyntaxKind.SlashEqualsToken:
-          return this.handleCompoundDivision(left, right);
+          return this.handleCompoundDivision(left, right, env);
         case ts.SyntaxKind.PercentEqualsToken:
-          return this.handleCompoundModulo(left, right);
+          return this.handleCompoundModulo(left, right, env);
 
         case ts.SyntaxKind.AmpersandEqualsToken:
-          return this.handleCompoundBitwiseAnd(left, right);
+          return this.handleCompoundBitwiseAnd(left, right, env);
         case ts.SyntaxKind.BarEqualsToken:
-          return this.handleCompoundBitwiseOr(left, right);
+          return this.handleCompoundBitwiseOr(left, right, env);
         case ts.SyntaxKind.CaretEqualsToken:
-          return this.handleCompoundBitwiseXor(left, right);
+          return this.handleCompoundBitwiseXor(left, right, env);
         case ts.SyntaxKind.LessThanLessThanEqualsToken:
-          return this.handleCompoundLeftShift(left, right);
+          return this.handleCompoundLeftShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanEqualsToken:
-          return this.handleCompoundRightShift(left, right);
+          return this.handleCompoundRightShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
-          return this.handleCompoundLogicalRightShift(left, right);
+          return this.handleCompoundLogicalRightShift(left, right, env);
         default:
           break;
       }
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;
   }
 
-  private handleCompoundPlus(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createFAdd(l, r);
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
@@ -69,42 +70,42 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       const sret = this.generator.gc.allocate(this.generator.builtinString.getLLVMType().elementType);
       return this.generator.builder.createCall(concat, [sret, l, r]);
     };
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler, sHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler, sHandler);
   }
 
-  private handleCompoundMinus(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createFSub(l, r);
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createSub(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundMultiply(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createFMul(l, r);
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createMul(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundDivision(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createFDiv(l, r);
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createSDiv(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundModulo(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createFRem(l, r);
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createSRem(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       return castToInt32AndBack([l, r], this.generator, ([left, right]) =>
         this.generator.builder.createAnd(left, right)
@@ -112,10 +113,10 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     };
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createAnd(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundBitwiseOr(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       return castToInt32AndBack([l, r], this.generator, ([left, right]) =>
         this.generator.builder.createOr(left, right)
@@ -123,10 +124,10 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     };
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createOr(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundBitwiseXor(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       return castToInt32AndBack([l, r], this.generator, ([left, right]) =>
         this.generator.builder.createXor(left, right)
@@ -134,10 +135,10 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     };
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createXor(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundLeftShift(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       return castToInt32AndBack([l, r], this.generator, ([left, right]) =>
         this.generator.builder.createShl(left, right)
@@ -145,10 +146,10 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     };
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createShl(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundRightShift(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       return castToInt32AndBack([l, r], this.generator, ([left, right]) =>
         this.generator.builder.createAShr(left, right)
@@ -156,10 +157,10 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     };
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createAShr(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
+  private handleCompoundLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const fpHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       return castToInt32AndBack([l, r], this.generator, ([left, right]) =>
         this.generator.builder.createLShr(left, right)
@@ -167,12 +168,17 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     };
     const iHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value =>
       this.generator.builder.createLShr(l, r);
-    return this.handleCompoundAssignment(lhs, rhs, fpHandler, iHandler);
+    return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler);
   }
 
-  private handleCompoundAssignment(lhs: ts.Expression, rhs: ts.Expression, ...handlers: CompoundHandler[]): llvm.Value {
-    const left = this.generator.handleValueExpression(lhs);
-    let right = this.generator.handleExpression(rhs);
+  private handleCompoundAssignment(
+    lhs: ts.Expression,
+    rhs: ts.Expression,
+    env?: Environment,
+    ...handlers: CompoundHandler[]
+  ): llvm.Value {
+    const left = this.generator.handleValueExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
 
     const oldValue = this.generator.createLoadIfNecessary(left);
     const [fpHandler, iHandler, sHandler] = handlers;

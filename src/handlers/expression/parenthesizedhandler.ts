@@ -12,18 +12,19 @@
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class ParenthesizedHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.ParenthesizedExpression:
-        return this.generator.handleValueExpression((expression as ts.ParenthesizedExpression).expression);
+        return this.generator.handleValueExpression((expression as ts.ParenthesizedExpression).expression, env);
       default:
         break;
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;

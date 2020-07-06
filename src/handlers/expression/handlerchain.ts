@@ -26,6 +26,7 @@ import {
 import { LLVMGenerator } from "@generator";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class ExpressionHandlerChain {
   private readonly root: AbstractExpressionHandler;
@@ -59,7 +60,7 @@ export class ExpressionHandlerChain {
     this.root = access;
   }
 
-  handle(expression: ts.Expression): llvm.Value | undefined {
-    return this.root.handle(expression);
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+    return this.root.handle(expression, env);
   }
 }

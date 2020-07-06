@@ -5,22 +5,15 @@ target triple = "x86_64"
 
 define i32 @main() {
 entry:
-  %i70 = alloca double
-  %i59 = alloca double
-  %i43 = alloca double
-  %i34 = alloca double
-  %i27 = alloca double
-  %i17 = alloca double
-  %i10 = alloca double
-  %i2 = alloca double
-  %i = alloca double
-  store double 0.000000e+00, double* %i
+  %0 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %1 = bitcast i8* %0 to double*
+  store double 0.000000e+00, double* %1
   br label %for.condition
 
 for.condition:                                    ; preds = %for.incrementor, %entry
-  %i.load = load double, double* %i
-  %0 = fcmp olt double %i.load, 1.000000e+01
-  br i1 %0, label %for.body, label %for.exiting
+  %.load = load double, double* %1
+  %2 = fcmp olt double %.load, 1.000000e+01
+  br i1 %2, label %for.body, label %for.exiting
 
 for.body.latch:                                   ; preds = %for.body
   br label %for.incrementor
@@ -32,171 +25,183 @@ for.body:                                         ; preds = %for.condition
   br label %for.body.latch
 
 for.incrementor:                                  ; preds = %for.body.latch
-  %i.load1 = load double, double* %i
-  %1 = fadd double %i.load1, 1.000000e+00
-  store double %1, double* %i
+  %.load1 = load double, double* %1
+  %3 = fadd double %.load1, 1.000000e+00
+  store double %3, double* %1
   br label %for.condition
 
 for.end:                                          ; preds = %for.exiting
-  store double 0.000000e+00, double* %i2
-  br label %for.condition3
+  %4 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %5 = bitcast i8* %4 to double*
+  store double 0.000000e+00, double* %5
+  br label %for.condition2
 
-for.condition3:                                   ; preds = %for.incrementor7, %for.end
-  %i2.load = load double, double* %i2
-  %2 = fcmp olt double %i2.load, 1.000000e+01
-  br i1 %2, label %for.body6, label %for.exiting5
+for.condition2:                                   ; preds = %for.incrementor7, %for.end
+  %.load3 = load double, double* %5
+  %6 = fcmp olt double %.load3, 1.000000e+01
+  br i1 %6, label %for.body6, label %for.exiting5
 
 for.body.latch4:                                  ; preds = %for.body6
   br label %for.incrementor7
 
-for.exiting5:                                     ; preds = %for.condition3
+for.exiting5:                                     ; preds = %for.condition2
   br label %for.end9
 
-for.body6:                                        ; preds = %for.condition3
+for.body6:                                        ; preds = %for.condition2
   br label %for.body.latch4
 
 for.incrementor7:                                 ; preds = %for.body.latch4
-  %i2.load8 = load double, double* %i2
-  %3 = fadd double %i2.load8, 1.000000e+00
-  store double %3, double* %i2
-  br label %for.condition3
+  %.load8 = load double, double* %5
+  %7 = fadd double %.load8, 1.000000e+00
+  store double %7, double* %5
+  br label %for.condition2
 
 for.end9:                                         ; preds = %for.exiting5
-  store double 0.000000e+00, double* %i10
-  br label %for.body13
+  %8 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %9 = bitcast i8* %8 to double*
+  store double 0.000000e+00, double* %9
+  br label %for.body12
 
-for.body.latch11:                                 ; preds = %endif
+for.body.latch10:                                 ; preds = %endif
   br label %for.incrementor14
 
-for.exiting12:                                    ; preds = %then
+for.exiting11:                                    ; preds = %then
   br label %for.end16
 
-for.body13:                                       ; preds = %for.incrementor14, %for.end9
-  %i10.load = load double, double* %i10
-  %4 = fcmp oeq double %i10.load, 1.000000e+01
-  br i1 %4, label %then, label %else
+for.body12:                                       ; preds = %for.incrementor14, %for.end9
+  %.load13 = load double, double* %9
+  %10 = fcmp oeq double %.load13, 1.000000e+01
+  br i1 %10, label %then, label %else
 
-then:                                             ; preds = %for.body13
-  br label %for.exiting12
+then:                                             ; preds = %for.body12
+  br label %for.exiting11
 
-else:                                             ; preds = %for.body13
+else:                                             ; preds = %for.body12
   br label %endif
 
 endif:                                            ; preds = %else
-  br label %for.body.latch11
+  br label %for.body.latch10
 
-for.incrementor14:                                ; preds = %for.body.latch11
-  %i10.load15 = load double, double* %i10
-  %5 = fadd double %i10.load15, 1.000000e+00
-  store double %5, double* %i10
-  br label %for.body13
+for.incrementor14:                                ; preds = %for.body.latch10
+  %.load15 = load double, double* %9
+  %11 = fadd double %.load15, 1.000000e+00
+  store double %11, double* %9
+  br label %for.body12
 
-for.end16:                                        ; preds = %for.exiting12
-  store double 0.000000e+00, double* %i17
-  br label %for.body20
+for.end16:                                        ; preds = %for.exiting11
+  %12 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %13 = bitcast i8* %12 to double*
+  store double 0.000000e+00, double* %13
+  br label %for.body19
 
-for.body.latch18:                                 ; preds = %endif23
+for.body.latch17:                                 ; preds = %endif23
   br label %for.incrementor24
 
-for.exiting19:                                    ; preds = %then21
+for.exiting18:                                    ; preds = %then21
   br label %for.end26
 
-for.body20:                                       ; preds = %for.incrementor24, %for.end16
-  %i17.load = load double, double* %i17
-  %6 = fcmp oeq double %i17.load, 1.000000e+01
-  br i1 %6, label %then21, label %else22
+for.body19:                                       ; preds = %for.incrementor24, %for.end16
+  %.load20 = load double, double* %13
+  %14 = fcmp oeq double %.load20, 1.000000e+01
+  br i1 %14, label %then21, label %else22
 
-then21:                                           ; preds = %for.body20
-  br label %for.exiting19
+then21:                                           ; preds = %for.body19
+  br label %for.exiting18
 
-else22:                                           ; preds = %for.body20
+else22:                                           ; preds = %for.body19
   br label %endif23
 
 endif23:                                          ; preds = %else22
-  br label %for.body.latch18
+  br label %for.body.latch17
 
-for.incrementor24:                                ; preds = %for.body.latch18
-  %i17.load25 = load double, double* %i17
-  %7 = fadd double %i17.load25, 1.000000e+00
-  store double %7, double* %i17
-  br label %for.body20
+for.incrementor24:                                ; preds = %for.body.latch17
+  %.load25 = load double, double* %13
+  %15 = fadd double %.load25, 1.000000e+00
+  store double %15, double* %13
+  br label %for.body19
 
-for.end26:                                        ; preds = %for.exiting19
-  store double 0.000000e+00, double* %i27
-  br label %for.condition28
+for.end26:                                        ; preds = %for.exiting18
+  %16 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %17 = bitcast i8* %16 to double*
+  store double 0.000000e+00, double* %17
+  br label %for.condition27
 
-for.condition28:                                  ; preds = %for.body.latch29, %for.end26
-  %i27.load = load double, double* %i27
-  %8 = fcmp olt double %i27.load, 1.000000e+01
-  br i1 %8, label %for.body31, label %for.exiting30
+for.condition27:                                  ; preds = %for.body.latch29, %for.end26
+  %.load28 = load double, double* %17
+  %18 = fcmp olt double %.load28, 1.000000e+01
+  br i1 %18, label %for.body31, label %for.exiting30
 
 for.body.latch29:                                 ; preds = %for.body31
-  br label %for.condition28
+  br label %for.condition27
 
-for.exiting30:                                    ; preds = %for.condition28
+for.exiting30:                                    ; preds = %for.condition27
   br label %for.end33
 
-for.body31:                                       ; preds = %for.condition28
-  %i27.load32 = load double, double* %i27
-  %9 = fadd double %i27.load32, 1.000000e+00
-  store double %9, double* %i27
+for.body31:                                       ; preds = %for.condition27
+  %.load32 = load double, double* %17
+  %19 = fadd double %.load32, 1.000000e+00
+  store double %19, double* %17
   br label %for.body.latch29
 
 for.end33:                                        ; preds = %for.exiting30
-  store double 0.000000e+00, double* %i34
-  br label %for.body37
+  %20 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %21 = bitcast i8* %20 to double*
+  store double 0.000000e+00, double* %21
+  br label %for.body36
 
-for.body.latch35:                                 ; preds = %endif40
-  br label %for.body37
+for.body.latch34:                                 ; preds = %endif40
+  br label %for.body36
 
-for.exiting36:                                    ; preds = %then38
+for.exiting35:                                    ; preds = %then38
   br label %for.end42
 
-for.body37:                                       ; preds = %for.body.latch35, %for.end33
-  %i34.load = load double, double* %i34
-  %10 = fcmp oeq double %i34.load, 1.000000e+01
-  br i1 %10, label %then38, label %else39
+for.body36:                                       ; preds = %for.body.latch34, %for.end33
+  %.load37 = load double, double* %21
+  %22 = fcmp oeq double %.load37, 1.000000e+01
+  br i1 %22, label %then38, label %else39
 
-then38:                                           ; preds = %for.body37
-  br label %for.exiting36
+then38:                                           ; preds = %for.body36
+  br label %for.exiting35
 
-else39:                                           ; preds = %for.body37
+else39:                                           ; preds = %for.body36
   br label %endif40
 
 endif40:                                          ; preds = %else39
-  %i34.load41 = load double, double* %i34
-  %11 = fadd double %i34.load41, 1.000000e+00
-  store double %11, double* %i34
-  br label %for.body.latch35
+  %.load41 = load double, double* %21
+  %23 = fadd double %.load41, 1.000000e+00
+  store double %23, double* %21
+  br label %for.body.latch34
 
-for.end42:                                        ; preds = %for.exiting36
-  store double 0.000000e+00, double* %i43
-  br label %for.body46
+for.end42:                                        ; preds = %for.exiting35
+  %24 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %25 = bitcast i8* %24 to double*
+  store double 0.000000e+00, double* %25
+  br label %for.body45
 
-for.body.latch44:                                 ; preds = %endif49
-  br label %for.body46
+for.body.latch43:                                 ; preds = %endif49
+  br label %for.body45
 
-for.exiting45:                                    ; preds = %then47
+for.exiting44:                                    ; preds = %then47
   br label %for.end51
 
-for.body46:                                       ; preds = %for.body.latch44, %for.end42
-  %i43.load = load double, double* %i43
-  %12 = fcmp oeq double %i43.load, 1.000000e+01
-  br i1 %12, label %then47, label %else48
+for.body45:                                       ; preds = %for.body.latch43, %for.end42
+  %.load46 = load double, double* %25
+  %26 = fcmp oeq double %.load46, 1.000000e+01
+  br i1 %26, label %then47, label %else48
 
-then47:                                           ; preds = %for.body46
-  br label %for.exiting45
+then47:                                           ; preds = %for.body45
+  br label %for.exiting44
 
-else48:                                           ; preds = %for.body46
+else48:                                           ; preds = %for.body45
   br label %endif49
 
 endif49:                                          ; preds = %else48
-  %i43.load50 = load double, double* %i43
-  %13 = fadd double %i43.load50, 1.000000e+00
-  store double %13, double* %i43
-  br label %for.body.latch44
+  %.load50 = load double, double* %25
+  %27 = fadd double %.load50, 1.000000e+00
+  store double %27, double* %25
+  br label %for.body.latch43
 
-for.end51:                                        ; preds = %for.exiting45
+for.end51:                                        ; preds = %for.exiting44
   br label %for.body54
 
 for.body.latch52:                                 ; preds = %endif57
@@ -218,21 +223,23 @@ endif57:                                          ; preds = %else56
   br label %for.body.latch52
 
 for.end58:                                        ; preds = %for.exiting53
-  store double 0.000000e+00, double* %i59
-  br label %for.condition60
+  %28 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %29 = bitcast i8* %28 to double*
+  store double 0.000000e+00, double* %29
+  br label %for.condition59
 
-for.condition60:                                  ; preds = %for.incrementor67, %for.end58
-  %i59.load = load double, double* %i59
-  %14 = fcmp olt double %i59.load, 1.000000e+01
-  br i1 %14, label %for.body63, label %for.exiting62
+for.condition59:                                  ; preds = %for.incrementor67, %for.end58
+  %.load60 = load double, double* %29
+  %30 = fcmp olt double %.load60, 1.000000e+01
+  br i1 %30, label %for.body63, label %for.exiting62
 
 for.body.latch61:                                 ; preds = %endif66, %then64
   br label %for.incrementor67
 
-for.exiting62:                                    ; preds = %for.condition60
+for.exiting62:                                    ; preds = %for.condition59
   br label %for.end69
 
-for.body63:                                       ; preds = %for.condition60
+for.body63:                                       ; preds = %for.condition59
   br i1 true, label %then64, label %else65
 
 then64:                                           ; preds = %for.body63
@@ -245,27 +252,29 @@ endif66:                                          ; preds = %else65
   br label %for.body.latch61
 
 for.incrementor67:                                ; preds = %for.body.latch61
-  %i59.load68 = load double, double* %i59
-  %15 = fadd double %i59.load68, 1.000000e+00
-  store double %15, double* %i59
-  br label %for.condition60
+  %.load68 = load double, double* %29
+  %31 = fadd double %.load68, 1.000000e+00
+  store double %31, double* %29
+  br label %for.condition59
 
 for.end69:                                        ; preds = %for.exiting62
-  store double 0.000000e+00, double* %i70
-  br label %for.condition71
+  %32 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %33 = bitcast i8* %32 to double*
+  store double 0.000000e+00, double* %33
+  br label %for.condition70
 
-for.condition71:                                  ; preds = %for.incrementor78, %for.end69
-  %i70.load = load double, double* %i70
-  %16 = fcmp olt double %i70.load, 1.000000e+01
-  br i1 %16, label %for.body74, label %for.exiting73
+for.condition70:                                  ; preds = %for.incrementor78, %for.end69
+  %.load71 = load double, double* %33
+  %34 = fcmp olt double %.load71, 1.000000e+01
+  br i1 %34, label %for.body74, label %for.exiting73
 
 for.body.latch72:                                 ; preds = %endif77, %then75
   br label %for.incrementor78
 
-for.exiting73:                                    ; preds = %for.condition71
+for.exiting73:                                    ; preds = %for.condition70
   br label %for.end80
 
-for.body74:                                       ; preds = %for.condition71
+for.body74:                                       ; preds = %for.condition70
   br i1 true, label %then75, label %else76
 
 then75:                                           ; preds = %for.body74
@@ -278,11 +287,13 @@ endif77:                                          ; preds = %else76
   br label %for.body.latch72
 
 for.incrementor78:                                ; preds = %for.body.latch72
-  %i70.load79 = load double, double* %i70
-  %17 = fadd double %i70.load79, 1.000000e+00
-  store double %17, double* %i70
-  br label %for.condition71
+  %.load79 = load double, double* %33
+  %35 = fadd double %.load79, 1.000000e+00
+  store double %35, double* %33
+  br label %for.condition70
 
 for.end80:                                        ; preds = %for.exiting73
   ret i32 0
 }
+
+declare i8* @_ZN2GC8allocateEj(i32)

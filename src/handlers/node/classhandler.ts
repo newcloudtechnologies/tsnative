@@ -11,20 +11,20 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 import { getStructType, isTypeDeclared } from "@utils";
 import { TypeMangler } from "@mangling";
 import { LLVMGenerator } from "@generator";
 
 export class ClassHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isClassDeclaration(node)) {
       this.handleClassDeclaration(node as ts.ClassDeclaration, parentScope, this.generator);
       return true;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;

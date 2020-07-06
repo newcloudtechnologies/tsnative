@@ -11,6 +11,7 @@
 
 import { LLVMGenerator } from "@generator";
 import { Expression } from "typescript";
+import { Environment } from "@scope";
 
 export abstract class AbstractExpressionHandler {
   protected next: AbstractExpressionHandler | undefined;
@@ -18,7 +19,7 @@ export abstract class AbstractExpressionHandler {
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
   }
-  abstract handle(expression: Expression): llvm.Value | undefined;
+  abstract handle(expression: Expression, env?: Environment): llvm.Value | undefined;
   setNext(handler: AbstractExpressionHandler): void {
     this.next = handler;
   }

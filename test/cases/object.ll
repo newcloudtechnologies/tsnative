@@ -3,13 +3,20 @@ source_filename = "main"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64"
 
+%env = type {}
+
 define i32 @main() {
 entry:
-  call void @foo()
+  %0 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %1 = bitcast i8* %0 to %env*
+  store %env zeroinitializer, %env* %1
+  call void @foo(%env* %1)
   ret i32 0
 }
 
-define void @foo() {
+declare i8* @_ZN2GC8allocateEj(i32)
+
+define void @foo(%env* %__environment__) {
 entry:
   %0 = call i8* @_ZN2GC8allocateEj(i32 16)
   %a1 = bitcast i8* %0 to { double, double }*
@@ -23,5 +30,3 @@ entry:
   store double %b3.load, double* %a2
   ret void
 }
-
-declare i8* @_ZN2GC8allocateEj(i32)

@@ -14,16 +14,16 @@ import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export class LoopHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.WhileStatement:
-        this.handleWhileStatement(node as ts.WhileStatement);
+        this.handleWhileStatement(node as ts.WhileStatement, env);
         return true;
       case ts.SyntaxKind.ForStatement:
-        this.handleForStatement(node as ts.ForStatement);
+        this.handleForStatement(node as ts.ForStatement, env);
         return true;
       case ts.SyntaxKind.ContinueStatement:
         this.handleContinueStatement(node as ts.ContinueStatement);
@@ -36,13 +36,13 @@ export class LoopHandler extends AbstractNodeHandler {
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;
   }
 
-  private handleWhileStatement(statement: ts.WhileStatement): void {
+  private handleWhileStatement(statement: ts.WhileStatement, env?: Environment): void {
     const { builder, context, symbolTable, currentFunction } = this.generator;
 
     const condition = BasicBlock.create(context, "while.cond", currentFunction);
@@ -53,7 +53,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
     builder.createBr(condition);
     builder.setInsertionPoint(condition);
-    const conditionValue = this.generator.handleExpression(statement.expression);
+    const conditionValue = this.generator.handleExpression(statement.expression, env);
     builder.createCondBr(conditionValue, body, exiting);
 
     currentFunction.addBasicBlock(bodyLatch);
@@ -67,8 +67,8 @@ export class LoopHandler extends AbstractNodeHandler {
     currentFunction.addBasicBlock(body);
     builder.setInsertionPoint(body);
     symbolTable.withLocalScope((scope) => {
-      this.generator.handleNode(statement.statement, scope);
-    });
+      this.generator.handleNode(statement.statement, scope, env);
+    }, this.generator.symbolTable.currentScope);
 
     if (!this.generator.isCurrentBlockTerminated) {
       builder.createBr(bodyLatch);
@@ -78,7 +78,7 @@ export class LoopHandler extends AbstractNodeHandler {
     builder.setInsertionPoint(end);
   }
 
-  private handleForStatement(statement: ts.ForStatement): void {
+  private handleForStatement(statement: ts.ForStatement, env?: Environment): void {
     const { builder, context, symbolTable, currentFunction } = this.generator;
 
     const handlerImpl = (): void => {
@@ -93,7 +93,7 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(condition);
         currentFunction.addBasicBlock(condition);
         builder.setInsertionPoint(condition);
-        const conditionValue = this.generator.handleExpression(statement.condition);
+        const conditionValue = this.generator.handleExpression(statement.condition, env);
         builder.createCondBr(conditionValue, body, exiting);
       } else {
         builder.createBr(body);
@@ -115,13 +115,13 @@ export class LoopHandler extends AbstractNodeHandler {
 
       currentFunction.addBasicBlock(body);
       builder.setInsertionPoint(body);
-      this.generator.handleNode(statement.statement, symbolTable.currentScope);
+      this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
       builder.createBr(bodyLatch);
 
       if (statement.incrementor) {
         currentFunction.addBasicBlock(incrementor);
         builder.setInsertionPoint(incrementor);
-        this.generator.handleExpression(statement.incrementor);
+        this.generator.handleExpression(statement.incrementor, env);
         if (statement.condition) {
           builder.createBr(condition);
         } else {
@@ -135,12 +135,12 @@ export class LoopHandler extends AbstractNodeHandler {
 
     if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
       symbolTable.withLocalScope(() => {
-        this.generator.handleNode(statement.initializer!, symbolTable.currentScope);
+        this.generator.handleNode(statement.initializer!, symbolTable.currentScope, env);
         handlerImpl();
-      });
+      }, this.generator.symbolTable.currentScope);
     } else {
       if (statement.initializer) {
-        this.generator.handleExpression(statement.initializer as ts.Expression);
+        this.generator.handleExpression(statement.initializer as ts.Expression, env);
       }
       handlerImpl();
     }

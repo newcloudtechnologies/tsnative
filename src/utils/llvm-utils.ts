@@ -28,6 +28,7 @@ import {
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
+import { Environment } from "@scope";
 
 export function createLLVMFunction(
   returnType: llvm.Type,
@@ -82,11 +83,17 @@ export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean
     checkIfNumber(type) ||
     checkIfString(type, checker) ||
     checkIfObject(type) ||
-    checkIfVoid(type)
+    checkIfVoid(type) ||
+    isCppNumericType(checker.typeToString(type))
   );
 }
 
-export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerator): llvm.Type {
+export function getLLVMType(
+  type: ts.Type,
+  node: ts.Node,
+  generator: LLVMGenerator,
+  environmentDataType?: llvm.PointerType
+): llvm.Type {
   const { context, checker } = generator;
 
   if (isCppNumericType(checker.typeToString(type))) {
@@ -124,10 +131,16 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
       return tsType;
     });
 
-    const llvmReturnType = getLLVMType(tsReturnType, node, generator);
+    const llvmReturnType = getLLVMType(tsReturnType, node, generator, environmentDataType);
     const llvmParameters = tsParameterTypes.map((parameterType) => {
       return getLLVMType(parameterType, node, generator);
     });
+
+    if (environmentDataType) {
+      llvmParameters.unshift(environmentDataType);
+    } else {
+      llvmParameters.unshift(getEnvironmentType([], generator).getPointerTo());
+    }
 
     const functionType = llvm.FunctionType.get(llvmReturnType, llvmParameters, false);
 
@@ -167,7 +180,7 @@ function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, gen
   return llvm.StructType.get(context, elements);
 }
 
-function getUnionStructType(type: ts.UnionType, node: ts.Node, generator: LLVMGenerator) {
+export function getUnionStructType(type: ts.UnionType, node: ts.Node, generator: LLVMGenerator) {
   const { context, checker, module } = generator;
 
   const unionName = type.types
@@ -220,6 +233,38 @@ export function getSyntheticBody(size: number, context: llvm.LLVMContext): llvm.
   return syntheticBody;
 }
 
+export function getEnvironmentType(types: llvm.Type[], generator: LLVMGenerator) {
+  const environmentName =
+    "env" +
+    types.reduce((acc, curr) => {
+      return acc + "__" + curr.toString().replace(/\W|\s/g, "_");
+    }, "");
+
+  let envType = generator.module.getTypeByName(environmentName);
+  if (!envType) {
+    envType = llvm.StructType.create(generator.context, environmentName);
+    envType.setBody(types);
+  }
+
+  return envType;
+}
+
+export function getClosureType(types: llvm.Type[], generator: LLVMGenerator) {
+  const closureName =
+    "cls" +
+    types.reduce((acc, curr) => {
+      return acc + "__" + curr.toString().replace(/\W|\s/g, "_");
+    }, "");
+
+  let closureType = generator.module.getTypeByName(closureName);
+  if (!closureType) {
+    closureType = llvm.StructType.create(generator.context, closureName);
+    closureType.setBody(types);
+  }
+
+  return closureType;
+}
+
 export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {
   const { context, module, checker } = generator;
 
@@ -255,13 +300,17 @@ export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLV
 
 export function isUnionLLVMValue(value: llvm.Value): boolean {
   return (
-    ((value as llvm.AllocaInst).allocatedType as llvm.StructType)?.name?.endsWith(".union") ||
+    (value.type.isPointerTy() && (value.type.elementType as llvm.StructType).name?.endsWith(".union")) ||
     value.name?.endsWith(".union")
   );
 }
 
-export function handleFunctionArgument(argument: ts.Expression, generator: LLVMGenerator): llvm.Value {
-  let arg = generator.handleExpression(argument);
+export function handleFunctionArgument(
+  argument: ts.Expression,
+  generator: LLVMGenerator,
+  env?: Environment
+): llvm.Value {
+  let arg = generator.handleExpression(argument, env);
   if (isUnionLLVMValue(arg)) {
     const symbol = generator.checker.getSymbolAtLocation(argument);
     const declaration = symbol!.declarations[0];

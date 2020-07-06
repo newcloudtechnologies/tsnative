@@ -14,40 +14,41 @@ import { error } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class BitwiseHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandToken:
-          return this.handleBitwiseAnd(left, right);
+          return this.handleBitwiseAnd(left, right, env);
         case ts.SyntaxKind.BarToken:
-          return this.handleBitwiseOr(left, right);
+          return this.handleBitwiseOr(left, right, env);
         case ts.SyntaxKind.CaretToken:
-          return this.handleBitwiseXor(left, right);
+          return this.handleBitwiseXor(left, right, env);
         case ts.SyntaxKind.LessThanLessThanToken:
-          return this.handleLeftShift(left, right);
+          return this.handleLeftShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanToken:
-          return this.handleRightShift(left, right);
+          return this.handleRightShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
-          return this.handleLogicalRightShift(left, right);
+          return this.handleLogicalRightShift(left, right, env);
         default:
           break;
       }
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;
   }
 
-  private handleBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
@@ -74,9 +75,9 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to bitwise AND");
   }
 
-  private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
@@ -103,9 +104,9 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to bitwise OR");
   }
 
-  private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
@@ -132,9 +133,9 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to bitwise XOR");
   }
 
-  private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
@@ -161,9 +162,9 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to left shift");
   }
 
-  private handleRightShift(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
@@ -190,9 +191,9 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to right shift");
   }
 
-  private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>

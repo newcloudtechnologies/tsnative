@@ -1,5 +1,5 @@
 import { LLVMGenerator } from "@generator";
-import { error, getTypeSize, isValueTy, createLLVMFunction, getSyntheticBody } from "@utils";
+import { getTypeSize, createLLVMFunction, getSyntheticBody } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { ThisData, Scope } from "@scope";
@@ -40,10 +40,6 @@ export class GC {
   }
 
   allocate(type: llvm.Type) {
-    if (isValueTy(type)) {
-      return error("Expected non-value type");
-    }
-
     const size = getTypeSize(type, this.generator.module);
     const returnValue = this.generator.builder.createCall(this.allocateFn, [
       llvm.ConstantInt.get(this.generator.context, size > 0 ? size : 1, 32),

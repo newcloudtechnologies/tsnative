@@ -11,21 +11,21 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export class ModuleHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isModuleDeclaration(node)) {
       const declaration = node as ts.ModuleDeclaration;
       const name = declaration.name.text;
       const scope = new Scope(name);
-      declaration.body!.forEachChild((childNode) => this.generator.handleNode(childNode, scope));
+      declaration.body!.forEachChild((childNode) => this.generator.handleNode(childNode, scope, env));
       parentScope.set(name, scope);
       return true;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;

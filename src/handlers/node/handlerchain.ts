@@ -26,7 +26,7 @@ import {
 } from "@handlers/node";
 
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export class NodeHandlerChain {
   private readonly root: AbstractNodeHandler;
@@ -56,7 +56,7 @@ export class NodeHandlerChain {
     this.root = block;
   }
 
-  handle(node: ts.Node, parentScope: Scope): boolean {
-    return this.root.handle(node, parentScope);
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
+    return this.root.handle(node, parentScope, env);
   }
 }

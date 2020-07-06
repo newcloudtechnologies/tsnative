@@ -11,7 +11,7 @@
 
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
-import { Scope, SymbolTable } from "@scope";
+import { Scope, SymbolTable, Environment } from "@scope";
 import { createLLVMFunction, error, isValueTy } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -106,13 +106,13 @@ export class LLVMGenerator {
     return result;
   }
 
-  handleNode(node: ts.Node, parentScope: Scope): void {
-    if (!this.nodeHandlerChain.handle(node, parentScope))
+  handleNode(node: ts.Node, parentScope: Scope, env?: Environment): void {
+    if (!this.nodeHandlerChain.handle(node, parentScope, env))
       error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
   }
 
-  handleValueExpression(expression: ts.Expression): llvm.Value {
-    const value = this.expressionHandlerChain.handle(expression);
+  handleValueExpression(expression: ts.Expression, env?: Environment): llvm.Value {
+    const value = this.expressionHandlerChain.handle(expression, env);
     if (value) {
       return value;
     }
@@ -122,8 +122,8 @@ export class LLVMGenerator {
     );
   }
 
-  handleExpression(expression: ts.Expression): llvm.Value {
-    const value = this.handleValueExpression(expression);
+  handleExpression(expression: ts.Expression, env?: Environment): llvm.Value {
+    const value = this.handleValueExpression(expression, env);
     return this.createLoadIfNecessary(value);
   }
 

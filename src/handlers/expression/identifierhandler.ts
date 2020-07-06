@@ -12,12 +12,14 @@
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { HeapVariableDeclaration, Environment } from "@scope";
+import { error } from "@utils";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.Identifier:
-        return this.handleIdentifier(expression as ts.Identifier);
+        return this.handleIdentifier(expression as ts.Identifier, env);
       case ts.SyntaxKind.ThisKeyword:
         return this.handleThis();
       default:
@@ -25,14 +27,34 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;
   }
 
-  private handleIdentifier(expression: ts.Identifier): llvm.Value {
-    return this.generator.symbolTable.get(expression.text) as llvm.Value;
+  private handleIdentifier(expression: ts.Identifier, env?: Environment): llvm.Value {
+    if (env) {
+      const index = env.varNames.indexOf(expression.text);
+      if (index > -1) {
+        const agg = env.data.type.isPointerTy() ? this.generator.builder.createLoad(env.data) : env.data;
+        if ((agg.type as llvm.StructType).numElements === 0) {
+          error("Identifier handler: Trying to extract a value from an empty struct");
+        }
+        return this.generator.builder.createExtractValue(agg, [index]);
+      }
+    }
+
+    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(expression.text, !!env);
+    if (value) {
+      if (value instanceof HeapVariableDeclaration) {
+        return value.allocated;
+      }
+
+      return value as llvm.Value;
+    }
+
+    error(`Identifier '${expression.text}' not found in local scope nor environment`);
   }
 
   private handleThis(): llvm.Value {

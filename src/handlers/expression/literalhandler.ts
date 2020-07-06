@@ -3,10 +3,10 @@ import { error, getLLVMType, getTypeGenericArguments } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { addClassScope } from "@scope";
+import { addClassScope, Environment } from "@scope";
 
 export class LiteralHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.TrueKeyword:
       case ts.SyntaxKind.FalseKeyword:
@@ -24,7 +24,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;

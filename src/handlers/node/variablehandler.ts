@@ -10,74 +10,78 @@
  */
 
 import { adjustValue, isCppNumericType } from "@cpp";
-import { Scope } from "@scope";
-import { getLLVMType, isConst, isValueTy, checkIfUnion, initializeUnion } from "@utils";
+import { Scope, HeapVariableDeclaration, Environment } from "@scope";
+import {
+  isConst,
+  checkIfUnion,
+  initializeUnion,
+  tryResolveGenericTypeIfNecessary,
+  InternalNames,
+  getUnionStructType,
+} from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import * as llvm from "llvm-node";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.VariableStatement:
       case ts.SyntaxKind.VariableDeclarationList:
-        this.handleVariables(node as VariableLike, parentScope);
+        this.handleVariables(node as VariableLike, parentScope, env);
+        return true;
+      case ts.SyntaxKind.VariableDeclaration:
+        this.handleVariableDeclaration(node as ts.VariableDeclaration, parentScope, env);
         return true;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;
   }
 
-  private handleVariables(statement: VariableLike, parentScope: Scope): void {
+  private handleVariableDeclaration(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment): void {
+    const name = declaration.name.getText();
+    let initializer = this.generator.handleExpression(declaration.initializer!, env);
+    if (initializer.name.startsWith(InternalNames.Closure)) {
+      parentScope.set(name, initializer);
+      return;
+    }
+
+    let type = this.generator.checker.getTypeAtLocation(declaration);
+    type = tryResolveGenericTypeIfNecessary(type, this.generator);
+    const typename = this.generator.checker.typeToString(type);
+    if (isCppNumericType(typename)) {
+      initializer = adjustValue(initializer, typename, this.generator);
+    }
+
+    if (isConst(declaration)) {
+      if (!(initializer instanceof llvm.Argument)) {
+        initializer.name = name;
+      }
+      parentScope.set(name, initializer);
+    } else {
+      if (checkIfUnion(type)) {
+        const llvmUnionType = getUnionStructType(type as ts.UnionType, declaration, this.generator);
+        initializer = initializeUnion(llvmUnionType, initializer, this.generator);
+      }
+
+      const alloca = this.generator.gc.allocate(initializer.type);
+      this.generator.builder.createStore(initializer, alloca);
+
+      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer));
+    }
+  }
+
+  private handleVariables(statement: VariableLike, parentScope: Scope, env?: Environment): void {
     const declarations = ts.isVariableStatement(statement)
       ? statement.declarationList.declarations
       : statement.declarations;
     declarations.forEach((declaration) => {
-      const name = declaration.name.getText();
-      let initializer = this.generator.handleExpression(declaration.initializer!);
-      const type = this.generator.checker.getTypeAtLocation(declaration);
-      const typename = this.generator.checker.typeToString(type);
-      if (isCppNumericType(typename)) {
-        initializer = adjustValue(initializer, typename, this.generator);
-      }
-
-      if (isConst(declaration)) {
-        if (!(initializer instanceof llvm.Argument)) {
-          initializer.name = name;
-        }
-        parentScope.set(name, initializer);
-      } else {
-        const alloca = this.generator.withLocalBuilder(() => {
-          const isFunctionInitializer = initializer.type.isPointerTy() && initializer.type.elementType.isFunctionTy();
-          let node: ts.Node = declaration;
-          if (isFunctionInitializer && ts.isCallExpression(declaration.initializer!)) {
-            const symbol = this.generator.checker.getTypeAtLocation(
-              (declaration.initializer! as ts.CallExpression).expression
-            ).symbol;
-            node = symbol.valueDeclaration;
-          }
-
-          const llvmType = getLLVMType(type, node, this.generator);
-          return this.generator.builder.createAlloca(
-            isValueTy(llvmType) || checkIfUnion(type) ? llvmType : llvmType.getPointerTo(),
-            undefined,
-            name
-          );
-        });
-
-        if (checkIfUnion(type)) {
-          const llvmUnionType = getLLVMType(type, declaration, this.generator) as llvm.StructType;
-          initializer = initializeUnion(llvmUnionType, initializer, this.generator);
-        }
-
-        this.generator.builder.createStore(initializer, alloca);
-        parentScope.set(name, alloca);
-      }
+      this.handleVariableDeclaration(declaration, parentScope, env);
     });
   }
 }

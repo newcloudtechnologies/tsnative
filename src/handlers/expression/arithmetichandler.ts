@@ -15,38 +15,39 @@ import { error, checkIfLLVMString } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class ArithmeticHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.PlusToken:
-          return this.handleBinaryPlus(left, right);
+          return this.handleBinaryPlus(left, right, env);
         case ts.SyntaxKind.MinusToken:
-          return this.handleBinaryMinus(left, right);
+          return this.handleBinaryMinus(left, right, env);
         case ts.SyntaxKind.AsteriskToken:
-          return this.handleMultiply(left, right);
+          return this.handleMultiply(left, right, env);
         case ts.SyntaxKind.SlashToken:
-          return this.handleDivision(left, right);
+          return this.handleDivision(left, right, env);
         case ts.SyntaxKind.PercentToken:
-          return this.handleModulo(left, right);
+          return this.handleModulo(left, right, env);
         default:
           break;
       }
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;
   }
 
-  private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFAdd(left, right);
@@ -78,9 +79,9 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to binary plus");
   }
 
-  private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFSub(left, right);
@@ -105,9 +106,9 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to binary minus");
   }
 
-  private handleMultiply(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFMul(left, right);
@@ -132,9 +133,9 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to multiply");
   }
 
-  private handleDivision(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs);
-    let right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    let left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFDiv(left, right);
@@ -162,9 +163,9 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to division");
   }
 
-  private handleModulo(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs);
-    let right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    let left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFRem(left, right);

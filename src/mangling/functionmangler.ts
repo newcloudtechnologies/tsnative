@@ -58,8 +58,9 @@ export class FunctionMangler {
     }
 
     const baseName = ts.isConstructorDeclaration(declaration) ? "constructor" : declaration.name?.getText() || "";
+
     return {
-      isExternalSymbol: false,
+      isExternalSymbol: baseName === "assert", // @todo: make `assert` mangled C++ symbol (stdlib)
       qualifiedName: scopePrefix + baseName + typeParametersNames,
     };
   }

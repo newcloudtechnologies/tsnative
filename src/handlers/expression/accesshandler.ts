@@ -1,4 +1,4 @@
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 import { error, indexOfProperty } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -7,7 +7,7 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { createArraySubscription } from "@handlers";
 
 export class AccessHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
         const symbol = this.generator.checker.getSymbolAtLocation(expression);
@@ -25,7 +25,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;

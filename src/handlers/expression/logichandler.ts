@@ -15,32 +15,33 @@ import { error } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class LogicHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandAmpersandToken:
-          return this.handleLogicalAnd(left, right);
+          return this.handleLogicalAnd(left, right, env);
         case ts.SyntaxKind.BarBarToken:
-          return this.handleLogicalOr(left, right);
+          return this.handleLogicalOr(left, right, env);
         default:
           break;
       }
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;
   }
 
-  private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs);
-    let right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    let left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     const lhsBoolean = makeBoolean(left, lhs, this.generator);
 
@@ -63,9 +64,9 @@ export class LogicHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to logical AND");
   }
 
-  private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs);
-    let right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    let left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     const lhsBoolean = makeBoolean(left, lhs, this.generator);
 

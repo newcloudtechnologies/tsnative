@@ -9,11 +9,23 @@
  *
  */
 
-import { error, getAliasedSymbolIfNecessary, getStructType } from "@utils";
+import { error, getAliasedSymbolIfNecessary, getStructType, InternalNames } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
+
+export class Environment {
+  varNames: string[];
+  data: llvm.ConstantStruct;
+  rawData: llvm.Value[];
+
+  constructor(varNames: string[], data: llvm.ConstantStruct, rawData: llvm.Value[]) {
+    this.varNames = varNames;
+    this.data = data;
+    this.rawData = rawData;
+  }
+}
 
 export function setLLVMFunctionScope(fn: llvm.Function, scope: Scope) {
   llvm.verifyFunction(fn);
@@ -38,7 +50,17 @@ export function addClassScope(expression: ts.Expression, parentScope: Scope, gen
   }
 }
 
-export type ScopeValue = llvm.Value | Scope | ts.Type;
+export class HeapVariableDeclaration {
+  allocated: llvm.Value;
+  initializer: llvm.Value;
+
+  constructor(alloca: llvm.Value, initializer: llvm.Value) {
+    this.allocated = alloca;
+    this.initializer = initializer;
+  }
+}
+
+export type ScopeValue = llvm.Value | Scope | HeapVariableDeclaration | ts.Type;
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration;
@@ -63,12 +85,13 @@ export class Scope {
     return this.map.get(identifier);
   }
 
-  tryGetThroughParentChain(identifier: string): ScopeValue | undefined {
+  tryGetThroughParentChain(identifier: string, ignoreTopLevel?: boolean): ScopeValue | undefined {
     const value = this.map.get(identifier);
+
     if (value) {
       return value;
-    } else if (!value && this.parent) {
-      return this.parent.tryGetThroughParentChain(identifier);
+    } else if (!value && this.parent && (this.parent.name === InternalNames.FunctionScope || !ignoreTopLevel)) {
+      return this.parent.tryGetThroughParentChain(identifier, ignoreTopLevel);
     }
 
     return;

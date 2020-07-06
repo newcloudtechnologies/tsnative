@@ -12,25 +12,25 @@
 import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export class BranchHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isIfStatement(node)) {
       const statement = node as ts.IfStatement;
-      const condition = this.generator.handleExpression(statement.expression);
+      const condition = this.generator.handleExpression(statement.expression, env);
       const thenBlock = BasicBlock.create(this.generator.context, "then", this.generator.currentFunction);
       const elseBlock = BasicBlock.create(this.generator.context, "else", this.generator.currentFunction);
       const endBlock = BasicBlock.create(this.generator.context, "endif", this.generator.currentFunction);
       this.generator.builder.createCondBr(condition, thenBlock, elseBlock);
-      this.handleBranch(statement.thenStatement, thenBlock, endBlock, parentScope);
-      this.handleBranch(statement.elseStatement, elseBlock, endBlock, parentScope);
+      this.handleBranch(statement.thenStatement, thenBlock, endBlock, parentScope, env);
+      this.handleBranch(statement.elseStatement, elseBlock, endBlock, parentScope, env);
       this.generator.builder.setInsertionPoint(endBlock);
       return true;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;
@@ -40,12 +40,13 @@ export class BranchHandler extends AbstractNodeHandler {
     statement: ts.Statement | undefined,
     destination: BasicBlock,
     continuation: BasicBlock,
-    parentScope: Scope
+    parentScope: Scope,
+    env?: Environment
   ): void {
     this.generator.builder.setInsertionPoint(destination);
 
     if (statement) {
-      this.generator.handleNode(statement, parentScope);
+      this.generator.handleNode(statement, parentScope, env);
     }
 
     if (!this.generator.isCurrentBlockTerminated) {

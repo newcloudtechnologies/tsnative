@@ -11,24 +11,24 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export class BlockHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.Block:
         this.generator.symbolTable.withLocalScope((scope) => {
           for (const statement of (node as ts.Block).statements) {
-            this.generator.handleNode(statement, scope);
+            this.generator.handleNode(statement, scope, env);
           }
-        });
+        }, this.generator.symbolTable.currentScope);
         return true;
       default:
         break;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;

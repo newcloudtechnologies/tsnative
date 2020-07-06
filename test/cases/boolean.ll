@@ -5,11 +5,15 @@ target triple = "x86_64"
 
 define i32 @main() {
 entry:
-  %b = alloca i1
-  %a = alloca i1
-  store i1 false, i1* %a
-  store i1 true, i1* %b
-  %a.load = load i1, i1* %a
-  store i1 %a.load, i1* %b
+  %0 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %1 = bitcast i8* %0 to i1*
+  store i1 false, i1* %1
+  %2 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %3 = bitcast i8* %2 to i1*
+  store i1 true, i1* %3
+  %.load = load i1, i1* %1
+  store i1 %.load, i1* %3
   ret i32 0
 }
+
+declare i8* @_ZN2GC8allocateEj(i32)

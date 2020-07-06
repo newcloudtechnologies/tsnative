@@ -21,41 +21,42 @@ import { error, checkIfLLVMString } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class ComparisonHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsEqualsToken:
-          return this.handleStrictEquals(left, right);
+          return this.handleStrictEquals(left, right, env);
         case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-          return this.handleStrictNotEquals(left, right);
+          return this.handleStrictNotEquals(left, right, env);
 
         case ts.SyntaxKind.LessThanToken:
-          return this.handleLessThan(left, right);
+          return this.handleLessThan(left, right, env);
         case ts.SyntaxKind.GreaterThanToken:
-          return this.handleGreaterThan(left, right);
+          return this.handleGreaterThan(left, right, env);
         case ts.SyntaxKind.LessThanEqualsToken:
-          return this.handleLessEqualsThan(left, right);
+          return this.handleLessEqualsThan(left, right, env);
         case ts.SyntaxKind.GreaterThanEqualsToken:
-          return this.handleGreaterEqualsThan(left, right);
+          return this.handleGreaterEqualsThan(left, right, env);
         default:
           break;
       }
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;
   }
 
-  private handleStrictEquals(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    let right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleStrictEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOEQ(left, right);
@@ -85,9 +86,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return error(`Invalid operand types to strict equals ${left.type.typeID} ${right.type.typeID}`);
   }
 
-  private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    let right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpONE(left, right);
@@ -117,9 +118,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to strict not equals");
   }
 
-  private handleLessThan(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleLessThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOLT(left, right);
@@ -150,9 +151,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to less than comparison");
   }
 
-  private handleGreaterThan(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleGreaterThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOGT(left, right);
@@ -183,9 +184,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to greater than comparison");
   }
 
-  private handleLessEqualsThan(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleLessEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOLE(left, right);
@@ -216,9 +217,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return error("Invalid operand types to less equals than comparison");
   }
 
-  private handleGreaterEqualsThan(lhs: ts.Expression, rhs: ts.Expression): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs);
-    const right: llvm.Value = this.generator.handleExpression(rhs);
+  private handleGreaterEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+    const left: llvm.Value = this.generator.handleExpression(lhs, env);
+    const right: llvm.Value = this.generator.handleExpression(rhs, env);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOGE(left, right);

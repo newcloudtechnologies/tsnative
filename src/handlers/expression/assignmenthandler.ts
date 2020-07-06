@@ -13,17 +13,18 @@ import { makeAssignment } from "@handlers";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
+import { Environment } from "@scope";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
           return makeAssignment(
-            this.generator.handleValueExpression(left),
-            this.generator.handleExpression(right),
+            this.generator.handleValueExpression(left, env),
+            this.generator.handleExpression(right, env),
             this.generator
           );
         default:
@@ -32,7 +33,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     }
 
     if (this.next) {
-      return this.next.handle(expression);
+      return this.next.handle(expression, env);
     }
 
     return;

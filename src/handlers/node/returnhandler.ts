@@ -12,15 +12,15 @@
 import * as ts from "typescript";
 import * as llvm from "llvm-node";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 import { getLLVMType, checkIfUnion, initializeUnion } from "@utils";
 
 export class ReturnHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isReturnStatement(node)) {
       const statement = node as ts.ReturnStatement;
       if (statement.expression) {
-        const ret = this.generator.handleExpression(statement.expression);
+        const ret = this.generator.handleExpression(statement.expression, env);
         const retType = this.generator.checker.getTypeAtLocation(statement.expression);
 
         if (checkIfUnion(retType)) {
@@ -44,7 +44,7 @@ export class ReturnHandler extends AbstractNodeHandler {
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;

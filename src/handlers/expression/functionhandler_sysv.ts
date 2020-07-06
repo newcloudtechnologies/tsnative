@@ -25,6 +25,7 @@ import {
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import * as llvm from "llvm-node";
+import { Environment } from "@scope";
 
 export class SysVFunctionHandler {
   private readonly generator: LLVMGenerator;
@@ -72,7 +73,7 @@ export class SysVFunctionHandler {
     return this.generator.builder.createCall(fn, args);
   }
 
-  handleCallExpression(expression: ts.CallExpression, qualifiedName: string): llvm.Value {
+  handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): llvm.Value {
     const argumentTypes = getArgumentTypes(expression, this.generator);
     const isMethod = checkIfMethod(expression.expression, this.generator.checker);
 
@@ -100,7 +101,7 @@ export class SysVFunctionHandler {
       llvmArgumentTypes.unshift(isValueTy(llvmThisType) ? llvmThisType : llvmThisType.getPointerTo());
     }
 
-    const returnsValue: boolean = checkIfReturnsValueType(valueDeclaration);
+    const returnsValue = checkIfReturnsValueType(valueDeclaration);
     if (returnsValue) {
       llvmArgumentTypes.unshift(llvmReturnType);
     }
@@ -110,7 +111,7 @@ export class SysVFunctionHandler {
       return error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
-    const args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator));
+    const args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator, env));
 
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;

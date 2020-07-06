@@ -127,11 +127,9 @@ export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMG
 }
 
 export function getReturnType(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type {
-  const symbol = generator.checker.getTypeAtLocation(expression.expression).symbol;
-  const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
-    .valueDeclaration as ts.FunctionLikeDeclaration;
-  const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
-  let returnType = generator.checker.getReturnTypeOfSignature(signature);
+  const resolvedSignature = generator.checker.getResolvedSignature(expression)!;
+  let returnType = generator.checker.getReturnTypeOfSignature(resolvedSignature);
+
   if (returnType.isTypeParameter()) {
     const typenameAlias = generator.checker.typeToString(returnType);
     returnType = generator.symbolTable.get(typenameAlias) as ts.Type;
@@ -172,4 +170,10 @@ export function findIndexOfSubarray(arr: llvm.Type[], subarr: llvm.Type[]): numb
     return i;
   }
   return -1;
+}
+
+export enum InternalNames {
+  Environment = "__environment__",
+  Closure = "__closure__",
+  FunctionScope = "__function_scope__",
 }

@@ -11,12 +11,12 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 import { getLLVMType, getAliasedSymbolIfNecessary, error } from "@utils";
 import * as llvm from "llvm-node";
 
 export class TypeAliasHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.TypeAliasDeclaration:
         const typeAlias = node as ts.TypeAliasDeclaration;
@@ -56,7 +56,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;

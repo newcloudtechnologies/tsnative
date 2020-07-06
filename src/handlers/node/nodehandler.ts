@@ -11,7 +11,7 @@
 
 import { LLVMGenerator } from "@generator";
 import * as ts from "typescript";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export abstract class AbstractNodeHandler {
   protected next: AbstractNodeHandler | undefined;
@@ -19,7 +19,7 @@ export abstract class AbstractNodeHandler {
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
   }
-  abstract handle(node: ts.Node, parentScope: Scope): boolean;
+  abstract handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean;
   setNext(handler: AbstractNodeHandler): void {
     this.next = handler;
   }

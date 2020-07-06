@@ -11,17 +11,17 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope } from "@scope";
+import { Scope, Environment } from "@scope";
 
 export class ExpressionStatementHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope): boolean {
+  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isExpressionStatement(node)) {
-      this.generator.handleValueExpression((node as ts.ExpressionStatement).expression);
+      this.generator.handleValueExpression((node as ts.ExpressionStatement).expression, env);
       return true;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope);
+      return this.next.handle(node, parentScope, env);
     }
 
     return false;
