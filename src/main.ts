@@ -23,6 +23,8 @@ argv
   .option("--target [value]", "generate code for the given target")
   .option("--output [value]", "specify output file for final executable")
   .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
+  .option("--compiler [value]", "specify C++ compiler", "g++")
+  .option("--cbackend", "use CBackend instead of llc")
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -105,7 +107,7 @@ async function main() {
   }
 
   if (!argv.printIR && !argv.emitIR && !argv.emitBitcode) {
-    writeExecutableToFile(llvmModule, program, argv.output, dependencies);
+    writeExecutableToFile(llvmModule, program, argv, dependencies);
   }
 
   if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {

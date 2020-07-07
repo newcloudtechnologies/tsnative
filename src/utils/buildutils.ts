@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as llvm from "llvm-node";
 import * as path from "path";
 import * as ts from "typescript";
+import { CommanderStatic } from "commander";
 
 export function replaceOrAddExtension(filename: string, extension: string): string {
   const lastDotPosition = filename.lastIndexOf(".");
@@ -31,27 +32,45 @@ export function writeBitcodeToFile(module: llvm.Module, program: ts.Program): st
 export function writeExecutableToFile(
   module: llvm.Module,
   program: ts.Program,
-  output: string,
+  argv: CommanderStatic,
   dependencies: string[]
 ): void {
-  const bitcodeFile = writeBitcodeToFile(module, program);
-  const objectFile = replaceOrAddExtension(bitcodeFile, ".o");
-  const executableFile = output || replaceOrAddExtension(bitcodeFile, "");
   const optimizationLevel = "-O3";
+  const basename = getOutputBaseName(program);
+  const executableFile = argv.output || basename;
+
+  let bitcodeFile;
+  let objectFile;
+  let cppOut;
 
   try {
-    execFileSync("llc", [optimizationLevel, "-relocation-model=pic", "-filetype=obj", bitcodeFile, "-o", objectFile]);
-    execFileSync("g++", [
-      optimizationLevel,
-      objectFile,
-      ...dependencies,
-      "-o",
-      executableFile,
-      "-std=c++11",
-      "-Werror",
-    ]);
+    if (argv.cbackend) {
+      const ir = writeIRToFile(module, program);
+      cppOut = replaceOrAddExtension(basename, ".cpp");
+      execFileSync("llvm-cbe", [ir, "-o", cppOut]);
+      fs.unlinkSync(ir);
+      dependencies.unshift(cppOut);
+    } else {
+      bitcodeFile = writeBitcodeToFile(module, program);
+      objectFile = replaceOrAddExtension(basename, ".o");
+      execFileSync("llc", [optimizationLevel, "-relocation-model=pic", "-filetype=obj", bitcodeFile, "-o", objectFile]);
+    }
+
+    if (objectFile) {
+      dependencies.unshift(objectFile);
+    }
+
+    const compilerParameters = [optimizationLevel, ...dependencies, "-o", executableFile, "-std=c++11", "-Werror"];
+    execFileSync(argv.compiler, compilerParameters);
   } finally {
-    fs.unlinkSync(bitcodeFile);
-    fs.unlinkSync(objectFile);
+    if (bitcodeFile && fs.existsSync(bitcodeFile)) {
+      fs.unlinkSync(bitcodeFile);
+    }
+    if (cppOut && fs.existsSync(cppOut)) {
+      fs.unlinkSync(cppOut);
+    }
+    if (objectFile && fs.existsSync(objectFile)) {
+      fs.unlinkSync(objectFile);
+    }
   }
 }
