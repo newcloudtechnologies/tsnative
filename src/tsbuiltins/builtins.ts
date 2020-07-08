@@ -64,7 +64,7 @@ class Builtin {
       this.init();
     }
     const { checker } = this.generator;
-    return checker.getTypeAtLocation(this.thisData!.declaration);
+    return checker.getTypeAtLocation(this.thisData!.declaration!);
   }
 
   getLLVMType(): llvm.PointerType | llvm.IntegerType {

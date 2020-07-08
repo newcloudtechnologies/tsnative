@@ -277,7 +277,8 @@ export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLV
   let struct: llvm.StructType | null;
   const declaration = type.getSymbol()!.valueDeclaration;
 
-  if (ts.isClassDeclaration(declaration)) {
+  if (!declaration || ts.isClassDeclaration(declaration)) {
+    // The `type` is a plain object or a class
     const name = TypeMangler.mangle(type, checker, declaration);
 
     struct = module.getTypeByName(name);

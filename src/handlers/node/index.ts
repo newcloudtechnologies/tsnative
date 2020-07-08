@@ -15,6 +15,7 @@ export { BypassingHandler } from "./bypassinghandler";
 export { ClassHandler } from "./classhandler";
 export { ExpressionStatementHandler } from "./expressionstatementhandler";
 export { NodeHandlerChain } from "./handlerchain";
+export { ImportsHandler } from "./importshandler";
 export { LoopHandler } from "./loophandler";
 export { ModuleHandler } from "./modulehandler";
 export { ReturnHandler } from "./returnhandler";

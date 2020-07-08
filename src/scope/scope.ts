@@ -63,7 +63,7 @@ export class HeapVariableDeclaration {
 export type ScopeValue = llvm.Value | Scope | HeapVariableDeclaration | ts.Type;
 
 export interface ThisData {
-  readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration;
+  readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
   readonly type: llvm.StructType | llvm.PointerType;
 }
 
