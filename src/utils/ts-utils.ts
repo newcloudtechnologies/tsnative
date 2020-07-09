@@ -141,6 +141,9 @@ export function tryResolveGenericTypeIfNecessary(tsType: ts.Type, generator: LLV
   if (!isTypeSupported(tsType, generator.checker)) {
     if (tsType.isUnionOrIntersection()) {
       tsType.types = tsType.types.map((type) => {
+        if (type.isUnionOrIntersection()) {
+          return tryResolveGenericTypeIfNecessary(type, generator);
+        }
         if (!isTypeSupported(type, generator.checker)) {
           const typename = generator.checker.typeToString(type);
           return generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as ts.Type;
