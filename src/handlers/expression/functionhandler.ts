@@ -221,15 +221,27 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return this.generator.builder.createCall(fn, args);
   }
 
-  private handleCallExpression(expression: ts.CallExpression, callScope: Scope, outerEnv?: Environment): llvm.Value {
+  private handleCallExpression(
+    expression: ts.CallExpression,
+    callScope: Scope,
+    outerEnv?: Environment,
+    fromFunctionDeclaration?: boolean
+  ): llvm.Value {
     const functionName = expression.expression.getText();
-    const knownValue = this.generator.symbolTable.currentScope.tryGetThroughParentChain(
-      functionName,
-      false
-    ) as llvm.Value;
+    const knownValue = this.generator.symbolTable.currentScope.tryGetThroughParentChain(functionName, false);
 
-    // Function is already stored in some variable
-    if (knownValue) {
+    // Function was already met somewhere
+    if (knownValue && !fromFunctionDeclaration) {
+      if (ts.isFunctionDeclaration(knownValue as ts.FunctionDeclaration)) {
+        const call = ts.updateCall(
+          expression,
+          (knownValue as ts.FunctionDeclaration).name!,
+          expression.typeArguments,
+          expression.arguments
+        );
+        return this.handleCallExpression(call, callScope, outerEnv, true);
+      }
+
       const args = expression.arguments
         .map((argument) => handleFunctionArgument(argument, this.generator, outerEnv))
         .map((value) => {
@@ -243,9 +255,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
           return value;
         });
 
-      if (knownValue.name?.startsWith(InternalNames.Closure)) {
+      if ((knownValue as llvm.Value).name?.startsWith(InternalNames.Closure)) {
         // Handle closure. Get a closure function and pass its data as argument + actual args
-        const closure = this.generator.builder.createLoad(knownValue);
+        const closure = this.generator.builder.createLoad(knownValue as llvm.Value);
         const closureFunction = this.generator.builder.createExtractValue(closure, [0]);
         const closureFunctionData = this.generator.builder.createExtractValue(closure, [1]);
         return this.generator.builder.createCall(closureFunction, [closureFunctionData, ...args]);
