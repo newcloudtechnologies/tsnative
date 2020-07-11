@@ -10,6 +10,8 @@ import {
   checkIfLLVMString,
   isUnionLLVMValue,
   initializeUnion,
+  isUnionWithUndefinedLLVMValue,
+  isUnionWithNullLLVMValue,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -80,6 +82,16 @@ export function makeBoolean(value: llvm.Value, expression: ts.Expression, genera
     const lengthGetter = generator.builtinString.getLLVMLength(expression);
     const length = generator.builder.createCall(lengthGetter, [value]);
     return generator.builder.createICmpNE(length, llvm.Constant.getNullValue(length.type));
+  }
+
+  if (isUnionLLVMValue(value)) {
+    if (isUnionWithUndefinedLLVMValue(value) || isUnionWithNullLLVMValue(value)) {
+      const unionStruct = generator.builder.createLoad(value);
+      const marker = generator.builder.createExtractValue(unionStruct, [0]);
+      return generator.builder.createICmpNE(marker, llvm.ConstantInt.get(generator.context, -1, 8));
+    }
+
+    return llvm.ConstantInt.getTrue(generator.context);
   }
 
   return error(`Unable to convert operand of type ${value.type} to boolean value`);

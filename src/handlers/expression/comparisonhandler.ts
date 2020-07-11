@@ -17,7 +17,13 @@ import {
   isConvertible,
   promoteIntegralToFP,
 } from "@handlers";
-import { error, checkIfLLVMString } from "@utils";
+import {
+  error,
+  checkIfLLVMString,
+  isUnionLLVMType,
+  isUnionWithUndefinedLLVMType,
+  isUnionWithNullLLVMType,
+} from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -29,8 +35,11 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
-        case ts.SyntaxKind.EqualsEqualsEqualsToken:
-          return this.handleStrictEquals(left, right, env);
+        case ts.SyntaxKind.EqualsEqualsEqualsToken: {
+          const lhs: llvm.Value = this.generator.handleExpression(left, env);
+          const rhs: llvm.Value = this.generator.handleExpression(right, env);
+          return this.handleStrictEquals(left, right, lhs, rhs, env);
+        }
         case ts.SyntaxKind.ExclamationEqualsEqualsToken:
           return this.handleStrictNotEquals(left, right, env);
 
@@ -54,36 +63,58 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleStrictEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
-
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpOEQ(left, right);
+  private handleStrictEquals(
+    lhs: ts.Expression,
+    rhs: ts.Expression,
+    lhsLLVM: llvm.Value,
+    rhsLLVM: llvm.Value,
+    env?: Environment
+  ): llvm.Value {
+    if (lhsLLVM.type.isDoubleTy() && rhsLLVM.type.isDoubleTy()) {
+      return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM);
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      return this.generator.builder.createICmpEQ(left, right);
+    if (lhsLLVM.type.isIntegerTy() && rhsLLVM.type.isIntegerTy()) {
+      return this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM);
     }
 
-    if (left.type.isIntegerTy() && right.type.isDoubleTy()) {
+    if (lhsLLVM.type.isIntegerTy() && rhsLLVM.type.isDoubleTy()) {
       const signed = isSigned(lhs, this.generator);
-      right = castFPToIntegralType(right, left.type, signed, this.generator);
-      return this.generator.builder.createICmpEQ(left, right);
+      rhsLLVM = castFPToIntegralType(rhsLLVM, lhsLLVM.type, signed, this.generator);
+      return this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM);
     }
 
-    if (left.type.isDoubleTy() && right.type.isIntegerTy()) {
+    if (lhsLLVM.type.isDoubleTy() && rhsLLVM.type.isIntegerTy()) {
       const signed = isSigned(rhs, this.generator);
-      right = promoteIntegralToFP(right, left.type, signed, this.generator);
-      return this.generator.builder.createFCmpOEQ(left, right);
+      rhsLLVM = promoteIntegralToFP(rhsLLVM, lhsLLVM.type, signed, this.generator);
+      return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM);
     }
 
-    if (checkIfLLVMString(left.type) && checkIfLLVMString(right.type)) {
+    if (checkIfLLVMString(lhsLLVM.type) && checkIfLLVMString(rhsLLVM.type)) {
       const equals = this.generator.builtinString.getLLVMEquals(lhs);
-      return this.generator.builder.createCall(equals, [left, right]);
+      return this.generator.builder.createCall(equals, [lhsLLVM, rhsLLVM]);
     }
 
-    return error(`Invalid operand types to strict equals ${left.type.typeID} ${right.type.typeID}`);
+    if (isUnionLLVMType(lhsLLVM.type)) {
+      if (isUnionWithNullLLVMType(lhsLLVM.type) || isUnionWithUndefinedLLVMType(lhsLLVM.type)) {
+        const unionStructType = (lhsLLVM.type as llvm.PointerType).elementType as llvm.StructType;
+        let activeIndex = -1;
+        for (let i = 0; i < unionStructType.numElements; ++i) {
+          if (unionStructType.getElementType(i).equals(rhsLLVM.type)) {
+            activeIndex = i;
+            break;
+          }
+        }
+        const activeValuePointer = this.generator.builder.createInBoundsGEP(lhsLLVM, [
+          llvm.ConstantInt.get(this.generator.context, 0),
+          llvm.ConstantInt.get(this.generator.context, activeIndex),
+        ]);
+        const activeValue = this.generator.builder.createLoad(activeValuePointer);
+        return this.handleStrictEquals(lhs, rhs, activeValue, rhsLLVM, env);
+      }
+    }
+
+    return error(`Invalid operand types to strict equals ${lhsLLVM.type.typeID} ${rhsLLVM.type.typeID}`);
   }
 
   private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {

@@ -18,6 +18,9 @@ import {
   tryResolveGenericTypeIfNecessary,
   InternalNames,
   getUnionStructType,
+  getLLVMType,
+  isUnionWithUndefinedLLVMType,
+  isUnionWithNullLLVMType,
 } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
@@ -44,8 +47,28 @@ export class VariableHandler extends AbstractNodeHandler {
   }
 
   private handleVariableDeclaration(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment): void {
-    const name = declaration.name.getText();
-    let initializer = this.generator.handleExpression(declaration.initializer!, env);
+    const name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
+
+    let initializer;
+    if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
+      const declarationType = this.generator.checker.getTypeAtLocation(declaration);
+      const declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
+      initializer = llvm.Constant.getNullValue(declarationLLVMType);
+      if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
+        initializer = this.generator.builder.createInsertValue(
+          initializer,
+          llvm.ConstantInt.get(this.generator.context, -1, 8),
+          [0]
+        );
+      }
+      const alloca = this.generator.gc.allocate(declarationLLVMType);
+      this.generator.builder.createStore(initializer, alloca);
+      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer));
+      return;
+    } else {
+      initializer = this.generator.handleExpression(declaration.initializer, env);
+    }
+
     if (initializer.name.startsWith(InternalNames.Closure)) {
       parentScope.set(name, initializer);
       return;

@@ -11,7 +11,7 @@
 
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
-import { Scope, SymbolTable, Environment } from "@scope";
+import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
 import { createLLVMFunction, error, isValueTy } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -57,6 +57,9 @@ export class LLVMGenerator {
     this.builder.setInsertionPoint(entryBlock);
     for (const sourceFile of this.program.getSourceFiles()) {
       this.symbolTable.addScope(sourceFile.fileName);
+
+      injectUndefined(this.symbolTable.currentScope, this.context);
+
       sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
 

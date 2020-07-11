@@ -16,7 +16,7 @@ export class SymbolTable {
   private readonly scopes: Scope[];
 
   constructor() {
-    this.scopes = [];
+    this.scopes = [new Scope("root")];
   }
 
   get(identifier: string): ScopeValue {

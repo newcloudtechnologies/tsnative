@@ -25,6 +25,7 @@ import {
   checkIfUnion,
   findIndexOfSubarray,
   tryResolveGenericTypeIfNecessary,
+  checkIfUndefined,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -147,6 +148,10 @@ export function getLLVMType(
     return functionType.getPointerTo();
   }
 
+  if (checkIfUndefined(type, checker)) {
+    return llvm.Type.getInt8Ty(context);
+  }
+
   if (checkIfObject(type)) {
     return getStructType(type as ts.ObjectType, node, generator).getPointerTo();
   }
@@ -157,6 +162,10 @@ export function getLLVMType(
 
   if (checkIfUnion(type)) {
     return getUnionStructType(type as ts.UnionType, node, generator);
+  }
+
+  if (checker.typeToString(type) === "null") {
+    return llvm.Type.getInt8Ty(context);
   }
 
   return error(`Unhandled type: '${checker.typeToString(type)}'`);
@@ -299,11 +308,41 @@ export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLV
   return struct;
 }
 
-export function isUnionLLVMValue(value: llvm.Value): boolean {
+export function isUnionLLVMType(type: llvm.Type): boolean {
   return (
-    (value.type.isPointerTy() && (value.type.elementType as llvm.StructType).name?.endsWith(".union")) ||
-    value.name?.endsWith(".union")
+    (type.isPointerTy() && (type.elementType as llvm.StructType).name?.endsWith(".union")) ||
+    !!(type as llvm.StructType).name?.endsWith(".union")
   );
+}
+
+export function isUnionWithUndefinedLLVMType(type: llvm.Type): boolean {
+  return (
+    (type.isPointerTy() &&
+      (type.elementType as llvm.StructType).name?.endsWith(".union") &&
+      (type.elementType as llvm.StructType).name?.startsWith("undefined.")) ||
+    !!((type as llvm.StructType).name?.endsWith(".union") && (type as llvm.StructType).name?.startsWith("undefined."))
+  );
+}
+
+export function isUnionWithNullLLVMType(type: llvm.Type): boolean {
+  return (
+    (type.isPointerTy() &&
+      (type.elementType as llvm.StructType).name?.endsWith(".union") &&
+      (type.elementType as llvm.StructType).name?.startsWith("null.")) ||
+    !!((type as llvm.StructType).name?.endsWith(".union") && (type as llvm.StructType).name?.startsWith("null."))
+  );
+}
+
+export function isUnionLLVMValue(value: llvm.Value): boolean {
+  return isUnionLLVMType(value.type);
+}
+
+export function isUnionWithUndefinedLLVMValue(value: llvm.Value): boolean {
+  return isUnionWithUndefinedLLVMType(value.type);
+}
+
+export function isUnionWithNullLLVMValue(value: llvm.Value): boolean {
+  return isUnionWithNullLLVMType(value.type);
 }
 
 export function handleFunctionArgument(
@@ -377,6 +416,11 @@ export function initializeUnion(
         break;
       }
     }
+
+    if ((isUnionWithUndefinedLLVMType(unionType) || isUnionWithNullLLVMType(unionType)) && activeIndex === 0) {
+      initializer = llvm.ConstantInt.get(generator.context, -1, 8);
+    }
+
     initializer = generator.builder.createInsertValue(unionValue, initializer, [activeIndex]);
   }
 

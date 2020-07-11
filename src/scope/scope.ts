@@ -27,6 +27,12 @@ export class Environment {
   }
 }
 
+export function injectUndefined(scope: Scope, context: llvm.LLVMContext) {
+  const declarationLLVMType = llvm.Type.getInt8Ty(context);
+  const undef = llvm.UndefValue.get(declarationLLVMType);
+  scope.set("undefined", undef);
+}
+
 export function setLLVMFunctionScope(fn: llvm.Function, scope: Scope) {
   llvm.verifyFunction(fn);
   scope.set(fn.name, fn);
@@ -60,7 +66,13 @@ export class HeapVariableDeclaration {
   }
 }
 
-export type ScopeValue = llvm.Value | Scope | HeapVariableDeclaration | ts.Type | ts.FunctionDeclaration;
+export type ScopeValue =
+  | llvm.Value
+  | llvm.UndefValue
+  | Scope
+  | HeapVariableDeclaration
+  | ts.Type
+  | ts.FunctionDeclaration;
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;

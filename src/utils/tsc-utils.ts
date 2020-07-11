@@ -44,6 +44,10 @@ export function checkIfMethod(expression: ts.Expression, checker: ts.TypeChecker
   );
 }
 
+export function checkIfUndefined(type: ts.Type, checker: ts.TypeChecker): boolean {
+  return checker.typeToString(type) === "undefined";
+}
+
 export function checkIfObject(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Object);
 }

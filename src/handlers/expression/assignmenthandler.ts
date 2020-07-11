@@ -14,6 +14,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { isUnionWithNullLLVMType } from "@utils";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -22,11 +23,19 @@ export class AssignmentHandler extends AbstractExpressionHandler {
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
-          return makeAssignment(
-            this.generator.handleValueExpression(left, env),
-            this.generator.handleExpression(right, env),
-            this.generator
-          );
+          const lhs = this.generator.handleValueExpression(left, env);
+          let rhs;
+          if (right.kind === ts.SyntaxKind.NullKeyword) {
+            rhs = llvm.Constant.getNullValue(lhs.type);
+            if (isUnionWithNullLLVMType(lhs.type)) {
+              rhs = this.generator.builder.createInsertValue(rhs, llvm.ConstantInt.get(this.generator.context, -1, 8), [
+                0,
+              ]);
+            }
+          } else {
+            rhs = this.generator.handleExpression(right, env);
+          }
+          return makeAssignment(lhs, rhs, this.generator);
         default:
           break;
       }
