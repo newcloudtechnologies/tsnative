@@ -1,9 +1,8 @@
-import { createArrayPush, createArrayConstructor } from "@handlers";
-import { error, getLLVMType, getTypeGenericArguments } from "@utils";
+import { error, getLLVMType } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { addClassScope, Environment } from "@scope";
+import { Environment } from "@scope";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -15,8 +14,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
         return this.handleNumericLiteral(expression as ts.NumericLiteral);
       case ts.SyntaxKind.StringLiteral:
         return this.handleStringLiteral(expression as ts.StringLiteral);
-      case ts.SyntaxKind.ArrayLiteralExpression:
-        return this.handleArrayLiteralExpression(expression as ts.ArrayLiteralExpression);
       case ts.SyntaxKind.ObjectLiteralExpression:
         return this.handleObjectLiteralExpression(expression as ts.ObjectLiteralExpression);
       default:
@@ -47,24 +44,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const ptr = this.generator.builder.createGlobalStringPtr(expression.text) as llvm.Constant;
     const allocated = this.generator.gc.allocate((llvmThisType as llvm.PointerType).elementType);
     this.generator.builder.createCall(constructor, [allocated, ptr]);
-    return allocated;
-  }
-
-  private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression): llvm.Value {
-    addClassScope(expression, this.generator.symbolTable.globalScope, this.generator);
-
-    const arrayType = this.generator.checker.getTypeAtLocation(expression);
-    const elementType = getTypeGenericArguments(arrayType)[0];
-
-    const { constructor, allocated } = createArrayConstructor(arrayType, expression, this.generator);
-    this.generator.builder.createCall(constructor, [allocated]);
-
-    const push = createArrayPush(arrayType, elementType, expression, this.generator);
-    for (const element of expression.elements) {
-      const elementValue = this.generator.handleExpression(element);
-      this.generator.builder.createCall(push, [allocated, elementValue]);
-    }
-
     return allocated;
   }
 

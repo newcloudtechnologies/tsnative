@@ -70,6 +70,10 @@ entry:
   %41 = call i8* @_ZN2GC8allocateEj(i32 80)
   %42 = bitcast i8* %41 to %Array__string__class**
   store %Array__string__class* %33, %Array__string__class** %42
+  %43 = call i8* @_ZN2GC8allocateEj(i32 80)
+  %arr = bitcast i8* %43 to %Array__number__class*
+  %44 = call %Array__number__class* @_ZN5ArrayIdEC1Ev(%Array__number__class* %arr)
+  %45 = call double @_ZN5ArrayIdE4pushIJddEEEddDpT_(%Array__number__class* %arr, double 1.000000e+00, double 2.000000e+00, double 3.000000e+00)
   ret i32 0
 }
 
@@ -92,3 +96,5 @@ declare %string* @_ZN6stringC1EPKa(%string*, i8*)
 declare %Array__string__class* @_ZN5ArrayI6stringEC1Ev(%Array__string__class*)
 
 declare double @_ZN5ArrayI6stringE4pushES0_(%Array__string__class*, %string*)
+
+declare double @_ZN5ArrayIdE4pushIJddEEEddDpT_(%Array__number__class*, double, double, double)

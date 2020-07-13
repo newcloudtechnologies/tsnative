@@ -38,7 +38,11 @@ export function setLLVMFunctionScope(fn: llvm.Function, scope: Scope) {
   scope.set(fn.name, fn);
 }
 
-export function addClassScope(expression: ts.Expression, parentScope: Scope, generator: LLVMGenerator): void {
+export function addClassScope(
+  expression: ts.Expression | ts.Declaration,
+  parentScope: Scope,
+  generator: LLVMGenerator
+): void {
   const thisType = generator.checker.getTypeAtLocation(expression) as ts.ObjectType;
   const declaration = getAliasedSymbolIfNecessary(thisType.symbol, generator.checker)
     .valueDeclaration as ts.ClassDeclaration;

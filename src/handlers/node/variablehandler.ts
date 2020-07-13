@@ -10,7 +10,7 @@
  */
 
 import { adjustValue, isCppNumericType } from "@cpp";
-import { Scope, HeapVariableDeclaration, Environment } from "@scope";
+import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
 import {
   isConst,
   checkIfUnion,
@@ -21,10 +21,12 @@ import {
   getLLVMType,
   isUnionWithUndefinedLLVMType,
   isUnionWithNullLLVMType,
+  getTypeGenericArguments,
 } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import * as llvm from "llvm-node";
+import { createArrayConstructor, createArrayPush } from "@handlers";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -48,25 +50,9 @@ export class VariableHandler extends AbstractNodeHandler {
 
   private handleVariableDeclaration(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment): void {
     const name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
-
-    let initializer;
-    if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
-      const declarationType = this.generator.checker.getTypeAtLocation(declaration);
-      const declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
-      initializer = llvm.Constant.getNullValue(declarationLLVMType);
-      if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
-        initializer = this.generator.builder.createInsertValue(
-          initializer,
-          llvm.ConstantInt.get(this.generator.context, -1, 8),
-          [0]
-        );
-      }
-      const alloca = this.generator.gc.allocate(declarationLLVMType);
-      this.generator.builder.createStore(initializer, alloca);
-      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer));
+    let initializer = this.getInitializer(declaration, name, parentScope, env);
+    if (!initializer) {
       return;
-    } else {
-      initializer = this.generator.handleExpression(declaration.initializer, env);
     }
 
     if (initializer.name.startsWith(InternalNames.Closure)) {
@@ -106,5 +92,45 @@ export class VariableHandler extends AbstractNodeHandler {
     declarations.forEach((declaration) => {
       this.handleVariableDeclaration(declaration, parentScope, env);
     });
+  }
+
+  private getInitializer(declaration: ts.VariableDeclaration, name: string, parentScope: Scope, env?: Environment) {
+    let initializer;
+    if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
+      const declarationType = this.generator.checker.getTypeAtLocation(declaration);
+      const declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
+      initializer = llvm.Constant.getNullValue(declarationLLVMType);
+      if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
+        initializer = this.generator.builder.createInsertValue(
+          initializer,
+          llvm.ConstantInt.get(this.generator.context, -1, 8),
+          [0]
+        );
+      }
+      const alloca = this.generator.gc.allocate(declarationLLVMType);
+      this.generator.builder.createStore(initializer, alloca);
+      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer));
+      initializer = undefined;
+    } else if (ts.isArrayLiteralExpression(declaration.initializer)) {
+      addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
+
+      const arrayType = this.generator.checker.getTypeAtLocation(declaration);
+      const elementType = getTypeGenericArguments(arrayType)[0];
+
+      const { constructor, allocated } = createArrayConstructor(arrayType, declaration.initializer, this.generator);
+      this.generator.builder.createCall(constructor, [allocated]);
+
+      const push = createArrayPush(arrayType, elementType, declaration.initializer, this.generator);
+      for (const element of declaration.initializer.elements) {
+        const elementValue = this.generator.handleExpression(element);
+        this.generator.builder.createCall(push, [allocated, elementValue]);
+      }
+
+      initializer = allocated;
+    } else {
+      initializer = this.generator.handleExpression(declaration.initializer, env);
+    }
+
+    return initializer;
   }
 }

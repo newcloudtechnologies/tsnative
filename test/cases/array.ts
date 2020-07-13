@@ -8,3 +8,6 @@ let d = [false, true, a.length === 4];
 const bar = "bar";
 let baz = "baz";
 let e = ["foo", bar, baz];
+
+const arr: number[] = [];
+arr.push(1, 2, 3)
