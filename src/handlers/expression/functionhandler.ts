@@ -30,6 +30,7 @@ import {
   InternalNames,
   getEnvironmentType,
   getClosureType,
+  checkIfStaticMethod,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -181,9 +182,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private handleGetAccessExpression(expression: ts.PropertyAccessExpression): llvm.Value {
-    const thisType = this.generator.checker.getTypeAtLocation(expression.expression);
     const symbol = this.generator.checker.getSymbolAtLocation(expression);
     const valueDeclaration = symbol!.valueDeclaration as ts.GetAccessorDeclaration;
+
+    let thisType;
+    if (!checkIfStaticMethod(valueDeclaration)) {
+      thisType = this.generator.checker.getTypeAtLocation(expression.expression);
+    }
 
     const { isExternalSymbol, qualifiedName } = FunctionMangler.mangle(
       valueDeclaration,
@@ -198,10 +203,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
-    const llvmThisType = parentScope.thisData!.type;
+    let llvmThisType;
+    if (thisType) {
+      llvmThisType = parentScope.thisData!.type;
+    }
     const returnType: ts.Type = this.generator.checker.getTypeAtLocation(expression);
     const llvmReturnType = getLLVMType(returnType, expression, this.generator);
-    const llvmArgumentTypes = [isValueTy(llvmThisType) ? llvmThisType : llvmThisType.getPointerTo()];
+    const llvmArgumentTypes = [];
+    if (llvmThisType) {
+      llvmArgumentTypes.push(isValueTy(llvmThisType) ? llvmThisType : llvmThisType.getPointerTo());
+    }
 
     const { fn, existing } = createLLVMFunction(
       llvmReturnType,
@@ -215,8 +226,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
       setLLVMFunctionScope(fn, parentScope);
     }
 
-    const thisValue = this.generator.handleExpression(expression.expression);
-    const args = [thisValue];
+    const args = [];
+    if (llvmThisType) {
+      const thisValue = this.generator.handleExpression(expression.expression);
+      args.push(thisValue);
+    }
 
     return this.generator.builder.createCall(fn, args);
   }
@@ -630,7 +644,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
           if (thisType) {
             parameterNames.unshift("this");
-          } else {
+          } else if (env) {
             parameterNames.unshift(InternalNames.Environment);
           }
 
@@ -651,15 +665,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
               return;
             }
 
-            this.generator.handleNode(
-              node,
-              bodyScope,
-              new Environment(
+            let innerEnv;
+            if (env) {
+              innerEnv = new Environment(
                 env!.varNames,
                 bodyScope.get(InternalNames.Environment) as llvm.ConstantStruct,
                 env!.rawData
-              )
-            );
+              );
+            }
+
+            this.generator.handleNode(node, bodyScope, innerEnv);
           });
 
           if (!this.generator.isCurrentBlockTerminated) {

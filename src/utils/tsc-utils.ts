@@ -37,10 +37,15 @@ export function getTypename(type: ts.Type, checker: ts.TypeChecker) {
   return type.symbol ? type.symbol.name : checker.typeToString(checker.getBaseTypeOfLiteralType(type));
 }
 
+export function checkIfStaticMethod(valueDeclaration: ts.Declaration): boolean {
+  return valueDeclaration.getText().startsWith(ts.ScriptElementKindModifier.staticModifier);
+}
+
 export function checkIfMethod(expression: ts.Expression, checker: ts.TypeChecker): boolean {
   return (
     ts.isPropertyAccessExpression(expression) &&
-    (checker.getTypeAtLocation(expression).symbol.flags & ts.SymbolFlags.Method) !== 0
+    (checker.getTypeAtLocation(expression).symbol.flags & ts.SymbolFlags.Method) !== 0 &&
+    !checkIfStaticMethod(checker.getTypeAtLocation(expression).getSymbol()!.valueDeclaration)
   );
 }
 
