@@ -1,4 +1,4 @@
-import { Environment } from "@scope";
+import { Environment, Scope } from "@scope";
 import { error, indexOfProperty } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -36,7 +36,19 @@ export class AccessHandler extends AbstractExpressionHandler {
     const propertyName = expression.name.text;
 
     if (ts.isIdentifier(left)) {
-      // @todo
+      const scope = this.generator.symbolTable.get(left.getText());
+      if (scope && scope instanceof Scope) {
+        const value = scope.get(propertyName);
+        if (!value) {
+          error(`Property '${propertyName}' not found in '${left.getText()}'`);
+        }
+
+        if (!(value instanceof llvm.Value)) {
+          error(`Property '${propertyName}' is not a llvm.Value`);
+        }
+
+        return value;
+      }
     }
 
     return this.handlePropertyAccessGEP(propertyName, left, env);
