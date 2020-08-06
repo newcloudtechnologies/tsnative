@@ -12,6 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
+import * as llvm from "llvm-node";
 
 export class ImportsHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -26,12 +27,18 @@ export class ImportsHandler extends AbstractNodeHandler {
               // Try inject named import value in parent scope.
               // If this is the type import we will never find it in symbol table,
               // so `get` will throw an exception that we may ignore without any consequences
-              const value = this.generator.symbolTable.get(name);
-              parentScope.set(name, value);
+              try {
+                const value = this.generator.symbolTable.get(name);
+                parentScope.set(name, value);
+              } catch (_) {
+                // Or maybe it is a class?
+                const value = this.generator.symbolTable.get(name + "__class");
+                parentScope.set(name, value);
+              }
 
               // Ignore empty catch block
               // tslint:disable-next-line
-            } catch (_) {}
+            } catch (_) { }
           });
         }
 

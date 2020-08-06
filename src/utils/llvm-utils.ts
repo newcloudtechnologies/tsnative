@@ -26,6 +26,7 @@ import {
   findIndexOfSubarray,
   tryResolveGenericTypeIfNecessary,
   checkIfUndefined,
+  checkIfArray,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -80,10 +81,12 @@ export function isTypeDeclared(thisType: ts.Type, declaration: ts.Declaration, g
 
 export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean {
   return (
+    checkIfArray(type) ||
     checkIfBoolean(type) ||
     checkIfNumber(type) ||
     checkIfString(type, checker) ||
     checkIfObject(type) ||
+    checkIfFunction(type) ||
     checkIfVoid(type) ||
     isCppNumericType(checker.typeToString(type))
   );
@@ -97,20 +100,28 @@ export function getLLVMType(
 ): llvm.Type {
   const { context, checker } = generator;
 
+  if (type.isIntersection()) {
+    return getIntersectionStructType(type, node, generator).getPointerTo();
+  }
+
+  if (checkIfUnion(type)) {
+    return getUnionStructType(type as ts.UnionType, node, generator).getPointerTo();
+  }
+
   if (isCppNumericType(checker.typeToString(type))) {
     return getNumericType(type, generator)!;
   }
 
   if (Boolean(type.flags & ts.TypeFlags.Enum)) {
-    return llvm.Type.getInt32Ty(context);
+    return llvm.Type.getInt32PtrTy(context);
   }
 
   if (checkIfBoolean(type)) {
-    return llvm.Type.getInt1Ty(context);
+    return llvm.Type.getInt1PtrTy(context);
   }
 
   if (checkIfNumber(type)) {
-    return llvm.Type.getDoubleTy(context);
+    return llvm.Type.getDoublePtrTy(context);
   }
 
   if (checkIfString(type, generator.checker)) {
@@ -133,18 +144,18 @@ export function getLLVMType(
     });
 
     const llvmReturnType = getLLVMType(tsReturnType, node, generator, environmentDataType);
-    const llvmParameters = tsParameterTypes.map((parameterType) => {
-      return getLLVMType(parameterType, node, generator);
-    });
-
+    const llvmParameters = [];
     if (environmentDataType) {
-      llvmParameters.unshift(environmentDataType);
+      llvmParameters.push(environmentDataType);
     } else {
-      llvmParameters.unshift(getEnvironmentType([], generator).getPointerTo());
+      llvmParameters.push(
+        ...tsParameterTypes.map((parameterType) => {
+          return getLLVMType(parameterType, node, generator);
+        })
+      );
     }
 
     const functionType = llvm.FunctionType.get(llvmReturnType, llvmParameters, false);
-
     return functionType.getPointerTo();
   }
 
@@ -156,19 +167,7 @@ export function getLLVMType(
     return getStructType(type as ts.ObjectType, node, generator).getPointerTo();
   }
 
-  if (type.isIntersection()) {
-    return getIntersectionStructType(type, node, generator).getPointerTo();
-  }
-
-  if (checkIfUnion(type)) {
-    return getUnionStructType(type as ts.UnionType, node, generator);
-  }
-
-  if (checker.typeToString(type) === "null") {
-    return llvm.Type.getInt8Ty(context);
-  }
-
-  return error(`Unhandled type: '${checker.typeToString(type)}'`);
+  error(`Unhandled type: '${checker.typeToString(type)}'`);
 }
 
 function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
@@ -208,10 +207,10 @@ export function getUnionStructType(type: ts.UnionType, node: ts.Node, generator:
     type.types.map((t) => {
       const properties = getProperties(t, checker);
       if (properties.length > 0) {
-        return getProperties(t, checker).map((property) => {
+        return properties.map((property) => {
           const tsType = checker.getTypeOfSymbolAtLocation(property, node);
           const llvmType = getLLVMType(tsType, node, generator);
-          const valueType = property.valueDeclaration.decorators?.some(
+          const valueType = property.valueDeclaration?.decorators?.some(
             (decorator) => decorator.getText() === "@ValueType"
           );
           return valueType ? (llvmType as llvm.PointerType).elementType : llvmType;
@@ -243,11 +242,18 @@ export function getSyntheticBody(size: number, context: llvm.LLVMContext): llvm.
 }
 
 export function getEnvironmentType(types: llvm.Type[], generator: LLVMGenerator) {
+  if (types.some((type) => !type.isPointerTy())) {
+    error(
+      `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}`
+    );
+  }
+
   const environmentName =
-    "env" +
+    "env__(" +
     types.reduce((acc, curr) => {
-      return acc + "__" + curr.toString().replace(/\W|\s/g, "_");
-    }, "");
+      return acc + "_" + curr.toString().replace(/\"/g, "");
+    }, "") +
+    ")";
 
   let envType = generator.module.getTypeByName(environmentName);
   if (!envType) {
@@ -259,11 +265,18 @@ export function getEnvironmentType(types: llvm.Type[], generator: LLVMGenerator)
 }
 
 export function getClosureType(types: llvm.Type[], generator: LLVMGenerator) {
+  if (types.some((type) => !type.isPointerTy())) {
+    error(
+      `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}'`
+    );
+  }
+
   const closureName =
-    "cls" +
+    "cls__(" +
     types.reduce((acc, curr) => {
-      return acc + "__" + curr.toString().replace(/\W|\s/g, "_");
-    }, "");
+      return acc + "_" + curr.toString().replace(/\"/g, "");
+    }, "") +
+    ")";
 
   let closureType = generator.module.getTypeByName(closureName);
   if (!closureType) {
@@ -351,18 +364,42 @@ export function handleFunctionArgument(
   env?: Environment
 ): llvm.Value {
   let arg = generator.handleExpression(argument, env);
+  if (!arg.type.isPointerTy()) {
+    // @todo
+    const allocated = generator.gc.allocate(arg.type);
+    generator.builder.createStore(arg, allocated);
+    arg = allocated;
+  }
+
   if (isUnionLLVMValue(arg)) {
     const symbol = generator.checker.getSymbolAtLocation(argument);
     const declaration = symbol!.declarations[0];
-    const declaredType = generator.checker.getTypeAtLocation(declaration!);
-
+    let declaredType = generator.checker.getTypeAtLocation(declaration!);
+    declaredType = tryResolveGenericTypeIfNecessary(declaredType, generator);
     if (!declaredType.isUnion()) {
-      return error("Expected union type");
+      error("Expected union type");
     }
 
-    const actualType = generator.checker.getTypeAtLocation(argument);
-    const unionIndex = declaredType.types.indexOf(actualType);
-    const union = generator.builder.createLoad(arg, arg.name + ".load");
+    let actualType = generator.checker.getTypeAtLocation(argument);
+    actualType = tryResolveGenericTypeIfNecessary(actualType, generator);
+    let unionIndex = declaredType.types.indexOf(actualType);
+
+    if (actualType.isUnionOrIntersection()) {
+      const equalTypes = actualType.types.every((type, index) => type === (declaredType as ts.UnionType).types[index]);
+      if (equalTypes) {
+        unionIndex = 0;
+      }
+    }
+
+    if (unionIndex === -1) {
+      error(
+        `Type ${generator.checker.typeToString(actualType)} not found in union ${generator.checker.typeToString(
+          declaredType
+        )}`
+      );
+    }
+
+    const union = arg.type.isPointerTy() ? generator.builder.createLoad(arg, arg.name + ".load") : arg;
     arg = generator.builder.createExtractValue(union, [unionIndex]);
   }
   return arg;
@@ -394,7 +431,9 @@ export function initializeUnion(
       initializerElementTypes.push(structType.getElementType(i));
     }
 
-    activeIndex = findIndexOfSubarray(elementTypes, initializerElementTypes);
+    activeIndex = findIndexOfSubarray(elementTypes, initializerElementTypes, (lhs: llvm.Type, rhs: llvm.Type) =>
+      lhs.equals(rhs)
+    );
     const initializerValue = initializer.type.isStructTy()
       ? initializer
       : (generator.builder.createLoad(initializer, initializer.name + ".load") as llvm.ConstantStruct);

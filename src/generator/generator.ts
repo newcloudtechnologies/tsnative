@@ -12,7 +12,7 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { createLLVMFunction, error, isValueTy } from "@utils";
+import { createLLVMFunction, error } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC } from "@builtins";
@@ -24,6 +24,7 @@ export class LLVMGenerator {
   readonly symbolTable: SymbolTable;
 
   readonly program: ts.Program;
+  private currentSource: ts.SourceFile | undefined;
 
   private irBuilder: llvm.IRBuilder;
 
@@ -52,10 +53,12 @@ export class LLVMGenerator {
   createModule(): llvm.Module {
     const mainReturnType = llvm.Type.getInt32Ty(this.context);
     const { fn: main } = createLLVMFunction(mainReturnType, [], "main", this.module);
+
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main);
 
     this.builder.setInsertionPoint(entryBlock);
     for (const sourceFile of this.program.getSourceFiles()) {
+      this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
 
       injectUndefined(this.symbolTable.currentScope, this.context);
@@ -120,7 +123,7 @@ export class LLVMGenerator {
       return value;
     }
 
-    return error(
+    error(
       `Unhandled expression of kind ${expression.kind}: '${ts.SyntaxKind[expression.kind]}' at ${expression.getText()}`
     );
   }
@@ -131,10 +134,14 @@ export class LLVMGenerator {
   }
 
   createLoadIfNecessary(value: llvm.Value) {
-    if (value.type.isPointerTy() && isValueTy(value.type.elementType)) {
-      return this.builder.createLoad(value, value.name + ".load");
-    }
     return value;
+  }
+
+  get currentSourceFile(): ts.SourceFile {
+    if (!this.currentSource) {
+      error("No current source available");
+    }
+    return this.currentSource;
   }
 
   get builder(): llvm.IRBuilder {
@@ -148,7 +155,7 @@ export class LLVMGenerator {
   get currentFunction(): llvm.Function {
     const insertBlock = this.builder.getInsertBlock();
     if (!insertBlock) {
-      return error("Cannot get current LLVM function: no insert block");
+      error("Cannot get current LLVM function: no insert block");
     }
     return insertBlock.parent!;
   }

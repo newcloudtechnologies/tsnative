@@ -18,7 +18,12 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
     switch (node.kind) {
       case ts.SyntaxKind.FunctionDeclaration: {
         const functionDeclaration = node as ts.FunctionDeclaration;
-        parentScope.set(functionDeclaration.name!.getText(), functionDeclaration);
+
+        parentScope.set(functionDeclaration.name!.getText(), {
+          declaration: functionDeclaration,
+          scope: this.generator.symbolTable.currentScope,
+          env,
+        });
         return true;
       }
       default:

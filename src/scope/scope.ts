@@ -9,7 +9,7 @@
  *
  */
 
-import { error, getAliasedSymbolIfNecessary, getStructType, InternalNames } from "@utils";
+import { error, getAliasedSymbolIfNecessary, getEnvironmentType, getStructType, InternalNames } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
@@ -17,13 +17,25 @@ import { TypeMangler } from "@mangling";
 
 export class Environment {
   varNames: string[];
-  data: llvm.ConstantStruct;
   rawData: llvm.Value[];
 
-  constructor(varNames: string[], data: llvm.ConstantStruct, rawData: llvm.Value[]) {
+  data: llvm.ConstantStruct;
+  allocated: llvm.Value;
+
+  parent: Environment | undefined;
+
+  constructor(
+    varNames: string[],
+    data: llvm.ConstantStruct,
+    rawData: llvm.Value[],
+    allocated: llvm.Value,
+    parent?: Environment
+  ) {
     this.varNames = varNames;
-    this.data = data;
     this.rawData = rawData;
+    this.data = data;
+    this.allocated = allocated;
+    this.parent = parent;
   }
 }
 
@@ -35,7 +47,12 @@ export function injectUndefined(scope: Scope, context: llvm.LLVMContext) {
 
 export function setLLVMFunctionScope(fn: llvm.Function, scope: Scope) {
   llvm.verifyFunction(fn);
-  scope.set(fn.name, fn);
+
+  // Function declaration may be in scope with same name.
+  // @todo: overwrite?
+  if (!scope.get(fn.name)) {
+    scope.set(fn.name, fn);
+  }
 }
 
 export function addClassScope(
@@ -63,12 +80,114 @@ export function addClassScope(
 export class HeapVariableDeclaration {
   allocated: llvm.Value;
   initializer: llvm.Value;
+  declaration: ts.VariableDeclaration | undefined;
 
-  constructor(alloca: llvm.Value, initializer: llvm.Value) {
+  constructor(alloca: llvm.Value, initializer: llvm.Value, declaration?: ts.VariableDeclaration) {
     this.allocated = alloca;
     this.initializer = initializer;
+    this.declaration = declaration;
   }
 }
+
+export function createEnvironment(
+  scope: Scope,
+  environmentVariables: string[],
+  generator: LLVMGenerator,
+  functionData?: { args: llvm.Value[]; signature: ts.Signature },
+  outerEnv?: Environment
+) {
+  const context = populateContext(generator, scope, environmentVariables);
+  const types = context.map((value) => value.allocated.type);
+
+  const allocations = context.map((value) => value.allocated);
+  const names = context.map((value) => value.allocated.name);
+
+  if (functionData) {
+    const argsTypes = functionData.args.map((arg) => {
+      if (!arg.type.isPointerTy()) {
+        error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
+      }
+      return arg.type;
+    });
+
+    allocations.push(...functionData.args);
+    types.push(...argsTypes);
+    names.push(...functionData.signature.getParameters().map((p) => p.escapedName.toString()));
+  }
+
+  if (outerEnv) {
+    const envElementType = outerEnv.data.type as llvm.StructType;
+
+    for (let i = 0; i < envElementType.numElements; ++i) {
+      const elementType = envElementType.getElementType(i);
+      if (!elementType.isPointerTy()) {
+        error(`Outer environment element expected to be of PointerType, got '${elementType.toString()}'`);
+      }
+      types.push(envElementType.getElementType(i));
+    }
+
+    const outerValues = [];
+    const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.data;
+    for (let i = 0; i < envElementType.numElements; ++i) {
+      const extracted = data.type.isPointerTy()
+        ? generator.builder.createLoad(
+            generator.builder.createInBoundsGEP(data, [
+              llvm.ConstantInt.get(generator.context, 0),
+              llvm.ConstantInt.get(generator.context, i),
+            ])
+          )
+        : generator.builder.createExtractValue(data, [i]);
+      outerValues.push(extracted);
+    }
+
+    allocations.push(...outerValues);
+    names.push(...outerEnv.varNames.filter((name) => !name.startsWith(InternalNames.Environment)));
+  }
+
+  const environmentDataType = getEnvironmentType(types, generator);
+  const environmentData = allocations.reduce(
+    (acc, allocation, idx) => generator.builder.createInsertValue(acc, allocation, [idx]),
+    llvm.Constant.getNullValue(environmentDataType)
+  ) as llvm.Constant;
+
+  const environmentAlloca = generator.gc.allocate(environmentDataType);
+  generator.builder.createStore(environmentData, environmentAlloca);
+
+  return new Environment(names, environmentData, allocations, environmentAlloca, outerEnv);
+}
+
+export function populateContext(generator: LLVMGenerator, scope: Scope, environmentVariables: string[]) {
+  const context: HeapVariableDeclaration[] = [];
+
+  scope.map.forEach((scopeVal, key) => {
+    if (environmentVariables.indexOf(key) === -1) {
+      return;
+    }
+
+    if (scopeVal instanceof HeapVariableDeclaration) {
+      scopeVal.allocated.name = key;
+      context.push(scopeVal);
+    } else if (scopeVal instanceof llvm.Value) {
+      scopeVal.name = key;
+      // @todo?
+      context.push(new HeapVariableDeclaration(scopeVal, scopeVal));
+    } else if (scopeVal instanceof Scope) {
+      context.push(...populateContext(generator, scopeVal, environmentVariables));
+    }
+  });
+
+  if (scope.parent) {
+    context.push(...populateContext(generator, scope.parent, environmentVariables));
+  }
+
+  return context;
+}
+
+export type FunctionDeclarationScopeEnvironment = {
+  declaration: ts.FunctionDeclaration;
+  scope: Scope;
+  env?: Environment;
+};
 
 export type ScopeValue =
   | llvm.Value
@@ -76,7 +195,11 @@ export type ScopeValue =
   | Scope
   | HeapVariableDeclaration
   | ts.Type
-  | ts.FunctionDeclaration;
+  | FunctionDeclarationScopeEnvironment;
+
+export function isFunctionDeclarationScopeEnvironment(value: ScopeValue) {
+  return "declaration" in value && "scope" in value && "env" in value;
+}
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
@@ -118,7 +241,7 @@ export class Scope {
       return this.map.set(identifier, value);
     }
 
-    return error(`Identifier '${identifier}' already exists. Use 'Scope.overwrite' instead of 'Scope.set'`);
+    error(`Identifier '${identifier}' already exists. Use 'Scope.overwrite' instead of 'Scope.set'`);
   }
 
   overwrite(identifier: string, value: ScopeValue) {
@@ -126,6 +249,6 @@ export class Scope {
       return this.map.set(identifier, value);
     }
 
-    return error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+    error(`Identifier '${identifier}' being overwritten not found in symbol table`);
   }
 }

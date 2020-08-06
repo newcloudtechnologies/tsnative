@@ -14,9 +14,25 @@ import { error, reverse } from "@utils";
 
 export class SymbolTable {
   private readonly scopes: Scope[];
+  private readonly objectNames: string[];
 
   constructor() {
     this.scopes = [new Scope("root")];
+    this.objectNames = [];
+  }
+
+  addObjectName(objectName: string) {
+    this.objectNames.push(objectName);
+  }
+
+  getObjectName(fieldName: string) {
+    // @todo. This is an heuristic algorithm, so it's worth to handle the case of multiple objectName matches as an error!
+    for (const objectName of this.objectNames) {
+      if (objectName.includes(fieldName)) {
+        return objectName;
+      }
+    }
+    return;
   }
 
   get(identifier: string): ScopeValue {
@@ -24,7 +40,7 @@ export class SymbolTable {
     if (parts.length > 1) {
       const outerScope = this.get(parts[0]);
       if (!(outerScope instanceof Scope)) {
-        return error(`No namespace '${parts[0]}' found`);
+        error(`No namespace '${parts[0]}' found`);
       }
       return this.getNested(parts, outerScope);
     }
@@ -35,7 +51,7 @@ export class SymbolTable {
         return value;
       }
     }
-    return error(`Identifier '${identifier}' not found`);
+    error(`Identifier '${identifier}' not found`);
   }
 
   addScope(name: string): void {
@@ -61,7 +77,7 @@ export class SymbolTable {
 
   private getNested(parts: string[], scope: Scope): ScopeValue {
     if (!scope) {
-      return error(`No scope provided for '${parts}'`);
+      error(`No scope provided for '${parts}'`);
     }
     if (parts.length === 1) {
       if (scope.name === parts[0]) {
@@ -70,7 +86,7 @@ export class SymbolTable {
         const value = scope.get(parts[0]);
         if (value) return value;
 
-        return error(`Identifier '${parts[0]}' not found`);
+        error(`Identifier '${parts[0]}' not found`);
       }
     }
     return this.getNested(parts.slice(1), scope.get(parts[1]) as Scope);

@@ -1,4 +1,4 @@
-import { error, getLLVMType } from "@utils";
+import { withObjectProperties } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -15,7 +15,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.StringLiteral:
         return this.handleStringLiteral(expression as ts.StringLiteral);
       case ts.SyntaxKind.ObjectLiteralExpression:
-        return this.handleObjectLiteralExpression(expression as ts.ObjectLiteralExpression);
+        return this.handleObjectLiteralExpression(expression as ts.ObjectLiteralExpression, env);
       default:
         break;
     }
@@ -28,14 +28,20 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleBooleanLiteral(expression: ts.BooleanLiteral): llvm.Value {
+    const allocated = this.generator.gc.allocate(llvm.Type.getIntNTy(this.generator.context, 1));
     if (expression.kind === ts.SyntaxKind.TrueKeyword) {
-      return llvm.ConstantInt.getTrue(this.generator.context);
+      this.generator.builder.createStore(llvm.ConstantInt.getTrue(this.generator.context), allocated);
+    } else {
+      this.generator.builder.createStore(llvm.ConstantInt.getFalse(this.generator.context), allocated);
     }
-    return llvm.ConstantInt.getFalse(this.generator.context);
+    return allocated;
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): llvm.Value {
-    return llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
+    const allocated = this.generator.gc.allocate(llvm.Type.getDoublePtrTy(this.generator.context));
+    const value = llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
+    this.generator.builder.createStore(value, allocated);
+    return allocated;
   }
 
   private handleStringLiteral(expression: ts.StringLiteral): llvm.Value {
@@ -47,30 +53,37 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return allocated;
   }
 
-  private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression): llvm.Value {
-    const type = getLLVMType(this.generator.checker.getTypeAtLocation(expression), expression, this.generator);
-    const object = this.generator.gc.allocate(type.isPointerTy() ? type.elementType : type);
+  private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression, env?: Environment): llvm.Value {
+    const types: llvm.Type[] = [];
+    const llvmValues = withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
+      const value = ts.isPropertyAssignment(property)
+        ? this.generator.handleExpression(property.initializer, env)
+        : this.generator.handleExpression((property as ts.ShorthandPropertyAssignment).name, env);
+      types.push(value.type);
+      return value;
+    });
 
+    const objectType = llvm.StructType.get(this.generator.context, types);
+    const object = this.generator.gc.allocate(objectType.isPointerTy() ? objectType.elementType : objectType);
+
+    const propertyNames: string[] = [];
     let propertyIndex = 0;
-    for (const property of expression.properties) {
-      switch (property.kind) {
-        case ts.SyntaxKind.PropertyAssignment:
-        case ts.SyntaxKind.ShorthandPropertyAssignment:
-          const value = ts.isPropertyAssignment(property)
-            ? this.generator.handleExpression(property.initializer)
-            : this.generator.handleExpression(property.name);
+    withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
+      const indexList = [
+        llvm.ConstantInt.get(this.generator.context, 0),
+        llvm.ConstantInt.get(this.generator.context, propertyIndex),
+      ];
+      const pointer = this.generator.builder.createInBoundsGEP(object, indexList, property.name!.getText());
+      this.generator.builder.createStore(llvmValues[propertyIndex], pointer);
 
-          const indexList = [
-            llvm.ConstantInt.get(this.generator.context, 0),
-            llvm.ConstantInt.get(this.generator.context, propertyIndex++),
-          ];
-          const pointer = this.generator.builder.createInBoundsGEP(object, indexList, property.name.getText());
-          this.generator.builder.createStore(value, pointer);
-          break;
-        default:
-          return error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
-      }
-    }
+      const propertyTypename = this.generator.checker.typeToString(this.generator.checker.getTypeAtLocation(property));
+
+      propertyNames.push(property.name!.getText() + "__" + propertyTypename);
+      ++propertyIndex;
+    });
+
+    const objectName = propertyNames.join(",");
+    this.generator.symbolTable.addObjectName(objectName);
 
     return object;
   }

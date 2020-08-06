@@ -19,7 +19,7 @@ export function isConst(node: ts.VariableDeclaration | ts.VariableDeclarationLis
 export function indexOfProperty(name: string, type: ts.Type, checker: ts.TypeChecker): number {
   const index = checker.getPropertiesOfType(type).findIndex((property) => property.name === name);
   if (index < 0) {
-    return error(`No property '${name}' on type '${checker.typeToString(type)}'`);
+    error(`No property '${name}' on type '${checker.typeToString(type)}'`);
   }
   return index;
 }
@@ -54,18 +54,18 @@ export function checkIfUndefined(type: ts.Type, checker: ts.TypeChecker): boolea
 }
 
 export function checkIfObject(type: ts.Type): boolean {
-  return Boolean(type.flags & ts.TypeFlags.Object);
+  return Boolean(type.flags & ts.TypeFlags.Object) && !checkIfFunction(type);
 }
 
 export function checkIfFunction(type: ts.Type): boolean {
   return (
     Boolean(type.symbol?.flags & ts.SymbolFlags.Function) ||
-    Boolean(type.symbol && type.symbol.members?.get(ts.InternalSymbolName.Call))
+    Boolean(type.symbol?.members?.get(ts.InternalSymbolName.Call))
   );
 }
 
 export function checkIfArray(type: ts.Type): boolean {
-  return type.symbol && type.symbol.name === "Array";
+  return Boolean(type.symbol?.name === "Array");
 }
 
 export function checkIfString(type: ts.Type, checker: ts.TypeChecker): boolean {

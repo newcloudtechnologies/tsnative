@@ -87,7 +87,7 @@ export function getIntegralLLVMTypeTypename(type: llvm.Type): string {
   }
 
   if (type.isIntegerTy(128)) {
-    return error("128 bits width integral type is reserved for conversion from FP-values to integral values");
+    error("128 bits width integral type is reserved for conversion from FP-values to integral values");
   }
 
   return "";

@@ -52,7 +52,7 @@ export class UnaryHandler extends AbstractExpressionHandler {
           makeBoolean(this.generator.handleExpression(operand, env), operand, this.generator)
         );
       default:
-        return error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
+        error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
     }
   }
 

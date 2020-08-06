@@ -78,10 +78,13 @@ export class VariableHandler extends AbstractNodeHandler {
         initializer = initializeUnion(llvmUnionType, initializer, this.generator);
       }
 
-      const alloca = this.generator.gc.allocate(initializer.type);
-      this.generator.builder.createStore(initializer, alloca);
+      const allocated = this.generator.gc.allocate(initializer.type);
+      this.generator.builder.createStore(
+        initializer.type.isPointerTy() ? this.generator.builder.createLoad(initializer) : initializer,
+        allocated
+      );
 
-      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer));
+      parentScope.set(name, new HeapVariableDeclaration(allocated, initializer, declaration));
     }
   }
 
@@ -97,9 +100,23 @@ export class VariableHandler extends AbstractNodeHandler {
   private getInitializer(declaration: ts.VariableDeclaration, name: string, parentScope: Scope, env?: Environment) {
     let initializer;
     if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
-      const declarationType = this.generator.checker.getTypeAtLocation(declaration);
-      const declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
-      initializer = llvm.Constant.getNullValue(declarationLLVMType);
+      let declarationLLVMType;
+      if (declaration.type) {
+        const typename = (declaration.type as ts.TypeReferenceNode).typeName.getText();
+        const typeAliasScope = this.generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as Scope;
+        if (typeAliasScope) {
+          declarationLLVMType = typeAliasScope.thisData!.type;
+        }
+      }
+
+      if (!declarationLLVMType) {
+        const declarationType = this.generator.checker.getTypeAtLocation(declaration);
+        declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
+      }
+
+      initializer = llvm.Constant.getNullValue(
+        declarationLLVMType.isPointerTy() ? declarationLLVMType.elementType : declarationLLVMType
+      );
       if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
         initializer = this.generator.builder.createInsertValue(
           initializer,
@@ -109,7 +126,7 @@ export class VariableHandler extends AbstractNodeHandler {
       }
       const alloca = this.generator.gc.allocate(declarationLLVMType);
       this.generator.builder.createStore(initializer, alloca);
-      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer));
+      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, declaration));
       initializer = undefined;
     } else if (ts.isArrayLiteralExpression(declaration.initializer)) {
       addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);

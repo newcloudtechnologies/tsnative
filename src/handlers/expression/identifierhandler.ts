@@ -45,10 +45,14 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       }
     }
 
-    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(expression.text, !!env);
+    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(expression.text, false);
     if (value) {
       if (value instanceof HeapVariableDeclaration) {
         return value.allocated;
+      }
+
+      if (!(value instanceof llvm.Value)) {
+        error(`Identifier handler: llvm.Value for '${expression.text}' not found`);
       }
 
       return value as llvm.Value;

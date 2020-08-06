@@ -12,10 +12,12 @@ import {
   initializeUnion,
   isUnionWithUndefinedLLVMValue,
   isUnionWithNullLLVMValue,
+  checkIfFunction,
+  checkIfObject,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { Scope } from "@scope";
+import { Environment, Scope } from "@scope";
 
 export function castToInt32AndBack(
   values: llvm.Value[],
@@ -65,6 +67,14 @@ export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: L
     right = initializeUnion(unionType, right, generator);
   }
 
+  if (!left.type.isPointerTy()) {
+    error("Assingment destination expected to be of PointerType");
+  }
+
+  if (right.type.isPointerTy() && !left.type.elementType.isPointerTy()) {
+    right = generator.builder.createLoad(right); // @todo
+  }
+
   generator.builder.createStore(right, left);
   return right;
 }
@@ -94,7 +104,7 @@ export function makeBoolean(value: llvm.Value, expression: ts.Expression, genera
     return llvm.ConstantInt.getTrue(generator.context);
   }
 
-  return error(`Unable to convert operand of type ${value.type} to boolean value`);
+  error(`Unable to convert operand of type ${value.type} to boolean value`);
 }
 
 export function isConvertible(lhs: llvm.Type, rhs: llvm.Type): boolean {
@@ -148,7 +158,7 @@ export function handleBinaryWithConversion(
     return handler.apply(generator.builder, args);
   }
 
-  return error("Invalid types to handle with conversion");
+  error("Invalid types to handle with conversion");
 }
 
 export function getFunctionDeclarationScope(
@@ -253,4 +263,135 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
   }
 
   return namespace;
+}
+
+export function getReturnObjectType(functionBody: ts.ConciseBody, generator: LLVMGenerator, env?: Environment) {
+  return generator.withInsertBlockKeeping(() => {
+    return generator.symbolTable.withLocalScope((bodyScope) => {
+      let returnType: llvm.PointerType | undefined;
+      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
+      generator.builder.setInsertionPoint(dummyBlock);
+
+      if (ts.isBlock(functionBody)) {
+        functionBody.forEachChild((node) => {
+          if (ts.isReturnStatement(node) && node.expression && ts.isObjectLiteralExpression(node.expression)) {
+            const propertyAssignments: ts.ObjectLiteralElementLike[] = node.expression.properties.filter((p) =>
+              ts.isPropertyAssignment(p)
+            );
+            const types = propertyAssignments.map((property) => {
+              return generator.handleExpression((property as ts.PropertyAssignment).initializer, env)
+                .type as llvm.PointerType;
+            });
+            const objectType = llvm.StructType.get(generator.context, [
+              ...types.map((type) => type as llvm.Type),
+            ]).getPointerTo();
+            returnType = objectType;
+          } else {
+            generator.handleNode(node, bodyScope, env); // @todo
+          }
+        });
+      } else {
+        const handled = generator.handleExpression(functionBody, env);
+        returnType = handled.type as llvm.PointerType;
+      }
+
+      dummyBlock.eraseFromParent();
+      return returnType;
+    }, generator.symbolTable.currentScope);
+  });
+}
+
+export function getNestedFunctionType(functionBody: ts.ConciseBody, generator: LLVMGenerator, env?: Environment) {
+  let closureType: llvm.Type;
+  return generator.withInsertBlockKeeping(() => {
+    return generator.symbolTable.withLocalScope((bodyScope) => {
+      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
+      generator.builder.setInsertionPoint(dummyBlock);
+
+      if (ts.isBlock(functionBody)) {
+        functionBody.forEachChild((node) => {
+          if (ts.isReturnStatement(node) && node.expression) {
+            // @todo: check if closure returns!
+            const closure = generator.handleExpression(node.expression, env);
+            closureType = closure.type;
+          } else {
+            if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
+              generator.handleNode(node, bodyScope, env);
+            }
+          }
+        });
+      } else {
+        error("Function context deducing for arrow functions without block body is not supported");
+      }
+
+      dummyBlock.eraseFromParent();
+      return closureType;
+    }, generator.symbolTable.currentScope);
+  });
+}
+
+export function getLLVMReturnType(
+  tsReturnType: ts.Type,
+  expression: ts.Expression,
+  functionBody: ts.ConciseBody | undefined,
+  generator: LLVMGenerator,
+  env?: Environment
+) {
+  let llvmReturnType: llvm.Type;
+  if (checkIfFunction(tsReturnType)) {
+    llvmReturnType = getNestedFunctionType(functionBody!, generator, env);
+  } else if (checkIfObject(tsReturnType)) {
+    const objectType = getReturnObjectType(functionBody!, generator, env);
+    llvmReturnType = objectType || getLLVMType(tsReturnType, expression, generator);
+  } else {
+    llvmReturnType = getLLVMType(tsReturnType, expression, generator);
+  }
+
+  if (llvmReturnType.isVoidTy()) {
+    return llvmReturnType;
+  }
+
+  return llvmReturnType.isPointerTy() ? llvmReturnType : llvmReturnType.getPointerTo();
+}
+
+export function getFunctionEnvironmentVariables(
+  body: ts.ConciseBody,
+  signature: ts.Signature,
+  generator: LLVMGenerator
+) {
+  return generator.withInsertBlockKeeping(() => {
+    return generator.symbolTable.withLocalScope((bodyScope) => {
+      const externalVariables: string[] = [];
+
+      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
+      generator.builder.setInsertionPoint(dummyBlock);
+
+      const visitor = (node: ts.Node) => {
+        if (ts.isIdentifier(node) && !bodyScope.map.get(node.getText())) {
+          externalVariables.push(node.getText());
+        }
+
+        if (node.getChildCount()) {
+          node.forEachChild(visitor);
+        }
+      };
+
+      try {
+        body.forEachChild((node) => {
+          if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
+            generator.handleExpression(node.expression);
+          }
+        });
+      } catch (_) {
+        /* Swallow all the errors, we are not really handling anything here, only populating the body scope. */
+      }
+
+      ts.forEachChild(body, visitor);
+
+      dummyBlock.eraseFromParent();
+      // @todo: check arguments usage too
+      externalVariables.push(...signature.getParameters().map((p) => p.escapedName.toString()));
+      return externalVariables;
+    }, generator.symbolTable.currentScope);
+  });
 }

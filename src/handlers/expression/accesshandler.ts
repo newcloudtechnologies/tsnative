@@ -1,4 +1,4 @@
-import { Scope, Environment } from "@scope";
+import { Environment } from "@scope";
 import { error, indexOfProperty } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -17,9 +17,9 @@ export class AccessHandler extends AbstractExpressionHandler {
           break;
         }
 
-        return this.handlePropertyAccessExpression(expression as ts.PropertyAccessExpression);
+        return this.handlePropertyAccessExpression(expression as ts.PropertyAccessExpression, env);
       case ts.SyntaxKind.ElementAccessExpression:
-        return this.handleElementAccessExpression(expression as ts.ElementAccessExpression);
+        return this.handleElementAccessExpression(expression as ts.ElementAccessExpression, env);
       default:
         break;
     }
@@ -31,32 +31,29 @@ export class AccessHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handlePropertyAccessExpression(expression: ts.PropertyAccessExpression): llvm.Value {
+  private handlePropertyAccessExpression(expression: ts.PropertyAccessExpression, env?: Environment): llvm.Value {
     const left = expression.expression;
     const propertyName = expression.name.text;
 
     if (ts.isIdentifier(left)) {
-      const value = this.generator.symbolTable.get((left as ts.Identifier).text);
-      if (value instanceof Scope) {
-        return value.get(propertyName) as llvm.Value;
-      }
+      // @todo
     }
 
-    return this.handlePropertyAccessGEP(propertyName, left);
+    return this.handlePropertyAccessGEP(propertyName, left, env);
   }
 
-  private handleElementAccessExpression(expression: ts.ElementAccessExpression): llvm.Value {
+  private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): llvm.Value {
     const subscription = createArraySubscription(expression, this.generator);
-    const array = this.generator.handleExpression(expression.expression);
-    const index = this.generator.handleExpression(expression.argumentExpression);
+    const array = this.generator.handleExpression(expression.expression, env);
+    const index = this.generator.handleExpression(expression.argumentExpression, env);
     return this.generator.builder.createCall(subscription, [array, index]);
   }
 
-  private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression): llvm.Value {
-    const value = this.generator.handleExpression(expression);
+  private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): llvm.Value {
+    const value = this.generator.handleExpression(expression, env);
 
     if (!value.type.isPointerTy() || !value.type.elementType.isStructTy()) {
-      return error(`Expected pointer to struct, got '${value.type}'`);
+      error(`Expected pointer to struct, got '${value.type}'`);
     }
 
     const { checker, builder, context } = this.generator;

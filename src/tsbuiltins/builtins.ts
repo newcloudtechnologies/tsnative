@@ -45,7 +45,7 @@ export class GC {
       llvm.ConstantInt.get(this.generator.context, size > 0 ? size : 1, 32),
     ]);
 
-    return this.generator.builder.createBitCast(returnValue, type.getPointerTo());
+    return this.generator.builder.createBitCast(returnValue, type.isPointerTy() ? type : type.getPointerTo());
   }
 }
 

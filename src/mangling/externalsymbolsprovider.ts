@@ -27,7 +27,7 @@ export let externalMangledSymbolsTable: string[] = [];
 export let externalDemangledSymbolsTable: string[] = [];
 export function injectExternalSymbolsTables(mangled: string[], demangled: string[]): void {
   if (mangled.length !== demangled.length) {
-    return error("Symbols tables size mismatch");
+    error("Symbols tables size mismatch");
   }
 
   externalMangledSymbolsTable = mangled;
@@ -304,7 +304,7 @@ export class ExternalSymbolsProvider {
     candidates = candidates.filter((candidate) => this.isMatching(candidate.signature));
     if (candidates.length > 1) {
       console.log(candidates);
-      return error("Ambiguous function call");
+      error("Ambiguous function call");
     }
     return externalMangledSymbolsTable[candidates[0]?.index];
   }

@@ -72,7 +72,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to bitwise AND");
+    error("Invalid operand types to bitwise AND");
   }
 
   private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -101,7 +101,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to bitwise OR");
+    error("Invalid operand types to bitwise OR");
   }
 
   private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -130,7 +130,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to bitwise XOR");
+    error("Invalid operand types to bitwise XOR");
   }
 
   private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -159,7 +159,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to left shift");
+    error("Invalid operand types to left shift");
   }
 
   private handleRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -188,7 +188,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to right shift");
+    error("Invalid operand types to right shift");
   }
 
   private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -217,6 +217,6 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to logical right shift");
+    error("Invalid operand types to logical right shift");
   }
 }

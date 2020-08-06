@@ -46,11 +46,22 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
   }
 
   private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left: llvm.Value = this.generator.handleExpression(lhs, env);
+    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+
+    if (left.type.isPointerTy()) {
+      left = this.generator.builder.createLoad(left);
+    }
+
+    if (right.type.isPointerTy()) {
+      right = this.generator.builder.createLoad(right);
+    }
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFAdd(left, right);
+      const sum = this.generator.builder.createFAdd(left, right);
+      const allocated = this.generator.gc.allocate(sum.type);
+      this.generator.builder.createStore(sum, allocated);
+      return allocated;
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
@@ -76,7 +87,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       return sret;
     }
 
-    return error("Invalid operand types to binary plus");
+    error("Invalid operand types to binary plus");
   }
 
   private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -103,7 +114,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to binary minus");
+    error("Invalid operand types to binary minus");
   }
 
   private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -130,7 +141,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to multiply");
+    error("Invalid operand types to multiply");
   }
 
   private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -160,7 +171,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to division");
+    error("Invalid operand types to division");
   }
 
   private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -190,6 +201,6 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to modulo");
+    error("Invalid operand types to modulo");
   }
 }

@@ -185,7 +185,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
     if (oldValue.type.isDoubleTy() && right.type.isDoubleTy()) {
       if (!fpHandler) {
-        return error("Floating point type met, but no handler provided");
+        error("Floating point type met, but no handler provided");
       }
       const newValue = fpHandler(oldValue, right);
       return makeAssignment(left, newValue, this.generator);
@@ -193,7 +193,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
     if (oldValue.type.isIntegerTy() && right.type.isIntegerTy()) {
       if (!iHandler) {
-        return error("Integer type met, but no handler provided");
+        error("Integer type met, but no handler provided");
       }
 
       const newValue = iHandler(oldValue, right);
@@ -202,7 +202,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
     if (checkIfLLVMString(oldValue.type) && checkIfLLVMString(right.type)) {
       if (!sHandler) {
-        return error("String type met, but no handler provided");
+        error("String type met, but no handler provided");
       }
       const newValue = sHandler(oldValue, right, this.generator);
       return makeAssignment(left, newValue, this.generator);
@@ -210,11 +210,11 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
     if (oldValue.type.isIntegerTy() && right.type.isDoubleTy()) {
       if (!iHandler) {
-        return error("Integer type met, but no handler provided");
+        error("Integer type met, but no handler provided");
       }
 
       if (!left.type.isPointerTy()) {
-        return error("Pointer type expected");
+        error("Pointer type expected");
       }
 
       right = castFPToIntegralType(
@@ -230,7 +230,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
     if (oldValue.type.isDoubleTy() && right.type.isIntegerTy()) {
       if (!fpHandler) {
-        return error("Floating point type met, but no handler provided");
+        error("Floating point type met, but no handler provided");
       }
 
       right = promoteIntegralToFP(right, oldValue.type, isSigned(rhs, this.generator), this.generator);
@@ -239,6 +239,6 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       return makeAssignment(left, newValue, this.generator);
     }
 
-    return error("Invalid operand types to compound assignment");
+    error("Invalid operand types to compound assignment");
   }
 }

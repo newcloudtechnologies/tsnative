@@ -48,17 +48,17 @@ export class NodeHandlerChain {
     const typeAlias = new TypeAliasHandler(generator);
     const variable = new VariableHandler(generator);
 
-    imports.setNext(functionDeclaraion);
+    imports.setNext(typeAlias);
+    typeAlias.setNext(expressionStatement);
+    expressionStatement.setNext(variable);
+    variable.setNext(functionDeclaraion);
     functionDeclaraion.setNext(block);
     block.setNext(branch);
     branch.setNext(bypassing);
     bypassing.setNext(clazz);
-    clazz.setNext(expressionStatement);
-    expressionStatement.setNext(loop);
+    clazz.setNext(loop);
     loop.setNext(module);
     module.setNext(ret);
-    ret.setNext(typeAlias);
-    typeAlias.setNext(variable);
 
     this.root = imports;
   }

@@ -54,7 +54,7 @@ export class SysVFunctionHandler {
     const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
     const body = valueDeclaration.body;
     if (body) {
-      return error(`External symbol '${qualifiedName}' cannot have function body`);
+      error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
     const thisValue = this.generator.handleExpression(expression.expression);
@@ -108,7 +108,7 @@ export class SysVFunctionHandler {
 
     const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
     if (valueDeclaration.body) {
-      return error(`External symbol '${qualifiedName}' cannot have function body`);
+      error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
     const args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator, env));
@@ -154,7 +154,7 @@ export class SysVFunctionHandler {
 
     let thisValue: llvm.Value | undefined;
     if (body && !existing) {
-      return error(`External symbol '${qualifiedName}' cannot have constructor body`);
+      error(`External symbol '${qualifiedName}' cannot have constructor body`);
     }
 
     thisValue = this.generator.gc.allocate(llvmThisType.elementType);

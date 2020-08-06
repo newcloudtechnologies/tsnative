@@ -61,7 +61,7 @@ export class LogicHandler extends AbstractExpressionHandler {
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
-    return error("Invalid operand types to logical AND");
+    error("Invalid operand types to logical AND");
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -86,6 +86,6 @@ export class LogicHandler extends AbstractExpressionHandler {
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }
 
-    return error("Invalid operand types to logical OR");
+    error("Invalid operand types to logical OR");
   }
 }

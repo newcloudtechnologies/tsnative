@@ -65,13 +65,18 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
 
 export function getGenericsToActualMapFromSignature(
   signature: ts.Signature,
-  expression: ts.Expression,
+  expression: ts.CallLikeExpression,
   generator: LLVMGenerator
 ): { [_: string]: ts.Type } {
   const { checker } = generator;
   const formalTypeParameters = signature.getTypeParameters();
   const formalParameters = signature.getParameters();
-  const resolvedSignature = checker.getResolvedSignature(expression as ts.CallLikeExpression)!;
+  const resolvedSignature = checker.getResolvedSignature(expression);
+
+  if (!resolvedSignature) {
+    error(`Failed to get resolved signature for '${expression.getText()}'`);
+  }
+
   const map: { [key: string]: ts.Type } = {};
   const actualParameters = resolvedSignature.getParameters();
 
@@ -156,23 +161,29 @@ export function tryResolveGenericTypeIfNecessary(tsType: ts.Type, generator: LLV
       tsType = generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as ts.Type;
     }
     if (!tsType) {
-      return error(`Unsupported type: '${generator.checker.typeToString(tsType)}'`);
+      error(`Unsupported type: '${generator.checker.typeToString(tsType)}'`);
     }
   }
 
   return tsType;
 }
 
-export function findIndexOfSubarray(arr: llvm.Type[], subarr: llvm.Type[]): number {
-  position_loop: for (let i = 0; i <= arr.length - subarr.length; ++i) {
-    for (let j = 0; j < subarr.length; ++j) {
-      if (!arr[i + j].equals(subarr[j])) {
-        continue position_loop;
-      }
+export function withObjectProperties<R>(
+  expression: ts.ObjectLiteralExpression,
+  action: (property: ts.ObjectLiteralElementLike) => R
+): R[] {
+  const resultArray = [];
+  for (const property of expression.properties) {
+    switch (property.kind) {
+      case ts.SyntaxKind.PropertyAssignment:
+      case ts.SyntaxKind.ShorthandPropertyAssignment:
+        resultArray.push(action(property));
+        break;
+      default:
+        error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
     }
-    return i;
   }
-  return -1;
+  return resultArray;
 }
 
 export enum InternalNames {

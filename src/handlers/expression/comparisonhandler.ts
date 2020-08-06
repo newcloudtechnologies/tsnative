@@ -70,6 +70,14 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     rhsLLVM: llvm.Value,
     env?: Environment
   ): llvm.Value {
+    if (lhsLLVM.type.isPointerTy()) {
+      lhsLLVM = this.generator.builder.createLoad(lhsLLVM);
+    }
+
+    if (rhsLLVM.type.isPointerTy()) {
+      rhsLLVM = this.generator.builder.createLoad(rhsLLVM);
+    }
+
     if (lhsLLVM.type.isDoubleTy() && rhsLLVM.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM);
     }
@@ -114,7 +122,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       }
     }
 
-    return error(`Invalid operand types to strict equals ${lhsLLVM.type.typeID} ${rhsLLVM.type.typeID}`);
+    error(`Invalid operand types to strict equals ${lhsLLVM.type.typeID} ${rhsLLVM.type.typeID}`);
   }
 
   private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -146,7 +154,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       return this.generator.builder.createNot(this.generator.builder.createCall(equals, [left, right]));
     }
 
-    return error("Invalid operand types to strict not equals");
+    error("Invalid operand types to strict not equals");
   }
 
   private handleLessThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -163,7 +171,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
         return this.generator.builder.createICmpULT(left, right);
       } else {
-        return error("Signed -- unsigned comparison not allowed");
+        error("Signed -- unsigned comparison not allowed");
       }
     }
 
@@ -179,7 +187,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to less than comparison");
+    error("Invalid operand types to less than comparison");
   }
 
   private handleGreaterThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -196,7 +204,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
         return this.generator.builder.createICmpUGT(left, right);
       } else {
-        return error("Signed -- unsigned comparison not allowed");
+        error("Signed -- unsigned comparison not allowed");
       }
     }
 
@@ -212,7 +220,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to greater than comparison");
+    error("Invalid operand types to greater than comparison");
   }
 
   private handleLessEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -229,7 +237,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
         return this.generator.builder.createICmpULE(left, right);
       } else {
-        return error("Signed -- unsigned comparison not allowed");
+        error("Signed -- unsigned comparison not allowed");
       }
     }
 
@@ -245,7 +253,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to less equals than comparison");
+    error("Invalid operand types to less equals than comparison");
   }
 
   private handleGreaterEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -262,7 +270,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
         return this.generator.builder.createICmpUGE(left, right);
       } else {
-        return error("Signed -- unsigned comparison not allowed");
+        error("Signed -- unsigned comparison not allowed");
       }
     }
 
@@ -278,6 +286,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       );
     }
 
-    return error("Invalid operand types to less than comparison");
+    error("Invalid operand types to less than comparison");
   }
 }
