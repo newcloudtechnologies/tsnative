@@ -31,7 +31,7 @@ export class ReturnHandler extends AbstractNodeHandler {
 
           const signature = this.generator.checker.getSignatureFromDeclaration(parent);
           const declaredReturnType = this.generator.checker.getReturnTypeOfSignature(signature!) as ts.UnionType;
-          const llvmType = getLLVMType(declaredReturnType, node, this.generator) as llvm.StructType;
+          const llvmType = getLLVMType(declaredReturnType, node, this.generator) as llvm.PointerType;
           const llvmUnion = initializeUnion(llvmType, ret, this.generator);
           this.generator.builder.createRet(llvmUnion);
         } else {

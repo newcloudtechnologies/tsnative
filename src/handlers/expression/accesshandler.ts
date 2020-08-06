@@ -57,15 +57,21 @@ export class AccessHandler extends AbstractExpressionHandler {
   private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): llvm.Value {
     const subscription = createArraySubscription(expression, this.generator);
     const array = this.generator.handleExpression(expression.expression, env);
-    const index = this.generator.handleExpression(expression.argumentExpression, env);
+    const index = this.generator.createLoadIfNecessary(
+      this.generator.handleExpression(expression.argumentExpression, env)
+    );
     return this.generator.builder.createCall(subscription, [array, index]);
   }
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): llvm.Value {
-    const value = this.generator.handleExpression(expression, env);
+    let value = this.generator.handleExpression(expression, env);
 
-    if (!value.type.isPointerTy() || !value.type.elementType.isStructTy()) {
-      error(`Expected pointer to struct, got '${value.type}'`);
+    if (!value.type.isPointerTy()) {
+      error(`Expected pointer, got '${value.type}'`);
+    }
+
+    while ((value.type as llvm.PointerType).elementType.isPointerTy()) {
+      value = this.generator.builder.createLoad(value);
     }
 
     const { checker, builder, context } = this.generator;

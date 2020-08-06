@@ -40,8 +40,8 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    let right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const lhsBoolean = makeBoolean(left, lhs, this.generator);
 
@@ -65,8 +65,8 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    let right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const lhsBoolean = makeBoolean(left, lhs, this.generator);
 

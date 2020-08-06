@@ -21,6 +21,8 @@ import {
   getArgumentTypes,
   getReturnType,
   handleFunctionArgument,
+  isCppPrimitiveType,
+  adjustLLVMValueToType,
 } from "@utils";
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -94,8 +96,18 @@ export class SysVFunctionHandler {
     const llvmReturnType = getLLVMType(returnType, expression, this.generator);
     const llvmArgumentTypes = argumentTypes.map((argumentType) => {
       const type = getLLVMType(argumentType, expression, this.generator);
-      return isValueTy(type) ? type : type.getPointerTo();
+      if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
+        return type.elementType;
+      }
+      return type.isPointerTy() ? type : type.getPointerTo();
     });
+
+    let args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator, env));
+    args = this.adjustParameters(args, llvmArgumentTypes);
+
+    if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
+      error("Parameters adjusting failed");
+    }
 
     if (llvmThisType) {
       llvmArgumentTypes.unshift(isValueTy(llvmThisType) ? llvmThisType : llvmThisType.getPointerTo());
@@ -110,8 +122,6 @@ export class SysVFunctionHandler {
     if (valueDeclaration.body) {
       error(`External symbol '${qualifiedName}' cannot have function body`);
     }
-
-    const args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator, env));
 
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
@@ -161,5 +171,13 @@ export class SysVFunctionHandler {
     args.unshift(thisValue);
     this.generator.builder.createCall(constructor, args);
     return thisValue;
+  }
+
+  private adjustParameters(parameters: llvm.Value[], types: llvm.Type[]) {
+    if (parameters.length !== types.length) {
+      error("Expected arrays of same length");
+    }
+
+    return parameters.map((parameter, index) => adjustLLVMValueToType(parameter, types[index], this.generator));
   }
 }

@@ -14,6 +14,9 @@ import {
   isUnionWithNullLLVMValue,
   checkIfFunction,
   checkIfObject,
+  isCppPrimitiveType,
+  getLLVMValue,
+  adjustLLVMValueToType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -49,37 +52,31 @@ export function promoteIntegralToFP(
 }
 
 export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: LLVMGenerator): llvm.Value {
-  if (left instanceof llvm.Argument) {
-    const alloca = generator.withLocalBuilder(() => {
-      return generator.builder.createAlloca(left.type, undefined, left.name + ".alloca");
-    });
-    generator.symbolTable.currentScope.overwrite(left.name, alloca);
-    left = alloca;
-  }
-
   const typename: string = getIntegralLLVMTypeTypename(((left as llvm.CallInst).type as llvm.PointerType).elementType);
   if (typename) {
     right = adjustValue(right, typename, generator);
   }
 
   if (isUnionLLVMValue(left)) {
-    const unionType = (left.type.isPointerTy() ? left.type.elementType : left.type) as llvm.StructType;
+    const unionType = left.type.isPointerTy() ? left.type : left.type.getPointerTo();
     right = initializeUnion(unionType, right, generator);
   }
 
   if (!left.type.isPointerTy()) {
-    error("Assingment destination expected to be of PointerType");
+    error(`Assignment destination expected to be of PointerType, got '${left.type.toString()}'`);
   }
 
-  if (right.type.isPointerTy() && !left.type.elementType.isPointerTy()) {
-    right = generator.builder.createLoad(right); // @todo
+  if (!left.type.elementType.equals(right.type)) {
+    right = adjustLLVMValueToType(right, left.type.elementType, generator);
   }
 
   generator.builder.createStore(right, left);
-  return right;
+  return left;
 }
 
 export function makeBoolean(value: llvm.Value, expression: ts.Expression, generator: LLVMGenerator): llvm.Value {
+  value = getLLVMValue(value, generator);
+
   if (value.type.isDoubleTy()) {
     return generator.builder.createFCmpONE(value, llvm.Constant.getNullValue(value.type));
   }
@@ -96,8 +93,7 @@ export function makeBoolean(value: llvm.Value, expression: ts.Expression, genera
 
   if (isUnionLLVMValue(value)) {
     if (isUnionWithUndefinedLLVMValue(value) || isUnionWithNullLLVMValue(value)) {
-      const unionStruct = generator.builder.createLoad(value);
-      const marker = generator.builder.createExtractValue(unionStruct, [0]);
+      const marker = generator.builder.createExtractValue(value, [0]);
       return generator.builder.createICmpNE(marker, llvm.ConstantInt.get(generator.context, -1, 8));
     }
 
@@ -211,7 +207,12 @@ export function createArrayPush(
 ): llvm.Value {
   const pushSymbol = generator.checker.getPropertyOfType(arrayType, "push")!;
   const pushDeclaration = pushSymbol.valueDeclaration;
-  const parameterType = getLLVMType(elementType, expression, generator);
+  let parameterType = getLLVMType(elementType, expression, generator);
+
+  if (parameterType.isPointerTy() && isCppPrimitiveType(parameterType.elementType)) {
+    parameterType = parameterType.elementType;
+  }
+
   const scope = getFunctionDeclarationScope(pushDeclaration, arrayType, generator);
   const { qualifiedName } = FunctionMangler.mangle(pushDeclaration, expression, arrayType, [elementType], generator);
   const { fn: push } = createLLVMFunction(
@@ -231,7 +232,12 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
 
   const { qualifiedName } = FunctionMangler.mangle(declaration, expression, arrayType, [elementType], generator);
 
-  const retType = getLLVMType(elementType, expression.expression, generator);
+  let retType = getLLVMType(elementType, expression.expression, generator);
+
+  if (retType.isPointerTy() && isCppPrimitiveType(retType.elementType)) {
+    retType = retType.elementType;
+  }
+
   const scope = getFunctionDeclarationScope(declaration, arrayType, generator);
 
   const { fn: subscript } = createLLVMFunction(
@@ -315,7 +321,10 @@ export function getNestedFunctionType(functionBody: ts.ConciseBody, generator: L
             const closure = generator.handleExpression(node.expression, env);
             closureType = closure.type;
           } else {
-            if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
+            if (
+              ts.isVariableStatement(node) ||
+              (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
+            ) {
               generator.handleNode(node, bodyScope, env);
             }
           }
@@ -367,8 +376,9 @@ export function getFunctionEnvironmentVariables(
       generator.builder.setInsertionPoint(dummyBlock);
 
       const visitor = (node: ts.Node) => {
-        if (ts.isIdentifier(node) && !bodyScope.map.get(node.getText())) {
-          externalVariables.push(node.getText());
+        const nodeText = node.getText();
+        if (ts.isIdentifier(node) && !bodyScope.map.get(nodeText) && !externalVariables.includes(nodeText)) {
+          externalVariables.push(nodeText);
         }
 
         if (node.getChildCount()) {

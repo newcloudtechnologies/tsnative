@@ -16,8 +16,8 @@ entry:
   ret i32 0
 }
 
-declare void @_ZN7console3logIRK6stringEEvT_(%string*)
-
 declare %string* @_ZN6stringC1EPKa(%string*, i8*)
 
 declare i8* @_ZN2GC8allocateEj(i32)
+
+declare void @_ZN7console3logIRK6stringEEvT_(%string*)

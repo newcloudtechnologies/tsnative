@@ -70,13 +70,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     rhsLLVM: llvm.Value,
     env?: Environment
   ): llvm.Value {
-    if (lhsLLVM.type.isPointerTy()) {
-      lhsLLVM = this.generator.builder.createLoad(lhsLLVM);
-    }
-
-    if (rhsLLVM.type.isPointerTy()) {
-      rhsLLVM = this.generator.builder.createLoad(rhsLLVM);
-    }
+    lhsLLVM = this.generator.createLoadIfNecessary(lhsLLVM);
+    rhsLLVM = this.generator.createLoadIfNecessary(rhsLLVM);
 
     if (lhsLLVM.type.isDoubleTy() && rhsLLVM.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM);
@@ -108,15 +103,25 @@ export class ComparisonHandler extends AbstractExpressionHandler {
         const unionStructType = (lhsLLVM.type as llvm.PointerType).elementType as llvm.StructType;
         let activeIndex = -1;
         for (let i = 0; i < unionStructType.numElements; ++i) {
-          if (unionStructType.getElementType(i).equals(rhsLLVM.type)) {
+          if (
+            unionStructType
+              .getElementType(i)
+              .equals(rhsLLVM.type.isPointerTy() ? rhsLLVM.type : rhsLLVM.type.getPointerTo())
+          ) {
             activeIndex = i;
             break;
           }
         }
+
+        if (activeIndex === -1) {
+          error(`Type '${rhsLLVM.type.toString()}' not found in '${unionStructType.toString()}'`);
+        }
+
         const activeValuePointer = this.generator.builder.createInBoundsGEP(lhsLLVM, [
           llvm.ConstantInt.get(this.generator.context, 0),
           llvm.ConstantInt.get(this.generator.context, activeIndex),
         ]);
+
         const activeValue = this.generator.builder.createLoad(activeValuePointer);
         return this.handleStrictEquals(lhs, rhs, activeValue, rhsLLVM, env);
       }
@@ -126,8 +131,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
   }
 
   private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    let right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpONE(left, right);
@@ -158,8 +163,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
   }
 
   private handleLessThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOLT(left, right);
@@ -191,8 +196,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
   }
 
   private handleGreaterThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOGT(left, right);
@@ -224,8 +229,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
   }
 
   private handleLessEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOLE(left, right);
@@ -257,8 +262,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
   }
 
   private handleGreaterEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFCmpOGE(left, right);

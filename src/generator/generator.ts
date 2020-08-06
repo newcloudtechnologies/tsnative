@@ -12,7 +12,7 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { createLLVMFunction, error } from "@utils";
+import { createLLVMFunction, error, isCppPrimitiveType } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC } from "@builtins";
@@ -129,11 +129,13 @@ export class LLVMGenerator {
   }
 
   handleExpression(expression: ts.Expression, env?: Environment): llvm.Value {
-    const value = this.handleValueExpression(expression, env);
-    return this.createLoadIfNecessary(value);
+    return this.handleValueExpression(expression, env);
   }
 
   createLoadIfNecessary(value: llvm.Value) {
+    if (value.type.isPointerTy() && isCppPrimitiveType(value.type.elementType)) {
+      return this.builder.createLoad(value);
+    }
     return value;
   }
 

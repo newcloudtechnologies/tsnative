@@ -87,7 +87,7 @@ async function main() {
       snapshotTests = fs.readdirSync(path.join(__dirname, "cases")).filter(file => file.endsWith(".ts"));
       failedSnapshotTests = (await Promise.all(snapshotTests.map(runSnapshotTest))).filter(Boolean);
     }
-    if (testUnits || testAll) {
+    if ((testUnits || testAll) && !updateSnapshots) {
       unitTests = fs.readdirSync(path.join(__dirname, "unit")).filter(file => file.endsWith(".ts"));
       failedUnitTests = (await Promise.all(unitTests.map(runUnitTest))).filter(Boolean);
     }

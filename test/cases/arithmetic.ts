@@ -29,19 +29,20 @@ function bar(a: number, b: number) {
   a >> b;
   a >>> b;
 
+  a += b;
+  a -= b;
+  a *= b;
+  a /= b;
+  a %= b;
+  a &= b;
+  a |= b;
+  a ^= b;
+  a <<= b;
+  a >>= b;
+  a >>>= b;
+
   // TODO:
   // a ** b;
-  // a += b;
-  // a -= b;
-  // a *= b;
-  // a /= b;
-  // a %= b;
-  // a &= b;
-  // a |= b;
-  // a ^= b;
-  // a <<= b;
-  // a >>= b;
-  // a >>>= b;
   // a **= b;
 }
 

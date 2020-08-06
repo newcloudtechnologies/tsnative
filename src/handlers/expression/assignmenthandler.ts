@@ -23,7 +23,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
-          const lhs = this.generator.handleValueExpression(left, env);
+          const lhs = this.generator.handleExpression(left, env);
           let rhs;
           if (right.kind === ts.SyntaxKind.NullKeyword) {
             rhs = llvm.Constant.getNullValue(lhs.type);

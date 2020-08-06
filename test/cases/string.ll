@@ -17,49 +17,39 @@ entry:
   %1 = bitcast i8* %0 to %string*
   %2 = call %string* @_ZN6stringC1EPKa(%string* %1, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0))
   %3 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %4 = bitcast i8* %3 to %string**
-  store %string* %1, %string** %4
-  %.load = load %string*, %string** %4
-  %.load1 = load %string*, %string** %4
-  %5 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %6 = bitcast i8* %5 to %string*
-  %7 = call %string* @_ZNK6string6concatERKS_(%string* %6, %string* %.load1, %string* %.load)
-  store %string* %6, %string** %4
-  %.load2 = load %string*, %string** %4
-  %8 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %9 = bitcast i8* %8 to %string*
-  %10 = call %string* @_ZN6stringC1EPKa(%string* %9, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @1, i32 0, i32 0))
-  %11 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %b = bitcast i8* %11 to %string*
-  %12 = call %string* @_ZNK6string6concatERKS_(%string* %b, %string* %.load2, %string* %9)
-  %13 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %14 = bitcast i8* %13 to %string*
-  %15 = call %string* @_ZN6stringC1EPKa(%string* %14, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @2, i32 0, i32 0))
-  %16 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %17 = bitcast i8* %16 to %string*
-  %18 = call %string* @_ZN6stringC1EPKa(%string* %17, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @3, i32 0, i32 0))
-  %19 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %20 = bitcast i8* %19 to %string*
-  %21 = call %string* @_ZNK6string6concatERKS_(%string* %20, %string* %17, %string* %b)
-  %22 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %23 = bitcast i8* %22 to %string*
-  %24 = call %string* @_ZNK6string6concatERKS_(%string* %23, %string* %14, %string* %20)
-  call void @_ZN7console3logIRK6stringEEvT_(%string* %23)
-  %25 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %26 = bitcast i8* %25 to %string*
-  %27 = call %string* @_ZN6stringC1EPKa(%string* %26, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @4, i32 0, i32 0))
-  %28 = call i32 @_ZNK6string6lengthEv(%string* %26)
-  %29 = call i8* @_ZN2GC8allocateEj(i32 4)
-  %30 = bitcast i8* %29 to i32*
-  store i32 %28, i32* %30
-  %31 = call i32 @_ZNK6string6lengthEv(%string* %b)
-  %.load3 = load %string*, %string** %4
-  %32 = call i32 @_ZNK6string6lengthEv(%string* %.load3)
-  %.load4 = load %string*, %string** %4
-  %33 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %34 = bitcast i8* %33 to %string*
-  %35 = call %string* @_ZNK6string6concatERKS_(%string* %34, %string* %.load4, %string* %b)
-  %36 = call i32 @_ZNK6string6lengthEv(%string* %34)
+  %4 = bitcast i8* %3 to %string*
+  %5 = call %string* @_ZNK6string6concatERKS_(%string* %4, %string* %1, %string* %1)
+  %6 = load %string, %string* %4
+  store %string %6, %string* %1
+  %7 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %8 = bitcast i8* %7 to %string*
+  %9 = call %string* @_ZN6stringC1EPKa(%string* %8, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @1, i32 0, i32 0))
+  %10 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %b = bitcast i8* %10 to %string*
+  %11 = call %string* @_ZNK6string6concatERKS_(%string* %b, %string* %1, %string* %8)
+  %12 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %13 = bitcast i8* %12 to %string*
+  %14 = call %string* @_ZN6stringC1EPKa(%string* %13, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @2, i32 0, i32 0))
+  %15 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %16 = bitcast i8* %15 to %string*
+  %17 = call %string* @_ZN6stringC1EPKa(%string* %16, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @3, i32 0, i32 0))
+  %18 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %19 = bitcast i8* %18 to %string*
+  %20 = call %string* @_ZNK6string6concatERKS_(%string* %19, %string* %16, %string* %b)
+  %21 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %22 = bitcast i8* %21 to %string*
+  %23 = call %string* @_ZNK6string6concatERKS_(%string* %22, %string* %13, %string* %19)
+  call void @_ZN7console3logIRK6stringEEvT_(%string* %22)
+  %24 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %25 = bitcast i8* %24 to %string*
+  %26 = call %string* @_ZN6stringC1EPKa(%string* %25, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @4, i32 0, i32 0))
+  %27 = call i32 @_ZNK6string6lengthEv(%string* %25)
+  %28 = call i32 @_ZNK6string6lengthEv(%string* %b)
+  %29 = call i32 @_ZNK6string6lengthEv(%string* %1)
+  %30 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %31 = bitcast i8* %30 to %string*
+  %32 = call %string* @_ZNK6string6concatERKS_(%string* %31, %string* %1, %string* %b)
+  %33 = call i32 @_ZNK6string6lengthEv(%string* %31)
   ret i32 0
 }
 

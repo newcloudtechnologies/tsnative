@@ -11,7 +11,7 @@
 
 import { isSigned } from "@cpp";
 import { Conversion, handleBinaryWithConversion, isConvertible, promoteIntegralToFP } from "@handlers";
-import { error, checkIfLLVMString } from "@utils";
+import { error, checkIfLLVMString, adjustLLVMValueToType, getLLVMValue } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -46,16 +46,11 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
   }
 
   private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
 
-    if (left.type.isPointerTy()) {
-      left = this.generator.builder.createLoad(left);
-    }
-
-    if (right.type.isPointerTy()) {
-      right = this.generator.builder.createLoad(right);
-    }
+    left = getLLVMValue(left, this.generator);
+    right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       const sum = this.generator.builder.createFAdd(left, right);
@@ -87,12 +82,14 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       return sret;
     }
 
-    error("Invalid operand types to binary plus");
+    error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
+    left = getLLVMValue(left, this.generator);
+    right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFSub(left, right);
@@ -118,8 +115,10 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
   }
 
   private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.handleExpression(lhs, env);
-    const right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
+    left = getLLVMValue(left, this.generator);
+    right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFMul(left, right);
@@ -145,8 +144,10 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
   }
 
   private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
+    left = getLLVMValue(left, this.generator);
+    right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFDiv(left, right);
@@ -175,8 +176,10 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
   }
 
   private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.handleExpression(lhs, env);
-    let right: llvm.Value = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
+    left = getLLVMValue(left, this.generator);
+    right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       return this.generator.builder.createFRem(left, right);

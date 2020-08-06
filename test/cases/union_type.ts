@@ -9,7 +9,7 @@
     }
 
     let union: A | B = { a: 12, b: "h" }
-
+    
     console.log(union.a)
     console.log(union.b)
 

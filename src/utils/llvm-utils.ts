@@ -31,6 +31,7 @@ import {
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { Environment } from "@scope";
+import { isConvertible } from "@handlers";
 
 export function createLLVMFunction(
   returnType: llvm.Type,
@@ -165,6 +166,10 @@ export function getLLVMType(
 
   if (checkIfObject(type)) {
     return getStructType(type as ts.ObjectType, node, generator).getPointerTo();
+  }
+
+  if (checker.typeToString(type) === "null") {
+    return llvm.Type.getInt8Ty(context);
   }
 
   error(`Unhandled type: '${checker.typeToString(type)}'`);
@@ -364,12 +369,6 @@ export function handleFunctionArgument(
   env?: Environment
 ): llvm.Value {
   let arg = generator.handleExpression(argument, env);
-  if (!arg.type.isPointerTy()) {
-    // @todo
-    const allocated = generator.gc.allocate(arg.type);
-    generator.builder.createStore(arg, allocated);
-    arg = allocated;
-  }
 
   if (isUnionLLVMValue(arg)) {
     const symbol = generator.checker.getSymbolAtLocation(argument);
@@ -406,27 +405,26 @@ export function handleFunctionArgument(
 }
 
 export function initializeUnion(
-  unionType: llvm.StructType,
+  unionType: llvm.PointerType,
   initializer: llvm.Value,
   generator: LLVMGenerator
 ): llvm.Constant {
-  let unionValue = llvm.Constant.getNullValue(unionType);
+  const unionStructType = unionType.elementType as llvm.StructType;
+  let unionValue = llvm.Constant.getNullValue(unionStructType);
   let activeIndex = -1;
   const elementTypes = [];
-  for (let i = 0; i < unionType.numElements; ++i) {
-    elementTypes.push(unionType.getElementType(i));
+  for (let i = 0; i < unionStructType.numElements; ++i) {
+    elementTypes.push(unionStructType.getElementType(i));
   }
 
   if (
-    (!checkIfLLVMString(initializer.type) &&
-      initializer.type.isPointerTy() &&
-      initializer.type.elementType.isStructTy()) ||
-    initializer.type.isStructTy()
+    !checkIfLLVMString(initializer.type) &&
+    initializer.type.isPointerTy() &&
+    initializer.type.elementType.isStructTy()
   ) {
     const initializerElementTypes = [];
-    const structType = (initializer.type.isStructTy()
-      ? initializer.type
-      : initializer.type.elementType) as llvm.StructType;
+    const structType = initializer.type.elementType as llvm.StructType;
+
     for (let i = 0; i < structType.numElements; ++i) {
       initializerElementTypes.push(structType.getElementType(i));
     }
@@ -434,20 +432,21 @@ export function initializeUnion(
     activeIndex = findIndexOfSubarray(elementTypes, initializerElementTypes, (lhs: llvm.Type, rhs: llvm.Type) =>
       lhs.equals(rhs)
     );
-    const initializerValue = initializer.type.isStructTy()
-      ? initializer
-      : (generator.builder.createLoad(initializer, initializer.name + ".load") as llvm.ConstantStruct);
-    for (let i = 0, k = 0; i < unionType.numElements; ++i) {
+    const initializerValue = generator.builder.createLoad(
+      initializer,
+      initializer.name + ".load"
+    ) as llvm.ConstantStruct;
+    for (let i = 0, k = 0; i < structType.numElements; ++i) {
       if (
         i >= activeIndex &&
-        activeIndex + initializerElementTypes.length <= unionType.numElements &&
+        activeIndex + initializerElementTypes.length <= structType.numElements &&
         i < activeIndex + initializerElementTypes.length
       ) {
         const initializerUnionElement = generator.builder.createExtractValue(initializerValue, [k]);
-        unionValue = generator.builder.createInsertValue(unionValue, initializerUnionElement, [k++]) as llvm.Constant;
+        unionValue = generator.builder.createInsertValue(unionValue, initializerUnionElement, [k]) as llvm.Constant;
+        k++;
       }
     }
-    initializer = unionValue;
   } else {
     for (let i = 0; i < elementTypes.length; ++i) {
       if (elementTypes[i].equals(initializer.type)) {
@@ -460,8 +459,54 @@ export function initializeUnion(
       initializer = llvm.ConstantInt.get(generator.context, -1, 8);
     }
 
-    initializer = generator.builder.createInsertValue(unionValue, initializer, [activeIndex]);
+    unionValue = generator.builder.createInsertValue(unionValue, initializer, [activeIndex]) as llvm.Constant;
   }
 
-  return initializer as llvm.Constant;
+  const allocation = generator.gc.allocate(unionStructType);
+  generator.builder.createStore(unionValue, allocation);
+
+  return allocation as llvm.Constant;
+}
+
+export function isCppPrimitiveType(type: llvm.Type) {
+  return type.isIntegerTy() || type.isDoubleTy();
+}
+
+export function adjustLLVMValueToType(value: llvm.Value, type: llvm.Type, generator: LLVMGenerator): llvm.Value {
+  if (value.type.equals(type) || isConvertible(value.type, type)) {
+    return value;
+  } else {
+    if (shouldLoad(value.type, type)) {
+      value = generator.builder.createLoad(value);
+      return adjustLLVMValueToType(value, type, generator);
+    } else {
+      const allocated = generator.gc.allocate(value.type);
+      generator.builder.createStore(value, allocated);
+      return adjustLLVMValueToType(allocated, type, generator);
+    }
+  }
+}
+
+export function shouldLoad(parameterType: llvm.Type, destinationType: llvm.Type) {
+  let parameterPointerLevel = 0;
+  let destinationTypePointerLevel = 0;
+
+  while (parameterType.isPointerTy()) {
+    parameterType = parameterType.elementType;
+    ++parameterPointerLevel;
+  }
+
+  while (destinationType.isPointerTy()) {
+    destinationType = destinationType.elementType;
+    ++destinationTypePointerLevel;
+  }
+
+  return parameterPointerLevel > destinationTypePointerLevel;
+}
+
+export function getLLVMValue(value: llvm.Value, generator: LLVMGenerator) {
+  while (value.type.isPointerTy() && !checkIfLLVMString(value.type)) {
+    value = generator.builder.createLoad(value);
+  }
+  return value;
 }

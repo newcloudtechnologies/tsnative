@@ -3,8 +3,8 @@ source_filename = "main"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64"
 
-%env__double___double_ = type { double*, double* }
-%env = type {}
+%"env__(_double*_double*)" = type { double*, double* }
+%"env__()" = type {}
 
 define i32 @main() {
 entry:
@@ -14,178 +14,275 @@ entry:
   %2 = call i8* @_ZN2GC8allocateEj(i32 8)
   %3 = bitcast i8* %2 to double*
   store double 2.000000e+00, double* %3
-  %a = insertvalue %env__double___double_ zeroinitializer, double* %1, 0
-  %b = insertvalue %env__double___double_ %a, double* %3, 1
-  %4 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %5 = bitcast i8* %4 to %env__double___double_*
-  store %env__double___double_ %b, %env__double___double_* %5
-  call void @foo(%env__double___double_* %5, double 1.000000e+00, double 2.000000e+00)
-  %6 = call i8* @_ZN2GC8allocateEj(i32 1)
-  %7 = bitcast i8* %6 to %env*
-  store %env zeroinitializer, %env* %7
-  call void @fooObj(%env* %7)
-  %8 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %9 = bitcast i8* %8 to double*
-  store double 1.000000e+00, double* %9
+  %4 = insertvalue %"env__(_double*_double*)" zeroinitializer, double* %1, 0
+  %5 = insertvalue %"env__(_double*_double*)" %4, double* %3, 1
+  %6 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %7 = bitcast i8* %6 to %"env__(_double*_double*)"*
+  store %"env__(_double*_double*)" %5, %"env__(_double*_double*)"* %7
+  call void @foo(%"env__(_double*_double*)"* %7)
+  %8 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %9 = bitcast i8* %8 to %"env__()"*
+  store %"env__()" zeroinitializer, %"env__()"* %9
+  call void @fooObj(%"env__()"* %9)
   %10 = call i8* @_ZN2GC8allocateEj(i32 8)
   %11 = bitcast i8* %10 to double*
-  store double 2.000000e+00, double* %11
-  %a1 = insertvalue %env__double___double_ zeroinitializer, double* %9, 0
-  %b2 = insertvalue %env__double___double_ %a1, double* %11, 1
-  %12 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %13 = bitcast i8* %12 to %env__double___double_*
-  store %env__double___double_ %b2, %env__double___double_* %13
-  call void @bar(%env__double___double_* %13, double 1.000000e+00, double 2.000000e+00)
+  store double 1.000000e+00, double* %11
+  %12 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %13 = bitcast i8* %12 to double*
+  store double 2.000000e+00, double* %13
+  %14 = insertvalue %"env__(_double*_double*)" zeroinitializer, double* %11, 0
+  %15 = insertvalue %"env__(_double*_double*)" %14, double* %13, 1
+  %16 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %17 = bitcast i8* %16 to %"env__(_double*_double*)"*
+  store %"env__(_double*_double*)" %15, %"env__(_double*_double*)"* %17
+  call void @bar(%"env__(_double*_double*)"* %17)
   ret i32 0
 }
 
 declare i8* @_ZN2GC8allocateEj(i32)
 
-define void @foo(%env__double___double_* %__environment__, double %a, double %b) {
+define void @foo(%"env__(_double*_double*)"* %__environment__) {
 entry:
-  %a.alloca = alloca double
-  %0 = load %env__double___double_, %env__double___double_* %__environment__
-  %1 = extractvalue %env__double___double_ %0, 0
-  store double %a, double* %1
-  %2 = fsub double -0.000000e+00, %a
-  %3 = fptosi double %a to i32
-  %4 = xor i32 %3, -1
-  %5 = sitofp i32 %4 to double
-  %6 = fadd double %a, 1.000000e+00
-  store double %6, double* %a.alloca
-  %a.alloca.load = load double, double* %a.alloca
-  %7 = fsub double %a.alloca.load, 1.000000e+00
-  store double %7, double* %a.alloca
-  %a.alloca.load1 = load double, double* %a.alloca
-  %8 = fadd double %a.alloca.load1, 1.000000e+00
-  store double %8, double* %a.alloca
-  %a.alloca.load2 = load double, double* %a.alloca
-  %9 = fsub double %a.alloca.load2, 1.000000e+00
-  store double %9, double* %a.alloca
+  %0 = load %"env__(_double*_double*)", %"env__(_double*_double*)"* %__environment__
+  %1 = extractvalue %"env__(_double*_double*)" %0, 0
+  %2 = extractvalue %"env__(_double*_double*)" %0, 0
+  %3 = load double, double* %2
+  store double %3, double* %1
+  %4 = extractvalue %"env__(_double*_double*)" %0, 0
+  %5 = load double, double* %4
+  %6 = fsub double -0.000000e+00, %5
+  store double %6, double* %4
+  %7 = extractvalue %"env__(_double*_double*)" %0, 0
+  %8 = load double, double* %7
+  %9 = fptosi double %8 to i32
+  %10 = xor i32 %9, -1
+  %11 = sitofp i32 %10 to double
+  %12 = extractvalue %"env__(_double*_double*)" %0, 0
+  %13 = load double, double* %12
+  %14 = fadd double %13, 1.000000e+00
+  store double %14, double* %12
+  %15 = extractvalue %"env__(_double*_double*)" %0, 0
+  %16 = load double, double* %15
+  %17 = fsub double %16, 1.000000e+00
+  store double %17, double* %15
+  %18 = extractvalue %"env__(_double*_double*)" %0, 0
+  %19 = load double, double* %18
+  %20 = fadd double %19, 1.000000e+00
+  store double %20, double* %18
+  %21 = extractvalue %"env__(_double*_double*)" %0, 0
+  %22 = load double, double* %21
+  %23 = fsub double %22, 1.000000e+00
+  store double %23, double* %21
   ret void
 }
 
-define void @fooObj(%env* %__environment__) {
+define void @fooObj(%"env__()"* %__environment__) {
 entry:
-  %0 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %a = bitcast i8* %0 to { double }*
-  %b = getelementptr inbounds { double }, { double }* %a, i32 0, i32 0
-  store double 0.000000e+00, double* %b
-  %b1 = getelementptr inbounds { double }, { double }* %a, i32 0, i32 0
-  %b1.load = load double, double* %b1
-  %1 = fadd double %b1.load, 1.000000e+00
-  store double %1, double* %b1
-  %b2 = getelementptr inbounds { double }, { double }* %a, i32 0, i32 0
-  %b2.load = load double, double* %b2
-  %2 = fsub double %b2.load, 1.000000e+00
-  store double %2, double* %b2
-  %b3 = getelementptr inbounds { double }, { double }* %a, i32 0, i32 0
-  %b3.load = load double, double* %b3
-  %3 = fadd double %b3.load, 1.000000e+00
-  store double %3, double* %b3
-  %b4 = getelementptr inbounds { double }, { double }* %a, i32 0, i32 0
-  %b4.load = load double, double* %b4
-  %4 = fsub double %b4.load, 1.000000e+00
-  store double %4, double* %b4
+  %0 = load %"env__()", %"env__()"* %__environment__
+  %1 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %2 = bitcast i8* %1 to double*
+  store double 0.000000e+00, double* %2
+  %3 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %a = bitcast i8* %3 to { double* }*
+  %b = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
+  store double* %2, double** %b
+  %b1 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
+  %4 = load double*, double** %b1
+  %5 = load double, double* %4
+  %6 = fadd double %5, 1.000000e+00
+  %7 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %8 = bitcast i8* %7 to double*
+  store double %6, double* %8
+  store double* %8, double** %b1
+  %b2 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
+  %9 = load double*, double** %b2
+  %10 = load double, double* %9
+  %11 = fsub double %10, 1.000000e+00
+  %12 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %13 = bitcast i8* %12 to double*
+  store double %11, double* %13
+  store double* %13, double** %b2
+  %b3 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
+  %14 = load double*, double** %b3
+  %15 = load double, double* %14
+  %16 = fadd double %15, 1.000000e+00
+  %17 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %18 = bitcast i8* %17 to double*
+  store double %16, double* %18
+  store double* %18, double** %b3
+  %b4 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
+  %19 = load double*, double** %b4
+  %20 = load double, double* %19
+  %21 = fsub double %20, 1.000000e+00
+  %22 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %23 = bitcast i8* %22 to double*
+  store double %21, double* %23
+  store double* %23, double** %b4
   ret void
 }
 
-define void @bar(%env__double___double_* %__environment__, double %a, double %b) {
+define void @bar(%"env__(_double*_double*)"* %__environment__) {
 entry:
-  %0 = load %env__double___double_, %env__double___double_* %__environment__
-  %1 = extractvalue %env__double___double_ %0, 0
-  %.load = load double, double* %1
-  %2 = load %env__double___double_, %env__double___double_* %__environment__
-  %3 = extractvalue %env__double___double_ %2, 1
-  %.load1 = load double, double* %3
-  %4 = fadd double %.load, %.load1
-  %5 = load %env__double___double_, %env__double___double_* %__environment__
-  %6 = extractvalue %env__double___double_ %5, 0
-  %.load2 = load double, double* %6
-  %7 = load %env__double___double_, %env__double___double_* %__environment__
-  %8 = extractvalue %env__double___double_ %7, 1
-  %.load3 = load double, double* %8
-  %9 = fsub double %.load2, %.load3
-  %10 = load %env__double___double_, %env__double___double_* %__environment__
-  %11 = extractvalue %env__double___double_ %10, 0
-  %.load4 = load double, double* %11
-  %12 = load %env__double___double_, %env__double___double_* %__environment__
-  %13 = extractvalue %env__double___double_ %12, 1
-  %.load5 = load double, double* %13
-  %14 = fmul double %.load4, %.load5
-  %15 = load %env__double___double_, %env__double___double_* %__environment__
-  %16 = extractvalue %env__double___double_ %15, 0
-  %.load6 = load double, double* %16
-  %17 = load %env__double___double_, %env__double___double_* %__environment__
-  %18 = extractvalue %env__double___double_ %17, 1
-  %.load7 = load double, double* %18
-  %19 = fdiv double %.load6, %.load7
-  %20 = load %env__double___double_, %env__double___double_* %__environment__
-  %21 = extractvalue %env__double___double_ %20, 0
-  %.load8 = load double, double* %21
-  %22 = load %env__double___double_, %env__double___double_* %__environment__
-  %23 = extractvalue %env__double___double_ %22, 1
-  %.load9 = load double, double* %23
-  %24 = frem double %.load8, %.load9
-  %25 = load %env__double___double_, %env__double___double_* %__environment__
-  %26 = extractvalue %env__double___double_ %25, 0
-  %.load10 = load double, double* %26
-  %27 = load %env__double___double_, %env__double___double_* %__environment__
-  %28 = extractvalue %env__double___double_ %27, 1
-  %.load11 = load double, double* %28
-  %29 = fptosi double %.load10 to i32
-  %30 = fptosi double %.load11 to i32
-  %31 = and i32 %29, %30
-  %32 = sitofp i32 %31 to double
-  %33 = load %env__double___double_, %env__double___double_* %__environment__
-  %34 = extractvalue %env__double___double_ %33, 0
-  %.load12 = load double, double* %34
-  %35 = load %env__double___double_, %env__double___double_* %__environment__
-  %36 = extractvalue %env__double___double_ %35, 1
-  %.load13 = load double, double* %36
-  %37 = fptosi double %.load12 to i32
-  %38 = fptosi double %.load13 to i32
-  %39 = or i32 %37, %38
-  %40 = sitofp i32 %39 to double
-  %41 = load %env__double___double_, %env__double___double_* %__environment__
-  %42 = extractvalue %env__double___double_ %41, 0
-  %.load14 = load double, double* %42
-  %43 = load %env__double___double_, %env__double___double_* %__environment__
-  %44 = extractvalue %env__double___double_ %43, 1
-  %.load15 = load double, double* %44
-  %45 = fptosi double %.load14 to i32
-  %46 = fptosi double %.load15 to i32
-  %47 = xor i32 %45, %46
-  %48 = sitofp i32 %47 to double
-  %49 = load %env__double___double_, %env__double___double_* %__environment__
-  %50 = extractvalue %env__double___double_ %49, 0
-  %.load16 = load double, double* %50
-  %51 = load %env__double___double_, %env__double___double_* %__environment__
-  %52 = extractvalue %env__double___double_ %51, 1
-  %.load17 = load double, double* %52
-  %53 = fptosi double %.load16 to i32
-  %54 = fptosi double %.load17 to i32
-  %55 = shl i32 %53, %54
-  %56 = sitofp i32 %55 to double
-  %57 = load %env__double___double_, %env__double___double_* %__environment__
-  %58 = extractvalue %env__double___double_ %57, 0
-  %.load18 = load double, double* %58
-  %59 = load %env__double___double_, %env__double___double_* %__environment__
-  %60 = extractvalue %env__double___double_ %59, 1
-  %.load19 = load double, double* %60
-  %61 = fptosi double %.load18 to i32
-  %62 = fptosi double %.load19 to i32
-  %63 = ashr i32 %61, %62
-  %64 = sitofp i32 %63 to double
-  %65 = load %env__double___double_, %env__double___double_* %__environment__
-  %66 = extractvalue %env__double___double_ %65, 0
-  %.load20 = load double, double* %66
-  %67 = load %env__double___double_, %env__double___double_* %__environment__
-  %68 = extractvalue %env__double___double_ %67, 1
-  %.load21 = load double, double* %68
-  %69 = fptosi double %.load20 to i32
-  %70 = fptosi double %.load21 to i32
-  %71 = lshr i32 %69, %70
-  %72 = sitofp i32 %71 to double
+  %0 = load %"env__(_double*_double*)", %"env__(_double*_double*)"* %__environment__
+  %1 = extractvalue %"env__(_double*_double*)" %0, 0
+  %2 = extractvalue %"env__(_double*_double*)" %0, 1
+  %3 = load double, double* %1
+  %4 = load double, double* %2
+  %5 = fadd double %3, %4
+  %6 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %7 = bitcast i8* %6 to double*
+  store double %5, double* %7
+  %8 = extractvalue %"env__(_double*_double*)" %0, 0
+  %9 = extractvalue %"env__(_double*_double*)" %0, 1
+  %10 = load double, double* %8
+  %11 = load double, double* %9
+  %12 = fsub double %10, %11
+  %13 = extractvalue %"env__(_double*_double*)" %0, 0
+  %14 = extractvalue %"env__(_double*_double*)" %0, 1
+  %15 = load double, double* %13
+  %16 = load double, double* %14
+  %17 = fmul double %15, %16
+  %18 = extractvalue %"env__(_double*_double*)" %0, 0
+  %19 = extractvalue %"env__(_double*_double*)" %0, 1
+  %20 = load double, double* %18
+  %21 = load double, double* %19
+  %22 = fdiv double %20, %21
+  %23 = extractvalue %"env__(_double*_double*)" %0, 0
+  %24 = extractvalue %"env__(_double*_double*)" %0, 1
+  %25 = load double, double* %23
+  %26 = load double, double* %24
+  %27 = frem double %25, %26
+  %28 = extractvalue %"env__(_double*_double*)" %0, 0
+  %29 = load double, double* %28
+  %30 = extractvalue %"env__(_double*_double*)" %0, 1
+  %31 = load double, double* %30
+  %32 = fptosi double %29 to i32
+  %33 = fptosi double %31 to i32
+  %34 = and i32 %32, %33
+  %35 = sitofp i32 %34 to double
+  %36 = extractvalue %"env__(_double*_double*)" %0, 0
+  %37 = load double, double* %36
+  %38 = extractvalue %"env__(_double*_double*)" %0, 1
+  %39 = load double, double* %38
+  %40 = fptosi double %37 to i32
+  %41 = fptosi double %39 to i32
+  %42 = or i32 %40, %41
+  %43 = sitofp i32 %42 to double
+  %44 = extractvalue %"env__(_double*_double*)" %0, 0
+  %45 = load double, double* %44
+  %46 = extractvalue %"env__(_double*_double*)" %0, 1
+  %47 = load double, double* %46
+  %48 = fptosi double %45 to i32
+  %49 = fptosi double %47 to i32
+  %50 = xor i32 %48, %49
+  %51 = sitofp i32 %50 to double
+  %52 = extractvalue %"env__(_double*_double*)" %0, 0
+  %53 = load double, double* %52
+  %54 = extractvalue %"env__(_double*_double*)" %0, 1
+  %55 = load double, double* %54
+  %56 = fptosi double %53 to i32
+  %57 = fptosi double %55 to i32
+  %58 = shl i32 %56, %57
+  %59 = sitofp i32 %58 to double
+  %60 = extractvalue %"env__(_double*_double*)" %0, 0
+  %61 = load double, double* %60
+  %62 = extractvalue %"env__(_double*_double*)" %0, 1
+  %63 = load double, double* %62
+  %64 = fptosi double %61 to i32
+  %65 = fptosi double %63 to i32
+  %66 = ashr i32 %64, %65
+  %67 = sitofp i32 %66 to double
+  %68 = extractvalue %"env__(_double*_double*)" %0, 0
+  %69 = load double, double* %68
+  %70 = extractvalue %"env__(_double*_double*)" %0, 1
+  %71 = load double, double* %70
+  %72 = fptosi double %69 to i32
+  %73 = fptosi double %71 to i32
+  %74 = lshr i32 %72, %73
+  %75 = sitofp i32 %74 to double
+  %76 = extractvalue %"env__(_double*_double*)" %0, 0
+  %77 = extractvalue %"env__(_double*_double*)" %0, 1
+  %78 = load double, double* %77
+  %79 = load double, double* %76
+  %80 = fadd double %79, %78
+  store double %80, double* %76
+  %81 = extractvalue %"env__(_double*_double*)" %0, 0
+  %82 = extractvalue %"env__(_double*_double*)" %0, 1
+  %83 = load double, double* %82
+  %84 = load double, double* %81
+  %85 = fsub double %84, %83
+  store double %85, double* %81
+  %86 = extractvalue %"env__(_double*_double*)" %0, 0
+  %87 = extractvalue %"env__(_double*_double*)" %0, 1
+  %88 = load double, double* %87
+  %89 = load double, double* %86
+  %90 = fmul double %89, %88
+  store double %90, double* %86
+  %91 = extractvalue %"env__(_double*_double*)" %0, 0
+  %92 = extractvalue %"env__(_double*_double*)" %0, 1
+  %93 = load double, double* %92
+  %94 = load double, double* %91
+  %95 = fdiv double %94, %93
+  store double %95, double* %91
+  %96 = extractvalue %"env__(_double*_double*)" %0, 0
+  %97 = extractvalue %"env__(_double*_double*)" %0, 1
+  %98 = load double, double* %97
+  %99 = load double, double* %96
+  %100 = frem double %99, %98
+  store double %100, double* %96
+  %101 = extractvalue %"env__(_double*_double*)" %0, 0
+  %102 = extractvalue %"env__(_double*_double*)" %0, 1
+  %103 = load double, double* %102
+  %104 = load double, double* %101
+  %105 = fptosi double %104 to i32
+  %106 = fptosi double %103 to i32
+  %107 = and i32 %105, %106
+  %108 = sitofp i32 %107 to double
+  store double %108, double* %101
+  %109 = extractvalue %"env__(_double*_double*)" %0, 0
+  %110 = extractvalue %"env__(_double*_double*)" %0, 1
+  %111 = load double, double* %110
+  %112 = load double, double* %109
+  %113 = fptosi double %112 to i32
+  %114 = fptosi double %111 to i32
+  %115 = or i32 %113, %114
+  %116 = sitofp i32 %115 to double
+  store double %116, double* %109
+  %117 = extractvalue %"env__(_double*_double*)" %0, 0
+  %118 = extractvalue %"env__(_double*_double*)" %0, 1
+  %119 = load double, double* %118
+  %120 = load double, double* %117
+  %121 = fptosi double %120 to i32
+  %122 = fptosi double %119 to i32
+  %123 = xor i32 %121, %122
+  %124 = sitofp i32 %123 to double
+  store double %124, double* %117
+  %125 = extractvalue %"env__(_double*_double*)" %0, 0
+  %126 = extractvalue %"env__(_double*_double*)" %0, 1
+  %127 = load double, double* %126
+  %128 = load double, double* %125
+  %129 = fptosi double %128 to i32
+  %130 = fptosi double %127 to i32
+  %131 = shl i32 %129, %130
+  %132 = sitofp i32 %131 to double
+  store double %132, double* %125
+  %133 = extractvalue %"env__(_double*_double*)" %0, 0
+  %134 = extractvalue %"env__(_double*_double*)" %0, 1
+  %135 = load double, double* %134
+  %136 = load double, double* %133
+  %137 = fptosi double %136 to i32
+  %138 = fptosi double %135 to i32
+  %139 = ashr i32 %137, %138
+  %140 = sitofp i32 %139 to double
+  store double %140, double* %133
+  %141 = extractvalue %"env__(_double*_double*)" %0, 0
+  %142 = extractvalue %"env__(_double*_double*)" %0, 1
+  %143 = load double, double* %142
+  %144 = load double, double* %141
+  %145 = fptosi double %144 to i32
+  %146 = fptosi double %143 to i32
+  %147 = lshr i32 %145, %146
+  %148 = sitofp i32 %147 to double
+  store double %148, double* %141
   ret void
 }

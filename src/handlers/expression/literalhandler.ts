@@ -47,8 +47,8 @@ export class LiteralHandler extends AbstractExpressionHandler {
   private handleStringLiteral(expression: ts.StringLiteral): llvm.Value {
     const llvmThisType = this.generator.builtinString.getLLVMType();
     const constructor = this.generator.builtinString.getLLVMConstructor(expression);
-    const ptr = this.generator.builder.createGlobalStringPtr(expression.text) as llvm.Constant;
-    const allocated = this.generator.gc.allocate((llvmThisType as llvm.PointerType).elementType);
+    const ptr = this.generator.builder.createGlobalStringPtr(expression.text);
+    const allocated = this.generator.gc.allocate(llvmThisType.elementType);
     this.generator.builder.createCall(constructor, [allocated, ptr]);
     return allocated;
   }

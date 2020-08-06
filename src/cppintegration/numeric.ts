@@ -10,6 +10,7 @@
  */
 
 import { LLVMGenerator } from "@generator";
+import { makeAssignment } from "@handlers";
 import { error, getExpressionTypename } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -129,15 +130,20 @@ const integralAdjust: {
 
 export function adjustValue(value: llvm.Value, typename: string, generator: LLVMGenerator): llvm.Value {
   if (isCppNumericType(typename)) {
-    if (!value.type.isIntegerTy()) {
+    const loaded = generator.createLoadIfNecessary(value);
+    if (!loaded.type.isIntegerTy()) {
       const adjustParameters = integralAdjust[typename];
       // use the widest integral type to control overflow during initialization
-      const singed = generator.builder.createFPToSI(value, llvm.Type.getInt128Ty(generator.context));
+      const singed = generator.builder.createFPToSI(loaded, llvm.Type.getInt128Ty(generator.context));
       value = generator.builder.createIntCast(
         singed,
         adjustParameters.typeGetter(generator.context),
         adjustParameters.isSigned
       );
+
+      // @todo: how to avoid extra allocation?
+      const allocated = generator.gc.allocate(value.type);
+      value = makeAssignment(allocated, value, generator);
     }
   }
   return value;

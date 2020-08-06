@@ -56,6 +56,7 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     if (initializer.name.startsWith(InternalNames.Closure)) {
+      // @todo: cls__ check
       parentScope.set(name, initializer);
       return;
     }
@@ -74,17 +75,12 @@ export class VariableHandler extends AbstractNodeHandler {
       parentScope.set(name, initializer);
     } else {
       if (checkIfUnion(type)) {
-        const llvmUnionType = getUnionStructType(type as ts.UnionType, declaration, this.generator);
+        const llvmUnionType = getUnionStructType(type as ts.UnionType, declaration, this.generator).getPointerTo();
         initializer = initializeUnion(llvmUnionType, initializer, this.generator);
       }
 
-      const allocated = this.generator.gc.allocate(initializer.type);
-      this.generator.builder.createStore(
-        initializer.type.isPointerTy() ? this.generator.builder.createLoad(initializer) : initializer,
-        allocated
-      );
-
-      parentScope.set(name, new HeapVariableDeclaration(allocated, initializer, declaration));
+      // @todo
+      parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, declaration));
     }
   }
 
@@ -101,7 +97,8 @@ export class VariableHandler extends AbstractNodeHandler {
     let initializer;
     if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
       let declarationLLVMType;
-      if (declaration.type) {
+      const typeReference = declaration.type as ts.TypeReferenceNode;
+      if (typeReference && typeReference.typeName) {
         const typename = (declaration.type as ts.TypeReferenceNode).typeName.getText();
         const typeAliasScope = this.generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as Scope;
         if (typeAliasScope) {
@@ -139,7 +136,7 @@ export class VariableHandler extends AbstractNodeHandler {
 
       const push = createArrayPush(arrayType, elementType, declaration.initializer, this.generator);
       for (const element of declaration.initializer.elements) {
-        const elementValue = this.generator.handleExpression(element);
+        const elementValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(element));
         this.generator.builder.createCall(push, [allocated, elementValue]);
       }
 
