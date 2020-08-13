@@ -97,10 +97,11 @@ export function createEnvironment(
   outerEnv?: Environment
 ) {
   const context = populateContext(generator, scope, environmentVariables);
-  const types = context.map((value) => value.allocated.type);
 
-  const allocations = context.map((value) => value.allocated);
-  const names = context.map((value) => value.allocated.name);
+  const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
+  context.forEach((value) => {
+    map.set(value.allocated.name, { type: value.allocated.type, allocated: value.allocated });
+  });
 
   if (functionData) {
     const argsTypes = functionData.args.map((arg) => {
@@ -110,14 +111,19 @@ export function createEnvironment(
       return arg.type;
     });
 
-    allocations.push(...functionData.args);
-    types.push(...argsTypes);
-    names.push(...functionData.signature.getParameters().map((p) => p.escapedName.toString()));
+    functionData.signature.getParameters().forEach((parameter, index) => {
+      if (!argsTypes[index]) {
+        // ignore optional parameters that were not provided
+        return;
+      }
+
+      map.set(parameter.escapedName.toString(), { type: argsTypes[index], allocated: functionData.args[index] });
+    });
   }
 
   if (outerEnv) {
     const envElementType = outerEnv.data.type as llvm.StructType;
-
+    const types: llvm.Type[] = [];
     for (let i = 0; i < envElementType.numElements; ++i) {
       const elementType = envElementType.getElementType(i);
       if (!elementType.isPointerTy()) {
@@ -126,7 +132,7 @@ export function createEnvironment(
       types.push(envElementType.getElementType(i));
     }
 
-    const outerValues = [];
+    const outerValues: llvm.Value[] = [];
     const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.data;
     for (let i = 0; i < envElementType.numElements; ++i) {
       const extracted = data.type.isPointerTy()
@@ -140,9 +146,16 @@ export function createEnvironment(
       outerValues.push(extracted);
     }
 
-    allocations.push(...outerValues);
-    names.push(...outerEnv.varNames.filter((name) => !name.startsWith(InternalNames.Environment)));
+    outerEnv.varNames
+      .filter((name) => name !== InternalNames.Environment)
+      .forEach((value, index) => {
+        map.set(value, { type: types[index], allocated: outerValues[index] });
+      });
   }
+
+  const names = Array.from(map.keys());
+  const types = Array.from(map.values()).map((value) => value.type);
+  const allocations = Array.from(map.values()).map((value) => value.allocated);
 
   const environmentDataType = getEnvironmentType(types, generator);
   const environmentData = allocations.reduce(
@@ -160,6 +173,13 @@ export function populateContext(generator: LLVMGenerator, scope: Scope, environm
   const context: HeapVariableDeclaration[] = [];
 
   scope.map.forEach((scopeVal, key) => {
+    if (scopeVal instanceof Scope) {
+      // prevent potentially endless recursion
+      scope.map.delete(key);
+      context.push(...populateContext(generator, scopeVal, environmentVariables));
+      return;
+    }
+
     if (environmentVariables.indexOf(key) === -1) {
       return;
     }
@@ -171,8 +191,6 @@ export function populateContext(generator: LLVMGenerator, scope: Scope, environm
       scopeVal.name = key;
       // @todo?
       context.push(new HeapVariableDeclaration(scopeVal, scopeVal));
-    } else if (scopeVal instanceof Scope) {
-      context.push(...populateContext(generator, scopeVal, environmentVariables));
     }
   });
 

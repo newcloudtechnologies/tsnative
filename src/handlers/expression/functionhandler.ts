@@ -40,13 +40,16 @@ import {
   getEnvironmentType,
   getClosureType,
   checkIfStaticMethod,
-  checkIfLLVMString,
+  initializeUnion,
+  isUnionLLVMType,
+  getLLVMValue,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { getFunctionDeclarationScope, getFunctionEnvironmentVariables, getLLVMReturnType } from "@handlers";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
+import { getFunctionScopes } from "@handlers/utils";
 
 export class FunctionHandler extends AbstractExpressionHandler {
   private readonly sysVFunctionHandler: SysVFunctionHandler;
@@ -78,12 +81,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
         if (!knownValue && ts.isPropertyAccessExpression(call.expression)) {
           // Special case: call object's function property
           const objectName = call.expression.expression.getText();
-          const object = this.generator.symbolTable.currentScope.tryGetThroughParentChain(objectName, false);
-          if (object && object instanceof HeapVariableDeclaration && !checkIfLLVMString(object.initializer.type)) {
-            if (!object.allocated.type.isPointerTy()) {
-              error(`Expected object '${objectName}' type to be a PointerType`);
-            }
+          const objectEnvironmentIndex = env ? env.varNames.indexOf(objectName) : -1;
+          const object =
+            objectEnvironmentIndex > -1
+              ? this.generator.builder.createExtractValue(env!.data, [objectEnvironmentIndex])
+              : this.generator.symbolTable.currentScope.tryGetThroughParentChain(objectName, false);
 
+          if (object) {
             const fieldName =
               call.expression.name.getText() +
               "__" +
@@ -91,23 +95,29 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
             // Heuristically find object fields...
             const objectFields = this.generator.symbolTable.getObjectName(fieldName);
-            if (!objectFields) {
-              error(`Cannot find object that contains field ${fieldName}`);
-            }
+            if (objectFields) {
+              // ...to figure out field's index
+              const fieldIndex = objectFields.split(",").indexOf(fieldName);
+              if (fieldIndex === -1) {
+                error(`Cannot find ${fieldName} in ${objectFields}`);
+              }
 
-            // ...to figure out field's index
-            const fieldIndex = objectFields.split(",").indexOf(fieldName);
-            if (fieldIndex === -1) {
-              error(`Cannot find ${fieldName} in ${objectFields}`);
+              if (object instanceof HeapVariableDeclaration) {
+                // ...to extract it out
+                knownValue = this.generator.builder.createExtractValue(
+                  object.allocated.type.isPointerTy()
+                    ? this.generator.builder.createLoad(object.allocated)
+                    : object.allocated,
+                  [fieldIndex]
+                );
+              } else if (object instanceof llvm.Value) {
+                // ...to extract it out
+                knownValue = this.generator.builder.createExtractValue(
+                  object.type.isPointerTy() ? this.generator.builder.createLoad(object) : object,
+                  [fieldIndex]
+                );
+              }
             }
-
-            // ...to extract it out
-            knownValue = this.generator.builder.createExtractValue(
-              object.initializer.type.isPointerTy()
-                ? this.generator.builder.createLoad(object.initializer)
-                : object.initializer,
-              [fieldIndex]
-            );
           }
         }
 
@@ -242,7 +252,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       ?.elementType as llvm.StructType)?.name;
     if (knownValueName?.startsWith(InternalNames.Closure) || knownValueElementName?.startsWith("cls__")) {
       // Handle closure. Get a closure function and pass its data as argument
-      const closure = this.generator.builder.createLoad(knownFunction as llvm.Value);
+      const closure = getLLVMValue(knownFunction as llvm.Value, this.generator);
       const closureFunction = this.generator.builder.createExtractValue(closure, [0]);
       const closureFunctionData = this.generator.builder.createExtractValue(closure, [1]);
 
@@ -487,6 +497,19 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator, outerEnv));
 
     const environmentVariables = getFunctionEnvironmentVariables(valueDeclaration.body!, signature, this.generator);
+    const innerScopes = getFunctionScopes(valueDeclaration.body!, this.generator);
+    for (const innerScope of innerScopes) {
+      scope.set(
+        innerScope.name! +
+          "__" +
+          Math.random()
+            .toString(36)
+            .replace(/[^a-z]+/g, "")
+            .substr(0, 5),
+        innerScope
+      );
+    }
+
     const env = createEnvironment(scope, environmentVariables, this.generator, { args, signature }, outerEnv);
 
     const tsReturnType = getReturnType(expression, this.generator);
@@ -695,6 +718,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
                 if (ts.isFunctionExpression(node.expression)) {
                   const closure = this.handleFunctionExpression(node.expression, bodyScope, bodyEnv);
                   this.generator.builder.createRet(closure);
+                  return;
+                }
+
+                if (isUnionLLVMType(llvmReturnType)) {
+                  let unionRet = this.generator.handleExpression(node.expression, bodyEnv);
+                  unionRet = initializeUnion(llvmReturnType as llvm.PointerType, unionRet, this.generator);
+                  this.generator.builder.createRet(unionRet);
                   return;
                 }
               }

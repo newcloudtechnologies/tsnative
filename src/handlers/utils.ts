@@ -20,7 +20,7 @@ import {
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { Environment, Scope } from "@scope";
+import { Environment, FunctionDeclarationScopeEnvironment, isFunctionDeclarationScopeEnvironment, Scope } from "@scope";
 
 export function castToInt32AndBack(
   values: llvm.Value[],
@@ -293,7 +293,18 @@ export function getReturnObjectType(functionBody: ts.ConciseBody, generator: LLV
             ]).getPointerTo();
             returnType = objectType;
           } else {
-            generator.handleNode(node, bodyScope, env); // @todo
+            try {
+              if (
+                ts.isVariableStatement(node) ||
+                (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
+              ) {
+                // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
+                generator.handleNode(node, bodyScope, env);
+              }
+
+              // Ignore empty catch block
+              // tslint:disable-next-line
+            } catch (_) { }
           }
         });
       } else {
@@ -325,6 +336,7 @@ export function getNestedFunctionType(functionBody: ts.ConciseBody, generator: L
               ts.isVariableStatement(node) ||
               (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
             ) {
+              // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
               generator.handleNode(node, bodyScope, env);
             }
           }
@@ -377,8 +389,30 @@ export function getFunctionEnvironmentVariables(
 
       const visitor = (node: ts.Node) => {
         const nodeText = node.getText();
-        if (ts.isIdentifier(node) && !bodyScope.map.get(nodeText) && !externalVariables.includes(nodeText)) {
+
+        if (
+          ts.isIdentifier(node) &&
+          !ts.isPropertyAssignment(node.parent) &&
+          !bodyScope.map.get(nodeText) &&
+          !externalVariables.includes(nodeText)
+        ) {
           externalVariables.push(nodeText);
+        }
+
+        if (ts.isCallExpression(node)) {
+          let symbol = generator.checker.getTypeAtLocation(node.expression).symbol;
+          symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+          // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead
+          const functionDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+
+          if (functionDeclaration.body) {
+            const innerFunctionSignature = generator.checker.getSignatureFromDeclaration(
+              functionDeclaration as ts.SignatureDeclaration
+            )!;
+            externalVariables.push(
+              ...getFunctionEnvironmentVariables(functionDeclaration.body, innerFunctionSignature!, generator)
+            );
+          }
         }
 
         if (node.getChildCount()) {
@@ -389,7 +423,8 @@ export function getFunctionEnvironmentVariables(
       try {
         body.forEachChild((node) => {
           if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
-            generator.handleExpression(node.expression);
+            // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
+            generator.handleNode(node, bodyScope);
           }
         });
       } catch (_) {
@@ -402,6 +437,39 @@ export function getFunctionEnvironmentVariables(
       // @todo: check arguments usage too
       externalVariables.push(...signature.getParameters().map((p) => p.escapedName.toString()));
       return externalVariables;
+    }, generator.symbolTable.currentScope);
+  });
+}
+
+export function getFunctionScopes(body: ts.ConciseBody, generator: LLVMGenerator) {
+  return generator.withInsertBlockKeeping(() => {
+    return generator.symbolTable.withLocalScope((_) => {
+      const innerScopes: Scope[] = [];
+
+      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
+      generator.builder.setInsertionPoint(dummyBlock);
+
+      const visitor = (node: ts.Node) => {
+        if (ts.isCallExpression(node)) {
+          const functionName = node.expression.getText();
+          const knownFunction = generator.symbolTable.currentScope.tryGetThroughParentChain(functionName);
+
+          if (knownFunction) {
+            if (isFunctionDeclarationScopeEnvironment(knownFunction)) {
+              innerScopes.push((knownFunction as FunctionDeclarationScopeEnvironment).scope);
+            }
+          }
+        }
+
+        if (node.getChildCount()) {
+          node.forEachChild(visitor);
+        }
+      };
+
+      ts.forEachChild(body, visitor);
+
+      dummyBlock.eraseFromParent();
+      return innerScopes;
     }, generator.symbolTable.currentScope);
   });
 }

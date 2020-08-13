@@ -15,7 +15,7 @@ import { Scope, Environment, createEnvironment } from "@scope";
 import { getLLVMType, getAliasedSymbolIfNecessary, tryResolveGenericTypeIfNecessary } from "@utils";
 import * as llvm from "llvm-node";
 import { getLLVMReturnType } from "@handlers";
-import { getFunctionEnvironmentVariables } from "@handlers/utils";
+import { getFunctionEnvironmentVariables, getFunctionScopes } from "@handlers/utils";
 import { LLVMGenerator } from "@generator";
 
 const utilityReturnType = "ReturnType";
@@ -55,6 +55,10 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
                 signature,
                 generator
               );
+              const innerScopes = getFunctionScopes(valueDeclaration.body!, generator);
+              for (const innerScope of innerScopes) {
+                generator.symbolTable.currentScope.set(innerScope.name!, innerScope);
+              }
               const env = createEnvironment(generator.symbolTable.currentScope, environmentVariables, generator, {
                 args: dummyArguments,
                 signature,

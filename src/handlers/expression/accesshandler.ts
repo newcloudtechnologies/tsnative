@@ -36,6 +36,17 @@ export class AccessHandler extends AbstractExpressionHandler {
     const propertyName = expression.name.text;
 
     if (ts.isIdentifier(left)) {
+      if (env) {
+        const index = env.varNames.indexOf(propertyName);
+        if (index > -1) {
+          const agg = env.data.type.isPointerTy() ? this.generator.builder.createLoad(env.data) : env.data;
+          if ((agg.type as llvm.StructType).numElements === 0) {
+            error("Identifier handler: Trying to extract a value from an empty struct");
+          }
+          return this.generator.builder.createExtractValue(agg, [index]);
+        }
+      }
+
       const scope = this.generator.symbolTable.get(left.getText());
       if (scope && scope instanceof Scope) {
         const value = scope.get(propertyName);
