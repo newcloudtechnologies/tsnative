@@ -371,10 +371,16 @@ export function handleFunctionArgument(
   let arg = generator.handleExpression(argument, env);
 
   if (isUnionLLVMValue(arg)) {
+    let declaredType: ts.Type;
     const symbol = generator.checker.getSymbolAtLocation(argument);
-    const declaration = symbol!.declarations[0];
-    let declaredType = generator.checker.getTypeAtLocation(declaration!);
-    declaredType = tryResolveGenericTypeIfNecessary(declaredType, generator);
+    if (symbol) {
+      const declaration = symbol!.declarations[0];
+      declaredType = generator.checker.getTypeAtLocation(declaration!);
+      declaredType = tryResolveGenericTypeIfNecessary(declaredType, generator);
+    } else {
+      declaredType = generator.checker.getTypeAtLocation(argument);
+    }
+
     if (!declaredType.isUnion()) {
       error("Expected union type");
     }
