@@ -35,42 +35,52 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
       if (ts.isVariableStatement(node)) {
         node.declarationList.declarations.forEach((declaration) => {
           if (declaration.name.getText() === initializerName) {
-            if (declaration.initializer && ts.isFunctionLike(declaration.initializer)) {
-              const symbol = generator.checker.getTypeAtLocation(declaration.initializer).symbol;
-              const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
-                .declarations[0] as ts.FunctionLikeDeclaration;
-              const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
-              let tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
-              tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, generator);
+            if (declaration.initializer) {
+              if (ts.isFunctionLike(declaration.initializer)) {
+                const symbol = generator.checker.getTypeAtLocation(declaration.initializer).symbol;
+                const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
+                  .declarations[0] as ts.FunctionLikeDeclaration;
+                const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
+                let tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
+                tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, generator);
 
-              const tsArgumentTypes = declaration.initializer!.parameters.map(generator.checker.getTypeAtLocation);
-              const llvmArgumentTypes = tsArgumentTypes.map((arg) =>
-                getLLVMType(arg, declaration.initializer!, generator)
-              );
-              const dummyArguments = llvmArgumentTypes.map((type) =>
-                llvm.Constant.getNullValue(type.isPointerTy() ? type : type.getPointerTo())
-              );
-              const environmentVariables = getFunctionEnvironmentVariables(
-                (declaration.initializer! as ts.FunctionLikeDeclaration).body!,
-                signature,
-                generator
-              );
-              const innerScopes = getFunctionScopes(valueDeclaration.body!, generator);
-              for (const innerScope of innerScopes) {
-                generator.symbolTable.currentScope.set(innerScope.name!, innerScope);
+                const tsArgumentTypes = declaration.initializer!.parameters.map(generator.checker.getTypeAtLocation);
+                const llvmArgumentTypes = tsArgumentTypes.map((arg) =>
+                  getLLVMType(arg, declaration.initializer!, generator)
+                );
+                const dummyArguments = llvmArgumentTypes.map((type) =>
+                  llvm.Constant.getNullValue(type.isPointerTy() ? type : type.getPointerTo())
+                );
+                const environmentVariables = getFunctionEnvironmentVariables(
+                  (declaration.initializer! as ts.FunctionLikeDeclaration).body!,
+                  signature,
+                  generator
+                );
+                const innerScopes = getFunctionScopes(valueDeclaration.body!, generator);
+                for (const innerScope of innerScopes) {
+                  generator.symbolTable.currentScope.set(innerScope.name!, innerScope);
+                }
+                const env = createEnvironment(generator.symbolTable.currentScope, environmentVariables, generator, {
+                  args: dummyArguments,
+                  signature,
+                });
+
+                llvmType = getLLVMReturnType(
+                  tsReturnType,
+                  declaration.initializer,
+                  (declaration.initializer as ts.FunctionDeclaration).body!,
+                  generator,
+                  env
+                );
+              } else if (ts.isCallExpression(declaration.initializer)) {
+                const symbol = generator.checker.getTypeAtLocation(declaration.initializer).symbol;
+                const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
+                  .declarations[0] as ts.FunctionLikeDeclaration;
+                const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
+                let tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
+                tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, generator);
+                llvmType = getLLVMType(tsReturnType, declaration.initializer, generator);
               }
-              const env = createEnvironment(generator.symbolTable.currentScope, environmentVariables, generator, {
-                args: dummyArguments,
-                signature,
-              });
-
-              llvmType = getLLVMReturnType(
-                tsReturnType,
-                declaration.initializer,
-                (declaration.initializer as ts.FunctionDeclaration).body!,
-                generator,
-                env
-              );
             }
           }
         });
