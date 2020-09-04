@@ -41,6 +41,8 @@ export class TemplateInstantiator {
     if (ts.isCallExpression(node) || (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression))) {
       if (!ts.isCallExpression(node)) {
         (node.expression as ts.CallExpression).arguments.forEach(this.nodeVisitor.bind(this));
+      } else {
+        (node as ts.CallExpression).arguments.forEach(this.nodeVisitor.bind(this));
       }
 
       const callExpression = ts.isCallExpression(node)

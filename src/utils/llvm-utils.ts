@@ -27,6 +27,8 @@ import {
   tryResolveGenericTypeIfNecessary,
   checkIfUndefined,
   checkIfArray,
+  getAliasedSymbolIfNecessary,
+  InternalNames,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -178,10 +180,19 @@ export function getLLVMType(
 function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
   const { context, checker } = generator;
 
-  const elements: llvm.Type[] = flatten(
+  const elements = flatten(
     type.types.map((t) => {
       return getProperties(t, checker).map((property) => {
-        const llvmType = getLLVMType(checker.getTypeOfSymbolAtLocation(property, node), node, generator);
+        const tsType = checker.getTypeOfSymbolAtLocation(property, node);
+        let llvmType;
+        if (tsType.symbol && ts.isInterfaceDeclaration(tsType.symbol.declarations[0])) {
+          // Unbox interface types since semantically they are live on TS level only.
+          const interfaceElements = getObjectPropsLLVMTypes(tsType as ts.ObjectType, node, generator);
+          llvmType = llvm.StructType.get(context, interfaceElements).getPointerTo();
+        } else {
+          llvmType = getLLVMType(tsType, node, generator);
+        }
+
         const valueType = property.valueDeclaration.decorators?.some(
           (decorator) => decorator.getText() === "@ValueType"
         );
@@ -269,7 +280,7 @@ export function getEnvironmentType(types: llvm.Type[], generator: LLVMGenerator)
   return envType;
 }
 
-export function getClosureType(types: llvm.Type[], generator: LLVMGenerator) {
+export function getClosureType(types: llvm.Type[], generator: LLVMGenerator, dirty: boolean) {
   if (types.some((type) => !type.isPointerTy())) {
     error(
       `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}'`
@@ -277,6 +288,7 @@ export function getClosureType(types: llvm.Type[], generator: LLVMGenerator) {
   }
 
   const closureName =
+    (dirty ? "dirty__" : "") +
     "cls__(" +
     types.reduce((acc, curr) => {
       return acc + "_" + curr.toString().replace(/\"/g, "");
@@ -292,14 +304,26 @@ export function getClosureType(types: llvm.Type[], generator: LLVMGenerator) {
   return closureType;
 }
 
-export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {
-  const { context, module, checker } = generator;
+export function isDirtyClosure(value: llvm.Value) {
+  return Boolean(
+    (value.type as llvm.StructType).name?.startsWith("dirty__cls__") ||
+      ((value.type as llvm.PointerType).elementType as llvm.StructType).name?.startsWith("dirty__cls__")
+  );
+}
 
-  const elements: llvm.Type[] = getProperties(type, checker).map((property) => {
-    const llvmType = getLLVMType(checker.getTypeOfSymbolAtLocation(property, node), node, generator);
+function getObjectPropsLLVMTypes(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {
+  return getProperties(type, generator.checker).map((property) => {
+    const tsType = generator.checker.getTypeOfSymbolAtLocation(property, node);
+    const llvmType = getLLVMType(tsType, node, generator);
     const valueType = property.valueDeclaration.decorators?.some((decorator) => decorator.getText() === "@ValueType");
     return valueType ? (llvmType as llvm.PointerType).elementType : llvmType;
   });
+}
+
+export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {
+  const { context, module, checker } = generator;
+
+  const elements = getObjectPropsLLVMTypes(type, node, generator);
 
   let struct: llvm.StructType | null;
   const declaration = type.getSymbol()!.valueDeclaration;
@@ -365,16 +389,33 @@ export function isUnionWithNullLLVMValue(value: llvm.Value): boolean {
 
 export function handleFunctionArgument(
   argument: ts.Expression,
+  argumentIndex: number,
   generator: LLVMGenerator,
   env?: Environment
 ): llvm.Value {
   let arg = generator.handleExpression(argument, env);
 
+  if (arg.name.startsWith(InternalNames.Closure)) {
+    // This argument is a closure.
+    // It has null values in its environment that have to be substituted by actual arguments.
+    // At this point just store metainformation about this argument: its parent function name and argument name.
+    const parentFunctionExpression = (argument.parent as ts.CallExpression).expression;
+    let symbol = generator.checker.getTypeAtLocation(parentFunctionExpression).symbol;
+    symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+    const declaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+    const signature = generator.checker.getSignatureFromDeclaration(declaration)!;
+
+    generator.symbolTable.addClosureParameter(
+      parentFunctionExpression.getText(),
+      signature.getParameters()[argumentIndex].escapedName.toString()
+    );
+  }
+
   if (isUnionLLVMValue(arg)) {
     let declaredType: ts.Type;
     const symbol = generator.checker.getSymbolAtLocation(argument);
     if (symbol) {
-      const declaration = symbol!.declarations[0];
+      const declaration = symbol.declarations[0];
       declaredType = generator.checker.getTypeAtLocation(declaration!);
       declaredType = tryResolveGenericTypeIfNecessary(declaredType, generator);
     } else {
@@ -449,6 +490,11 @@ export function initializeUnion(
         i < activeIndex + initializerElementTypes.length
       ) {
         const initializerUnionElement = generator.builder.createExtractValue(initializerValue, [k]);
+        if (!(unionValue.type as llvm.StructType).getElementType(k).equals(initializerUnionElement.type)) {
+          error(
+            `Types mismatch, trying to insert '${initializerUnionElement.type.toString()}' into '${unionValue.type.toString()}'`
+          );
+        }
         unionValue = generator.builder.createInsertValue(unionValue, initializerUnionElement, [k]) as llvm.Constant;
         k++;
       }
@@ -459,6 +505,10 @@ export function initializeUnion(
         activeIndex = i;
         break;
       }
+    }
+
+    if (activeIndex === -1) {
+      error(`Cannot find type '${initializer.type.toString()}' in union type '${unionType.toString()}'`);
     }
 
     if ((isUnionWithUndefinedLLVMType(unionType) || isUnionWithNullLLVMType(unionType)) && activeIndex === 0) {
@@ -515,4 +565,73 @@ export function getLLVMValue(value: llvm.Value, generator: LLVMGenerator) {
     value = generator.builder.createLoad(value);
   }
   return value;
+}
+
+export function getLLVMValueType(value: llvm.Value) {
+  let type = value.type;
+  while (type.isPointerTy()) {
+    type = type.elementType;
+  }
+  return type;
+}
+
+export function unwrapPointerType(type: llvm.Type) {
+  while (type.isPointerTy()) {
+    type = type.elementType;
+  }
+  return type;
+}
+
+export function makeClosureWithEffectiveArguments(
+  source: llvm.Value,
+  effectiveArguments: llvm.Value[],
+  environmentType: llvm.Type,
+  generator: LLVMGenerator
+) {
+  const newEnv = effectiveArguments.reduce((acc, value, index) => {
+    const elementType = (acc.type as llvm.StructType).getElementType(index);
+
+    if (isUnionLLVMType(elementType)) {
+      value = initializeUnion(elementType as llvm.PointerType, value, generator);
+    }
+
+    if (!elementType.equals(value.type)) {
+      error(`Types mismatch, trying to insert '${value.type.toString()}' into '${elementType.toString()}'`);
+    }
+    return generator.builder.createInsertValue(acc, value, [index]);
+  }, llvm.Constant.getNullValue(environmentType));
+  const allocatedNewEnv = generator.gc.allocate(newEnv.type);
+  generator.builder.createStore(newEnv, allocatedNewEnv);
+
+  let newClosure = llvm.Constant.getNullValue(unwrapPointerType(source.type));
+  const closureFn = generator.builder.createExtractValue(getLLVMValue(source, generator), [0]);
+  newClosure = generator.builder.createInsertValue(newClosure, closureFn, [0]) as llvm.Constant;
+  newClosure = generator.builder.createInsertValue(newClosure, allocatedNewEnv, [1]) as llvm.Constant;
+  const allocatedNewClosure = generator.gc.allocate(newClosure.type);
+  generator.builder.createStore(newClosure, allocatedNewClosure);
+  return allocatedNewClosure;
+}
+
+export function storeActualArguments(args: llvm.Value[], closureFunctionData: llvm.Value, generator: LLVMGenerator) {
+  // Closure data consists of null-valued arguments. Replace dummy arguments with actual ones.
+  for (let i = 0; i < args.length; ++i) {
+    const elementPtrPtr = generator.builder.createInBoundsGEP(closureFunctionData, [
+      llvm.ConstantInt.get(generator.context, 0),
+      llvm.ConstantInt.get(generator.context, i),
+    ]);
+
+    const elementPtrType = (elementPtrPtr.type as llvm.PointerType).elementType;
+    let argument = args[i];
+    if (isUnionLLVMType(elementPtrType)) {
+      argument = initializeUnion(elementPtrType as llvm.PointerType, argument, generator);
+    }
+
+    if (!argument.type.equals(elementPtrType)) {
+      error(
+        `Types mismatch: argument '${argument.type.toString()}', closure data element '${(elementPtrType as llvm.PointerType).elementType.toString()}'`
+      );
+    }
+
+    generator.builder.createStore(argument, elementPtrPtr);
+  }
 }

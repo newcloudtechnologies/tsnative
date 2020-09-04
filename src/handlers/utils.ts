@@ -17,6 +17,7 @@ import {
   isCppPrimitiveType,
   getLLVMValue,
   adjustLLVMValueToType,
+  handleFunctionArgument,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -435,7 +436,13 @@ export function getFunctionEnvironmentVariables(
 
       dummyBlock.eraseFromParent();
       // @todo: check arguments usage too
-      externalVariables.push(...signature.getParameters().map((p) => p.escapedName.toString()));
+      externalVariables.push(
+        ...signature
+          .getParameters()
+          .map((p) => p.escapedName.toString())
+          .filter((name) => !externalVariables.includes(name))
+      );
+
       return externalVariables;
     }, generator.symbolTable.currentScope);
   });
@@ -472,4 +479,37 @@ export function getFunctionScopes(body: ts.ConciseBody, generator: LLVMGenerator
       return innerScopes;
     }, generator.symbolTable.currentScope);
   });
+}
+
+export function getEffectiveArguments(
+  closureParameterNames: string[] | undefined,
+  declaration: ts.FunctionLikeDeclaration | undefined,
+  generator: LLVMGenerator,
+  env?: Environment
+) {
+  if (!closureParameterNames || !declaration || !declaration.body) {
+    return [];
+  }
+
+  const effectiveArguments: llvm.Value[] = [];
+  const visitor = (node: ts.Node) => {
+    if (ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      if (closureParameterNames?.includes(node.expression.getText())) {
+        // @todo: Multiple calls not supported!
+        effectiveArguments.push(
+          ...node.arguments.map((argument, index) => handleFunctionArgument(argument, index, generator, env))
+        );
+      }
+    }
+    if (node.getChildCount() > 0) {
+      node.forEachChild(visitor);
+    }
+  };
+
+  // Get effective arguments.
+  declaration.body.forEachChild(visitor);
+  return effectiveArguments;
 }

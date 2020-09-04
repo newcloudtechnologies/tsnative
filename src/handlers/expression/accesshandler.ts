@@ -47,7 +47,15 @@ export class AccessHandler extends AbstractExpressionHandler {
         }
       }
 
-      const scope = this.generator.symbolTable.get(left.getText());
+      let scope;
+      try {
+        // It's not an error to not find it in symbol table
+        scope = this.generator.symbolTable.get(left.getText());
+
+        // Ignore empty catch block
+        // tslint:disable-next-line
+      } catch (_) { }
+
       if (scope && scope instanceof Scope) {
         const value = scope.get(propertyName);
         if (!value) {

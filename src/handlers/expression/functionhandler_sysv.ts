@@ -102,7 +102,9 @@ export class SysVFunctionHandler {
       return type.isPointerTy() ? type : type.getPointerTo();
     });
 
-    let args = expression.arguments.map((argument) => handleFunctionArgument(argument, this.generator, env));
+    let args = expression.arguments.map((argument, index) =>
+      handleFunctionArgument(argument, index, this.generator, env)
+    );
     args = this.adjustParameters(args, llvmArgumentTypes);
 
     if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
@@ -160,7 +162,8 @@ export class SysVFunctionHandler {
     );
 
     const body = constructorDeclaration.body;
-    const args = expression.arguments?.map((argument) => handleFunctionArgument(argument, this.generator)) || [];
+    const args =
+      expression.arguments?.map((argument, index) => handleFunctionArgument(argument, index, this.generator)) || [];
 
     let thisValue: llvm.Value | undefined;
     if (body && !existing) {

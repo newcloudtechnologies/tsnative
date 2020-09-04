@@ -41,7 +41,6 @@
     console.assert(i === 42, "Free variable capture failed");
 }
 
-/* @todo
 {
     let a = 0;
     function f() {
@@ -50,10 +49,11 @@
         }
     }
 
-    let g = f();
-    g();
+    const g = f();
+    let i = g();
+    console.assert(i === a, "Free variable capture by nested function failed")
 }
-
+/* @todo
 {
     function f(fn: () => number) {
         return function() {

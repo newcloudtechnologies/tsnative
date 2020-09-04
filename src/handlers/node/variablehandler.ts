@@ -80,7 +80,7 @@ export class VariableHandler extends AbstractNodeHandler {
       }
 
       // @todo
-      parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, declaration));
+      parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
     }
   }
 
@@ -123,7 +123,7 @@ export class VariableHandler extends AbstractNodeHandler {
       }
       const alloca = this.generator.gc.allocate(declarationLLVMType);
       this.generator.builder.createStore(initializer, alloca);
-      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, declaration));
+      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
       initializer = undefined;
     } else if (ts.isArrayLiteralExpression(declaration.initializer)) {
       addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);

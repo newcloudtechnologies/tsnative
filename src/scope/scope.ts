@@ -80,11 +80,13 @@ export function addClassScope(
 export class HeapVariableDeclaration {
   allocated: llvm.Value;
   initializer: llvm.Value;
+  name: string;
   declaration: ts.VariableDeclaration | undefined;
 
-  constructor(alloca: llvm.Value, initializer: llvm.Value, declaration?: ts.VariableDeclaration) {
+  constructor(alloca: llvm.Value, initializer: llvm.Value, name: string, declaration?: ts.VariableDeclaration) {
     this.allocated = alloca;
     this.initializer = initializer;
+    this.name = name;
     this.declaration = declaration;
   }
 }
@@ -96,12 +98,7 @@ export function createEnvironment(
   functionData?: { args: llvm.Value[]; signature: ts.Signature },
   outerEnv?: Environment
 ) {
-  const context = populateContext(generator, scope, environmentVariables);
-
   const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
-  context.forEach((value) => {
-    map.set(value.allocated.name, { type: value.allocated.type, allocated: value.allocated });
-  });
 
   if (functionData) {
     const argsTypes = functionData.args.map((arg) => {
@@ -117,40 +114,57 @@ export function createEnvironment(
         return;
       }
 
-      map.set(parameter.escapedName.toString(), { type: argsTypes[index], allocated: functionData.args[index] });
+      const allocated = functionData.args[index];
+      map.set(parameter.escapedName.toString(), { type: argsTypes[index], allocated });
     });
   }
 
+  const context = populateContext(generator, scope, environmentVariables);
+  context.forEach((value) => {
+    if (value.name === InternalNames.Environment) {
+      return;
+    }
+
+    if (!map.has(value.name)) {
+      map.set(value.name, { type: value.allocated.type, allocated: value.allocated });
+    }
+  });
+
   if (outerEnv) {
-    const envElementType = outerEnv.data.type as llvm.StructType;
-    const types: llvm.Type[] = [];
-    for (let i = 0; i < envElementType.numElements; ++i) {
-      const elementType = envElementType.getElementType(i);
-      if (!elementType.isPointerTy()) {
-        error(`Outer environment element expected to be of PointerType, got '${elementType.toString()}'`);
-      }
-      types.push(envElementType.getElementType(i));
-    }
-
-    const outerValues: llvm.Value[] = [];
     const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.data;
-    for (let i = 0; i < envElementType.numElements; ++i) {
-      const extracted = data.type.isPointerTy()
-        ? generator.builder.createLoad(
-            generator.builder.createInBoundsGEP(data, [
-              llvm.ConstantInt.get(generator.context, 0),
-              llvm.ConstantInt.get(generator.context, i),
-            ])
-          )
-        : generator.builder.createExtractValue(data, [i]);
-      outerValues.push(extracted);
-    }
 
-    outerEnv.varNames
-      .filter((name) => name !== InternalNames.Environment)
-      .forEach((value, index) => {
-        map.set(value, { type: types[index], allocated: outerValues[index] });
-      });
+    if (data) {
+      const envElementType = data.type.isPointerTy()
+        ? ((data.type as llvm.PointerType).elementType as llvm.StructType)
+        : (data.type as llvm.StructType);
+      const types: llvm.Type[] = [];
+      for (let i = 0; i < envElementType.numElements; ++i) {
+        const elementType = envElementType.getElementType(i);
+        if (!elementType.isPointerTy()) {
+          error(`Outer environment element expected to be of PointerType, got '${elementType.toString()}'`);
+        }
+        types.push(envElementType.getElementType(i));
+      }
+
+      const outerValues: llvm.Value[] = [];
+      for (let i = 0; i < envElementType.numElements; ++i) {
+        const extracted = data.type.isPointerTy()
+          ? generator.builder.createLoad(
+              generator.builder.createInBoundsGEP(data, [
+                llvm.ConstantInt.get(generator.context, 0),
+                llvm.ConstantInt.get(generator.context, i),
+              ])
+            )
+          : generator.builder.createExtractValue(data, [i]);
+        outerValues.push(extracted);
+      }
+
+      outerEnv.varNames
+        .filter((name) => name !== InternalNames.Environment)
+        .forEach((value, index) => {
+          map.set(value, { type: types[index], allocated: outerValues[index] });
+        });
+    }
   }
 
   const names = Array.from(map.keys());
@@ -158,10 +172,16 @@ export function createEnvironment(
   const allocations = Array.from(map.values()).map((value) => value.allocated);
 
   const environmentDataType = getEnvironmentType(types, generator);
-  const environmentData = allocations.reduce(
-    (acc, allocation, idx) => generator.builder.createInsertValue(acc, allocation, [idx]),
-    llvm.Constant.getNullValue(environmentDataType)
-  ) as llvm.Constant;
+  const environmentData = allocations.reduce((acc, allocation, idx) => {
+    if (!(acc.type as llvm.StructType).getElementType(idx).equals(allocation.type)) {
+      error(
+        `Types mismatch, trying to insert '${allocation.type.toString()}' into '${(acc.type as llvm.StructType)
+          .getElementType(idx)
+          .toString()}'`
+      );
+    }
+    return generator.builder.createInsertValue(acc, allocation, [idx]);
+  }, llvm.Constant.getNullValue(environmentDataType)) as llvm.Constant;
 
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createStore(environmentData, environmentAlloca);
@@ -180,17 +200,15 @@ export function populateContext(generator: LLVMGenerator, scope: Scope, environm
       return;
     }
 
-    if (environmentVariables.indexOf(key) === -1) {
+    if (environmentVariables.indexOf(key) === -1 && key !== InternalNames.Environment) {
       return;
     }
 
     if (scopeVal instanceof HeapVariableDeclaration) {
-      scopeVal.allocated.name = key;
+      scopeVal.name = key;
       context.push(scopeVal);
     } else if (scopeVal instanceof llvm.Value) {
-      scopeVal.name = key;
-      // @todo?
-      context.push(new HeapVariableDeclaration(scopeVal, scopeVal));
+      context.push(new HeapVariableDeclaration(scopeVal, scopeVal, key));
     }
   });
 

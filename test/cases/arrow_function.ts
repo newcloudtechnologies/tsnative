@@ -1,34 +1,34 @@
 {
-    let f = (): void => { };
+    const f = (): void => { };
     f();
 }
 
 {
-    let f = (_: number): void => { };
+    const f = (_: number): void => { };
     f(12);
 }
 
 {
-    let f = (v: number): number => { return v; };
+    const f = (v: number): number => { return v; };
     f(12);
 }
 
 {
-    let f = (v: number, u: number): number => { return v + u; };
+    const f = (v: number, u: number): number => { return v + u; };
     f(12, 1);
 }
 
 {
-    let f = (u: string): string => { return u; };
+    const f = (u: string): string => { return u; };
     f("h");
 }
 
 {
-    let f = (fn: (_: number) => void, v: number) => {
+    const f = (fn: (_: number) => void, v: number) => {
         fn(v);
     };
 
-    let log = (v: number): void => {
+    const log = (v: number): void => {
         console.log(v);
     }
 
@@ -36,7 +36,7 @@
 }
 
 {
-    let f = () => {
+    const f = () => {
         return function() {
             console.log(22)
         }

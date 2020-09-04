@@ -13,8 +13,8 @@ target triple = "x86_64"
 %"env__(_%string*)" = type { %string* }
 %string = type { i64, i64, i64, i64 }
 %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" = type { %string* (%"env__(_%string*)"*)*, %"env__(_%string*)"* }
-%"env__(_void (double*)*_double*)" = type { void (double*)*, double* }
-%"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)" = type { void (%"env__(_void (double*)*_double*)"*)*, %"env__(_void (double*)*_double*)"* }
+%"dirty__cls__()" = type {}
+%"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)" = type { %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"*, double* }
 %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)" = type { %"cls__(_void (%env__()*)*_%env__()*)"* (%"env__()"*)*, %"env__()"* }
 
 @0 = private unnamed_addr constant [2 x i8] c"h\00"
@@ -45,86 +45,105 @@ entry:
   %13 = load %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__1
   %14 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %13, 0
   %15 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %13, 1
+  %16 = getelementptr inbounds %"env__(_double*)", %"env__(_double*)"* %15, i32 0, i32 0
+  store double* %12, double** %16
   call void %14(%"env__(_double*)"* %15)
-  %16 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %17 = bitcast i8* %16 to %"env__(_double*)"*
-  store %"env__(_double*)" zeroinitializer, %"env__(_double*)"* %17
-  %18 = insertvalue %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" { double* (%"env__(_double*)"*)* @3, %"env__(_double*)"* null }, %"env__(_double*)"* %17, 1
-  %19 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %__closure__2 = bitcast i8* %19 to %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)"*
-  store %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" %18, %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__2
-  %20 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %21 = bitcast i8* %20 to double*
-  store double 1.200000e+01, double* %21
-  %22 = load %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__2
-  %23 = extractvalue %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" %22, 0
-  %24 = extractvalue %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" %22, 1
-  %25 = call double* %23(%"env__(_double*)"* %24)
-  %26 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %27 = bitcast i8* %26 to %"env__(_double*_double*)"*
-  store %"env__(_double*_double*)" zeroinitializer, %"env__(_double*_double*)"* %27
-  %28 = insertvalue %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" { double* (%"env__(_double*_double*)"*)* @4, %"env__(_double*_double*)"* null }, %"env__(_double*_double*)"* %27, 1
-  %29 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %__closure__3 = bitcast i8* %29 to %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)"*
-  store %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" %28, %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)"* %__closure__3
-  %30 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %31 = bitcast i8* %30 to double*
-  store double 1.200000e+01, double* %31
+  %17 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %18 = bitcast i8* %17 to %"env__(_double*)"*
+  store %"env__(_double*)" zeroinitializer, %"env__(_double*)"* %18
+  %19 = insertvalue %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" { double* (%"env__(_double*)"*)* @3, %"env__(_double*)"* null }, %"env__(_double*)"* %18, 1
+  %20 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %__closure__2 = bitcast i8* %20 to %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)"*
+  store %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" %19, %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__2
+  %21 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %22 = bitcast i8* %21 to double*
+  store double 1.200000e+01, double* %22
+  %23 = load %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__2
+  %24 = extractvalue %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" %23, 0
+  %25 = extractvalue %"cls__(_double* (%env__(_double*)*)*_%env__(_double*)*)" %23, 1
+  %26 = getelementptr inbounds %"env__(_double*)", %"env__(_double*)"* %25, i32 0, i32 0
+  store double* %22, double** %26
+  %27 = call double* %24(%"env__(_double*)"* %25)
+  %28 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %29 = bitcast i8* %28 to %"env__(_double*_double*)"*
+  store %"env__(_double*_double*)" zeroinitializer, %"env__(_double*_double*)"* %29
+  %30 = insertvalue %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" { double* (%"env__(_double*_double*)"*)* @4, %"env__(_double*_double*)"* null }, %"env__(_double*_double*)"* %29, 1
+  %31 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %__closure__3 = bitcast i8* %31 to %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)"*
+  store %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" %30, %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)"* %__closure__3
   %32 = call i8* @_ZN2GC8allocateEj(i32 8)
   %33 = bitcast i8* %32 to double*
-  store double 1.000000e+00, double* %33
-  %34 = load %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)", %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)"* %__closure__3
-  %35 = extractvalue %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" %34, 0
-  %36 = extractvalue %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" %34, 1
-  %37 = call double* %35(%"env__(_double*_double*)"* %36)
-  %38 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %39 = bitcast i8* %38 to %"env__(_%string*)"*
-  store %"env__(_%string*)" zeroinitializer, %"env__(_%string*)"* %39
-  %40 = insertvalue %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" { %string* (%"env__(_%string*)"*)* @5, %"env__(_%string*)"* null }, %"env__(_%string*)"* %39, 1
-  %41 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %__closure__4 = bitcast i8* %41 to %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)"*
-  store %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" %40, %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)"* %__closure__4
-  %42 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %43 = bitcast i8* %42 to %string*
-  %44 = call %string* @_ZN6stringC1EPKa(%string* %43, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @0, i32 0, i32 0))
-  %45 = load %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)", %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)"* %__closure__4
-  %46 = extractvalue %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" %45, 0
-  %47 = extractvalue %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" %45, 1
-  %48 = call %string* %46(%"env__(_%string*)"* %47)
-  %49 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %50 = bitcast i8* %49 to %"env__(_void (double*)*_double*)"*
-  store %"env__(_void (double*)*_double*)" zeroinitializer, %"env__(_void (double*)*_double*)"* %50
-  %51 = insertvalue %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)" { void (%"env__(_void (double*)*_double*)"*)* @6, %"env__(_void (double*)*_double*)"* null }, %"env__(_void (double*)*_double*)"* %50, 1
-  %52 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %__closure__5 = bitcast i8* %52 to %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)"*
-  store %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)" %51, %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)"* %__closure__5
-  %53 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %54 = bitcast i8* %53 to %"env__(_double*)"*
-  store %"env__(_double*)" zeroinitializer, %"env__(_double*)"* %54
-  %55 = insertvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" { void (%"env__(_double*)"*)* @7, %"env__(_double*)"* null }, %"env__(_double*)"* %54, 1
-  %56 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %__closure__6 = bitcast i8* %56 to %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"*
-  store %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %55, %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__6
-  %57 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %58 = bitcast i8* %57 to double*
-  store double 2.200000e+01, double* %58
-  %59 = load %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__6
-  %60 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %59, 0
-  %61 = load %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)", %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)"* %__closure__5
-  %62 = extractvalue %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)" %61, 0
-  %63 = extractvalue %"cls__(_void (%env__(_void (double*)*_double*)*)*_%env__(_void (double*)*_double*)*)" %61, 1
-  call void %62(%"env__(_void (double*)*_double*)"* %63)
-  %64 = call i8* @_ZN2GC8allocateEj(i32 1)
-  %65 = bitcast i8* %64 to %"env__()"*
-  store %"env__()" zeroinitializer, %"env__()"* %65
-  %66 = insertvalue %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)" { %"cls__(_void (%env__()*)*_%env__()*)"* (%"env__()"*)* @9, %"env__()"* null }, %"env__()"* %65, 1
-  %67 = call i8* @_ZN2GC8allocateEj(i32 16)
-  %__closure__9 = bitcast i8* %67 to %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)"*
-  store %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)" %66, %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)"* %__closure__9
-  %68 = call i8* @_ZN2GC8allocateEj(i32 1)
-  %69 = bitcast i8* %68 to %"env__()"*
-  store %"env__()" zeroinitializer, %"env__()"* %69
-  call void @11(%"env__()"* %69)
+  store double 1.200000e+01, double* %33
+  %34 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %35 = bitcast i8* %34 to double*
+  store double 1.000000e+00, double* %35
+  %36 = load %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)", %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)"* %__closure__3
+  %37 = extractvalue %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" %36, 0
+  %38 = extractvalue %"cls__(_double* (%env__(_double*_double*)*)*_%env__(_double*_double*)*)" %36, 1
+  %39 = getelementptr inbounds %"env__(_double*_double*)", %"env__(_double*_double*)"* %38, i32 0, i32 0
+  store double* %33, double** %39
+  %40 = getelementptr inbounds %"env__(_double*_double*)", %"env__(_double*_double*)"* %38, i32 0, i32 1
+  store double* %35, double** %40
+  %41 = call double* %37(%"env__(_double*_double*)"* %38)
+  %42 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %43 = bitcast i8* %42 to %"env__(_%string*)"*
+  store %"env__(_%string*)" zeroinitializer, %"env__(_%string*)"* %43
+  %44 = insertvalue %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" { %string* (%"env__(_%string*)"*)* @5, %"env__(_%string*)"* null }, %"env__(_%string*)"* %43, 1
+  %45 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %__closure__4 = bitcast i8* %45 to %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)"*
+  store %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" %44, %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)"* %__closure__4
+  %46 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %47 = bitcast i8* %46 to %string*
+  %48 = call %string* @_ZN6stringC1EPKa(%string* %47, i8* getelementptr inbounds ([2 x i8], [2 x i8]* @0, i32 0, i32 0))
+  %49 = load %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)", %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)"* %__closure__4
+  %50 = extractvalue %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" %49, 0
+  %51 = extractvalue %"cls__(_%string* (%env__(_%string*)*)*_%env__(_%string*)*)" %49, 1
+  %52 = getelementptr inbounds %"env__(_%string*)", %"env__(_%string*)"* %51, i32 0, i32 0
+  store %string* %47, %string** %52
+  %53 = call %string* %50(%"env__(_%string*)"* %51)
+  %54 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %f = bitcast i8* %54 to %"dirty__cls__()"*
+  store %"dirty__cls__()" zeroinitializer, %"dirty__cls__()"* %f
+  %55 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %56 = bitcast i8* %55 to %"env__(_double*)"*
+  store %"env__(_double*)" zeroinitializer, %"env__(_double*)"* %56
+  %57 = insertvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" { void (%"env__(_double*)"*)* @6, %"env__(_double*)"* null }, %"env__(_double*)"* %56, 1
+  %58 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %__closure__5 = bitcast i8* %58 to %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"*
+  store %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %57, %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__5
+  %59 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %60 = bitcast i8* %59 to double*
+  store double 2.200000e+01, double* %60
+  %61 = load %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__5
+  %62 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %61, 1
+  %63 = insertvalue %"env__(_double*)" zeroinitializer, double* %60, 0
+  %64 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %65 = bitcast i8* %64 to %"env__(_double*)"*
+  store %"env__(_double*)" %63, %"env__(_double*)"* %65
+  %66 = load %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %__closure__5
+  %67 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %66, 0
+  %68 = insertvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" zeroinitializer, void (%"env__(_double*)"*)* %67, 0
+  %69 = insertvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %68, %"env__(_double*)"* %65, 1
+  %70 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %71 = bitcast i8* %70 to %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"*
+  store %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %69, %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %71
+  %72 = insertvalue %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)" zeroinitializer, %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %71, 0
+  %73 = insertvalue %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)" %72, double* %60, 1
+  %74 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %75 = bitcast i8* %74 to %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)"*
+  store %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)" %73, %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)"* %75
+  call void @7(%"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)"* %75)
+  %76 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %77 = bitcast i8* %76 to %"env__()"*
+  store %"env__()" zeroinitializer, %"env__()"* %77
+  %78 = insertvalue %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)" { %"cls__(_void (%env__()*)*_%env__()*)"* (%"env__()"*)* @9, %"env__()"* null }, %"env__()"* %77, 1
+  %79 = call i8* @_ZN2GC8allocateEj(i32 16)
+  %__closure__8 = bitcast i8* %79 to %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)"*
+  store %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)" %78, %"cls__(_%cls__(_void (%env__()*)*_%env__()*)* (%env__()*)*_%env__()*)"* %__closure__8
+  %80 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %81 = bitcast i8* %80 to %"env__()"*
+  store %"env__()" zeroinitializer, %"env__()"* %81
+  call void @11(%"env__()"* %81)
   ret i32 0
 }
 
@@ -172,16 +191,7 @@ entry:
 
 declare %string* @_ZN6stringC1EPKa(%string*, i8*)
 
-define void @6(%"env__(_void (double*)*_double*)"* %__environment__) {
-entry:
-  %0 = load %"env__(_void (double*)*_double*)", %"env__(_void (double*)*_double*)"* %__environment__
-  %1 = extractvalue %"env__(_void (double*)*_double*)" %0, 0
-  %2 = extractvalue %"env__(_void (double*)*_double*)" %0, 1
-  call void %1(double* %2)
-  ret void
-}
-
-define void @7(%"env__(_double*)"* %__environment__) {
+define void @6(%"env__(_double*)"* %__environment__) {
 entry:
   %0 = load %"env__(_double*)", %"env__(_double*)"* %__environment__
   %1 = extractvalue %"env__(_double*)" %0, 0
@@ -191,6 +201,20 @@ entry:
 }
 
 declare void @_ZN7console3logIdEEvT_(double)
+
+define void @7(%"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)"* %__environment__) {
+entry:
+  %0 = load %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)", %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)"* %__environment__
+  %1 = extractvalue %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)" %0, 1
+  %2 = extractvalue %"env__(_%cls__(_void (%env__(_double*)*)*_%env__(_double*)*)*_double*)" %0, 0
+  %3 = load %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)", %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)"* %2
+  %4 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %3, 0
+  %5 = extractvalue %"cls__(_void (%env__(_double*)*)*_%env__(_double*)*)" %3, 1
+  %6 = getelementptr inbounds %"env__(_double*)", %"env__(_double*)"* %5, i32 0, i32 0
+  store double* %1, double** %6
+  call void %4(%"env__(_double*)"* %5)
+  ret void
+}
 
 define void @8(%"env__()"* %__environment__) {
 entry:
