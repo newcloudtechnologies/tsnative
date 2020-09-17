@@ -106,7 +106,7 @@ entry:
   %73 = load double, double* %68
   %74 = load double, double* %70
   %75 = load double, double* %72
-  %76 = call double* @_ZN5ArrayIdE4pushIJddEEEddDpT_(%Array__number__class* %arr, double %73, double %74, double %75)
+  %76 = call double @_ZN5ArrayIdE4pushIJddEEEddDpT_(%Array__number__class* %arr, double %73, double %74, double %75)
   ret i32 0
 }
 
@@ -130,4 +130,4 @@ declare %Array__string__class* @_ZN5ArrayI6stringEC1Ev(%Array__string__class*)
 
 declare double @_ZN5ArrayI6stringE4pushES0_(%Array__string__class*, %string*)
 
-declare double* @_ZN5ArrayIdE4pushIJddEEEddDpT_(%Array__number__class*, double, double, double)
+declare double @_ZN5ArrayIdE4pushIJddEEEddDpT_(%Array__number__class*, double, double, double)

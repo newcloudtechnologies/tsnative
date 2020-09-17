@@ -93,7 +93,11 @@ export class SysVFunctionHandler {
     const llvmThisType = thisType ? parentScope.thisData!.type : undefined;
 
     const returnType = getReturnType(expression, this.generator);
-    const llvmReturnType = getLLVMType(returnType, expression, this.generator);
+    let llvmReturnType = getLLVMType(returnType, expression, this.generator);
+    if (llvmReturnType.isPointerTy() && isCppPrimitiveType(llvmReturnType.elementType)) {
+      llvmReturnType = llvmReturnType.elementType;
+    }
+
     const llvmArgumentTypes = argumentTypes.map((argumentType) => {
       const type = getLLVMType(argumentType, expression, this.generator);
       if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
@@ -112,7 +116,7 @@ export class SysVFunctionHandler {
     }
 
     if (llvmThisType) {
-      llvmArgumentTypes.unshift(isValueTy(llvmThisType) ? llvmThisType : llvmThisType.getPointerTo());
+      llvmArgumentTypes.unshift(llvmThisType);
     }
 
     const returnsValue = checkIfReturnsValueType(valueDeclaration);
@@ -152,7 +156,14 @@ export class SysVFunctionHandler {
     const parentScope = getFunctionDeclarationScope(classDeclaration, thisType, this.generator);
     const llvmThisType: llvm.PointerType = parentScope.thisData!.type as llvm.PointerType;
 
-    const parameterTypes = argumentTypes.map((argumentType) => getLLVMType(argumentType, expression, this.generator));
+    const parameterTypes = argumentTypes.map((argumentType) => {
+      const type = getLLVMType(argumentType, expression, this.generator);
+      if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
+        return type.elementType;
+      }
+      return type;
+    });
+
     parameterTypes.unshift(llvmThisType);
     const { fn: constructor, existing } = createLLVMFunction(
       llvmThisType,
@@ -163,7 +174,9 @@ export class SysVFunctionHandler {
 
     const body = constructorDeclaration.body;
     const args =
-      expression.arguments?.map((argument, index) => handleFunctionArgument(argument, index, this.generator)) || [];
+      expression.arguments?.map((argument, index) =>
+        this.generator.createLoadIfNecessary(handleFunctionArgument(argument, index, this.generator))
+      ) || [];
 
     let thisValue: llvm.Value | undefined;
     if (body && !existing) {

@@ -22,6 +22,7 @@ import {
   isUnionWithUndefinedLLVMType,
   isUnionWithNullLLVMType,
   getTypeGenericArguments,
+  checkIfArray,
 } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
@@ -142,6 +143,10 @@ export class VariableHandler extends AbstractNodeHandler {
 
       initializer = allocated;
     } else {
+      if (checkIfArray(this.generator.checker.getTypeAtLocation(declaration.initializer))) {
+        addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
+      }
+
       initializer = this.generator.handleExpression(declaration.initializer, env);
     }
 

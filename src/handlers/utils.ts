@@ -231,18 +231,20 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
   const valueDeclaration = getAliasedSymbolIfNecessary(arrayType.symbol, generator.checker).valueDeclaration;
   const declaration = (valueDeclaration as ts.ClassDeclaration).members.find(ts.isIndexSignatureDeclaration)!;
 
-  const { qualifiedName } = FunctionMangler.mangle(declaration, expression, arrayType, [elementType], generator);
+  const { qualifiedName } = FunctionMangler.mangle(
+    declaration,
+    expression,
+    arrayType,
+    [generator.checker.getTypeFromTypeNode(declaration.parameters[0].type!)],
+    generator
+  );
 
-  let retType = getLLVMType(elementType, expression.expression, generator);
-
-  if (retType.isPointerTy() && isCppPrimitiveType(retType.elementType)) {
-    retType = retType.elementType;
-  }
+  const retType = getLLVMType(elementType, expression.expression, generator);
 
   const scope = getFunctionDeclarationScope(declaration, arrayType, generator);
 
   const { fn: subscript } = createLLVMFunction(
-    retType.getPointerTo(),
+    retType,
     [scope.thisData!.type, llvm.Type.getDoubleTy(generator.context)],
     qualifiedName,
     generator.module
