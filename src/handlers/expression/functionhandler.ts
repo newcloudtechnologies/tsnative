@@ -108,18 +108,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
               if (object instanceof HeapVariableDeclaration) {
                 // ...to extract it out
-                knownValue = this.generator.builder.createExtractValue(
-                  object.allocated.type.isPointerTy()
-                    ? this.generator.builder.createLoad(object.allocated)
-                    : object.allocated,
-                  [fieldIndex]
-                );
+                knownValue = this.generator.builder.createExtractValue(getLLVMValue(object.allocated, this.generator), [
+                  fieldIndex,
+                ]);
               } else if (object instanceof llvm.Value) {
                 // ...to extract it out
-                knownValue = this.generator.builder.createExtractValue(
-                  object.type.isPointerTy() ? this.generator.builder.createLoad(object) : object,
-                  [fieldIndex]
-                );
+                knownValue = this.generator.builder.createExtractValue(getLLVMValue(object, this.generator), [
+                  fieldIndex,
+                ]);
               }
             }
           }
@@ -291,9 +287,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const name = (value.type as llvm.StructType).name;
 
     if (name?.startsWith("cls__")) {
-      const closure = getLLVMValue(value as llvm.Value, this.generator);
-      const closureFunction = this.generator.builder.createExtractValue(closure, [0]);
-      const closureFunctionData = this.generator.builder.createExtractValue(closure, [1]);
+      const closureFunction = this.generator.builder.createExtractValue(value, [0]);
+      const closureFunctionData = this.generator.builder.createExtractValue(value, [1]);
 
       storeActualArguments(args, closureFunctionData, this.generator);
 
@@ -360,7 +355,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const closureType = getClosureType([], this.generator, true);
       const dummyClosure = llvm.Constant.getNullValue(closureType);
       const allocated = this.generator.gc.allocate(closureType);
-      this.generator.builder.createStore(dummyClosure, allocated);
+      this.generator.xbuilder.createSafeStore(dummyClosure, allocated);
       return allocated;
     }
 
@@ -577,10 +572,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const closureType = getClosureType([fn.type, env.allocated.type], this.generator, false);
     let closure = llvm.Constant.getNullValue(closureType);
 
-    closure = this.generator.builder.createInsertValue(closure, fn, [0]) as llvm.Constant;
-    closure = this.generator.builder.createInsertValue(closure, env.allocated, [1]) as llvm.Constant;
+    closure = this.generator.xbuilder.createSafeInsert(closure, fn, [0]) as llvm.Constant;
+    closure = this.generator.xbuilder.createSafeInsert(closure, env.allocated, [1]) as llvm.Constant;
     const allocatedClosure = this.generator.gc.allocate(closureType);
-    this.generator.builder.createStore(closure, allocatedClosure);
+    this.generator.xbuilder.createSafeStore(closure, allocatedClosure);
 
     allocatedClosure.name = InternalNames.Closure;
     return allocatedClosure;
@@ -658,7 +653,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const closureType = getClosureType([], this.generator, true);
       const dummyClosure = llvm.Constant.getNullValue(closureType);
       const allocated = this.generator.gc.allocate(closureType);
-      this.generator.builder.createStore(dummyClosure, allocated);
+      this.generator.xbuilder.createSafeStore(dummyClosure, allocated);
       return allocated;
     }
 
@@ -692,13 +687,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const { fn } = createLLVMFunction(llvmReturnType, [environmentDataPointerType], "", this.generator.module);
     this.handleFunctionBody(llvmReturnType, undefined, expression, fn, env);
-
-    const args = fn.getArguments();
-    if (args.length === 0) {
-      error("Expected 'environment' argument");
-    } else if (args.length > 1) {
-      error("Expected ONLY 'environment' argument");
-    }
 
     return this.makeClosure(fn, env);
   }

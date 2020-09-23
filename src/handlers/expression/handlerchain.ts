@@ -12,6 +12,7 @@
 import {
   AccessHandler,
   ArithmeticHandler,
+  CastHandler,
   AssignmentHandler,
   BitwiseHandler,
   ComparisonHandler,
@@ -36,6 +37,7 @@ export class ExpressionHandlerChain {
     const arithmetic = new ArithmeticHandler(generator);
     const assignment = new AssignmentHandler(generator);
     const bitwise = new BitwiseHandler(generator);
+    const cast = new CastHandler(generator);
     const comparison = new ComparisonHandler(generator);
     const compound = new CompoundAssignmentHandler(generator);
     const fn = new FunctionHandler(generator);
@@ -48,7 +50,8 @@ export class ExpressionHandlerChain {
     access.setNext(arithmetic);
     arithmetic.setNext(assignment);
     assignment.setNext(bitwise);
-    bitwise.setNext(comparison);
+    bitwise.setNext(cast);
+    cast.setNext(comparison);
     comparison.setNext(compound);
     compound.setNext(fn);
     fn.setNext(identifier);

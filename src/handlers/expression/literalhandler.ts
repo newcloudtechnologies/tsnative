@@ -35,9 +35,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
   private handleBooleanLiteral(expression: ts.BooleanLiteral): llvm.Value {
     const allocated = this.generator.gc.allocate(llvm.Type.getIntNTy(this.generator.context, 1));
     if (expression.kind === ts.SyntaxKind.TrueKeyword) {
-      this.generator.builder.createStore(llvm.ConstantInt.getTrue(this.generator.context), allocated);
+      this.generator.xbuilder.createSafeStore(llvm.ConstantInt.getTrue(this.generator.context), allocated);
     } else {
-      this.generator.builder.createStore(llvm.ConstantInt.getFalse(this.generator.context), allocated);
+      this.generator.xbuilder.createSafeStore(llvm.ConstantInt.getFalse(this.generator.context), allocated);
     }
     return allocated;
   }
@@ -45,7 +45,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
   private handleNumericLiteral(expression: ts.NumericLiteral): llvm.Value {
     const allocated = this.generator.gc.allocate(llvm.Type.getDoublePtrTy(this.generator.context));
     const value = llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
-    this.generator.builder.createStore(value, allocated);
+    this.generator.xbuilder.createSafeStore(value, allocated);
     return allocated;
   }
 
@@ -70,6 +70,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
     const objectType = llvm.StructType.get(this.generator.context, types);
     const object = this.generator.gc.allocate(objectType.isPointerTy() ? objectType.elementType : objectType);
+    // Reduce object's props names to string and store them as object's name.
+    // Later this name may be used to proper object initialization (allows out-of-order initialization).
+    object.name = withObjectProperties(expression, (property) => (property.name as ts.Identifier).getText()).join(".");
 
     const propertyNames: string[] = [];
     let propertyIndex = 0;
@@ -79,7 +82,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
         llvm.ConstantInt.get(this.generator.context, propertyIndex),
       ];
       const pointer = this.generator.builder.createInBoundsGEP(object, indexList, property.name!.getText());
-      this.generator.builder.createStore(llvmValues[propertyIndex], pointer);
+      this.generator.xbuilder.createSafeStore(llvmValues[propertyIndex], pointer);
 
       let propertyType = this.generator.checker.getTypeAtLocation(property);
       let propertyTypename = "";

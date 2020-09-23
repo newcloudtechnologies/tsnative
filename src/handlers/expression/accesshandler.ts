@@ -1,5 +1,5 @@
 import { Environment, Scope } from "@scope";
-import { error, indexOfProperty } from "@utils";
+import { error, indexOfProperty, isUnionLLVMType, unwrapPointerType } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
@@ -12,7 +12,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.PropertyAccessExpression:
         const symbol = this.generator.checker.getSymbolAtLocation(expression);
         const valueDeclaration = symbol!.valueDeclaration;
-        if (ts.isGetAccessorDeclaration(valueDeclaration)) {
+        if (valueDeclaration && ts.isGetAccessorDeclaration(valueDeclaration)) {
           // Handle get accessors in FunctionHandler.
           break;
         }
@@ -43,7 +43,7 @@ export class AccessHandler extends AbstractExpressionHandler {
           if ((agg.type as llvm.StructType).numElements === 0) {
             error("Identifier handler: Trying to extract a value from an empty struct");
           }
-          return this.generator.builder.createExtractValue(agg, [index]);
+          return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
         }
       }
 
@@ -83,22 +83,44 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): llvm.Value {
-    let value = this.generator.handleExpression(expression, env);
-
-    if (!value.type.isPointerTy()) {
-      error(`Expected pointer, got '${value.type}'`);
-    }
-
-    while ((value.type as llvm.PointerType).elementType.isPointerTy()) {
-      value = this.generator.builder.createLoad(value);
+    let llvmValue = this.generator.handleExpression(expression, env);
+    if (!llvmValue.type.isPointerTy()) {
+      error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
     const { checker, builder, context } = this.generator;
 
-    const type = checker.getTypeAtLocation(expression);
-    const index = indexOfProperty(propertyName, checker.getApparentType(type), checker);
-    const indexList = [llvm.ConstantInt.get(context, 0), llvm.ConstantInt.get(context, index)];
+    while ((llvmValue.type as llvm.PointerType).elementType.isPointerTy()) {
+      llvmValue = builder.createLoad(llvmValue);
+    }
 
-    return builder.createInBoundsGEP(value, indexList, propertyName);
+    if (isUnionLLVMType(llvmValue.type)) {
+      const unionName = (unwrapPointerType(llvmValue.type) as llvm.StructType).name;
+      if (!unionName) {
+        error("Name required for UnionStruct");
+      }
+
+      const unionMeta = this.generator.meta.getUnionMeta(unionName);
+      if (!unionMeta) {
+        error(`No union meta found for ${unionName}`);
+      }
+
+      const index = unionMeta.propsMap.get(propertyName);
+      if (typeof index === "undefined") {
+        error(`Mapping not found for ${propertyName}`);
+      }
+
+      llvmValue = builder.createInBoundsGEP(llvmValue, [
+        llvm.ConstantInt.get(context, 0),
+        llvm.ConstantInt.get(context, index),
+      ]);
+
+      return builder.createLoad(llvmValue);
+    } else {
+      const type = checker.getTypeAtLocation(expression);
+      const index = indexOfProperty(propertyName, checker.getApparentType(type), checker);
+      const indexList = [llvm.ConstantInt.get(context, 0), llvm.ConstantInt.get(context, index)];
+      return this.generator.builder.createLoad(builder.createInBoundsGEP(llvmValue, indexList, propertyName));
+    }
   }
 }

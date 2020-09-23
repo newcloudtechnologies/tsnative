@@ -84,40 +84,28 @@ entry:
   store double 0.000000e+00, double* %2
   %3 = call i8* @_ZN2GC8allocateEj(i32 8)
   %a = bitcast i8* %3 to { double* }*
-  %b = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
-  store double* %2, double** %b
   %b1 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
-  %4 = load double*, double** %b1
+  store double* %2, double** %b1
+  %b = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
+  %4 = load double*, double** %b
   %5 = load double, double* %4
   %6 = fadd double %5, 1.000000e+00
-  %7 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %8 = bitcast i8* %7 to double*
-  store double %6, double* %8
-  store double* %8, double** %b1
+  store double %6, double* %4
   %b2 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
-  %9 = load double*, double** %b2
-  %10 = load double, double* %9
-  %11 = fsub double %10, 1.000000e+00
-  %12 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %13 = bitcast i8* %12 to double*
-  store double %11, double* %13
-  store double* %13, double** %b2
+  %7 = load double*, double** %b2
+  %8 = load double, double* %7
+  %9 = fsub double %8, 1.000000e+00
+  store double %9, double* %7
   %b3 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
-  %14 = load double*, double** %b3
-  %15 = load double, double* %14
-  %16 = fadd double %15, 1.000000e+00
-  %17 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %18 = bitcast i8* %17 to double*
-  store double %16, double* %18
-  store double* %18, double** %b3
+  %10 = load double*, double** %b3
+  %11 = load double, double* %10
+  %12 = fadd double %11, 1.000000e+00
+  store double %12, double* %10
   %b4 = getelementptr inbounds { double* }, { double* }* %a, i32 0, i32 0
-  %19 = load double*, double** %b4
-  %20 = load double, double* %19
-  %21 = fsub double %20, 1.000000e+00
-  %22 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %23 = bitcast i8* %22 to double*
-  store double %21, double* %23
-  store double* %23, double** %b4
+  %13 = load double*, double** %b4
+  %14 = load double, double* %13
+  %15 = fsub double %14, 1.000000e+00
+  store double %15, double* %13
   ret void
 }
 

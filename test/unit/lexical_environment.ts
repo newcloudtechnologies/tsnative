@@ -53,6 +53,18 @@
     let i = g();
     console.assert(i === a, "Free variable capture by nested function failed")
 }
+
+{
+    function f2(a: number) {
+        return {
+            ff: () => a + 1
+        }
+    }
+
+    const fval = f2(22)
+    console.assert(fval.ff() === 23, "In-object closure test failed");
+}
+
 /* @todo
 {
     function f(fn: () => number) {

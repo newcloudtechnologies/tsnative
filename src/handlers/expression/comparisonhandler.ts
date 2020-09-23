@@ -17,13 +17,7 @@ import {
   isConvertible,
   promoteIntegralToFP,
 } from "@handlers";
-import {
-  error,
-  checkIfLLVMString,
-  isUnionLLVMType,
-  isUnionWithUndefinedLLVMType,
-  isUnionWithNullLLVMType,
-} from "@utils";
+import { error, checkIfLLVMString, isUnionLLVMType, extractFromUnion } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -99,32 +93,13 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     }
 
     if (isUnionLLVMType(lhsLLVM.type)) {
-      if (isUnionWithNullLLVMType(lhsLLVM.type) || isUnionWithUndefinedLLVMType(lhsLLVM.type)) {
-        const unionStructType = (lhsLLVM.type as llvm.PointerType).elementType as llvm.StructType;
-        let activeIndex = -1;
-        for (let i = 0; i < unionStructType.numElements; ++i) {
-          if (
-            unionStructType
-              .getElementType(i)
-              .equals(rhsLLVM.type.isPointerTy() ? rhsLLVM.type : rhsLLVM.type.getPointerTo())
-          ) {
-            activeIndex = i;
-            break;
-          }
-        }
+      const extracted = extractFromUnion(
+        lhsLLVM,
+        rhsLLVM.type.isPointerTy() ? rhsLLVM.type : rhsLLVM.type.getPointerTo(),
+        this.generator
+      );
 
-        if (activeIndex === -1) {
-          error(`Type '${rhsLLVM.type.toString()}' not found in '${unionStructType.toString()}'`);
-        }
-
-        const activeValuePointer = this.generator.builder.createInBoundsGEP(lhsLLVM, [
-          llvm.ConstantInt.get(this.generator.context, 0),
-          llvm.ConstantInt.get(this.generator.context, activeIndex),
-        ]);
-
-        const activeValue = this.generator.builder.createLoad(activeValuePointer);
-        return this.handleStrictEquals(lhs, rhs, activeValue, rhsLLVM, env);
-      }
+      return this.handleStrictEquals(lhs, rhs, extracted, rhsLLVM, env);
     }
 
     error(`Invalid operand types to strict equals ${lhsLLVM.type.typeID} ${rhsLLVM.type.typeID}`);

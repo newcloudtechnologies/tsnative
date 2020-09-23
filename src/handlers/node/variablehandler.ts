@@ -69,7 +69,8 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = adjustValue(initializer, typename, this.generator);
     }
 
-    if (isConst(declaration)) {
+    if (isConst(declaration) && !checkIfUnion(type)) {
+      // Even const unions have to be initialized anyway
       if (!(initializer instanceof llvm.Argument)) {
         initializer.name = name;
       }
@@ -116,14 +117,14 @@ export class VariableHandler extends AbstractNodeHandler {
         declarationLLVMType.isPointerTy() ? declarationLLVMType.elementType : declarationLLVMType
       );
       if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
-        initializer = this.generator.builder.createInsertValue(
+        initializer = this.generator.xbuilder.createSafeInsert(
           initializer,
           llvm.ConstantInt.get(this.generator.context, -1, 8),
           [0]
         );
       }
       const alloca = this.generator.gc.allocate(declarationLLVMType);
-      this.generator.builder.createStore(initializer, alloca);
+      this.generator.xbuilder.createSafeStore(initializer, alloca);
       parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
       initializer = undefined;
     } else if (ts.isArrayLiteralExpression(declaration.initializer)) {

@@ -11,6 +11,7 @@
 
 export { AccessHandler } from "./accesshandler";
 export { ArithmeticHandler } from "./arithmetichandler";
+export { CastHandler } from "./casthandler";
 export { AssignmentHandler } from "./assignmenthandler";
 export { BitwiseHandler } from "./bitwisehandler";
 export { ComparisonHandler } from "./comparisonhandler";

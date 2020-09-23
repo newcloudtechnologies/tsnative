@@ -12,21 +12,24 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { createLLVMFunction, error, isCppPrimitiveType } from "@utils";
+import { createLLVMFunction, error, isCppPrimitiveType, XBuilder } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC } from "@builtins";
+import { MetaInfoStorage } from "@generator";
 
 export class LLVMGenerator {
   readonly checker: ts.TypeChecker;
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
   readonly symbolTable: SymbolTable;
+  private readonly metainfoStorage: MetaInfoStorage = new MetaInfoStorage();
 
   readonly program: ts.Program;
   private currentSource: ts.SourceFile | undefined;
 
   private irBuilder: llvm.IRBuilder;
+  private readonly xBuilder: XBuilder;
 
   readonly expressionHandlerChain = new ExpressionHandlerChain(this);
   readonly nodeHandlerChain = new NodeHandlerChain(this);
@@ -43,6 +46,7 @@ export class LLVMGenerator {
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
     this.irBuilder = new llvm.IRBuilder(this.context);
+    this.xBuilder = new XBuilder(this.irBuilder);
     this.symbolTable = new SymbolTable();
 
     this.builtinInt8 = new BuiltinInt8(this);
@@ -139,6 +143,10 @@ export class LLVMGenerator {
     return value;
   }
 
+  get meta(): MetaInfoStorage {
+    return this.metainfoStorage;
+  }
+
   get currentSourceFile(): ts.SourceFile {
     if (!this.currentSource) {
       error("No current source available");
@@ -148,6 +156,10 @@ export class LLVMGenerator {
 
   get builder(): llvm.IRBuilder {
     return this.irBuilder;
+  }
+
+  get xbuilder(): XBuilder {
+    return this.xBuilder;
   }
 
   get isCurrentBlockTerminated(): boolean {

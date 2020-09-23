@@ -32,8 +32,10 @@ entry:
   %b1 = getelementptr inbounds { double*, double* }, { double*, double* }* %a2, i32 0, i32 1
   store double* %b, double** %b1
   %a3 = getelementptr inbounds { double*, double* }, { double*, double* }* %a2, i32 0, i32 0
+  %5 = load double*, double** %a3
   %b4 = getelementptr inbounds { double*, double* }, { double*, double* }* %a2, i32 0, i32 1
-  %5 = load double*, double** %b4
-  store double* %5, double** %a3
+  %6 = load double*, double** %b4
+  %7 = load double, double* %6
+  store double %7, double* %5
   ret void
 }

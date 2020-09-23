@@ -55,7 +55,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
       const sum = this.generator.builder.createFAdd(left, right);
       const allocated = this.generator.gc.allocate(sum.type);
-      this.generator.builder.createStore(sum, allocated);
+      this.generator.xbuilder.createSafeStore(sum, allocated);
       return allocated;
     }
 

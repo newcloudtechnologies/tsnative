@@ -14,3 +14,4 @@ export * from "./common";
 export * from "./ts-utils";
 export * from "./tsc-utils";
 export * from "./llvm-utils";
+export * from "./xbuilder";

@@ -17,15 +17,18 @@ entry:
   store double 4.000000e+00, double* %1
   %a = call %A__class* @A__class__constructor(double* %1)
   %c = getelementptr inbounds %A__class, %A__class* %a, i32 0, i32 1
-  %2 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %3 = bitcast i8* %2 to double*
-  store double 1.000000e+00, double* %3
-  store double* %3, double** %c
+  %2 = load double*, double** %c
+  %3 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %4 = bitcast i8* %3 to double*
+  store double 1.000000e+00, double* %4
+  %5 = load double, double* %4
+  store double %5, double* %2
   %b = getelementptr inbounds %A__class, %A__class* %a, i32 0, i32 0
-  %4 = call i8* @_ZN2GC8allocateEj(i32 1)
-  %5 = bitcast i8* %4 to %"env__()"*
-  store %"env__()" zeroinitializer, %"env__()"* %5
-  call void @A__class__a(%"env__()"* %5, %A__class* %a)
+  %6 = load %B__class*, %B__class** %b
+  %7 = call i8* @_ZN2GC8allocateEj(i32 1)
+  %8 = bitcast i8* %7 to %"env__()"*
+  store %"env__()" zeroinitializer, %"env__()"* %8
+  call void @A__class__a(%"env__()"* %8, %A__class* %a)
   ret i32 0
 }
 
@@ -34,13 +37,17 @@ entry:
   %0 = call i8* @_ZN2GC8allocateEj(i32 16)
   %1 = bitcast i8* %0 to %A__class*
   %b1 = getelementptr inbounds %A__class, %A__class* %1, i32 0, i32 0
-  %2 = call %B__class* @B__class__constructor()
-  store %B__class* %2, %B__class** %b1
+  %2 = load %B__class*, %B__class** %b1
+  %3 = call %B__class* @B__class__constructor()
+  %4 = load %B__class, %B__class* %3
+  store %B__class %4, %B__class* %2
   %c = getelementptr inbounds %A__class, %A__class* %1, i32 0, i32 1
-  %3 = call i8* @_ZN2GC8allocateEj(i32 8)
-  %4 = bitcast i8* %3 to double*
-  store double 0.000000e+00, double* %4
-  store double* %4, double** %c
+  %5 = load double*, double** %c
+  %6 = call i8* @_ZN2GC8allocateEj(i32 8)
+  %7 = bitcast i8* %6 to double*
+  store double 0.000000e+00, double* %7
+  %8 = load double, double* %7
+  store double %8, double* %5
   ret %A__class* %1
 }
 
@@ -59,13 +66,15 @@ entry:
   %b = getelementptr inbounds %A__class, %A__class* %this, i32 0, i32 0
   %1 = load %B__class*, %B__class** %b
   %b1 = getelementptr inbounds %B__class, %B__class* %1, i32 0, i32 0
+  %2 = load double*, double** %b1
   %c = getelementptr inbounds %A__class, %A__class* %this, i32 0, i32 1
-  %2 = load double*, double** %c
-  store double* %2, double** %b1
-  %3 = call i8* @_ZN2GC8allocateEj(i32 32)
-  %4 = bitcast i8* %3 to %string*
-  %5 = call %string* @_ZN6stringC1EPKa(%string* %4, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0))
-  call void @_ZN7console3logIRK6stringEEvT_(%string* %4)
+  %3 = load double*, double** %c
+  %4 = load double, double* %3
+  store double %4, double* %2
+  %5 = call i8* @_ZN2GC8allocateEj(i32 32)
+  %6 = bitcast i8* %5 to %string*
+  %7 = call %string* @_ZN6stringC1EPKa(%string* %6, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @0, i32 0, i32 0))
+  call void @_ZN7console3logIRK6stringEEvT_(%string* %6)
   ret void
 }
 

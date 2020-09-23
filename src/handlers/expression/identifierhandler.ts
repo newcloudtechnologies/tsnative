@@ -41,7 +41,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
         if ((agg.type as llvm.StructType).numElements === 0) {
           error("Identifier handler: Trying to extract a value from an empty struct");
         }
-        return this.generator.builder.createExtractValue(agg, [index]);
+        return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
       }
     }
 

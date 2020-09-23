@@ -42,7 +42,7 @@ export class Environment {
 export function injectUndefined(scope: Scope, context: llvm.LLVMContext) {
   const declarationLLVMType = llvm.Type.getInt8Ty(context);
   const undef = llvm.UndefValue.get(declarationLLVMType);
-  scope.set("undefined", undef);
+  scope.set("undefined", undef as llvm.Value);
 }
 
 export function setLLVMFunctionScope(fn: llvm.Function, scope: Scope) {
@@ -83,8 +83,8 @@ export class HeapVariableDeclaration {
   name: string;
   declaration: ts.VariableDeclaration | undefined;
 
-  constructor(alloca: llvm.Value, initializer: llvm.Value, name: string, declaration?: ts.VariableDeclaration) {
-    this.allocated = alloca;
+  constructor(allocated: llvm.Value, initializer: llvm.Value, name: string, declaration?: ts.VariableDeclaration) {
+    this.allocated = allocated;
     this.initializer = initializer;
     this.name = name;
     this.declaration = declaration;
@@ -155,7 +155,7 @@ export function createEnvironment(
                 llvm.ConstantInt.get(generator.context, i),
               ])
             )
-          : generator.builder.createExtractValue(data, [i]);
+          : generator.xbuilder.createSafeExtractValue(data, [i]);
         outerValues.push(extracted);
       }
 
@@ -172,19 +172,13 @@ export function createEnvironment(
   const allocations = Array.from(map.values()).map((value) => value.allocated);
 
   const environmentDataType = getEnvironmentType(types, generator);
-  const environmentData = allocations.reduce((acc, allocation, idx) => {
-    if (!(acc.type as llvm.StructType).getElementType(idx).equals(allocation.type)) {
-      error(
-        `Types mismatch, trying to insert '${allocation.type.toString()}' into '${(acc.type as llvm.StructType)
-          .getElementType(idx)
-          .toString()}'`
-      );
-    }
-    return generator.builder.createInsertValue(acc, allocation, [idx]);
-  }, llvm.Constant.getNullValue(environmentDataType)) as llvm.Constant;
+  const environmentData = allocations.reduce(
+    (acc, allocation, idx) => generator.xbuilder.createSafeInsert(acc, allocation, [idx]),
+    llvm.Constant.getNullValue(environmentDataType)
+  ) as llvm.Constant;
 
   const environmentAlloca = generator.gc.allocate(environmentDataType);
-  generator.builder.createStore(environmentData, environmentAlloca);
+  generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
 
   return new Environment(names, environmentData, allocations, environmentAlloca, outerEnv);
 }
@@ -225,13 +219,7 @@ export type FunctionDeclarationScopeEnvironment = {
   env?: Environment;
 };
 
-export type ScopeValue =
-  | llvm.Value
-  | llvm.UndefValue
-  | Scope
-  | HeapVariableDeclaration
-  | ts.Type
-  | FunctionDeclarationScopeEnvironment;
+export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope | ts.Type | FunctionDeclarationScopeEnvironment;
 
 export function isFunctionDeclarationScopeEnvironment(value: ScopeValue) {
   return "declaration" in value && "scope" in value && "env" in value;

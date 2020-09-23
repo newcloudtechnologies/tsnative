@@ -18,6 +18,7 @@ import {
   getLLVMValue,
   adjustLLVMValueToType,
   handleFunctionArgument,
+  unwrapPointerType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -53,25 +54,27 @@ export function promoteIntegralToFP(
 }
 
 export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: LLVMGenerator): llvm.Value {
-  const typename: string = getIntegralLLVMTypeTypename(((left as llvm.CallInst).type as llvm.PointerType).elementType);
-  if (typename) {
-    right = adjustValue(right, typename, generator);
-  }
-
-  if (isUnionLLVMValue(left)) {
-    const unionType = left.type.isPointerTy() ? left.type : left.type.getPointerTo();
-    right = initializeUnion(unionType, right, generator);
-  }
-
   if (!left.type.isPointerTy()) {
     error(`Assignment destination expected to be of PointerType, got '${left.type.toString()}'`);
+  }
+
+  const typename: string = getIntegralLLVMTypeTypename(unwrapPointerType(left.type));
+  if (typename) {
+    right = adjustValue(right, typename, generator);
+  } else if (isUnionLLVMValue(left)) {
+    let unionValue = initializeUnion(left.type as llvm.PointerType, right, generator);
+    if (!left.type.elementType.equals(unionValue.type)) {
+      unionValue = adjustLLVMValueToType(unionValue, left.type.elementType, generator);
+    }
+    generator.xbuilder.createSafeStore(unionValue, left);
+    return left;
   }
 
   if (!left.type.elementType.equals(right.type)) {
     right = adjustLLVMValueToType(right, left.type.elementType, generator);
   }
 
-  generator.builder.createStore(right, left);
+  generator.xbuilder.createSafeStore(right, left);
   return left;
 }
 
@@ -94,7 +97,7 @@ export function makeBoolean(value: llvm.Value, expression: ts.Expression, genera
 
   if (isUnionLLVMValue(value)) {
     if (isUnionWithUndefinedLLVMValue(value) || isUnionWithNullLLVMValue(value)) {
-      const marker = generator.builder.createExtractValue(value, [0]);
+      const marker = generator.xbuilder.createSafeExtractValue(value, [0]);
       return generator.builder.createICmpNE(marker, llvm.ConstantInt.get(generator.context, -1, 8));
     }
 

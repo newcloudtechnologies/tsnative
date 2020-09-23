@@ -19,24 +19,24 @@ entry:
   %6 = bitcast i8* %5 to double*
   store double 0.000000e+00, double* %6
   %7 = call i8* @_ZN2GC8allocateEj(i32 24)
-  %8 = bitcast i8* %7 to { double*, %string*, double* }*
-  %a = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %8, i32 0, i32 0
+  %a.b.c = bitcast i8* %7 to { double*, %string*, double* }*
+  %a = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %a.b.c, i32 0, i32 0
   store double* %1, double** %a
-  %b = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %8, i32 0, i32 1
+  %b = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %a.b.c, i32 0, i32 1
   store %string* %3, %string** %b
-  %c = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %8, i32 0, i32 2
+  %c = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %a.b.c, i32 0, i32 2
   store double* %6, double** %c
-  %a1 = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %8, i32 0, i32 0
-  %9 = load double*, double** %a1
-  %10 = load double, double* %9
-  call void @_ZN7console3logIdEEvT_(double %10)
-  %b2 = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %8, i32 0, i32 1
-  %11 = load %string*, %string** %b2
-  call void @_ZN7console3logIRK6stringEEvT_(%string* %11)
-  %c3 = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %8, i32 0, i32 2
-  %12 = load double*, double** %c3
-  %13 = load double, double* %12
-  call void @_ZN7console3logIdEEvT_(double %13)
+  %a1 = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %a.b.c, i32 0, i32 0
+  %8 = load double*, double** %a1
+  %9 = load double, double* %8
+  call void @_ZN7console3logIdEEvT_(double %9)
+  %b2 = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %a.b.c, i32 0, i32 1
+  %10 = load %string*, %string** %b2
+  call void @_ZN7console3logIRK6stringEEvT_(%string* %10)
+  %c3 = getelementptr inbounds { double*, %string*, double* }, { double*, %string*, double* }* %a.b.c, i32 0, i32 2
+  %11 = load double*, double** %c3
+  %12 = load double, double* %11
+  call void @_ZN7console3logIdEEvT_(double %12)
   ret i32 0
 }
 
