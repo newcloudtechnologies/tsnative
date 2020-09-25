@@ -22,3 +22,4 @@ export { ModuleHandler } from "./modulehandler";
 export { ReturnHandler } from "./returnhandler";
 export { TypeAliasHandler } from "./typealiashandler";
 export { VariableHandler } from "./variablehandler";
+export { SwitchHandler } from "./switchhandler";

@@ -25,6 +25,7 @@ import {
   ReturnHandler,
   TypeAliasHandler,
   VariableHandler,
+  SwitchHandler,
 } from "@handlers/node";
 
 import { AbstractNodeHandler } from "./nodehandler";
@@ -47,6 +48,7 @@ export class NodeHandlerChain {
     const ret = new ReturnHandler(generator);
     const typeAlias = new TypeAliasHandler(generator);
     const variable = new VariableHandler(generator);
+    const switchStatement = new SwitchHandler(generator);
 
     imports.setNext(typeAlias);
     typeAlias.setNext(expressionStatement);
@@ -54,7 +56,8 @@ export class NodeHandlerChain {
     variable.setNext(functionDeclaraion);
     functionDeclaraion.setNext(block);
     block.setNext(branch);
-    branch.setNext(bypassing);
+    branch.setNext(switchStatement);
+    switchStatement.setNext(bypassing);
     bypassing.setNext(clazz);
     clazz.setNext(loop);
     loop.setNext(module);
