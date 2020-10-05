@@ -17,7 +17,16 @@ import {
   isConvertible,
   promoteIntegralToFP,
 } from "@handlers";
-import { error, checkIfLLVMString, isUnionLLVMType, extractFromUnion } from "@utils";
+import {
+  error,
+  checkIfLLVMString,
+  isUnionLLVMType,
+  extractFromUnion,
+  isPointerToStruct,
+  isIntersectionLLVMType,
+  extractFromIntersection,
+  createHeapAllocatedFromValue,
+} from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -68,28 +77,31 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     rhsLLVM = this.generator.createLoadIfNecessary(rhsLLVM);
 
     if (lhsLLVM.type.isDoubleTy() && rhsLLVM.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM);
+      return createHeapAllocatedFromValue(this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM), this.generator);
     }
 
     if (lhsLLVM.type.isIntegerTy() && rhsLLVM.type.isIntegerTy()) {
-      return this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM);
+      return createHeapAllocatedFromValue(this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM), this.generator);
     }
 
     if (lhsLLVM.type.isIntegerTy() && rhsLLVM.type.isDoubleTy()) {
       const signed = isSigned(lhs, this.generator);
       rhsLLVM = castFPToIntegralType(rhsLLVM, lhsLLVM.type, signed, this.generator);
-      return this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM);
+      return createHeapAllocatedFromValue(this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM), this.generator);
     }
 
     if (lhsLLVM.type.isDoubleTy() && rhsLLVM.type.isIntegerTy()) {
       const signed = isSigned(rhs, this.generator);
       rhsLLVM = promoteIntegralToFP(rhsLLVM, lhsLLVM.type, signed, this.generator);
-      return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM);
+      return createHeapAllocatedFromValue(this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM), this.generator);
     }
 
     if (checkIfLLVMString(lhsLLVM.type) && checkIfLLVMString(rhsLLVM.type)) {
       const equals = this.generator.builtinString.getLLVMEquals(lhs);
-      return this.generator.builder.createCall(equals, [lhsLLVM, rhsLLVM]);
+      return createHeapAllocatedFromValue(
+        this.generator.builder.createCall(equals, [lhsLLVM, rhsLLVM]),
+        this.generator
+      );
     }
 
     if (isUnionLLVMType(lhsLLVM.type)) {
@@ -102,39 +114,49 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       return this.handleStrictEquals(lhs, rhs, extracted, rhsLLVM, env);
     }
 
+    if (!isIntersectionLLVMType(lhsLLVM.type) && isIntersectionLLVMType(rhsLLVM.type)) {
+      if (!lhsLLVM.type.isPointerTy()) {
+        error(`Expected left hand side operand to be of PointerType, got ${lhsLLVM.type.toString()}`);
+      }
+
+      const extracted = extractFromIntersection(rhsLLVM, lhsLLVM.type, this.generator);
+      return this.handleStrictEquals(lhs, rhs, lhsLLVM, extracted, env);
+    }
+
+    if (isIntersectionLLVMType(lhsLLVM.type) && isIntersectionLLVMType(rhsLLVM.type)) {
+      if (!lhsLLVM.type.isPointerTy()) {
+        error(`Expected left hand side operand to be of PointerType, got ${lhsLLVM.type.toString()}`);
+      }
+
+      if (!rhsLLVM.type.isPointerTy()) {
+        error(`Expected right hand side operand to be of PointerType, got ${rhsLLVM.type.toString()}`);
+      }
+
+      const lhsAddress = this.generator.builder.createPtrToInt(lhsLLVM, llvm.Type.getInt32Ty(this.generator.context));
+      const rhsAddress = this.generator.builder.createPtrToInt(rhsLLVM, llvm.Type.getInt32Ty(this.generator.context));
+
+      return createHeapAllocatedFromValue(this.generator.builder.createICmpEQ(lhsAddress, rhsAddress), this.generator);
+    }
+
+    if (isPointerToStruct(lhsLLVM) && isPointerToStruct(rhsLLVM)) {
+      const lhsAddress = this.generator.builder.createPtrToInt(lhsLLVM, llvm.Type.getInt32Ty(this.generator.context));
+      const rhsAddress = this.generator.builder.createPtrToInt(rhsLLVM, llvm.Type.getInt32Ty(this.generator.context));
+      return createHeapAllocatedFromValue(this.generator.builder.createICmpEQ(lhsAddress, rhsAddress), this.generator);
+    }
+
     error(`Invalid operand types to strict equals ${lhsLLVM.type.typeID} ${rhsLLVM.type.typeID}`);
   }
 
   private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
     const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    let right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpONE(left, right);
-    }
-
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      return this.generator.builder.createICmpNE(left, right);
-    }
-
-    if (left.type.isIntegerTy() && right.type.isDoubleTy()) {
-      const signed = isSigned(lhs, this.generator);
-      right = castFPToIntegralType(right, left.type, signed, this.generator);
-      return this.generator.builder.createICmpNE(left, right);
-    }
-
-    if (left.type.isDoubleTy() && right.type.isIntegerTy()) {
-      const signed = isSigned(rhs, this.generator);
-      right = promoteIntegralToFP(right, left.type, signed, this.generator);
-      return this.generator.builder.createFCmpONE(left, right);
-    }
-
-    if (checkIfLLVMString(left.type) && checkIfLLVMString(right.type)) {
-      const equals = this.generator.builtinString.getLLVMEquals(lhs);
-      return this.generator.builder.createNot(this.generator.builder.createCall(equals, [left, right]));
-    }
-
-    error("Invalid operand types to strict not equals");
+    return createHeapAllocatedFromValue(
+      this.generator.builder.createNot(
+        this.generator.builder.createLoad(this.handleStrictEquals(lhs, rhs, left, right, env))
+      ),
+      this.generator
+    );
   }
 
   private handleLessThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
@@ -142,27 +164,30 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpOLT(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFCmpOLT(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
       if (bothSigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpSLT(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpSLT(left, right), this.generator);
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpULT(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpULT(left, right), this.generator);
       } else {
         error("Signed -- unsigned comparison not allowed");
       }
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFCmpOLT,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          this.generator.builder.createFCmpOLT,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -175,27 +200,30 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpOGT(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFCmpOGT(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
       if (bothSigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpSGT(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpSGT(left, right), this.generator);
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpUGT(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpUGT(left, right), this.generator);
       } else {
         error("Signed -- unsigned comparison not allowed");
       }
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFCmpOGT,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          this.generator.builder.createFCmpOGT,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -208,27 +236,30 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpOLE(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFCmpOLE(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
       if (bothSigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpSLE(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpSLE(left, right), this.generator);
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpULE(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpULE(left, right), this.generator);
       } else {
         error("Signed -- unsigned comparison not allowed");
       }
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFCmpOLE,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          this.generator.builder.createFCmpOLE,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -241,27 +272,30 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFCmpOGE(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFCmpOGE(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
       if (bothSigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpSGE(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpSGE(left, right), this.generator);
       } else if (bothUnsigned(lhs, rhs, this.generator)) {
-        return this.generator.builder.createICmpUGE(left, right);
+        return createHeapAllocatedFromValue(this.generator.builder.createICmpUGE(left, right), this.generator);
       } else {
         error("Signed -- unsigned comparison not allowed");
       }
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFCmpOGE,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          this.generator.builder.createFCmpOGE,
+          this.generator
+        ),
         this.generator
       );
     }

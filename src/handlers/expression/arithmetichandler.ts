@@ -11,7 +11,7 @@
 
 import { isSigned } from "@cpp";
 import { Conversion, handleBinaryWithConversion, isConvertible, promoteIntegralToFP } from "@handlers";
-import { error, checkIfLLVMString, adjustLLVMValueToType, getLLVMValue } from "@utils";
+import { error, checkIfLLVMString, adjustLLVMValueToType, getLLVMValue, createHeapAllocatedFromValue } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -53,24 +53,24 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      const sum = this.generator.builder.createFAdd(left, right);
-      const allocated = this.generator.gc.allocate(sum.type);
-      this.generator.xbuilder.createSafeStore(sum, allocated);
-      return allocated;
+      return createHeapAllocatedFromValue(this.generator.builder.createFAdd(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      return this.generator.builder.createAdd(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createAdd(left, right), this.generator);
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createAdd,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Narrowing,
+          llvm.IRBuilder.prototype.createAdd,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -92,21 +92,24 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFSub(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFSub(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      return this.generator.builder.createSub(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createSub(left, right), this.generator);
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createSub,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Narrowing,
+          llvm.IRBuilder.prototype.createSub,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -121,21 +124,24 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFMul(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFMul(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      return this.generator.builder.createMul(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createMul(left, right), this.generator);
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFMul,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          llvm.IRBuilder.prototype.createFMul,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -150,24 +156,27 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFDiv(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFDiv(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
       const doubleType = llvm.Type.getDoubleTy(this.generator.context);
       left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
       right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
-      return this.generator.builder.createFDiv(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFDiv(left, right), this.generator);
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFDiv,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          llvm.IRBuilder.prototype.createFDiv,
+          this.generator
+        ),
         this.generator
       );
     }
@@ -182,24 +191,27 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = adjustLLVMValueToType(right, left.type, this.generator);
 
     if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-      return this.generator.builder.createFRem(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFRem(left, right), this.generator);
     }
 
     if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
       const doubleType = llvm.Type.getDoubleTy(this.generator.context);
       left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
       right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
-      return this.generator.builder.createFRem(left, right);
+      return createHeapAllocatedFromValue(this.generator.builder.createFRem(left, right), this.generator);
     }
 
     if (isConvertible(left.type, right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        llvm.IRBuilder.prototype.createFRem,
+      return createHeapAllocatedFromValue(
+        handleBinaryWithConversion(
+          lhs,
+          rhs,
+          left,
+          right,
+          Conversion.Promotion,
+          llvm.IRBuilder.prototype.createFRem,
+          this.generator
+        ),
         this.generator
       );
     }

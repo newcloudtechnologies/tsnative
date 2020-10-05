@@ -164,7 +164,9 @@ export class SwitchHandler extends AbstractNodeHandler {
 
     const rightExpr = clause.expression;
 
-    const condition = this.generator.handleExpression(this.joinByOr(leftExpr, rightExpr, expr), env);
+    const condition = this.generator.createLoadIfNecessary(
+      this.generator.handleExpression(this.joinByOr(leftExpr, rightExpr, expr), env)
+    );
 
     const thenBlock = BasicBlock.create(this.generator.context, name + "_then", this.generator.currentFunction);
     this.generator.builder.setInsertionPoint(thenBlock);

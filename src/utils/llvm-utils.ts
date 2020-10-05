@@ -864,3 +864,16 @@ export function storeActualArguments(args: llvm.Value[], closureFunctionData: ll
     generator.xbuilder.createSafeStore(argument, elementPtrPtr);
   }
 }
+
+export function isPointerToStruct(value: llvm.Value) {
+  return value.type.isPointerTy() && value.type.elementType.isStructTy();
+}
+
+export function createHeapAllocatedFromValue(value: llvm.Value, generator: LLVMGenerator) {
+  if (value.type.isPointerTy()) {
+    error("Expected value to be not of PointerType");
+  }
+  const allocated = generator.gc.allocate(value.type);
+  generator.xbuilder.createSafeStore(value, allocated);
+  return allocated;
+}
