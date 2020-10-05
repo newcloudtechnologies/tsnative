@@ -22,11 +22,9 @@ RUN rm -rf /llvm
 
 RUN update-alternatives --install /usr/bin/llc llc /usr/lib/llvm-9/bin/llc 60
 
-RUN npm i -g npm@latest
-
 RUN npm i -g n
 
-RUN n latest
+RUN n 13
 
 ENV PATH $PATH
 
