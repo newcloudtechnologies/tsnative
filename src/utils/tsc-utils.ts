@@ -53,6 +53,10 @@ export function checkIfUndefined(type: ts.Type, checker: ts.TypeChecker): boolea
   return checker.typeToString(type) === "undefined";
 }
 
+export function checkIfNull(type: ts.Type, checker: ts.TypeChecker): boolean {
+  return checker.typeToString(type) === "null";
+}
+
 export function checkIfObject(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Object) && !checkIfFunction(type);
 }
@@ -88,6 +92,10 @@ export function checkIfVoid(type: ts.Type): boolean {
 
 export function checkIfUnion(type: ts.Type): boolean {
   return type.isUnion() && (type.flags & ts.TypeFlags.BooleanLike) === 0;
+}
+
+export function checkIfIntersection(type: ts.Type): boolean {
+  return type.isIntersection();
 }
 
 export function checkIfProperty(symbol: ts.Symbol): boolean {

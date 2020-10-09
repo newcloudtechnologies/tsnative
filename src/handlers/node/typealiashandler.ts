@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment, createEnvironment } from "@scope";
-import { getLLVMType, getAliasedSymbolIfNecessary, tryResolveGenericTypeIfNecessary } from "@utils";
+import { getLLVMType, getAliasedSymbolIfNecessary } from "@utils";
 import * as llvm from "llvm-node";
 import { getLLVMReturnType } from "@handlers";
 import { getFunctionEnvironmentVariables, getFunctionScopes } from "@handlers/utils";
@@ -41,8 +41,7 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
                 const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
                   .declarations[0] as ts.FunctionLikeDeclaration;
                 const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
-                let tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
-                tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, generator);
+                const tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
 
                 const tsArgumentTypes = declaration.initializer!.parameters.map(generator.checker.getTypeAtLocation);
                 const llvmArgumentTypes = tsArgumentTypes.map((arg) =>
@@ -73,13 +72,8 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
                   env
                 );
               } else if (ts.isCallExpression(declaration.initializer)) {
-                const symbol = generator.checker.getTypeAtLocation(declaration.initializer).symbol;
-                const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker)
-                  .declarations[0] as ts.FunctionLikeDeclaration;
-                const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
-                let tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
-                tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, generator);
-                llvmType = getLLVMType(tsReturnType, declaration.initializer, generator);
+                const type = generator.checker.getTypeAtLocation(declaration.initializer);
+                llvmType = getLLVMType(type, declaration.initializer, generator);
               }
             }
           }

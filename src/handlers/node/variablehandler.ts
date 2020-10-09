@@ -12,7 +12,6 @@
 import { adjustValue, isCppNumericType } from "@cpp";
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
 import {
-  isConst,
   checkIfUnion,
   initializeUnion,
   tryResolveGenericTypeIfNecessary,
@@ -22,7 +21,12 @@ import {
   isUnionWithUndefinedLLVMType,
   isUnionWithNullLLVMType,
   getTypeGenericArguments,
-  checkIfArray,
+  checkIfIntersection,
+  initializeIntersection,
+  getIntersectionStructType,
+  unwrapPointerType,
+  error,
+  getStructType,
 } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
@@ -69,21 +73,42 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = adjustValue(initializer, typename, this.generator);
     }
 
-    if (isConst(declaration) && !checkIfUnion(type)) {
-      // Even const unions have to be initialized anyway
-      if (!(initializer instanceof llvm.Argument)) {
-        initializer.name = name;
-      }
-      parentScope.set(name, initializer);
-    } else {
-      if (checkIfUnion(type)) {
-        const llvmUnionType = getUnionStructType(type as ts.UnionType, declaration, this.generator).getPointerTo();
-        initializer = initializeUnion(llvmUnionType, initializer, this.generator);
+    if (checkIfUnion(type)) {
+      const llvmUnionType = getUnionStructType(type as ts.UnionType, declaration, this.generator).getPointerTo();
+      initializer = initializeUnion(llvmUnionType, initializer, this.generator);
+    } else if (checkIfIntersection(type)) {
+      const llvmIntersectionType = getIntersectionStructType(
+        type as ts.IntersectionType,
+        declaration,
+        this.generator
+      ).getPointerTo();
+      initializer = initializeIntersection(llvmIntersectionType, initializer, this.generator);
+    } else if (type.isClassOrInterface()) {
+      const initializerNakedType = unwrapPointerType(initializer.type);
+      if (!initializerNakedType.isStructTy()) {
+        error(`Expected initializer to be of StructType`);
       }
 
-      // @todo
-      parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
+      const declarationLLVMType = getStructType(type, declaration, this.generator);
+
+      if (!initializerNakedType.equals(declarationLLVMType)) {
+        if (initializerNakedType.numElements === declarationLLVMType.numElements) {
+          const allocated = this.generator.gc.allocate(declarationLLVMType);
+          for (let i = 0; i < initializerNakedType.numElements; ++i) {
+            const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
+            const sourceValue = this.generator.builder.createLoad(
+              this.generator.xbuilder.createSafeInBoundsGEP(initializer, [0, i])
+            );
+            this.generator.xbuilder.createSafeStore(sourceValue, destinationPtr);
+          }
+
+          initializer = allocated;
+        }
+      }
     }
+
+    // @todo
+    parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
   }
 
   private handleVariables(statement: VariableLike, parentScope: Scope, env?: Environment): void {
@@ -96,6 +121,8 @@ export class VariableHandler extends AbstractNodeHandler {
   }
 
   private getInitializer(declaration: ts.VariableDeclaration, name: string, parentScope: Scope, env?: Environment) {
+    addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
+
     let initializer;
     if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
       let declarationLLVMType;
@@ -134,20 +161,16 @@ export class VariableHandler extends AbstractNodeHandler {
       const elementType = getTypeGenericArguments(arrayType)[0];
 
       const { constructor, allocated } = createArrayConstructor(arrayType, declaration.initializer, this.generator);
-      this.generator.builder.createCall(constructor, [allocated]);
+      this.generator.xbuilder.createSafeCall(constructor, [allocated]);
 
       const push = createArrayPush(arrayType, elementType, declaration.initializer, this.generator);
       for (const element of declaration.initializer.elements) {
         const elementValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(element));
-        this.generator.builder.createCall(push, [allocated, elementValue]);
+        this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
       }
 
       initializer = allocated;
     } else {
-      if (checkIfArray(this.generator.checker.getTypeAtLocation(declaration.initializer))) {
-        addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
-      }
-
       initializer = this.generator.handleExpression(declaration.initializer, env);
     }
 

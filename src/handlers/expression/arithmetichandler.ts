@@ -78,7 +78,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     if (checkIfLLVMString(left.type) && checkIfLLVMString(right.type)) {
       const concat = this.generator.builtinString.getLLVMConcat(lhs);
       const sret = this.generator.gc.allocate(this.generator.builtinString.getLLVMType().elementType);
-      this.generator.builder.createCall(concat, [sret, left, right]);
+      this.generator.xbuilder.createSafeCall(concat, [sret, left, right]);
       return sret;
     }
 

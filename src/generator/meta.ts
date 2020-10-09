@@ -9,6 +9,9 @@
  *
  */
 
+import { error } from "@utils";
+import { Type } from "typescript";
+
 type PropsMap = Map<string, number>;
 class UnionMeta {
   name: string;
@@ -52,5 +55,22 @@ export class MetaInfoStorage {
 
   getObjectMeta(name: string) {
     return this.objectMetaInfoStorage.find((value) => value.name === name);
+  }
+}
+
+export class GenericTypeMapper {
+  readonly genericTypenameTypeMap = new Map<string, Type>();
+
+  register(name: string, type: Type) {
+    this.genericTypenameTypeMap.set(name, type);
+  }
+
+  get(name: string) {
+    const type = this.genericTypenameTypeMap.get(name);
+    if (!type) {
+      error(`Generic typename '${name} is not registered'`);
+    }
+
+    return type;
   }
 }

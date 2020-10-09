@@ -1,5 +1,5 @@
-import { Environment, Scope } from "@scope";
-import { error, indexOfProperty, isUnionLLVMType, unwrapPointerType } from "@utils";
+import { Environment, HeapVariableDeclaration, Scope } from "@scope";
+import { error, indexOfProperty, inTSClassConstructor, isUnionLLVMType, unwrapPointerType } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
@@ -39,11 +39,13 @@ export class AccessHandler extends AbstractExpressionHandler {
       if (env) {
         const index = env.varNames.indexOf(propertyName);
         if (index > -1) {
-          const agg = env.data.type.isPointerTy() ? this.generator.builder.createLoad(env.data) : env.data;
-          if ((agg.type as llvm.StructType).numElements === 0) {
+          if (!env.data.type.isStructTy()) {
+            error(`Expected environment to be of StructType, got '${env.data.type.toString()}'`);
+          }
+          if (env.data.type.numElements === 0) {
             error("Identifier handler: Trying to extract a value from an empty struct");
           }
-          return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
+          return this.generator.xbuilder.createSafeExtractValue(env.data, [index]);
         }
       }
 
@@ -60,6 +62,10 @@ export class AccessHandler extends AbstractExpressionHandler {
         const value = scope.get(propertyName);
         if (!value) {
           error(`Property '${propertyName}' not found in '${left.getText()}'`);
+        }
+
+        if (value instanceof HeapVariableDeclaration) {
+          return value.allocated;
         }
 
         if (!(value instanceof llvm.Value)) {
@@ -79,7 +85,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     const index = this.generator.createLoadIfNecessary(
       this.generator.handleExpression(expression.argumentExpression, env)
     );
-    return this.generator.builder.createCall(subscription, [array, index]);
+    return this.generator.xbuilder.createSafeCall(subscription, [array, index]);
   }
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): llvm.Value {
@@ -88,7 +94,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
-    const { checker, builder, context } = this.generator;
+    const { checker, builder, xbuilder, meta } = this.generator;
 
     while ((llvmValue.type as llvm.PointerType).elementType.isPointerTy()) {
       llvmValue = builder.createLoad(llvmValue);
@@ -100,7 +106,7 @@ export class AccessHandler extends AbstractExpressionHandler {
         error("Name required for UnionStruct");
       }
 
-      const unionMeta = this.generator.meta.getUnionMeta(unionName);
+      const unionMeta = meta.getUnionMeta(unionName);
       if (!unionMeta) {
         error(`No union meta found for ${unionName}`);
       }
@@ -110,17 +116,31 @@ export class AccessHandler extends AbstractExpressionHandler {
         error(`Mapping not found for ${propertyName}`);
       }
 
-      llvmValue = builder.createInBoundsGEP(llvmValue, [
-        llvm.ConstantInt.get(context, 0),
-        llvm.ConstantInt.get(context, index),
-      ]);
-
-      return builder.createLoad(llvmValue);
+      return builder.createLoad(xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
     } else {
-      const type = checker.getTypeAtLocation(expression);
-      const index = indexOfProperty(propertyName, checker.getApparentType(type), checker);
-      const indexList = [llvm.ConstantInt.get(context, 0), llvm.ConstantInt.get(context, index)];
-      return this.generator.builder.createLoad(builder.createInBoundsGEP(llvmValue, indexList, propertyName));
+      let propertyIndex = -1;
+
+      if (!llvmValue.name || llvmValue.name === "this") {
+        const type = checker.getTypeAtLocation(expression);
+        propertyIndex = indexOfProperty(propertyName, checker.getApparentType(type), checker);
+      } else {
+        // Object name is its properties names reduced to string, delimited with the dot ('.').
+        const propertyNames = llvmValue.name.split("__object__")[1].split(".");
+        if (propertyNames.length === 0) {
+          error(`Expected object name to be its properties names reduced to string, delimited with the dot.`);
+        }
+        propertyIndex = propertyNames.indexOf(propertyName);
+      }
+
+      if (propertyIndex === -1) {
+        error(`Property '${propertyName}' not found in '${expression.getText()}'`);
+      }
+
+      const elementPtr = xbuilder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
+
+      // In ts class constructor we cannot dereference this pointer since the memory was just allocated and was not initialized.
+      // Dereferencing will lead to segfault.
+      return inTSClassConstructor(this.generator) ? elementPtr : builder.createLoad(elementPtr);
     }
   }
 }

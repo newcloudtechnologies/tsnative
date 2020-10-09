@@ -26,6 +26,7 @@ import {
   findIndexOfSubarray,
   tryResolveGenericTypeIfNecessary,
   checkIfUndefined,
+  checkIfNull,
   checkIfArray,
   getAliasedSymbolIfNecessary,
   InternalNames,
@@ -52,21 +53,13 @@ export function createLLVMFunction(
 }
 
 export function checkIfLLVMString(type: llvm.Type) {
-  return (
-    (type.isPointerTy() && type.elementType.isStructTy() && type.elementType.name === "string") ||
-    (type.isStructTy() && type.name === "string")
-  );
+  const nakedType = unwrapPointerType(type);
+  return nakedType.isStructTy() && nakedType.name === "string";
 }
 
 export function checkIfLLVMArray(type: llvm.Type) {
-  return (
-    (type.isPointerTy() && type.elementType.isStructTy() && type.elementType.name?.startsWith("Array__")) ||
-    (type.isStructTy() && type.name?.startsWith("Array__"))
-  );
-}
-
-export function isValueTy(type: llvm.Type) {
-  return type.isDoubleTy() || type.isIntegerTy() || type.isPointerTy();
+  const nakedType = unwrapPointerType(type);
+  return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("Array__"));
 }
 
 export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
@@ -91,6 +84,8 @@ export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean
     checkIfObject(type) ||
     checkIfFunction(type) ||
     checkIfVoid(type) ||
+    checkIfUndefined(type, checker) ||
+    checkIfNull(type, checker) ||
     isCppNumericType(checker.typeToString(type))
   );
 }
@@ -170,7 +165,7 @@ export function getLLVMType(
     return getStructType(type as ts.ObjectType, node, generator).getPointerTo();
   }
 
-  if (checker.typeToString(type) === "null") {
+  if (checkIfNull(type, checker)) {
     return llvm.Type.getInt8Ty(context);
   }
 
@@ -184,14 +179,17 @@ function getTypeName(type: ts.Type, checker: ts.TypeChecker): string {
   return checker.typeToString(type);
 }
 
-export function getUnionOrIntersectionName(type: ts.UnionOrIntersectionType, checker: ts.TypeChecker) {
-  return type.types.map((t) => getTypeName(t, checker)).join(".");
+export function getUnionOrIntersectionName(type: ts.UnionOrIntersectionType, generator: LLVMGenerator) {
+  return type.types
+    .map((t) => tryResolveGenericTypeIfNecessary(t, generator))
+    .map((t) => getTypeName(t, generator.checker))
+    .join(".");
 }
 
-function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
+export function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
   const { context, checker, module } = generator;
 
-  const intersectionName = getUnionOrIntersectionName(type, checker).concat(".intersection");
+  const intersectionName = getUnionOrIntersectionName(type, generator).concat(".intersection");
   let intersection = module.getTypeByName(intersectionName);
   if (intersection) {
     return intersection;
@@ -201,15 +199,7 @@ function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, gen
     type.types.map((t) => {
       return getProperties(t, checker).map((property) => {
         const tsType = checker.getTypeOfSymbolAtLocation(property, node);
-        let llvmType;
-        if (tsType.symbol && ts.isInterfaceDeclaration(tsType.symbol.declarations[0])) {
-          // Unbox interface types since semantically they are live on TS level only.
-          const interfaceElements = getObjectPropsLLVMTypes(tsType as ts.ObjectType, node, generator);
-          llvmType = llvm.StructType.get(context, interfaceElements).getPointerTo();
-        } else {
-          llvmType = getLLVMType(tsType, node, generator);
-        }
-
+        const llvmType = getLLVMType(tsType, node, generator);
         const valueType = property.valueDeclaration.decorators?.some(
           (decorator) => decorator.getText() === "@ValueType"
         );
@@ -237,24 +227,26 @@ function getUnionTypeProperties(type: ts.UnionType, checker: ts.TypeChecker): ts
 
 function getUnionElementTypes(type: ts.UnionType, node: ts.Node, generator: LLVMGenerator): llvm.Type[] {
   return flatten(
-    type.types.map((t) => {
-      if (t.getSymbol() && ts.isInterfaceDeclaration(t.getSymbol()!.declarations[0])) {
-        return getObjectPropsLLVMTypes(t as ts.ObjectType, node, generator);
-      }
+    type.types
+      .map((t) => tryResolveGenericTypeIfNecessary(t, generator))
+      .map((t) => {
+        if (t.getSymbol() && ts.isInterfaceDeclaration(t.getSymbol()!.declarations[0])) {
+          return getObjectPropsLLVMTypes(t as ts.ObjectType, node, generator);
+        }
 
-      if (t.isUnion()) {
-        return getUnionElementTypes(t, node, generator);
-      }
+        if (t.isUnion()) {
+          return getUnionElementTypes(t, node, generator);
+        }
 
-      return [getLLVMType(t, node, generator)];
-    })
+        return [getLLVMType(t, node, generator)];
+      })
   );
 }
 
 export function getUnionStructType(type: ts.UnionType, node: ts.Node, generator: LLVMGenerator) {
   const { context, checker, module } = generator;
 
-  const unionName = getUnionOrIntersectionName(type, checker).concat(".union");
+  const unionName = getUnionOrIntersectionName(type, generator).concat(".union");
   let unionType = module.getTypeByName(unionName);
   if (unionType) {
     return unionType;
@@ -338,10 +330,8 @@ export function getClosureType(types: llvm.Type[], generator: LLVMGenerator, dir
 }
 
 export function isDirtyClosure(value: llvm.Value) {
-  return Boolean(
-    (value.type as llvm.StructType).name?.startsWith("dirty__cls__") ||
-      ((value.type as llvm.PointerType).elementType as llvm.StructType).name?.startsWith("dirty__cls__")
-  );
+  const nakedType = unwrapPointerType(value.type);
+  return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("dirty__cls__"));
 }
 
 export function getObjectPropsLLVMTypes(type: ts.ObjectType, node: ts.Node, generator: LLVMGenerator) {
@@ -387,35 +377,25 @@ export function getStructType(type: ts.ObjectType, node: ts.Node, generator: LLV
 }
 
 export function isIntersectionLLVMType(type: llvm.Type): boolean {
-  return (
-    (type.isPointerTy() && (type.elementType as llvm.StructType).name?.endsWith(".intersection")) ||
-    !!(type as llvm.StructType).name?.endsWith(".intersection")
-  );
+  const nakedType = unwrapPointerType(type);
+  return Boolean(nakedType.isStructTy() && nakedType.name?.endsWith(".intersection"));
 }
 
 export function isUnionLLVMType(type: llvm.Type): boolean {
-  return (
-    (type.isPointerTy() && (type.elementType as llvm.StructType).name?.endsWith(".union")) ||
-    !!(type as llvm.StructType).name?.endsWith(".union")
-  );
+  const nakedType = unwrapPointerType(type);
+  return Boolean(nakedType.isStructTy() && nakedType.name?.endsWith(".union"));
 }
 
 export function isUnionWithUndefinedLLVMType(type: llvm.Type): boolean {
-  return (
-    (type.isPointerTy() &&
-      (type.elementType as llvm.StructType).name?.endsWith(".union") &&
-      (type.elementType as llvm.StructType).name?.startsWith("undefined.")) ||
-    !!((type as llvm.StructType).name?.endsWith(".union") && (type as llvm.StructType).name?.startsWith("undefined."))
+  const nakedType = unwrapPointerType(type);
+  return Boolean(
+    nakedType.isStructTy() && nakedType.name?.startsWith("undefined.") && nakedType.name?.endsWith(".union")
   );
 }
 
 export function isUnionWithNullLLVMType(type: llvm.Type): boolean {
-  return (
-    (type.isPointerTy() &&
-      (type.elementType as llvm.StructType).name?.endsWith(".union") &&
-      (type.elementType as llvm.StructType).name?.startsWith("null.")) ||
-    !!((type as llvm.StructType).name?.endsWith(".union") && (type as llvm.StructType).name?.startsWith("null."))
-  );
+  const nakedType = unwrapPointerType(type);
+  return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("null.") && nakedType.name?.endsWith(".union"));
 }
 
 export function isUnionLLVMValue(value: llvm.Value): boolean {
@@ -472,6 +452,8 @@ export function adjustLLVMValueToType(value: llvm.Value, type: llvm.Type, genera
     if (shouldLoad(value.type, type)) {
       value = generator.builder.createLoad(value);
       return adjustLLVMValueToType(value, type, generator);
+    } else if (isSamePointerLevel(value.type, type)) {
+      error(`Cannot adjust '${value.type.toString()}' to '${type.toString()}'`);
     } else {
       const allocated = generator.gc.allocate(value.type);
       generator.xbuilder.createSafeStore(value, allocated);
@@ -480,21 +462,21 @@ export function adjustLLVMValueToType(value: llvm.Value, type: llvm.Type, genera
   }
 }
 
-export function shouldLoad(parameterType: llvm.Type, destinationType: llvm.Type) {
-  let parameterPointerLevel = 0;
-  let destinationTypePointerLevel = 0;
-
-  while (parameterType.isPointerTy()) {
-    parameterType = parameterType.elementType;
-    ++parameterPointerLevel;
+export function getPointerLevel(type: llvm.Type) {
+  let level = 0;
+  while (type.isPointerTy()) {
+    type = type.elementType;
+    ++level;
   }
+  return level;
+}
 
-  while (destinationType.isPointerTy()) {
-    destinationType = destinationType.elementType;
-    ++destinationTypePointerLevel;
-  }
+function isSamePointerLevel(lhs: llvm.Type, rhs: llvm.Type) {
+  return getPointerLevel(lhs) === getPointerLevel(rhs);
+}
 
-  return parameterPointerLevel > destinationTypePointerLevel;
+function shouldLoad(parameterType: llvm.Type, destinationType: llvm.Type) {
+  return getPointerLevel(parameterType) > getPointerLevel(destinationType);
 }
 
 export function getLLVMValue(value: llvm.Value, generator: LLVMGenerator) {
@@ -522,9 +504,22 @@ export function unwrapPointerType(type: llvm.Type) {
 export function makeClosureWithEffectiveArguments(
   source: llvm.Value,
   effectiveArguments: llvm.Value[],
-  environmentType: llvm.Type,
+  environmentData: llvm.Value,
   generator: LLVMGenerator
 ) {
+  const environmentType = unwrapPointerType(environmentData.type) as llvm.StructType;
+
+  if (effectiveArguments.length < environmentType.numElements) {
+    // There are some variables in closure along with unresolved arguments. Keep them in new environment.
+    environmentData = getLLVMValue(environmentData, generator);
+    for (let i = effectiveArguments.length; i < environmentType.numElements; ++i) {
+      const closureValue = generator.xbuilder.createSafeExtractValue(environmentData, [i]);
+      effectiveArguments.push(closureValue);
+    }
+  } else if (effectiveArguments.length > environmentType.numElements) {
+    error("Unreachable");
+  }
+
   const newEnv = effectiveArguments.reduce((acc, value, index) => {
     const elementType = (acc.type as llvm.StructType).getElementType(index);
     if (isUnionLLVMType(elementType)) {
@@ -553,7 +548,15 @@ function findIndexOfType(types: llvm.Type[], initializerType: llvm.Type) {
   return -1;
 }
 
-function initializeIntersection(destinationType: llvm.PointerType, initializer: llvm.Value, generator: LLVMGenerator) {
+export function initializeIntersection(
+  destinationType: llvm.PointerType,
+  initializer: llvm.Value,
+  generator: LLVMGenerator
+) {
+  if (destinationType.equals(initializer.type)) {
+    return initializer;
+  }
+
   if (!destinationType.elementType.isStructTy()) {
     error(`Expected destination to be of StructType, got ${destinationType.elementType.toString()}`);
   }
@@ -566,11 +569,17 @@ function initializeIntersection(destinationType: llvm.PointerType, initializer: 
     error(`Expected initializer value to be of StructType, got ${initializer.type.elementType.toString()}`);
   }
 
+  if (isIntersectionLLVMType(initializer.type)) {
+    return extractFromIntersection(initializer, destinationType, generator);
+  }
+
   initializer = generator.builder.createLoad(initializer);
   const initializerStructType = initializer.type as llvm.StructType;
 
   if (initializerStructType.numElements !== destinationType.elementType.numElements) {
-    error("Types mismatch");
+    error(
+      `Types mismatch: destination type: '${destinationType.elementType.toString()}', initializer: '${initializer.type.toString()}'`
+    );
   }
 
   let intersection = llvm.Constant.getNullValue(destinationType.elementType);
@@ -590,6 +599,10 @@ export function initializeUnion(
   initializer: llvm.Value,
   generator: LLVMGenerator
 ): llvm.Value {
+  if (unionType.equals(initializer.type)) {
+    return initializer;
+  }
+
   const unionStructType = unionType.elementType as llvm.StructType;
   const elementTypes = [];
   for (let i = 0; i < unionStructType.numElements; ++i) {
@@ -601,7 +614,7 @@ export function initializeUnion(
   generator.xbuilder.createSafeStore(unionValue, allocated);
 
   if (!checkIfLLVMString(initializer.type) && unwrapPointerType(initializer.type).isStructTy()) {
-    const propNames = initializer.name ? initializer.name.split(".") : [];
+    const propNames = initializer.name ? initializer.name.split("__object__")[1].split(".") : [];
     const unionName = unionStructType.name;
     if (!unionName) {
       error("Name required for UnionStruct");
@@ -619,11 +632,7 @@ export function initializeUnion(
         error(`Mapping not found for property ${name}`);
       }
 
-      const elementPtr = generator.builder.createInBoundsGEP(allocated, [
-        llvm.ConstantInt.get(generator.context, 0),
-        llvm.ConstantInt.get(generator.context, destinationIndex),
-      ]);
-
+      const elementPtr = generator.xbuilder.createSafeInBoundsGEP(allocated, [0, destinationIndex]);
       generator.xbuilder.createSafeStore(
         generator.xbuilder.createSafeExtractValue(initializerValue, [index]),
         elementPtr
@@ -639,11 +648,7 @@ export function initializeUnion(
       initializer = llvm.ConstantInt.get(generator.context, -1, 8);
     }
 
-    const elementPtr = generator.builder.createInBoundsGEP(allocated, [
-      llvm.ConstantInt.get(generator.context, 0),
-      llvm.ConstantInt.get(generator.context, activeIndex),
-    ]);
-
+    const elementPtr = generator.xbuilder.createSafeInBoundsGEP(allocated, [0, activeIndex]);
     generator.xbuilder.createSafeStore(initializer, elementPtr);
   }
 
@@ -655,7 +660,15 @@ export function extractFromIntersection(
   destinationType: llvm.PointerType,
   generator: LLVMGenerator
 ): llvm.Constant {
-  const intersectionStructType = (intersection.type as llvm.PointerType).elementType as llvm.StructType;
+  if (!intersection.type.isPointerTy()) {
+    error(`Expected intersection to be of PointerType, got '${intersection.type.toString()}'`);
+  }
+
+  if (!intersection.type.elementType.isStructTy()) {
+    error(`Expected intersection element to be of StructType, got '${intersection.type.elementType.toString()}'`);
+  }
+
+  const intersectionStructType = unwrapPointerType(intersection.type) as llvm.StructType;
   const intersectionElementTypes = [];
 
   for (let i = 0; i < intersectionStructType.numElements; ++i) {
@@ -679,59 +692,30 @@ export function extractFromIntersection(
     destinationElementTypes.push(type);
   }
 
-  const startIndex = findIndexOfSubarray(
-    intersectionElementTypes,
-    destinationElementTypes,
-    (lhs: llvm.Type, rhs: llvm.Type) => lhs.equals(rhs)
-  );
+  const intersectionTypeNames = intersectionStructType
+    .toString()
+    .split(".")
+    .slice(0, -1)
+    .map((typeName) => typeName.replace(/%|\*/g, ""));
+  const dest = destinationType.toString().replace(/%|\*/g, "");
 
+  let startIndex = intersectionTypeNames.indexOf(dest);
   if (startIndex === -1) {
-    error("Cannot find types intersection");
+    startIndex = findIndexOfSubarray(
+      intersectionElementTypes,
+      destinationElementTypes,
+      (lhs: llvm.Type, rhs: llvm.Type) => lhs.equals(rhs)
+    );
+    if (startIndex === -1) {
+      error(`Cannot find types intersection '${intersectionStructType.toString()}' '${destinationType.toString()}'`);
+    }
   }
 
   let result = llvm.Constant.getNullValue(destinationStructType);
 
   const intersectionValue = getLLVMValue(intersection, generator);
   for (let i = startIndex, k = 0; i < startIndex + destinationStructType.numElements; ++i, ++k) {
-    let value = generator.xbuilder.createSafeExtractValue(intersectionValue, [i]);
-
-    const aggregateStructType = result.type as llvm.StructType;
-    const elementType = unwrapPointerType(aggregateStructType.getElementType(k));
-
-    if (!elementType.equals(unwrapPointerType(value.type))) {
-      if (elementType.isStructTy()) {
-        if (unwrapPointerType(value.type).isStructTy()) {
-          value = getLLVMValue(value, generator);
-          if (!value.type.isStructTy()) {
-            error("Unreachable");
-          }
-          if (value.type.numElements === elementType.numElements) {
-            let equalTypes = true;
-            for (let j = 0; j < value.type.numElements; ++j) {
-              if (!value.type.getElementType(j).equals(elementType.getElementType(j))) {
-                equalTypes = false;
-                break;
-              }
-            }
-            if (equalTypes) {
-              let converted = llvm.Constant.getNullValue(elementType);
-              for (let l = 0; l < value.type.numElements; ++l) {
-                converted = generator.xbuilder.createSafeInsert(
-                  converted,
-                  generator.xbuilder.createSafeExtractValue(value, [l]),
-                  [l]
-                ) as llvm.Constant;
-              }
-
-              const allocated = generator.gc.allocate(converted.type);
-              generator.xbuilder.createSafeStore(converted, allocated);
-              value = allocated;
-            }
-          }
-        }
-      }
-    }
-
+    const value = generator.xbuilder.createSafeExtractValue(intersectionValue, [i]);
     result = generator.xbuilder.createSafeInsert(result, value, [k]) as llvm.Constant;
   }
 
@@ -768,15 +752,8 @@ export function extractFromUnion(
         error(`Mapping not found for '${objectMeta.props[i]}'`);
       }
 
-      const destinationPtr = generator.builder.createInBoundsGEP(allocated, [
-        llvm.ConstantInt.get(generator.context, 0),
-        llvm.ConstantInt.get(generator.context, i),
-      ]);
-
-      const valuePtr = generator.builder.createInBoundsGEP(union, [
-        llvm.ConstantInt.get(generator.context, 0),
-        llvm.ConstantInt.get(generator.context, sourceIndex),
-      ]);
+      const destinationPtr = generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
+      const valuePtr = generator.xbuilder.createSafeInBoundsGEP(union, [0, sourceIndex]);
 
       generator.xbuilder.createSafeStore(generator.builder.createLoad(valuePtr), destinationPtr);
     }
@@ -796,20 +773,14 @@ export function extractFromUnion(
   }
 
   return generator.builder.createLoad(
-    generator.builder.createInBoundsGEP(union, [
-      llvm.ConstantInt.get(generator.context, 0),
-      llvm.ConstantInt.get(generator.context, activeIndex),
-    ])
+    generator.xbuilder.createSafeInBoundsGEP(union, [0, activeIndex])
   ) as llvm.Constant;
 }
 
 export function storeActualArguments(args: llvm.Value[], closureFunctionData: llvm.Value, generator: LLVMGenerator) {
   // Closure data consists of null-valued arguments. Replace dummy arguments with actual ones.
   for (let i = 0; i < args.length; ++i) {
-    const elementPtrPtr = generator.builder.createInBoundsGEP(closureFunctionData, [
-      llvm.ConstantInt.get(generator.context, 0),
-      llvm.ConstantInt.get(generator.context, i),
-    ]);
+    const elementPtrPtr = generator.xbuilder.createSafeInBoundsGEP(closureFunctionData, [0, i]);
 
     const elementPtrType = (elementPtrPtr.type as llvm.PointerType).elementType as llvm.PointerType;
     let argument = args[i];
@@ -827,37 +798,7 @@ export function storeActualArguments(args: llvm.Value[], closureFunctionData: ll
 
       const elementType = unwrapPointerType(elementPtrType);
       if (!elementType.equals(unwrapPointerType(argument.type))) {
-        if (elementType.isStructTy()) {
-          if (unwrapPointerType(argument.type).isStructTy()) {
-            argument = getLLVMValue(argument, generator);
-            if (!argument.type.isStructTy()) {
-              error("Unreachable");
-            }
-            if (argument.type.numElements === elementType.numElements) {
-              let equalTypes = true;
-              for (let j = 0; j < argument.type.numElements; ++j) {
-                if (!argument.type.getElementType(j).equals(elementType.getElementType(j))) {
-                  equalTypes = false;
-                  break;
-                }
-              }
-              if (equalTypes) {
-                let converted = llvm.Constant.getNullValue(elementType);
-                for (let l = 0; l < argument.type.numElements; ++l) {
-                  converted = generator.xbuilder.createSafeInsert(
-                    converted,
-                    generator.xbuilder.createSafeExtractValue(argument, [l]),
-                    [l]
-                  ) as llvm.Constant;
-                }
-
-                const allocated = generator.gc.allocate(converted.type);
-                generator.xbuilder.createSafeStore(converted, allocated);
-                argument = allocated;
-              }
-            }
-          }
-        }
+        error(`UNREACHABLE! elementType: '${elementType.toString()}', argType: '${argument.type.toString()}' `);
       }
     }
 
@@ -876,4 +817,8 @@ export function createHeapAllocatedFromValue(value: llvm.Value, generator: LLVMG
   const allocated = generator.gc.allocate(value.type);
   generator.xbuilder.createSafeStore(value, allocated);
   return allocated;
+}
+
+export function inTSClassConstructor(generator: LLVMGenerator) {
+  return Boolean(generator.currentFunction.name?.endsWith("__class__constructor"));
 }

@@ -23,7 +23,7 @@ export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
   readonly symbolTable: SymbolTable;
-  private readonly metainfoStorage: MetaInfoStorage = new MetaInfoStorage();
+  private readonly metainfoStorage = new MetaInfoStorage();
 
   readonly program: ts.Program;
   private currentSource: ts.SourceFile | undefined;
@@ -46,7 +46,7 @@ export class LLVMGenerator {
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
     this.irBuilder = new llvm.IRBuilder(this.context);
-    this.xBuilder = new XBuilder(this.irBuilder);
+    this.xBuilder = new XBuilder(this);
     this.symbolTable = new SymbolTable();
 
     this.builtinInt8 = new BuiltinInt8(this);
@@ -70,7 +70,7 @@ export class LLVMGenerator {
       sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
 
-    this.builder.createRet(llvm.ConstantInt.get(this.context, 0));
+    this.xbuilder.createSafeRet(llvm.ConstantInt.get(this.context, 0));
 
     try {
       llvm.verifyModule(this.module);
@@ -143,7 +143,7 @@ export class LLVMGenerator {
     return value;
   }
 
-  get meta(): MetaInfoStorage {
+  get meta() {
     return this.metainfoStorage;
   }
 

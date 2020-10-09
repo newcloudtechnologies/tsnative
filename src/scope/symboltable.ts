@@ -42,6 +42,9 @@ export class SymbolTable {
     if (!parameterNames) {
       parameterNames = [parameterName];
     } else {
+      if (parameterNames.indexOf(parameterName) !== -1) {
+        return;
+      }
       parameterNames.push(parameterName);
     }
     this.closureParameters.set(functionName, parameterNames);

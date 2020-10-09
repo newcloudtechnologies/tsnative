@@ -13,7 +13,7 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { ExternalSymbolsProvider, prepareExternalSymbols } from "@mangling";
-import { checkIfArray, checkIfObject, checkIfString, checkIfFunction } from "@utils";
+import { checkIfArray, checkIfObject, checkIfString } from "@utils";
 
 export class TemplateInstantiator {
   private readonly templatesTable = ["console::log", "Array"];
@@ -72,21 +72,26 @@ export class TemplateInstantiator {
 
       if (this.templatesTable.some((template) => tsFunctionName.includes(template))) {
         const resolvedSignature = this.checker.getResolvedSignature(callExpression)!;
-        const returnType = ExternalSymbolsProvider.jsTypeToCpp(
-          this.checker.getReturnTypeOfSignature(resolvedSignature),
-          this.checker
-        );
+        const jsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature);
+        let returnType = ExternalSymbolsProvider.jsTypeToCpp(jsReturnType, this.checker);
+
+        if (checkIfString(jsReturnType, this.checker)) {
+          returnType += "*";
+        }
+
         const argumentTypes =
           callExpression.arguments?.map((a) => {
             const tsType = this.checker.getTypeAtLocation(a);
+
             let cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
-            if (
-              checkIfArray(tsType) ||
-              (checkIfObject(tsType) && !checkIfFunction(tsType)) ||
-              checkIfString(tsType, this.checker)
-            ) {
-              cppType = cppType + " const&";
+            if (checkIfArray(tsType) || checkIfObject(tsType)) {
+              cppType += " const&";
             }
+
+            if (checkIfString(tsType, this.checker)) {
+              cppType += "*";
+            }
+
             return cppType;
           }) || [];
         const cppFunctionName = tsFunctionName.replace(".", "::");

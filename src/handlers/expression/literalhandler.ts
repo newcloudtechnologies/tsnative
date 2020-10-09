@@ -1,5 +1,6 @@
 import {
   checkIfFunction,
+  error,
   getAliasedSymbolIfNecessary,
   tryResolveGenericTypeIfNecessary,
   withObjectProperties,
@@ -8,6 +9,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { LLVMGenerator } from "@generator";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -54,35 +56,139 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const constructor = this.generator.builtinString.getLLVMConstructor(expression);
     const ptr = this.generator.builder.createGlobalStringPtr(expression.text);
     const allocated = this.generator.gc.allocate(llvmThisType.elementType);
-    this.generator.builder.createCall(constructor, [allocated, ptr]);
+    this.generator.xbuilder.createSafeCall(constructor, [allocated, ptr]);
     return allocated;
   }
 
   private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression, env?: Environment): llvm.Value {
-    const types: llvm.Type[] = [];
-    const llvmValues = withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
-      const value = ts.isPropertyAssignment(property)
-        ? this.generator.handleExpression(property.initializer, env)
-        : this.generator.handleExpression((property as ts.ShorthandPropertyAssignment).name, env);
-      types.push(value.type);
-      return value;
+    const llvmValues = new Map<string, llvm.Value>();
+    expression.properties.forEach((property) => {
+      switch (property.kind) {
+        case ts.SyntaxKind.PropertyAssignment:
+          llvmValues.set(property.name.getText(), this.generator.handleExpression(property.initializer, env));
+          break;
+        case ts.SyntaxKind.ShorthandPropertyAssignment:
+          llvmValues.set(property.name.getText(), this.generator.handleExpression(property.name, env));
+          break;
+        case ts.SyntaxKind.SpreadAssignment:
+          let propertyType = this.generator.checker.getTypeAtLocation(property.expression);
+          propertyType = tryResolveGenericTypeIfNecessary(propertyType, this.generator);
+
+          const propertyValue = this.generator.handleExpression(property.expression, env);
+          if (!propertyValue.type.isPointerTy()) {
+            error(`Expected spread initializer to be of PointerType, got ${propertyValue.type.toString()}`);
+          }
+          if (!propertyValue.type.elementType.isStructTy()) {
+            error(
+              `Expected spread initializer element type to be of StructType, got ${propertyValue.type.elementType.toString()}`
+            );
+          }
+
+          if (!propertyType.isIntersection()) {
+            const declaration = propertyType.getSymbol()?.declarations[0];
+            if (!declaration) {
+              error(`No declaration found for '${property.expression.getText()}'`);
+            }
+
+            if (ts.isObjectLiteralExpression(declaration)) {
+              for (let i = 0; i < declaration.properties.length; ++i) {
+                if (!declaration.properties[i].name) {
+                  error(`'${declaration.properties[i].getText()} has no name'`);
+                }
+
+                const value = this.generator.builder.createLoad(
+                  this.generator.xbuilder.createSafeInBoundsGEP(propertyValue, [0, i])
+                );
+
+                const name = declaration.properties[i].name!.getText();
+                value.name = name; // NB: It's impossible to use `value.name` as a key in map, since non-unique names randomized by this assignment
+                llvmValues.set(name, value);
+              }
+            } else if (ts.isInterfaceDeclaration(declaration)) {
+              for (let i = 0; i < declaration.members.length; ++i) {
+                if (!declaration.members[i].name) {
+                  error(`'${declaration.members[i].getText()} has no name'`);
+                }
+
+                const value = this.generator.builder.createLoad(
+                  this.generator.xbuilder.createSafeInBoundsGEP(propertyValue, [0, i])
+                );
+
+                const name = declaration.members[i].name!.getText();
+                value.name = name;
+
+                llvmValues.set(name, value);
+              }
+            } else {
+              error(`Unsupported spread initializer '${ts.SyntaxKind[declaration.kind]}'`);
+            }
+          } else {
+            let counter = 0;
+
+            function handleIntersectionSubtype(type: ts.Type, generator: LLVMGenerator) {
+              type = tryResolveGenericTypeIfNecessary(type, generator);
+              if (type.isIntersection()) {
+                type.types.forEach((subtype) => handleIntersectionSubtype(subtype, generator));
+                return;
+              }
+              const declaration = type.getSymbol()?.declarations[0];
+              if (!declaration) {
+                error(`No declaration found for '${generator.checker.typeToString(type)}'`);
+              }
+              if (!ts.isInterfaceDeclaration(declaration)) {
+                error(
+                  `Only interface types are supported in spread initialization by intersection type, got '${
+                    ts.SyntaxKind[declaration.kind]
+                  }'`
+                );
+              }
+
+              for (const member of declaration.members) {
+                if (!member.name) {
+                  error(`'${member.getText()} has no name'`);
+                }
+
+                const value = generator.builder.createLoad(
+                  generator.xbuilder.createSafeInBoundsGEP(propertyValue, [0, counter++])
+                );
+
+                const name = member.name.getText();
+                value.name = name;
+                llvmValues.set(name, value);
+              }
+            }
+
+            propertyType.types.forEach((type) => handleIntersectionSubtype(type, this.generator));
+          }
+
+          break;
+        default:
+          error(`Unreachable ${ts.SyntaxKind[property.kind]}`);
+      }
     });
 
+    const types = Array.from(llvmValues.values()).map((value) => value.type);
     const objectType = llvm.StructType.get(this.generator.context, types);
-    const object = this.generator.gc.allocate(objectType.isPointerTy() ? objectType.elementType : objectType);
-    // Reduce object's props names to string and store them as object's name.
-    // Later this name may be used to proper object initialization (allows out-of-order initialization).
-    object.name = withObjectProperties(expression, (property) => (property.name as ts.Identifier).getText()).join(".");
+    const object = this.generator.gc.allocate(objectType);
 
-    const propertyNames: string[] = [];
-    let propertyIndex = 0;
-    withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
-      const indexList = [
-        llvm.ConstantInt.get(this.generator.context, 0),
-        llvm.ConstantInt.get(this.generator.context, propertyIndex),
-      ];
-      const pointer = this.generator.builder.createInBoundsGEP(object, indexList, property.name!.getText());
-      this.generator.xbuilder.createSafeStore(llvmValues[propertyIndex], pointer);
+    Array.from(llvmValues.values()).forEach((value, index) => {
+      const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(object, [0, index]);
+      this.generator.xbuilder.createSafeStore(value, destinationPtr);
+    });
+
+    // Reduce object's props names to string and store them as object's name.
+    // Later this name may be used for out-of-order object initialization and property access.
+    const randomPrefix = Math.random()
+      .toString(36)
+      .replace(/[^a-z]+/g, "")
+      .substr(0, 5);
+
+    object.name = randomPrefix + "__object__" + Array.from(llvmValues.keys()).join(".");
+
+    const objectPropertyTypesName = withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
+      if (!property.name) {
+        return;
+      }
 
       let propertyType = this.generator.checker.getTypeAtLocation(property);
       let propertyTypename = "";
@@ -116,12 +222,12 @@ export class LiteralHandler extends AbstractExpressionHandler {
         propertyTypename = this.generator.checker.typeToString(propertyType);
       }
 
-      propertyNames.push(property.name!.getText() + "__" + propertyTypename);
-      ++propertyIndex;
-    });
+      return property.name!.getText() + "__" + propertyTypename;
+    })
+      .filter(Boolean)
+      .join(",");
 
-    const objectName = propertyNames.join(",");
-    this.generator.symbolTable.addObjectName(objectName);
+    this.generator.symbolTable.addObjectName(objectPropertyTypesName);
 
     return object;
   }

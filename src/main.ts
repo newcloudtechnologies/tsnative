@@ -84,7 +84,18 @@ async function main() {
 
   injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
 
-  const llvmModule = new LLVMGenerator(program).createModule();
+  let llvmModule;
+  try {
+    llvmModule = new LLVMGenerator(program).createModule();
+  } catch (e) {
+    console.log(files);
+    console.log(e);
+    if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
+      fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
+      fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
+    }
+    process.exit(1);
+  }
 
   if (argv.target) {
     const targetTriple = argv.target;

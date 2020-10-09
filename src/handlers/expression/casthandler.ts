@@ -15,7 +15,7 @@ import {
   checkIfObject,
   checkIfUnion,
   error,
-  getObjectPropsLLVMTypes,
+  getStructType,
   getUnionStructType,
   isUnionLLVMValue,
   tryResolveGenericTypeIfNecessary,
@@ -59,24 +59,17 @@ export class CastHandler extends AbstractExpressionHandler {
         if (checkIfObject(destinationType)) {
           const typeProps = this.generator.checker.getPropertiesOfType(destinationType);
           const propNames = typeProps.map((symbol) => symbol.name);
-          const propTypes = getObjectPropsLLVMTypes(destinationType as ts.ObjectType, expression, this.generator);
-          const destinationStructType = llvm.StructType.get(this.generator.context, propTypes);
-          const allocated = this.generator.gc.allocate(destinationStructType);
+          const objectType = getStructType(destinationType as ts.ObjectType, expression, this.generator);
+          const allocated = this.generator.gc.allocate(objectType);
 
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
-            if (!valueIndex) {
+            if (typeof valueIndex === "undefined") {
               error(`Mapping not found for '${propNames[i]}'`);
             }
 
-            const destinationPtr = this.generator.builder.createInBoundsGEP(allocated, [
-              llvm.ConstantInt.get(this.generator.context, 0),
-              llvm.ConstantInt.get(this.generator.context, i),
-            ]);
-            const valuePtr = this.generator.builder.createInBoundsGEP(union, [
-              llvm.ConstantInt.get(this.generator.context, 0),
-              llvm.ConstantInt.get(this.generator.context, valueIndex),
-            ]);
+            const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
+            const valuePtr = this.generator.xbuilder.createSafeInBoundsGEP(union, [0, valueIndex]);
             const value = this.generator.builder.createLoad(valuePtr);
             this.generator.xbuilder.createSafeStore(value, destinationPtr);
           }
@@ -97,14 +90,8 @@ export class CastHandler extends AbstractExpressionHandler {
               error(`'${name}' not found in '${unionMeta.name}'`);
             }
 
-            const destinationPtr = this.generator.builder.createInBoundsGEP(allocated, [
-              llvm.ConstantInt.get(this.generator.context, 0),
-              llvm.ConstantInt.get(this.generator.context, index),
-            ]);
-            const valuePtr = this.generator.builder.createInBoundsGEP(union, [
-              llvm.ConstantInt.get(this.generator.context, 0),
-              llvm.ConstantInt.get(this.generator.context, sourceIndex),
-            ]);
+            const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, index]);
+            const valuePtr = this.generator.xbuilder.createSafeInBoundsGEP(union, [0, sourceIndex]);
             const value = this.generator.builder.createLoad(valuePtr);
             this.generator.xbuilder.createSafeStore(value, destinationPtr);
           });

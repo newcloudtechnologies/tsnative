@@ -41,7 +41,7 @@ export class GC {
 
   allocate(type: llvm.Type) {
     const size = getTypeSize(type, this.generator.module);
-    const returnValue = this.generator.builder.createCall(this.allocateFn, [
+    const returnValue = this.generator.xbuilder.createSafeCall(this.allocateFn, [
       llvm.ConstantInt.get(this.generator.context, size > 0 ? size : 1, 32),
     ]);
 

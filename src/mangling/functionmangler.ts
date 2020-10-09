@@ -10,7 +10,7 @@
  */
 
 import { ExternalSymbolsProvider, TypeMangler } from "@mangling";
-import { getDeclarationNamespace, getTypename } from "@utils";
+import { getDeclarationNamespace, tryResolveGenericTypeIfNecessary } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
 
@@ -53,7 +53,7 @@ export class FunctionMangler {
     const typeParameters = (declaration as ts.FunctionLikeDeclaration).typeParameters;
     if (typeParameters?.length) {
       typeParametersNames = argumentTypes.reduce((acc, curr) => {
-        return acc + "__" + getTypename(curr, generator.checker);
+        return acc + "__" + generator.checker.typeToString(tryResolveGenericTypeIfNecessary(curr, generator));
       }, "");
     }
 

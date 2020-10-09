@@ -14,6 +14,8 @@ import { checkIfProperty, checkIfFunction } from "./tsc-utils";
 import { isTypeSupported, error } from "@utils";
 import { LLVMGenerator } from "@generator";
 
+import { cloneDeep } from "lodash";
+
 const returnsValueTypeDecorator: string = "ReturnsValueType";
 export function checkIfReturnsValueType(declaration: ts.FunctionLikeDeclaration): boolean {
   return Boolean(
@@ -67,64 +69,83 @@ export function getGenericsToActualMapFromSignature(
   signature: ts.Signature,
   expression: ts.CallLikeExpression,
   generator: LLVMGenerator
-): { [_: string]: ts.Type } {
+): Map<string, ts.Type> {
   const { checker } = generator;
-  const formalTypeParameters = signature.getTypeParameters();
-  const formalParameters = signature.getParameters();
   const resolvedSignature = checker.getResolvedSignature(expression);
-
   if (!resolvedSignature) {
     error(`Failed to get resolved signature for '${expression.getText()}'`);
   }
 
-  const map: { [key: string]: ts.Type } = {};
+  const typenameTypeMap = new Map<string, ts.Type>();
+
   const actualParameters = resolvedSignature.getParameters();
+  const formalParameters = signature.getParameters();
 
-  for (let i = 0; i < formalParameters.length; ++i) {
-    const parameter = formalParameters[i];
-    const type = checker.getTypeOfSymbolAtLocation(parameter, expression);
-    const typename = checker.typeToString(type);
-
-    if ((isTypeSupported(type, checker) && !checkIfFunction(type)) || map[typename]) {
-      continue;
+  function handleType(type: ts.Type, typename: string, actualType: ts.Type) {
+    if ((isTypeSupported(type, checker) && !checkIfFunction(type)) || typenameTypeMap.get(typename)) {
+      return;
     }
 
-    const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
     if (checkIfFunction(actualType)) {
       const parameterFormalParameters = type.getCallSignatures()[0].parameters;
       for (let k = 0; k < parameterFormalParameters.length; ++k) {
         const formalParameter = parameterFormalParameters[k];
         const formalParameterType = checker.getTypeOfSymbolAtLocation(formalParameter, expression);
         const formalParameterTypename = checker.typeToString(formalParameterType);
+
         const actualParameter = actualType.getCallSignatures()[0].parameters[k];
-        const actualParameterType = generator.checker.getTypeOfSymbolAtLocation(actualParameter, expression);
-        map[formalParameterTypename] = actualParameterType;
+        const actualParameterType = checker.getTypeOfSymbolAtLocation(actualParameter, expression);
+
+        typenameTypeMap.set(formalParameterTypename, actualParameterType);
       }
     } else {
-      map[typename] = actualType;
+      typenameTypeMap.set(typename, actualType);
     }
   }
 
+  for (let i = 0; i < formalParameters.length; ++i) {
+    const parameter = formalParameters[i];
+    const type = checker.getTypeOfSymbolAtLocation(parameter, expression);
+
+    if (type.isUnionOrIntersection()) {
+      const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
+      if (!actualType.isUnionOrIntersection()) {
+        error(`Expected actual type to be of UnionOrIntersection, got '${checker.typeToString(actualType)}'`);
+      }
+
+      type.types.forEach((subtype, index) => {
+        const typename = checker.typeToString(subtype);
+        handleType(subtype, typename, actualType.types[index]);
+      });
+
+      continue;
+    }
+
+    const typename = checker.typeToString(type);
+    const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
+    handleType(type, typename, actualType);
+  }
+
+  const formalTypeParameters = signature.getTypeParameters();
   const formalTypeParametersNames = formalTypeParameters?.map((parameter) => checker.typeToString(parameter)) || [];
-  // @todo: keep order?
-  const readyTypes = Object.keys(map);
-  const difference = formalTypeParametersNames.filter((type) => !readyTypes.includes(type));
-  if (difference.length === 1 && !map[difference[0]]) {
-    map[difference[0]] = resolvedSignature.getReturnType();
+
+  const readyTypenames = Object.keys(typenameTypeMap);
+  const difference = formalTypeParametersNames.filter((type) => !readyTypenames.includes(type));
+  if (difference.length === 1 && !typenameTypeMap.get(difference[0])) {
+    typenameTypeMap.set(difference[0], resolvedSignature.getReturnType());
   } else if (difference.length > 1) {
     console.log("Cannot map generic type arguments to template arguments.\nNot an external symbol?");
   }
 
-  return map;
+  return typenameTypeMap;
 }
 
 export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type[] {
   return expression.arguments.map((arg) => {
-    let type = generator.checker.getTypeAtLocation(arg);
+    const type = generator.checker.getTypeAtLocation(arg);
     if (Boolean(type.flags & ts.TypeFlags.TypeParameter)) {
       const typenameAlias = generator.checker.typeToString(type);
-      type = generator.symbolTable.currentScope.tryGetThroughParentChain(typenameAlias) as ts.Type;
-      return type;
+      return generator.symbolTable.currentScope.typeMapper!.get(typenameAlias) as ts.Type;
     } else {
       return type;
     }
@@ -133,51 +154,52 @@ export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMG
 
 export function getReturnType(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type {
   const resolvedSignature = generator.checker.getResolvedSignature(expression)!;
-  let returnType = generator.checker.getReturnTypeOfSignature(resolvedSignature);
-
-  if (returnType.isTypeParameter()) {
-    const typenameAlias = generator.checker.typeToString(returnType);
-    returnType = generator.symbolTable.get(typenameAlias) as ts.Type;
-  }
-  return returnType;
+  const returnType = generator.checker.getReturnTypeOfSignature(resolvedSignature);
+  return tryResolveGenericTypeIfNecessary(returnType, generator);
 }
 
 export function tryResolveGenericTypeIfNecessary(tsType: ts.Type, generator: LLVMGenerator): ts.Type {
+  let result = tsType;
+
   if (!isTypeSupported(tsType, generator.checker)) {
     if (tsType.isUnionOrIntersection()) {
-      tsType.types = tsType.types.map((type) => {
+      const typeClone = cloneDeep(tsType);
+      typeClone.types = typeClone.types.map((type) => {
         if (type.isUnionOrIntersection()) {
           return tryResolveGenericTypeIfNecessary(type, generator);
         }
         if (!isTypeSupported(type, generator.checker)) {
           const typename = generator.checker.typeToString(type);
-          return generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as ts.Type;
+          return generator.symbolTable.currentScope.typeMapper!.get(typename) as ts.Type;
         } else {
           return type;
         }
       });
+
+      result = typeClone;
     } else {
       const typename = generator.checker.typeToString(tsType);
-      tsType = generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as ts.Type;
+      result = generator.symbolTable.currentScope.typeMapper!.get(typename) as ts.Type;
     }
-    if (!tsType) {
+    if (!result) {
       error(`Unsupported type: '${generator.checker.typeToString(tsType)}'`);
     }
   }
 
-  return tsType;
+  return result;
 }
 
 export function withObjectProperties<R>(
   expression: ts.ObjectLiteralExpression,
-  action: (property: ts.ObjectLiteralElementLike) => R
+  action: (property: ts.ObjectLiteralElementLike, index: number, array: R[]) => R
 ): R[] {
-  const resultArray = [];
+  const resultArray: R[] = [];
   for (const property of expression.properties) {
     switch (property.kind) {
       case ts.SyntaxKind.PropertyAssignment:
       case ts.SyntaxKind.ShorthandPropertyAssignment:
-        resultArray.push(action(property));
+      case ts.SyntaxKind.SpreadAssignment:
+        resultArray.push(action(property, resultArray.length, resultArray));
         break;
       default:
         error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);

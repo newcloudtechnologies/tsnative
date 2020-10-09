@@ -22,7 +22,6 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         parentScope.set(functionDeclaration.name!.getText(), {
           declaration: functionDeclaration,
           scope: this.generator.symbolTable.currentScope,
-          env,
         });
         return true;
       }

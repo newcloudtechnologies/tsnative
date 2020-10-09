@@ -18,6 +18,9 @@ import {
   getTypename,
   checkIfFunction,
   getGenericsToActualMapFromSignature,
+  checkIfString,
+  checkIfObject,
+  checkIfArray,
 } from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
@@ -65,9 +68,27 @@ export class ExternalSymbolsProvider {
     const signature = checker.getSignaturesOfType(type, ts.SignatureKind.Call)[0];
     const parameters = signature.getDeclaration().parameters;
     const cppParameterTypes = parameters.map((parameter) => {
-      return ExternalSymbolsProvider.jsTypeToCpp(checker.getTypeFromTypeNode(parameter.type!), checker);
+      const jsType = checker.getTypeFromTypeNode(parameter.type!);
+      let cppType = ExternalSymbolsProvider.jsTypeToCpp(jsType, checker);
+
+      if (checkIfArray(jsType) || checkIfObject(jsType)) {
+        cppType += " const&";
+      }
+
+      if (checkIfString(jsType, checker)) {
+        cppType += "*";
+      }
+
+      return cppType;
     });
-    const cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(checker.getReturnTypeOfSignature(signature), checker);
+
+    const jsReturnType = checker.getReturnTypeOfSignature(signature);
+    let cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(jsReturnType, checker);
+
+    if (checkIfString(jsReturnType, checker)) {
+      cppReturnType += "*";
+    }
+
     const cppSignature = cppReturnType + " (*)(" + cppParameterTypes.join(",") + ")";
     return cppSignature;
   }
@@ -78,7 +99,11 @@ export class ExternalSymbolsProvider {
     }
     if (ts.isArrayTypeNode(checker.typeToTypeNode(type)!)) {
       const elementType = getTypeGenericArguments(type)[0]!;
-      return `Array<${this.jsTypeToCpp(elementType, checker)}>`;
+      let cppElementType = this.jsTypeToCpp(elementType, checker);
+      if (checkIfString(elementType, checker) || checkIfObject(elementType)) {
+        cppElementType += "*";
+      }
+      return `Array<${cppElementType}>`;
     }
 
     let typename: string = "";
@@ -146,7 +171,9 @@ export class ExternalSymbolsProvider {
         .join(",");
     }
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
-    this.parametersPattern = argumentTypes.map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker)).join(",");
+    this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
+      argumentTypes.map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
+    );
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }
   tryGet(declaration: ts.NamedDeclaration): string | undefined {
@@ -235,13 +262,11 @@ export class ExternalSymbolsProvider {
       return functionTemplateParametersPattern;
     }
 
-    const map = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, generator);
+    const typenameTypeMap = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, generator);
     const templateTypes: string[] = [];
-    for (const type in map) {
-      if (map.hasOwnProperty(type)) {
-        templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(map[type], checker));
-      }
-    }
+    typenameTypeMap.forEach((value) => {
+      templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(value, checker));
+    });
 
     functionTemplateParametersPattern = templateTypes.join(",");
     return functionTemplateParametersPattern;
@@ -303,8 +328,11 @@ export class ExternalSymbolsProvider {
 
     candidates = candidates.filter((candidate) => this.isMatching(candidate.signature));
     if (candidates.length > 1) {
-      console.log(candidates);
-      error("Ambiguous function call");
+      candidates = candidates.filter((c) => c.signature.includes("*")); // @todo Very, VERY fragile thing
+      if (candidates.length > 1) {
+        console.log(candidates);
+        error("Ambiguous function call");
+      }
     }
     return externalMangledSymbolsTable[candidates[0]?.index];
   }
@@ -324,7 +352,9 @@ export class ExternalSymbolsProvider {
   }
   private extractTemplateParameterTypes(cppSignature: string): string[] {
     // @todo: use lazy cache
-    const classTemplateParametersMatches = cppSignature.match(`(?<=${this.namespace}${this.thisTypeName}<).*(?=>::)`);
+    const namespaceType = this.namespace + this.thisTypeName;
+    const classTemplateParametersPattern = `(?<=${namespaceType}<)(((?!${namespaceType}<).)*)(?=>::)`;
+    const classTemplateParametersMatches = cppSignature.match(classTemplateParametersPattern);
     const functionTemplateParametersMatches = cppSignature.match(`(?<=${this.methodName}<).*(?=>\\()`);
 
     let classTemplateParameters: string = "";
@@ -345,19 +375,24 @@ export class ExternalSymbolsProvider {
     return [classTemplateParameters, functionTemplateParameters];
   }
   private isMatching(cppSignature: string): boolean {
-    const parameters: string = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
+    const parameters = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
 
     let matching: boolean = parameters === this.parametersPattern;
-    if (
-      matching &&
-      (this.classTemplateParametersPattern.length > 0 || this.functionTemplateParametersPattern.length > 0)
-    ) {
+    if (matching) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
+
+      /*
+      @todo
+      This case is necessary to make distinguish between Clazz<T>::do<U> and Clazz<U>::do<T>
+
       if (this.classTemplateParametersPattern.length > 0 && this.functionTemplateParametersPattern.length > 0) {
         matching =
           classTemplateParameters === this.classTemplateParametersPattern &&
           functionTemplateParameters === this.functionTemplateParametersPattern;
-      } else if (this.classTemplateParametersPattern.length > 0) {
+      }
+      */
+
+      if (this.classTemplateParametersPattern.length > 0) {
         matching = classTemplateParameters === this.classTemplateParametersPattern;
       } else if (this.functionTemplateParametersPattern.length > 0) {
         matching = functionTemplateParameters === this.functionTemplateParametersPattern;

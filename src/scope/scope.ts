@@ -12,8 +12,10 @@
 import { error, getAliasedSymbolIfNecessary, getEnvironmentType, getStructType, InternalNames } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { LLVMGenerator } from "@generator";
+import { GenericTypeMapper, LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
+
+import { cloneDeep } from "lodash";
 
 export class Environment {
   varNames: string[];
@@ -61,8 +63,18 @@ export function addClassScope(
   generator: LLVMGenerator
 ): void {
   const thisType = generator.checker.getTypeAtLocation(expression) as ts.ObjectType;
+
+  if (!thisType.symbol) {
+    return;
+  }
+
   const declaration = getAliasedSymbolIfNecessary(thisType.symbol, generator.checker)
     .valueDeclaration as ts.ClassDeclaration;
+
+  if (!declaration || !declaration.members) {
+    return;
+  }
+
   const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
 
   if (parentScope.get(mangledTypename)) {
@@ -149,12 +161,7 @@ export function createEnvironment(
       const outerValues: llvm.Value[] = [];
       for (let i = 0; i < envElementType.numElements; ++i) {
         const extracted = data.type.isPointerTy()
-          ? generator.builder.createLoad(
-              generator.builder.createInBoundsGEP(data, [
-                llvm.ConstantInt.get(generator.context, 0),
-                llvm.ConstantInt.get(generator.context, i),
-              ])
-            )
+          ? generator.builder.createLoad(generator.xbuilder.createSafeInBoundsGEP(data, [0, i]))
           : generator.xbuilder.createSafeExtractValue(data, [i]);
         outerValues.push(extracted);
       }
@@ -186,6 +193,9 @@ export function createEnvironment(
 export function populateContext(generator: LLVMGenerator, scope: Scope, environmentVariables: string[]) {
   const context: HeapVariableDeclaration[] = [];
 
+  // Prevent original scope modification.
+  scope = cloneDeep(scope);
+
   scope.map.forEach((scopeVal, key) => {
     if (scopeVal instanceof Scope) {
       // prevent potentially endless recursion
@@ -213,16 +223,15 @@ export function populateContext(generator: LLVMGenerator, scope: Scope, environm
   return context;
 }
 
-export type FunctionDeclarationScopeEnvironment = {
+export interface FunctionDeclarationScopeEnvironment {
   declaration: ts.FunctionDeclaration;
   scope: Scope;
-  env?: Environment;
-};
+}
 
-export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope | ts.Type | FunctionDeclarationScopeEnvironment;
+export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope | FunctionDeclarationScopeEnvironment;
 
 export function isFunctionDeclarationScopeEnvironment(value: ScopeValue) {
-  return "declaration" in value && "scope" in value && "env" in value;
+  return "declaration" in value && "scope" in value;
 }
 
 export interface ThisData {
@@ -236,12 +245,21 @@ export class Scope {
   readonly name: string | undefined;
   readonly thisData: ThisData | undefined;
   readonly parent: Scope | undefined;
+  readonly typeMapper: GenericTypeMapper | undefined;
 
   constructor(name: string | undefined, parent?: Scope, data?: ThisData) {
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.parent = parent;
     this.thisData = data;
+
+    if (name === InternalNames.FunctionScope) {
+      this.typeMapper = new GenericTypeMapper();
+    }
+
+    if (parent && parent.typeMapper) {
+      this.typeMapper = parent.typeMapper;
+    }
   }
 
   get(identifier: string): ScopeValue | undefined {

@@ -17,16 +17,18 @@ import {
   isConvertible,
   promoteIntegralToFP,
 } from "@handlers";
+
 import {
   error,
   checkIfLLVMString,
   isUnionLLVMType,
   extractFromUnion,
-  isPointerToStruct,
-  isIntersectionLLVMType,
   extractFromIntersection,
   createHeapAllocatedFromValue,
+  isIntersectionLLVMType,
+  isPointerToStruct,
 } from "@utils";
+
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -39,8 +41,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsEqualsToken: {
-          const lhs: llvm.Value = this.generator.handleExpression(left, env);
-          const rhs: llvm.Value = this.generator.handleExpression(right, env);
+          const lhs = this.generator.handleExpression(left, env);
+          const rhs = this.generator.handleExpression(right, env);
           return this.handleStrictEquals(left, right, lhs, rhs, env);
         }
         case ts.SyntaxKind.ExclamationEqualsEqualsToken:
@@ -99,7 +101,7 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     if (checkIfLLVMString(lhsLLVM.type) && checkIfLLVMString(rhsLLVM.type)) {
       const equals = this.generator.builtinString.getLLVMEquals(lhs);
       return createHeapAllocatedFromValue(
-        this.generator.builder.createCall(equals, [lhsLLVM, rhsLLVM]),
+        this.generator.xbuilder.createSafeCall(equals, [lhsLLVM, rhsLLVM]),
         this.generator
       );
     }

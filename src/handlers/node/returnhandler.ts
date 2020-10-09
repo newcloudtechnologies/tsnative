@@ -10,32 +10,51 @@
  */
 
 import * as ts from "typescript";
-import * as llvm from "llvm-node";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { getLLVMType, checkIfUnion, initializeUnion } from "@utils";
+import { checkIfUnion, initializeUnion, unwrapPointerType } from "@utils";
+
+function isSimilarStructs(lhs: llvm.Type, rhs: llvm.Type) {
+  lhs = unwrapPointerType(lhs);
+  rhs = unwrapPointerType(rhs);
+
+  if (!lhs.isStructTy() || !rhs.isStructTy()) {
+    return false;
+  }
+
+  if (lhs.numElements !== rhs.numElements) {
+    return false;
+  }
+
+  for (let i = 0; i < lhs.numElements; ++i) {
+    if (!lhs.getElementType(i).equals(rhs.getElementType(i))) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isReturnStatement(node)) {
       const statement = node as ts.ReturnStatement;
       if (statement.expression) {
-        const ret = this.generator.handleExpression(statement.expression, env);
+        let ret = this.generator.handleExpression(statement.expression, env);
         const retType = this.generator.checker.getTypeAtLocation(statement.expression);
 
         if (checkIfUnion(retType)) {
-          let parent = node.parent;
-          while (!ts.isFunctionLike(parent)) {
-            parent = parent.parent;
+          ret = initializeUnion(this.generator.currentFunction.type, ret, this.generator);
+          this.generator.xbuilder.createSafeRet(ret);
+        } else {
+          const currentFunctionReturnType = this.generator.currentFunction.type.elementType.returnType;
+          if (!ret.type.equals(currentFunctionReturnType)) {
+            if (isSimilarStructs(ret.type, currentFunctionReturnType)) {
+              ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
+            }
           }
 
-          const signature = this.generator.checker.getSignatureFromDeclaration(parent);
-          const declaredReturnType = this.generator.checker.getReturnTypeOfSignature(signature!) as ts.UnionType;
-          const llvmType = getLLVMType(declaredReturnType, node, this.generator) as llvm.PointerType;
-          const llvmUnion = initializeUnion(llvmType, ret, this.generator);
-          this.generator.builder.createRet(llvmUnion);
-        } else {
-          this.generator.builder.createRet(ret);
+          this.generator.xbuilder.createSafeRet(ret);
         }
       } else {
         this.generator.builder.createRetVoid();

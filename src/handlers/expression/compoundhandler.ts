@@ -68,7 +68,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     const sHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       const concat = this.generator.builtinString.getLLVMConcat(lhs);
       const sret = this.generator.gc.allocate(this.generator.builtinString.getLLVMType().elementType);
-      return this.generator.builder.createCall(concat, [sret, l, r]);
+      return this.generator.xbuilder.createSafeCall(concat, [sret, l, r]);
     };
     return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler, sHandler);
   }

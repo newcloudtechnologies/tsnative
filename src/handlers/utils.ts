@@ -12,13 +12,12 @@ import {
   initializeUnion,
   isUnionWithUndefinedLLVMValue,
   isUnionWithNullLLVMValue,
-  checkIfFunction,
-  checkIfObject,
   isCppPrimitiveType,
   getLLVMValue,
   adjustLLVMValueToType,
   handleFunctionArgument,
   unwrapPointerType,
+  checkIfMethod,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -91,7 +90,7 @@ export function makeBoolean(value: llvm.Value, expression: ts.Expression, genera
 
   if (checkIfLLVMString(value.type)) {
     const lengthGetter = generator.builtinString.getLLVMLength(expression);
-    const length = generator.builder.createCall(lengthGetter, [value]);
+    const length = generator.xbuilder.createSafeCall(lengthGetter, [value]);
     return generator.builder.createICmpNE(length, llvm.Constant.getNullValue(length.type));
   }
 
@@ -277,45 +276,45 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
   return namespace;
 }
 
-export function getReturnObjectType(functionBody: ts.ConciseBody, generator: LLVMGenerator, env?: Environment) {
+function getLLVMReturnTypeFromFunctionBody(
+  functionBody: ts.ConciseBody,
+  generator: LLVMGenerator,
+  env?: Environment,
+  expression?: ts.Expression
+) {
   return generator.withInsertBlockKeeping(() => {
     return generator.symbolTable.withLocalScope((bodyScope) => {
-      let returnType: llvm.PointerType | undefined;
+      let returnType: llvm.Type | undefined;
       const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
       generator.builder.setInsertionPoint(dummyBlock);
 
+      if (expression) {
+        if (ts.isCallExpression(expression)) {
+          if (checkIfMethod(expression.expression, generator.checker)) {
+            const propertyAccess = expression.expression as ts.PropertyAccessExpression;
+            const val = generator.handleExpression(propertyAccess.expression, env);
+            bodyScope.set("this", val);
+          }
+        }
+      }
+
       if (ts.isBlock(functionBody)) {
         functionBody.forEachChild((node) => {
-          if (ts.isReturnStatement(node) && node.expression && ts.isObjectLiteralExpression(node.expression)) {
-            const propertyAssignments: ts.ObjectLiteralElementLike[] = node.expression.properties.filter((p) =>
-              ts.isPropertyAssignment(p)
-            );
-            const types = propertyAssignments.map((property) => {
-              return generator.handleExpression((property as ts.PropertyAssignment).initializer, env)
-                .type as llvm.PointerType;
-            });
-            const objectType = llvm.StructType.get(generator.context, [
-              ...types.map((type) => type as llvm.Type),
-            ]).getPointerTo();
-            returnType = objectType;
+          if (ts.isReturnStatement(node) && node.expression) {
+            const value = generator.handleExpression(node.expression, env);
+            returnType = value.type;
           } else {
-            try {
-              if (
-                ts.isVariableStatement(node) ||
-                (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
-              ) {
-                // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
-                generator.handleNode(node, bodyScope, env);
-              }
-
-              // Ignore empty catch block
-              // tslint:disable-next-line
-            } catch (_) { }
+            if (
+              ts.isVariableStatement(node) ||
+              (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
+            ) {
+              generator.handleNode(node, bodyScope, env);
+            }
           }
         });
       } else {
-        const handled = generator.handleExpression(functionBody, env);
-        returnType = handled.type as llvm.PointerType;
+        const value = generator.handleExpression(functionBody as ts.Expression, env);
+        returnType = value.type;
       }
 
       dummyBlock.eraseFromParent();
@@ -324,55 +323,16 @@ export function getReturnObjectType(functionBody: ts.ConciseBody, generator: LLV
   });
 }
 
-export function getNestedFunctionType(functionBody: ts.ConciseBody, generator: LLVMGenerator, env?: Environment) {
-  let closureType: llvm.Type;
-  return generator.withInsertBlockKeeping(() => {
-    return generator.symbolTable.withLocalScope((bodyScope) => {
-      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
-      generator.builder.setInsertionPoint(dummyBlock);
-
-      if (ts.isBlock(functionBody)) {
-        functionBody.forEachChild((node) => {
-          if (ts.isReturnStatement(node) && node.expression) {
-            // @todo: check if closure returns!
-            const closure = generator.handleExpression(node.expression, env);
-            closureType = closure.type;
-          } else {
-            if (
-              ts.isVariableStatement(node) ||
-              (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
-            ) {
-              // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
-              generator.handleNode(node, bodyScope, env);
-            }
-          }
-        });
-      } else {
-        error("Function context deducing for arrow functions without block body is not supported");
-      }
-
-      dummyBlock.eraseFromParent();
-      return closureType;
-    }, generator.symbolTable.currentScope);
-  });
-}
-
 export function getLLVMReturnType(
   tsReturnType: ts.Type,
   expression: ts.Expression,
-  functionBody: ts.ConciseBody | undefined,
+  functionBody: ts.ConciseBody,
   generator: LLVMGenerator,
   env?: Environment
 ) {
-  let llvmReturnType: llvm.Type;
-  if (checkIfFunction(tsReturnType)) {
-    llvmReturnType = getNestedFunctionType(functionBody!, generator, env);
-  } else if (checkIfObject(tsReturnType)) {
-    const objectType = getReturnObjectType(functionBody!, generator, env);
-    llvmReturnType = objectType || getLLVMType(tsReturnType, expression, generator);
-  } else {
-    llvmReturnType = getLLVMType(tsReturnType, expression, generator);
-  }
+  const llvmReturnType =
+    getLLVMReturnTypeFromFunctionBody(functionBody, generator, env, expression) ||
+    getLLVMType(tsReturnType, expression, generator);
 
   if (llvmReturnType.isVoidTy()) {
     return llvmReturnType;
@@ -502,7 +462,7 @@ export function getEffectiveArguments(
       return;
     }
     if (ts.isCallExpression(node)) {
-      if (closureParameterNames?.includes(node.expression.getText())) {
+      if (closureParameterNames.includes(node.expression.getText())) {
         // @todo: Multiple calls not supported!
         effectiveArguments.push(
           ...node.arguments.map((argument, index) => handleFunctionArgument(argument, index, generator, env))
