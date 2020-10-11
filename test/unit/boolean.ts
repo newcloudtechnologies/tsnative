@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+{
+  const assign_true = (x: boolean): boolean => {
+    let a = false;
+    a = x;
+    return a;
+  };
+
+  const assign_false = (x: boolean): boolean => {
+    let a = true;
+    a = x;
+    return a;
+  };
+
+  const toggle = (x: boolean): boolean => {
+    x = !x;
+    return x;
+  };
+
+  console.assert(assign_true(true) === true, "boolean: assign_true(true) failed");
+  console.assert(assign_false(false) === false, "boolean: assign_false(false) failed");
+  console.assert(toggle(false) === true, "boolean: toggle(false) failed");
+  console.assert(toggle(true) === false, "boolean: toggle(true) failed");
+}

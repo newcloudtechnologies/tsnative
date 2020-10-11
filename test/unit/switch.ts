@@ -1,4 +1,16 @@
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
 // @ts-nocheck
+// suppress TS7029: Fallthrough case in switch.
 
 {
   const switch_int = function (day: number): string {
@@ -129,7 +141,7 @@
 {
   const isBusinessDay = function (day: number): number {
 
-    const result = -1;
+    let result = -1;
 
     switch (day) {
       case 0:
@@ -263,4 +275,56 @@
   console.assert(noBreak(2) === 7, "switch: noBreak(2) failed");
   console.assert(noBreak(3) === 4, "switch: noBreak(3) failed");
 }
+
+{
+  let n_case1 = 0;
+  let n_case2 = 0;
+
+  const foo = function (x: number, n1: number, n2: number): number {
+    switch (x) {
+      case 1:
+        n1++;
+      case 2:
+        n2++;
+    }
+
+    return 101;
+  }
+
+  n_case1 = 0; n_case2 = 0;
+  foo(1, n_case1, n_case2);
+  console.assert(n_case1 === 1 && n_case2 === 1, "switch: CasesNoDefaultNoAnyBreak(1) failed");
+
+  n_case1 = 0; n_case2 = 0;
+  foo(2, n_case1, n_case2);
+  console.assert(n_case1 === 0 && n_case2 === 1, "switch: CasesNoDefaultNoAnyBreak(2) failed");
+
+  n_case1 = 0; n_case2 = 0;
+  foo(3, n_case1, n_case2);
+  console.assert(n_case1 === 0 && n_case2 === 0, "switch: CasesNoDefaultNoAnyBreak(3) failed");
+}
+
+{
+  let n_case1 = 0;
+  let n_case2 = 0;
+
+  const foo = function (x: number, n1: number, n2: number): number {
+    switch (x) {
+      case 1:
+        n1++;
+      default:
+        n2++;
+        return 0;
+    }
+
+    return 101;
+  }
+
+  n_case1 = 0; n_case2 = 0;
+  console.assert(foo(1, n_case1, n_case2) === 0 && n_case1 === 1 && n_case2 === 1, "switch: CasesDefaultNoAnyBreak(1) failed");
+
+  n_case1 = 0; n_case2 = 0;
+  console.assert(foo(11, n_case1, n_case2) === 0 && n_case1 === 0 && n_case2 === 1, "switch: CasesDefaultNoAnyBreak(11) failed");
+}
+
 

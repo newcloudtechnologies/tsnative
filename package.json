@@ -7,7 +7,6 @@
     "test": "tsc && ts-node test/test-runner.ts",
     "lint": "tslint --project tsconfig.json",
     "format": "tslint --project tsconfig.json --fix",
-    "updateSnapshots": "ts-node test/test-runner.ts --updateSnapshots",
     "prepare": "tsc"
   },
   "husky": {

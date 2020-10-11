@@ -123,7 +123,8 @@ export class SwitchHandler extends AbstractNodeHandler {
     const statements = [];
 
     let expr: ts.Expression | undefined;
-    const N = this.hasDefault(clauses) ? clauses.length - 1 : clauses.length;
+    const hasDefault = this.hasDefault(clauses);
+    const N = hasDefault ? clauses.length - 1 : clauses.length;
 
     // skip all empty case-blocks and generate joined expression
     // switch (x)
@@ -142,6 +143,19 @@ export class SwitchHandler extends AbstractNodeHandler {
       ++n;
     }
 
+    // switch (x) {
+    //   case 1:
+    //   default:
+    //     return 100;
+    // }
+    //
+    // if default-block exists and case before doesn't have terminate operator
+    // rollback n to case-block position. (default-block will be handled below)
+
+    if (hasDefault && n >= N) {
+      --n;
+    }
+
     const clause = clauses[n] as ts.CaseClause;
 
     for (const it of clause.statements) {
@@ -152,7 +166,8 @@ export class SwitchHandler extends AbstractNodeHandler {
     if (!this.hasTerminateStatement(clauses[m] as ts.CaseClause)) {
       // find forward all blocks without terminate statement
       do {
-        ++m;
+        if (++m >= (hasDefault ? N + 1 : N)) break;
+
         const nextClause = clauses[m] as ts.CaseClause;
 
         // accumulate statements from blocks without "break" (and "return")
