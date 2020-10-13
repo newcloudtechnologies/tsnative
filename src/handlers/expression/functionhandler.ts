@@ -64,7 +64,41 @@ export class FunctionHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
-        return this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env);
+        const accessorType = (expr: ts.Expression): ts.SyntaxKind => {
+          let result: ts.SyntaxKind | undefined;
+
+          if (ts.isBinaryExpression(expr.parent)) {
+            const binaryExpression = expr.parent as ts.BinaryExpression;
+
+            if (
+              ts.isPropertyAccessExpression(binaryExpression.left) ||
+              ts.isPropertyAccessExpression(binaryExpression.right)
+            ) {
+              result =
+                binaryExpression.operatorToken.kind === ts.SyntaxKind.EqualsToken
+                  ? ts.SyntaxKind.SetAccessor
+                  : ts.SyntaxKind.GetAccessor;
+            } else if (ts.isPropertyAccessExpression(expr)) {
+              result = ts.SyntaxKind.GetAccessor;
+            }
+          }
+
+          if (!result) {
+            error("Unreachable");
+          }
+
+          return result;
+        };
+
+        switch (accessorType(expression)) {
+          case ts.SyntaxKind.GetAccessor:
+            return this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env);
+          case ts.SyntaxKind.SetAccessor:
+            return this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env);
+          default:
+            error("Unreachable");
+        }
+
       case ts.SyntaxKind.CallExpression:
         const call = expression as ts.CallExpression;
         if (call.expression.kind === ts.SyntaxKind.SuperKeyword) {
@@ -380,7 +414,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
   private handleGetAccessExpression(expression: ts.PropertyAccessExpression, env?: Environment): llvm.Value {
     const symbol = this.generator.checker.getSymbolAtLocation(expression);
-    const valueDeclaration = symbol!.valueDeclaration as ts.GetAccessorDeclaration;
+
+    let valueDeclaration: ts.GetAccessorDeclaration | undefined;
+    for (const it of symbol!.declarations) {
+      if (it.kind === ts.SyntaxKind.GetAccessor) {
+        valueDeclaration = it as ts.GetAccessorDeclaration;
+        break;
+      }
+    }
+
+    if (!valueDeclaration) valueDeclaration = symbol!.valueDeclaration as ts.GetAccessorDeclaration;
 
     let thisType;
     if (!checkIfStaticMethod(valueDeclaration)) {
@@ -414,7 +457,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const { fn, existing } = createLLVMFunction(
       llvmReturnType,
       llvmArgumentTypes,
-      qualifiedName,
+      qualifiedName + "__getter",
       this.generator.module
     );
     const body = valueDeclaration.body;
@@ -426,6 +469,91 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const args = [];
     if (llvmThisType) {
       const thisValue = this.generator.handleExpression(expression.expression, env);
+      args.push(thisValue);
+    }
+
+    return this.generator.xbuilder.createSafeCall(fn, args);
+  }
+
+  private handleSetAccessExpression(expression: ts.PropertyAccessExpression, outerEnv?: Environment): llvm.Value {
+    const symbol = this.generator.checker.getSymbolAtLocation(expression);
+    const parent = expression.parent as ts.BinaryExpression;
+
+    let valueDeclaration: ts.SetAccessorDeclaration | undefined;
+    for (const it of symbol!.declarations) {
+      if (it.kind === ts.SyntaxKind.SetAccessor) {
+        valueDeclaration = it as ts.SetAccessorDeclaration;
+        break;
+      }
+    }
+
+    if (!valueDeclaration) valueDeclaration = symbol!.valueDeclaration as ts.SetAccessorDeclaration;
+
+    let thisType;
+    if (!checkIfStaticMethod(valueDeclaration)) {
+      thisType = this.generator.checker.getTypeAtLocation(expression.expression);
+    }
+
+    const { isExternalSymbol, qualifiedName } = FunctionMangler.mangle(
+      valueDeclaration,
+      expression,
+      thisType,
+      [],
+      this.generator
+    );
+
+    // TODO:
+    if (isExternalSymbol) {
+      //   return this.sysVFunctionHandler.handleSetAccessExpression(expression, qualifiedName, outerEnv);
+    }
+
+    const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
+    const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
+    const environmentVariables = getFunctionEnvironmentVariables(valueDeclaration.body!, signature, this.generator);
+
+    const argsToEnv: llvm.Value[] = [];
+    argsToEnv.push(this.generator.handleExpression(parent.right, outerEnv));
+
+    const env = createEnvironment(
+      parentScope,
+      environmentVariables,
+      this.generator,
+      { args: argsToEnv, signature },
+      outerEnv
+    );
+
+    let llvmThisType;
+    if (thisType) {
+      llvmThisType = parentScope.thisData!.type;
+    }
+
+    const llvmReturnType = llvm.Type.getVoidTy(this.generator.context);
+
+    const llvmArgumentTypes = [];
+    llvmArgumentTypes.push(env.allocated.type);
+
+    if (llvmThisType) {
+      llvmArgumentTypes.push(llvmThisType);
+    }
+
+    const { fn, existing } = createLLVMFunction(
+      llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName + "__setter",
+      this.generator.module
+    );
+
+    const body = valueDeclaration!.body;
+    if (body && !existing) {
+      this.handleFunctionBody(llvmReturnType, thisType, valueDeclaration!, fn, env);
+      setLLVMFunctionScope(fn, parentScope);
+    }
+
+    const args = [];
+    args.push(env.allocated);
+
+    if (llvmThisType) {
+      const thisValue = this.generator.handleExpression(expression.expression, outerEnv);
       args.push(thisValue);
     }
 
@@ -691,12 +819,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
         (bodyScope) => {
           const parameterNames = [];
 
-          if (thisType) {
-            parameterNames.unshift("this");
+          if (env) {
+            parameterNames.push(InternalNames.Environment);
           }
 
-          if (env) {
-            parameterNames.unshift(InternalNames.Environment);
+          if (thisType) {
+            parameterNames.push("this");
           }
 
           const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", fn);

@@ -11,9 +11,27 @@ export class AccessHandler extends AbstractExpressionHandler {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
         const symbol = this.generator.checker.getSymbolAtLocation(expression);
-        const valueDeclaration = symbol!.valueDeclaration;
+
+        let valueDeclaration: ts.GetAccessorDeclaration | ts.SetAccessorDeclaration | undefined;
+        for (const it of symbol!.declarations) {
+          if (it.kind === ts.SyntaxKind.GetAccessor) {
+            valueDeclaration = it as ts.GetAccessorDeclaration;
+            break;
+          }
+
+          if (it.kind === ts.SyntaxKind.SetAccessor) {
+            valueDeclaration = it as ts.SetAccessorDeclaration;
+            break;
+          }
+        }
+
         if (valueDeclaration && ts.isGetAccessorDeclaration(valueDeclaration)) {
           // Handle get accessors in FunctionHandler.
+          break;
+        }
+
+        if (valueDeclaration && ts.isSetAccessorDeclaration(valueDeclaration)) {
+          // Handle set accessors in FunctionHandler.
           break;
         }
 

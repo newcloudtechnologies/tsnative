@@ -21,21 +21,50 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
+
+      const isSetAccessor = (expr: ts.Expression): boolean => {
+        let result = false;
+        if (ts.isBinaryExpression(expr.parent)) {
+          const binaryExpr = expr.parent as ts.BinaryExpression;
+
+          if (ts.isPropertyAccessExpression(expr)) {
+            const accessExpr = expr as ts.PropertyAccessExpression;
+
+            if (
+              binaryExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+              accessExpr.expression.kind !== ts.SyntaxKind.ThisKeyword
+            ) {
+              result = true;
+            }
+          }
+        }
+
+        return result;
+      };
+
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
-          const lhs = this.generator.handleExpression(left, env);
-          let rhs;
-          if (right.kind === ts.SyntaxKind.NullKeyword) {
-            rhs = llvm.Constant.getNullValue(lhs.type);
-            if (isUnionWithNullLLVMType(lhs.type)) {
-              rhs = this.generator.builder.createInsertValue(rhs, llvm.ConstantInt.get(this.generator.context, -1, 8), [
-                0,
-              ]);
-            }
+          if (isSetAccessor(left)) {
+            const lhs = this.generator.handleExpression(left, env);
+            return lhs;
           } else {
-            rhs = this.generator.handleExpression(right, env);
+            const lhs = this.generator.handleExpression(left, env);
+            let rhs;
+            if (right.kind === ts.SyntaxKind.NullKeyword) {
+              rhs = llvm.Constant.getNullValue(lhs.type);
+              if (isUnionWithNullLLVMType(lhs.type)) {
+                rhs = this.generator.builder.createInsertValue(
+                  rhs,
+                  llvm.ConstantInt.get(this.generator.context, -1, 8),
+                  [0]
+                );
+              }
+            } else {
+              rhs = this.generator.handleExpression(right, env);
+            }
+
+            return makeAssignment(lhs, rhs, this.generator);
           }
-          return makeAssignment(lhs, rhs, this.generator);
         default:
           break;
       }

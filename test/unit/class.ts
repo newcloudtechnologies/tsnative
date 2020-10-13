@@ -62,7 +62,7 @@
 
   const runner = new Runner(0, 9);
   console.assert(runner.count() === 0, "class: init failed");
-  
+
   runner.tick();
   console.assert(runner.count() === 1, "class: tick1 failed");
 
@@ -102,6 +102,41 @@
 
   console.assert(widget1.getName() === "Widget1", "class: widget1.getName() === 'Widget1' failed");
   console.assert(widget2.getName() === "Widget2", "class: widget2.getName() === 'Widget1' failed");
+}
+
+{
+  class Employee {
+    private _fullName: string;
+    public _setterIsInvoked: number;
+    public _getterIsInvoked: number;
+
+    constructor() {
+      this._fullName = "initial";
+      this._setterIsInvoked = 0;
+      this._getterIsInvoked = 0;
+    }
+
+    get fullName(): string {
+      this._getterIsInvoked++;
+      return this._fullName;
+    }
+
+    set fullName(newName: string) {
+      this._setterIsInvoked++;
+      this._fullName = newName;
+    }
+  }
+
+  let employee = new Employee();
+
+  console.assert(employee.fullName === "initial", "class: employee.fullName === 'initial' failed");
+  console.assert(employee._getterIsInvoked === 1, "class: employee._getterIsInvoked === 1 failed");
+
+  employee.fullName = "Bob Smith";
+  console.assert(employee._setterIsInvoked === 1, "class: employee._setterIsInvoked === 1 failed");
+
+  console.assert(employee.fullName === "Bob Smith", "class: employee.fullName === 'Bob Smith' failed");
+  console.assert(employee._getterIsInvoked === 2, "class: employee._getterIsInvoked === 1 failed");
 }
 
 // @todo:
