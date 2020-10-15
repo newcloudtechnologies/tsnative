@@ -139,6 +139,39 @@
   console.assert(employee._getterIsInvoked === 2, "class: employee._getterIsInvoked === 1 failed");
 }
 
+{
+  class Clazz {
+    public s: string = "sss";
+    public r: string;
+    public n: number = 3;
+
+    constructor() {
+      this.r = "rrr";
+    }
+  }
+
+  let inst = new Clazz();
+
+  console.assert(inst.s === "sss", "class: inst.s === 'sss' failed");
+  console.assert(inst.r === "rrr", "class: inst.r === 'rrr' failed");
+  console.assert(inst.n === 3, "class: inst.n === 3 failed");
+}
+
+{
+  class Clazzz {
+    public n: number = 3;
+
+    constructor() {
+      this.n = 10;
+    }
+  }
+
+  let inst = new Clazzz();
+
+  console.assert(inst.n === 10, "class: inst.n === 10 failed");
+}
+
+
 // @todo:
 /*
 {

@@ -24,6 +24,11 @@ export class AssignmentHandler extends AbstractExpressionHandler {
 
       const isSetAccessor = (expr: ts.Expression): boolean => {
         let result = false;
+
+        if (!expr.parent) {
+          return result;
+        }
+
         if (ts.isBinaryExpression(expr.parent)) {
           const binaryExpr = expr.parent as ts.BinaryExpression;
 

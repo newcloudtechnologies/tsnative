@@ -708,6 +708,34 @@ export class FunctionHandler extends AbstractExpressionHandler {
       error(`No constructor provided: ${expression.getText()}`);
     }
 
+    const initializers: ts.ExpressionStatement[] = [];
+
+    for (const memberDecl of classDeclaration.members) {
+      if (ts.isPropertyDeclaration(memberDecl)) {
+        const propertyDecl = memberDecl as ts.PropertyDeclaration;
+        if (propertyDecl.initializer) {
+          const thisExpr = ts.createThis();
+          thisExpr.flags = 0;
+
+          const propAccess = ts.createPropertyAccess(thisExpr, propertyDecl.name as ts.Identifier);
+          propAccess.flags = 0;
+          thisExpr.parent = propAccess;
+
+          const binExpr = ts.createBinary(propAccess, ts.SyntaxKind.EqualsToken, propertyDecl.initializer);
+          binExpr.flags = 0;
+          propAccess.parent = binExpr;
+
+          const exprStatement = ts.createExpressionStatement(binExpr);
+          exprStatement.flags = 0;
+          binExpr.parent = exprStatement;
+
+          exprStatement.parent = constructorDeclaration;
+
+          initializers.push(exprStatement);
+        }
+      }
+    }
+
     if (!isTypeDeclared(thisType, constructorDeclaration, this.generator)) {
       addClassScope(expression, this.generator.symbolTable.currentScope, this.generator);
     }
@@ -742,7 +770,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       [];
 
     if (body && !existing) {
-      this.handleConstructorBody(llvmThisType, constructorDeclaration, constructor, env);
+      this.handleConstructorBody(llvmThisType, constructorDeclaration, constructor, env, initializers);
       setLLVMFunctionScope(constructor, parentScope);
     }
 
@@ -911,7 +939,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     llvmThisType: llvm.PointerType,
     constructorDeclaration: ts.FunctionLikeDeclaration,
     constructor: llvm.Function,
-    env?: Environment
+    env?: Environment,
+    initializers?: ts.ExpressionStatement[]
   ): void {
     this.generator.withInsertBlockKeeping(() => {
       this.generator.symbolTable.withLocalScope((bodyScope: Scope) => {
@@ -930,6 +959,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
         const thisValue = this.generator.gc.allocate(llvmThisType.elementType);
         bodyScope.set("this", thisValue);
 
+        if (initializers) {
+          // handle properties initialization first
+          initializers.forEach((node) => this.generator.handleNode(node, bodyScope, env));
+        }
+
+        // handle constructor body
         constructorDeclaration.body!.forEachChild((node) => this.generator.handleNode(node, bodyScope, env));
 
         this.generator.xbuilder.createSafeRet(thisValue);
