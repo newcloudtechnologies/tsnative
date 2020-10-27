@@ -51,7 +51,7 @@ export class SysVFunctionHandler {
     const valueDeclaration = symbol!.valueDeclaration as ts.GetAccessorDeclaration;
 
     const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
-    const llvmThisType = parentScope.thisData!.type;
+    const llvmThisType = parentScope.thisData!.llvmType;
     const returnType: ts.Type = this.generator.checker.getTypeAtLocation(expression);
 
     const llvmReturnType = getLLVMType(returnType, expression, this.generator);
@@ -218,7 +218,7 @@ export class SysVFunctionHandler {
       .valueDeclaration as ts.FunctionLikeDeclaration;
 
     const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
-    const llvmThisType = thisType ? parentScope.thisData!.type : undefined;
+    const llvmThisType = thisType ? parentScope.thisData!.llvmType : undefined;
 
     const returnType = getReturnType(expression, this.generator);
     let llvmReturnType = getLLVMType(returnType, expression, this.generator);
@@ -304,7 +304,7 @@ export class SysVFunctionHandler {
     const argumentTypes = expression.arguments?.map(this.generator.checker.getTypeAtLocation) || [];
 
     const parentScope = getFunctionDeclarationScope(classDeclaration, thisType, this.generator);
-    const llvmThisType: llvm.PointerType = parentScope.thisData!.type as llvm.PointerType;
+    const llvmThisType: llvm.PointerType = parentScope.thisData!.llvmType as llvm.PointerType;
 
     const parameterTypes = argumentTypes.map((argumentType) => {
       const type = getLLVMType(argumentType, expression, this.generator);

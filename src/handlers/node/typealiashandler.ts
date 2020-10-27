@@ -12,10 +12,10 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment, createEnvironment } from "@scope";
-import { getLLVMType, getAliasedSymbolIfNecessary } from "@utils";
+import { getLLVMType, getAliasedSymbolIfNecessary, error } from "@utils";
 import * as llvm from "llvm-node";
 import { getLLVMReturnType } from "@handlers";
-import { getFunctionEnvironmentVariables, getFunctionScopes } from "@handlers/utils";
+import { getEnvironmentVariablesFromBody, getFunctionScopes } from "@handlers/utils";
 import { LLVMGenerator } from "@generator";
 
 const utilityReturnType = "ReturnType";
@@ -50,8 +50,13 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
                 const dummyArguments = llvmArgumentTypes.map((type) =>
                   llvm.Constant.getNullValue(type.isPointerTy() ? type : type.getPointerTo())
                 );
-                const environmentVariables = getFunctionEnvironmentVariables(
-                  (declaration.initializer! as ts.FunctionLikeDeclaration).body!,
+
+                if (!declaration.initializer) {
+                  error("Declaration initializer required");
+                }
+
+                const environmentVariables = getEnvironmentVariablesFromBody(
+                  (declaration.initializer as ts.FunctionLikeDeclaration).body!,
                   signature,
                   generator
                 );
@@ -120,9 +125,12 @@ export class TypeAliasHandler extends AbstractNodeHandler {
           llvmType = getLLVMType(type, node, this.generator) as llvm.StructType;
         }
 
-        const scope: Scope = new Scope(name, undefined, {
+        const tsType = this.generator.checker.getTypeAtLocation(declaration as ts.Node);
+
+        const scope: Scope = new Scope(name, name, undefined, {
           declaration,
-          type: llvmType,
+          llvmType,
+          tsType,
         });
 
         parentScope.set(name, scope);

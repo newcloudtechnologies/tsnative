@@ -19,33 +19,75 @@ import { isUnionWithNullLLVMType } from "@utils";
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
-      const binaryExpression = expression as ts.BinaryExpression;
-      const { left, right } = binaryExpression;
-
       const isSetAccessor = (expr: ts.Expression): boolean => {
+        const hasStatic = (symbol: ts.Symbol): boolean => {
+          let result = false;
+
+          for (const declaration of symbol.declarations) {
+            if (declaration.modifiers) {
+              const found = declaration.modifiers.find((modifier: ts.Modifier) => {
+                return modifier.kind === ts.SyntaxKind.StaticKeyword;
+              });
+
+              if (found) {
+                result = true;
+                break;
+              }
+            }
+          }
+
+          return result;
+        };
+
+        const hasSetDeclaration = (symbol: ts.Symbol): boolean => {
+          let result = false;
+
+          for (const declaration of symbol.declarations) {
+            if (declaration.kind === ts.SyntaxKind.SetAccessor) {
+              result = true;
+              break;
+            }
+          }
+
+          return result;
+        };
+
         let result = false;
 
         if (!expr.parent) {
           return result;
         }
 
-        if (ts.isBinaryExpression(expr.parent)) {
-          const binaryExpr = expr.parent as ts.BinaryExpression;
+        if (ts.isPropertyAccessExpression(expr)) {
+          const propertyAccessExpression = expr as ts.PropertyAccessExpression;
+          const symbol = this.generator.checker.getSymbolAtLocation(propertyAccessExpression)!;
 
-          if (ts.isPropertyAccessExpression(expr)) {
-            const accessExpr = expr as ts.PropertyAccessExpression;
+          if (ts.isBinaryExpression(expr.parent)) {
+            const binaryExpression = expr.parent as ts.BinaryExpression;
 
-            if (
-              binaryExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-              accessExpr.expression.kind !== ts.SyntaxKind.ThisKeyword
-            ) {
-              result = true;
+            if (ts.isPropertyAccessExpression(binaryExpression.left)) {
+              if (hasSetDeclaration(symbol)) {
+                if (hasStatic(symbol)) {
+                  result =
+                    binaryExpression.operatorToken.kind === ts.SyntaxKind.EqualsToken && // if "=" operator only
+                    propertyAccessExpression.expression.kind !== ts.SyntaxKind.ThisKeyword; // && // if not "this.*"
+                } else {
+                  const s = this.generator.checker.getSymbolAtLocation(propertyAccessExpression.expression);
+                  result =
+                    binaryExpression.operatorToken.kind === ts.SyntaxKind.EqualsToken && // if "=" operator only
+                    propertyAccessExpression.expression.kind !== ts.SyntaxKind.ThisKeyword && // && // if not "this.*"
+                    !(s && ts.isClassDeclaration(s.valueDeclaration)); // if not "MyClass.*"
+                }
+              }
             }
           }
         }
 
         return result;
       };
+
+      const binaryExpression = expression as ts.BinaryExpression;
+      const { left, right } = binaryExpression;
 
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:

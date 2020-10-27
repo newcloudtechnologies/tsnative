@@ -27,6 +27,117 @@
 }
 
 {
+  class ClassA {
+    static a: number = 0;
+    constructor() { }
+  }
+
+  class ClassB extends ClassA {
+    static b: number = 0;
+
+    constructor() {
+      super()
+      ClassB.a++;
+    }
+
+    getA(): number {
+      return ClassB.a;
+    }
+
+    setA(v: number) {
+      ClassB.a = v;
+    }
+  }
+
+  const inst = new ClassB();
+
+  console.assert(inst.getA() === 1, "class: inst.getA() === 1 failed");
+
+  inst.setA(2);
+
+  console.assert(inst.getA() === 2, "class: inst.getA() === 2 failed");
+
+  console.assert(ClassA.a === 2, "class: ClassA.a === 2 failed");
+  console.assert(ClassB.a === 2, "class: ClassB.a === 2 failed");
+
+  ClassB.a = 3;
+  console.assert(ClassA.a === 3, "class: ClassA.a === 3 failed");
+  console.assert(ClassB.a === 3, "class: ClassB.a === 3 failed");
+
+  ClassA.a = 4;
+  console.assert(ClassA.a === 4, "class: ClassA.a === 4 failed");
+  console.assert(ClassB.a === 4, "class: ClassB.a === 4 failed");
+
+  console.assert(ClassB.b === 0, "class: ClassB.b === 0 failed");
+
+  ClassB.b = 1;
+
+  console.assert(ClassB.b === 1, "class: ClassB.b === 1 failed");
+}
+
+{
+  class ClassAA {
+    static a: number = 0;
+    constructor() { }
+  }
+
+  class ClassBB extends ClassAA {
+    static a: number = 0;
+
+    constructor() {
+      super();
+      ClassAA.a++;
+    }
+
+    setStatic(v: number) {
+      ClassAA.a = v;
+    }
+  }
+
+  const inst = new ClassBB();
+  inst.setStatic(1);
+
+  console.assert(ClassBB.a === 0, "ClassBB.a === 0 failed");
+  console.assert(ClassAA.a === 1, "ClassAA.a === 1 failed");
+}
+
+{
+  class ClasssA {
+    static a: number = 0;
+    constructor() { }
+  }
+
+  class ClasssB extends ClasssA {
+    static b: number = 0;
+
+    constructor() {
+      super();
+      ClasssB.a++;
+    }
+  }
+
+  /* @todo: super() call through inheritance chain
+  class ClasssC extends ClasssB {
+    static c: number = 0;
+
+    constructor() {
+      super();
+      ClasssB.b++;
+    }
+  }
+
+  new ClasssC();
+
+  console.assert(ClasssB.b === 1, "class: ClasssB.b === 1 failed");
+  */
+
+  new ClasssB();
+
+  console.assert(ClasssB.a === 1, "class: ClasssB.a === 1 failed");
+  console.assert(ClasssA.a === 1, "class: ClasssA.a === 1 failed");
+}
+
+{
   class Counter {
     value: number = 0;
     constructor(init: number) {
@@ -74,15 +185,11 @@
 }
 
 {
-  class Widget {
+  class Node {
     private name: string;
 
     constructor() {
       this.name = "";
-    }
-
-    static make(): Widget {
-      return new Widget();
     }
 
     setName(name: string) {
@@ -94,14 +201,14 @@
     }
   }
 
-  let widget1 = Widget.make();
-  widget1.setName("Widget1");
+  let node1 = new Node();
+  node1.setName("Node1");
 
-  let widget2 = Widget.make();
-  widget2.setName("Widget2");
+  let node2 = new Node();
+  node2.setName("Node2");
 
-  console.assert(widget1.getName() === "Widget1", "class: widget1.getName() === 'Widget1' failed");
-  console.assert(widget2.getName() === "Widget2", "class: widget2.getName() === 'Widget1' failed");
+  console.assert(node1.getName() === "Node1", "class: node1.getName() === 'Node1' failed");
+  console.assert(node2.getName() === "Node2", "class: node2.getName() === 'Node2' failed");
 }
 
 {
@@ -171,41 +278,88 @@
   console.assert(inst.n === 10, "class: inst.n === 10 failed");
 }
 
-
-// @todo:
-/*
 {
   class Widget {
-    private static COUNT: number = 0;   <== static fields are not implemented
-    private name: string = "";          <== have to be initialized in constructor even it is empty
+    static COUNT: number = 0;
 
-    constructor() { }
-
-    static make(): Widget {
-      return new Widget();
+    constructor() {
+      Widget.COUNT++;
     }
-
-    static get widgetCount(): number {
+    /*
+      // @todo: #4278
+        static make(): Widget {
+          return new Widget();
+        }
+    */
+    static get count(): number {
       return Widget.COUNT;
     }
 
-    setName(name: string) {
-      this.name = name;
-    }
-
-    getName(): string {
-      return this.name;
+    static reset() {
+      Widget.COUNT = 0;
     }
   }
 
-   let widget1 = Widget.make();
-   widget1.setName("Widget1");
+  console.assert(Widget.count === 0, "class: Widget.count === 0 failed");
 
-   let widget2 = Widget.make();
-   widget2.setName("Widget2");
+  new Widget();
 
-   console.assert(Widget.widgetCount === 2, "class: Widget.widgetCount failed");
-   console.assert(widget1.getName() === "Widget1", "class: widget1.getName() === 'Widget1' failed");
-   console.assert(widget2.getName() === "Widget2", "class: widget2.getName() === 'Widget1' failed");
+  console.assert(Widget.count === 1, "class: Widget.count === 1 failed");
+
+  new Widget();
+
+  console.assert(Widget.count === 2, "class: Widget.count === 2 failed");
+
+  new Widget();
+
+  console.assert(Widget.count === 3, "class: Widget.count === 3 failed");
+
+  Widget.reset();
+
+  console.assert(Widget.count === 0, "class: Widget.count === 0 failed");
 }
-*/
+
+{
+  class Product {
+    private value: string;
+
+    constructor(value: string) {
+      this.value = value;
+    }
+
+    get kind(): string {
+      return this.value;
+    }
+  }
+
+  class Factory {
+    private static ARG: string = "";
+
+    constructor() {
+    }
+
+    static get arg(): string {
+      return Factory.ARG;
+    }
+
+    static set arg(arg: string) {
+      Factory.ARG = arg;
+    }
+
+    static make(): Product {
+      return new Product(Factory.ARG);
+    }
+  }
+
+  Factory.arg = "Fruit";
+  const inst1 = Factory.make();
+
+  console.assert(Factory.arg === "Fruit", "class: Factory.arg === 'Fruit' failed");
+  console.assert(inst1.kind === Factory.arg, "class: inst1.kind === Factory.arg failed");
+
+  Factory.arg = "Drink";
+  const inst2 = Factory.make();
+
+  console.assert(Factory.arg === "Drink", "class: Factory.arg === 'Drink' failed");
+  console.assert(inst2.kind === Factory.arg, "class: inst1.kind === Factory.arg failed");
+}

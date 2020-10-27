@@ -41,6 +41,19 @@ export function checkIfStaticMethod(valueDeclaration: ts.Declaration): boolean {
   return valueDeclaration.getText().startsWith(ts.ScriptElementKindModifier.staticModifier);
 }
 
+export function checkIfStaticProperty(propertyDeclaration: ts.PropertyDeclaration): boolean {
+  let result = false;
+  if (propertyDeclaration.modifiers) {
+    const found = propertyDeclaration.modifiers!.find((it: ts.Modifier): boolean => {
+      return it.kind === ts.SyntaxKind.StaticKeyword;
+    });
+
+    result = Boolean(found);
+  }
+
+  return result;
+}
+
 export function checkIfMethod(expression: ts.Expression, checker: ts.TypeChecker): boolean {
   return (
     ts.isPropertyAccessExpression(expression) &&

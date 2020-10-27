@@ -18,6 +18,7 @@ import {
   handleFunctionArgument,
   unwrapPointerType,
   checkIfMethod,
+  checkIfStaticProperty,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -195,7 +196,7 @@ export function createArrayConstructor(
   const { qualifiedName } = FunctionMangler.mangle(constructorDeclaration, expression, arrayType, [], generator);
 
   const parentScope = getFunctionDeclarationScope(constructorDeclaration, arrayType, generator);
-  const thisValue = parentScope.thisData!.type;
+  const thisValue = parentScope.thisData!.llvmType;
 
   const { fn: constructor } = createLLVMFunction(thisValue, [thisValue], qualifiedName, generator.module);
   const allocated = generator.gc.allocate((thisValue as llvm.PointerType).elementType);
@@ -220,7 +221,7 @@ export function createArrayPush(
   const { qualifiedName } = FunctionMangler.mangle(pushDeclaration, expression, arrayType, [elementType], generator);
   const { fn: push } = createLLVMFunction(
     llvm.Type.getDoubleTy(generator.context),
-    [scope.thisData!.type, parameterType],
+    [scope.thisData!.llvmType, parameterType],
     qualifiedName,
     generator.module
   );
@@ -247,7 +248,7 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
 
   const { fn: subscript } = createLLVMFunction(
     retType,
-    [scope.thisData!.type, llvm.Type.getDoubleTy(generator.context)],
+    [scope.thisData!.llvmType, llvm.Type.getDoubleTy(generator.context)],
     qualifiedName,
     generator.module
   );
@@ -341,6 +342,16 @@ export function getLLVMReturnType(
   return llvmReturnType.isPointerTy() ? llvmReturnType : llvmReturnType.getPointerTo();
 }
 
+export function getEnvironmentVariablesFromBody(
+  body: ts.ConciseBody,
+  signature: ts.Signature,
+  generator: LLVMGenerator
+) {
+  const vars = getFunctionEnvironmentVariables(body, signature, generator);
+  const varsStatic = getStaticFunctionEnvironmentVariables(body, generator);
+  return vars.concat(varsStatic);
+}
+
 export function getFunctionEnvironmentVariables(
   body: ts.ConciseBody,
   signature: ts.Signature,
@@ -356,11 +367,27 @@ export function getFunctionEnvironmentVariables(
       const visitor = (node: ts.Node) => {
         const nodeText = node.getText();
 
+        const isStaticProperty = (n: ts.Node): boolean => {
+          let result = false;
+          const symbol = generator.checker.getSymbolAtLocation(n);
+
+          if (symbol && symbol!.valueDeclaration.kind === ts.SyntaxKind.PropertyDeclaration) {
+            const propertyDeclaration = symbol!.valueDeclaration as ts.PropertyDeclaration;
+
+            result = checkIfStaticProperty(propertyDeclaration);
+          } else {
+            result = false;
+          }
+
+          return result;
+        };
+
         if (
           ts.isIdentifier(node) &&
           !ts.isPropertyAssignment(node.parent) &&
           !bodyScope.map.get(nodeText) &&
-          !externalVariables.includes(nodeText)
+          !externalVariables.includes(nodeText) &&
+          !isStaticProperty(node)
         ) {
           externalVariables.push(nodeText);
         }
@@ -407,6 +434,46 @@ export function getFunctionEnvironmentVariables(
           .map((p) => p.escapedName.toString())
           .filter((name) => !externalVariables.includes(name))
       );
+
+      return externalVariables;
+    }, generator.symbolTable.currentScope);
+  });
+}
+
+export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, generator: LLVMGenerator) {
+  return generator.withInsertBlockKeeping(() => {
+    return generator.symbolTable.withLocalScope((bodyScope) => {
+      const externalVariables: string[] = [];
+
+      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
+      generator.builder.setInsertionPoint(dummyBlock);
+
+      const visitor = (node: ts.Node) => {
+        const symbol = generator.checker.getSymbolAtLocation(node);
+        if (symbol && symbol!.valueDeclaration.kind === ts.SyntaxKind.ClassDeclaration) {
+          const parentText = node.parent.getText();
+          externalVariables.push(parentText);
+        }
+
+        if (node.getChildCount()) {
+          node.forEachChild(visitor);
+        }
+      };
+
+      try {
+        body.forEachChild((node) => {
+          if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
+            // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
+            generator.handleNode(node, bodyScope);
+          }
+        });
+      } catch (_) {
+        /* Swallow all the errors, we are not really handling anything here, only populating the body scope. */
+      }
+
+      ts.forEachChild(body, visitor);
+
+      dummyBlock.eraseFromParent();
 
       return externalVariables;
     }, generator.symbolTable.currentScope);

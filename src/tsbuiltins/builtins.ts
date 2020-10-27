@@ -71,7 +71,7 @@ class Builtin {
     if (!this.thisData) {
       this.init();
     }
-    return this.thisData!.type as llvm.PointerType;
+    return this.thisData!.llvmType as llvm.PointerType;
   }
 
   getDeclaration(): ts.ClassDeclaration {

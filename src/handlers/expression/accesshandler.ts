@@ -1,5 +1,12 @@
 import { Environment, HeapVariableDeclaration, Scope } from "@scope";
-import { error, indexOfProperty, inTSClassConstructor, isUnionLLVMType, unwrapPointerType } from "@utils";
+import {
+  indexOfProperty,
+  inTSClassConstructor,
+  isUnionLLVMType,
+  unwrapPointerType,
+  checkIfStaticProperty,
+  error,
+} from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
@@ -52,13 +59,57 @@ export class AccessHandler extends AbstractExpressionHandler {
     return;
   }
 
+  private findInHeritageClasses(node: ts.Node, visitor: (classDeclaration: ts.ClassDeclaration) => boolean): boolean {
+    const symbol = this.generator.checker.getSymbolAtLocation(node);
+
+    if (symbol && ts.isClassDeclaration(symbol.valueDeclaration)) {
+      const classDeclaration = symbol.valueDeclaration;
+      if (visitor(classDeclaration)) {
+        return true; // has found
+      } else {
+        if (classDeclaration.heritageClauses) {
+          for (const clause of classDeclaration.heritageClauses) {
+            for (const type of clause.types) {
+              if (this.findInHeritageClasses(type.expression, visitor)) return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   private handlePropertyAccessExpression(expression: ts.PropertyAccessExpression, env?: Environment): llvm.Value {
     const left = expression.expression;
     const propertyName = expression.name.text;
 
+    const isStaticProperty = (node: ts.Node, name: string): boolean => {
+      let result = false;
+
+      result = this.findInHeritageClasses(node, (classDeclaration: ts.ClassDeclaration) => {
+        const found = classDeclaration.members.findIndex((v: ts.ClassElement) => {
+          if (ts.isPropertyDeclaration(v)) {
+            const propertyDeclaration = v as ts.PropertyDeclaration;
+
+            return checkIfStaticProperty(propertyDeclaration) && propertyDeclaration.name.getText() === name;
+          } else {
+            return false;
+          }
+        });
+
+        return found !== -1;
+      });
+
+      return result;
+    };
+
     if (ts.isIdentifier(left)) {
       if (env) {
-        const index = env.varNames.indexOf(propertyName);
+        const index = isStaticProperty(left, propertyName)
+          ? env.varNames.indexOf(left.getText() + "." + propertyName) // Clazz.i
+          : env.varNames.indexOf(propertyName);
+
         if (index > -1) {
           if (!env.data.type.isStructTy()) {
             error(`Expected environment to be of StructType, got '${env.data.type.toString()}'`);
@@ -80,7 +131,16 @@ export class AccessHandler extends AbstractExpressionHandler {
       } catch (_) { }
 
       if (scope && scope instanceof Scope) {
-        const value = scope.get(propertyName);
+        let value = scope.get(propertyName);
+
+        if (!value) {
+          value = scope.getStatic(propertyName);
+        }
+
+        if (!value) {
+          value = scope.getStatic(scope.name + "." + propertyName);
+        }
+
         if (!value) {
           error(`Property '${propertyName}' not found in '${left.getText()}'`);
         }

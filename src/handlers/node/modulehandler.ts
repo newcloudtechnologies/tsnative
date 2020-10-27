@@ -18,7 +18,7 @@ export class ModuleHandler extends AbstractNodeHandler {
     if (ts.isModuleDeclaration(node)) {
       const declaration = node as ts.ModuleDeclaration;
       const name = declaration.name.text;
-      const scope = new Scope(name);
+      const scope = new Scope(name, name);
       declaration.body!.forEachChild((childNode) => this.generator.handleNode(childNode, scope, env));
       parentScope.set(name, scope);
       return true;

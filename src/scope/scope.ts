@@ -81,8 +81,9 @@ export function addClassScope(
     return;
   }
 
-  const type = getStructType(thisType, declaration, generator).getPointerTo();
-  const scope = new Scope(mangledTypename, undefined, { declaration, type });
+  const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
+  const tsType = generator.checker.getTypeAtLocation(declaration as ts.Node);
+  const scope = new Scope(declaration.name!.getText(), mangledTypename, undefined, { declaration, llvmType, tsType });
   parentScope.set(mangledTypename, scope);
   for (const method of declaration.members.filter((member) => !ts.isPropertyDeclaration(member))) {
     generator.handleNode(method, scope);
@@ -132,6 +133,7 @@ export function createEnvironment(
   }
 
   const context = populateContext(generator, scope, environmentVariables);
+
   context.forEach((value) => {
     if (value.name === InternalNames.Environment) {
       return;
@@ -216,6 +218,39 @@ export function populateContext(generator: LLVMGenerator, scope: Scope, environm
     }
   });
 
+  if (scope.thisData && scope.thisData.staticProperties) {
+    scope.thisData.staticProperties.forEach((scopeVal, key) => {
+      const pred = (v: string) => {
+        let result = false;
+
+        if (v === key) {
+          result = true;
+        } else if (v.includes(".")) {
+          const parts = v.split(".");
+
+          if (parts[0] === scope.name && parts[1] === key) {
+            result = true;
+          }
+        }
+
+        return result;
+      };
+
+      const idx = environmentVariables.findIndex(pred);
+
+      if (idx === -1 && key !== InternalNames.Environment) {
+        return;
+      }
+
+      if (scopeVal instanceof HeapVariableDeclaration) {
+        scopeVal.name = environmentVariables[idx];
+        context.push(scopeVal);
+      } else if (scopeVal instanceof llvm.Value) {
+        context.push(new HeapVariableDeclaration(scopeVal, scopeVal, environmentVariables[idx]));
+      }
+    });
+  }
+
   if (scope.parent) {
     context.push(...populateContext(generator, scope.parent, environmentVariables));
   }
@@ -236,20 +271,24 @@ export function isFunctionDeclarationScopeEnvironment(value: ScopeValue) {
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
-  readonly type: llvm.StructType | llvm.PointerType;
+  readonly llvmType: llvm.StructType | llvm.PointerType;
+  readonly tsType: ts.Type;
+  readonly staticProperties?: Map<string, llvm.Value>;
 }
 
 export class Scope {
   map: Map<string, ScopeValue>;
 
   readonly name: string | undefined;
+  readonly mangledName: string | undefined;
   readonly thisData: ThisData | undefined;
   readonly parent: Scope | undefined;
   readonly typeMapper: GenericTypeMapper | undefined;
 
-  constructor(name: string | undefined, parent?: Scope, data?: ThisData) {
+  constructor(name: string | undefined, mangledName: string | undefined, parent?: Scope, data?: ThisData) {
     this.map = new Map<string, ScopeValue>();
     this.name = name;
+    this.mangledName = mangledName;
     this.parent = parent;
     this.thisData = data;
 
@@ -263,7 +302,48 @@ export class Scope {
   }
 
   get(identifier: string): ScopeValue | undefined {
-    return this.map.get(identifier);
+    let result: ScopeValue | undefined;
+
+    result = this.map.get(identifier);
+
+    if (!result) {
+      for (const [_, value] of this.map) {
+        if (value instanceof Scope) {
+          const s: Scope = value;
+          if (s.name === identifier || s.mangledName === identifier) {
+            result = s;
+            break;
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  getStatic(identifier: string): llvm.Value | undefined {
+    let result: llvm.Value | undefined;
+
+    if (!result && this.thisData && this.thisData.staticProperties) {
+      result = this.thisData!.staticProperties!.get(identifier);
+    }
+
+    return result;
+  }
+
+  names(): string[] {
+    const result: string[] = [];
+    for (const it of this.map) {
+      result.push(it[0]);
+    }
+
+    if (this.thisData && this.thisData.staticProperties) {
+      for (const [name] of this.thisData!.staticProperties!) {
+        result.push(name);
+      }
+    }
+
+    return result;
   }
 
   tryGetThroughParentChain(identifier: string, ignoreTopLevel?: boolean): ScopeValue | undefined {

@@ -131,7 +131,7 @@ export class VariableHandler extends AbstractNodeHandler {
         const typename = (declaration.type as ts.TypeReferenceNode).typeName.getText();
         const typeAliasScope = this.generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as Scope;
         if (typeAliasScope) {
-          declarationLLVMType = typeAliasScope.thisData!.type;
+          declarationLLVMType = typeAliasScope.thisData!.llvmType;
         }
       }
 

@@ -18,7 +18,7 @@ export class SymbolTable {
   private readonly closureParameters: Map<string, string[]>;
 
   constructor() {
-    this.scopes = [new Scope("root")];
+    this.scopes = [new Scope("root", "root")];
     this.objectNames = [];
     this.closureParameters = new Map();
   }
@@ -74,7 +74,7 @@ export class SymbolTable {
   }
 
   addScope(name: string): void {
-    const scope = new Scope(name);
+    const scope = new Scope(name, name);
     this.scopes.push(scope);
   }
 
@@ -87,7 +87,7 @@ export class SymbolTable {
   }
 
   withLocalScope<R>(body: (scope: Scope) => R, parentScope?: Scope, name?: string): R {
-    const scope = new Scope(name, parentScope);
+    const scope = new Scope(name, name, parentScope);
     this.scopes.push(scope);
     const result = body(scope);
     this.scopes.pop();
