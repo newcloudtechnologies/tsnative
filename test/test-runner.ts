@@ -16,24 +16,20 @@ async function runUnitTest(file: string) {
   const executable = path.join(__dirname, "..", replaceOrAddExtension(file, ""));
   try {
     await execFile(executable);
-  } finally {
+  } catch (error) {
     await unlink(executable);
+    console.log(error.stdout || error.toString());
+    process.exit(1);
   }
 
-  return undefined;
+  await unlink(executable);
 }
 
 async function main() {
   try {
-    let unitTests = [];
-    let failedUnitTests = [];
+    const unitTests = fs.readdirSync(path.join(__dirname, "unit")).filter((file) => file.endsWith(".ts"));
 
-    unitTests = fs.readdirSync(path.join(__dirname, "unit")).filter((file) => file.endsWith(".ts"));
-    failedUnitTests = (await Promise.all(unitTests.map(runUnitTest))).filter(Boolean);
-
-    if (failedUnitTests.length > 0) {
-      process.exit(1);
-    }
+    await Promise.all(unitTests.map(runUnitTest));
 
     console.log(`All ${unitTests.length} tests passed.`);
   } catch (error) {

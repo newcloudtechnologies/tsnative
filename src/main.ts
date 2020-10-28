@@ -8,7 +8,7 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { DEFINITIONS, STDLIB } from "stdlib/constants";
+import { DEFINITIONS, STDLIB } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
 import { error, writeBitcodeToFile, writeExecutableToFile, writeIRToFile } from "@utils";
