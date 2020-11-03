@@ -12,28 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { checkIfUnion, initializeUnion, unwrapPointerType } from "@utils";
-
-function isSimilarStructs(lhs: llvm.Type, rhs: llvm.Type) {
-  lhs = unwrapPointerType(lhs);
-  rhs = unwrapPointerType(rhs);
-
-  if (!lhs.isStructTy() || !rhs.isStructTy()) {
-    return false;
-  }
-
-  if (lhs.numElements !== rhs.numElements) {
-    return false;
-  }
-
-  for (let i = 0; i < lhs.numElements; ++i) {
-    if (!lhs.getElementType(i).equals(rhs.getElementType(i))) {
-      return false;
-    }
-  }
-
-  return true;
-}
+import { checkIfUnion, initializeUnion, isSimilarStructs } from "@utils";
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {

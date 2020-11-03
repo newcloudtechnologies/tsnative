@@ -37,7 +37,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     if (env) {
       const index = env.varNames.indexOf(expression.text);
       if (index > -1) {
-        const agg = env.data.type.isPointerTy() ? this.generator.builder.createLoad(env.data) : env.data;
+        const agg = this.generator.builder.createLoad(env.allocated);
         if ((agg.type as llvm.StructType).numElements === 0) {
           error("Identifier handler: Trying to extract a value from an empty struct");
         }

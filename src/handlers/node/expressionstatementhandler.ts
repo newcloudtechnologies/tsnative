@@ -16,7 +16,7 @@ import { Scope, Environment } from "@scope";
 export class ExpressionStatementHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isExpressionStatement(node)) {
-      this.generator.handleValueExpression((node as ts.ExpressionStatement).expression, env);
+      this.generator.handleExpression((node as ts.ExpressionStatement).expression, env);
       return true;
     }
 

@@ -9,7 +9,14 @@
  *
  */
 
-import { error, getAliasedSymbolIfNecessary, getEnvironmentType, getStructType, InternalNames } from "@utils";
+import {
+  error,
+  getAliasedSymbolIfNecessary,
+  getEnvironmentType,
+  getStructType,
+  InternalNames,
+  unwrapPointerType,
+} from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator } from "@generator";
@@ -19,25 +26,11 @@ import { cloneDeep } from "lodash";
 
 export class Environment {
   varNames: string[];
-  rawData: llvm.Value[];
-
-  data: llvm.ConstantStruct;
   allocated: llvm.Value;
 
-  parent: Environment | undefined;
-
-  constructor(
-    varNames: string[],
-    data: llvm.ConstantStruct,
-    rawData: llvm.Value[],
-    allocated: llvm.Value,
-    parent?: Environment
-  ) {
+  constructor(varNames: string[], allocated: llvm.Value) {
     this.varNames = varNames;
-    this.rawData = rawData;
-    this.data = data;
     this.allocated = allocated;
-    this.parent = parent;
   }
 }
 
@@ -62,7 +55,7 @@ export function addClassScope(
   parentScope: Scope,
   generator: LLVMGenerator
 ): void {
-  const thisType = generator.checker.getTypeAtLocation(expression) as ts.ObjectType;
+  const thisType = generator.checker.getTypeAtLocation(expression);
 
   if (!thisType.symbol) {
     return;
@@ -121,14 +114,16 @@ export function createEnvironment(
       return arg.type;
     });
 
-    functionData.signature.getParameters().forEach((parameter, index) => {
-      if (!argsTypes[index]) {
+    const parameters = functionData.signature.getParameters();
+
+    argsTypes.forEach((argType, index) => {
+      if (!parameters[index]) {
         // ignore optional parameters that were not provided
         return;
       }
 
       const allocated = functionData.args[index];
-      map.set(parameter.escapedName.toString(), { type: argsTypes[index], allocated });
+      map.set(parameters[index].escapedName.toString(), { type: argType, allocated });
     });
   }
 
@@ -145,12 +140,10 @@ export function createEnvironment(
   });
 
   if (outerEnv) {
-    const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.data;
+    const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.allocated;
 
     if (data) {
-      const envElementType = data.type.isPointerTy()
-        ? ((data.type as llvm.PointerType).elementType as llvm.StructType)
-        : (data.type as llvm.StructType);
+      const envElementType = unwrapPointerType(data.type) as llvm.StructType;
       const types: llvm.Type[] = [];
       for (let i = 0; i < envElementType.numElements; ++i) {
         const elementType = envElementType.getElementType(i);
@@ -189,7 +182,7 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
 
-  return new Environment(names, environmentData, allocations, environmentAlloca, outerEnv);
+  return new Environment(names, environmentAlloca);
 }
 
 export function populateContext(generator: LLVMGenerator, scope: Scope, environmentVariables: string[]) {

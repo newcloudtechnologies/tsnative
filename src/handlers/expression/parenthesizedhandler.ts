@@ -17,7 +17,7 @@ export class ParenthesizedHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.ParenthesizedExpression:
-        return this.generator.handleValueExpression((expression as ts.ParenthesizedExpression).expression, env);
+        return this.generator.handleExpression((expression as ts.ParenthesizedExpression).expression, env);
       default:
         break;
     }

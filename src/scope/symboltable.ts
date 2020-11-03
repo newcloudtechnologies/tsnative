@@ -15,12 +15,10 @@ import { error, reverse } from "@utils";
 export class SymbolTable {
   private readonly scopes: Scope[];
   private readonly objectNames: string[];
-  private readonly closureParameters: Map<string, string[]>;
 
   constructor() {
     this.scopes = [new Scope("root", "root")];
     this.objectNames = [];
-    this.closureParameters = new Map();
   }
 
   addObjectName(objectName: string) {
@@ -35,23 +33,6 @@ export class SymbolTable {
       }
     }
     return;
-  }
-
-  addClosureParameter(functionName: string, parameterName: string) {
-    let parameterNames = this.closureParameters.get(functionName);
-    if (!parameterNames) {
-      parameterNames = [parameterName];
-    } else {
-      if (parameterNames.indexOf(parameterName) !== -1) {
-        return;
-      }
-      parameterNames.push(parameterName);
-    }
-    this.closureParameters.set(functionName, parameterNames);
-  }
-
-  getClosureParameters(functionName: string) {
-    return this.closureParameters.get(functionName);
   }
 
   get(identifier: string): ScopeValue {

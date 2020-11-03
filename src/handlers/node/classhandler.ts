@@ -103,8 +103,8 @@ export class ClassHandler extends AbstractNodeHandler {
     populateStaticProperties(staticProperties, declaration);
 
     const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
-    const llvmType = getStructType(thisType as ts.ObjectType, declaration, generator).getPointerTo();
 
+    const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
     const scope = new Scope(declaration.name!.getText(), mangledTypename, undefined, {
       declaration,
       llvmType,

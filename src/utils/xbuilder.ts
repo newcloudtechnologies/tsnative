@@ -76,11 +76,11 @@ export class XBuilder {
       error(`Expected ptr element to be of StructType, got '${ptr.type.elementType.toString()}'`);
     }
 
-    for (const idx of idxList) {
-      if (ptr.type.elementType.numElements === 0) {
-        error(`Invalid GEP from empty struct`);
-      }
+    if (ptr.type.elementType.numElements === 0) {
+      error(`Invalid GEP from empty struct`);
+    }
 
+    for (const idx of idxList) {
       if (idx > ptr.type.elementType.numElements - 1) {
         error(`GEP index out of bounds: ${idx}, upper bound: ${ptr.type.elementType.numElements - 1}`);
       }

@@ -19,7 +19,6 @@ import {
   checkIfMethod,
   getArgumentTypes,
   getReturnType,
-  handleFunctionArgument,
   isCppPrimitiveType,
   adjustLLVMValueToType,
   isUnionLLVMType,
@@ -27,7 +26,7 @@ import {
   checkIfFunction,
   tryResolveGenericTypeIfNecessary,
   isIntersectionLLVMType,
-  InternalNames,
+  isClosure,
 } from "@utils";
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -239,14 +238,14 @@ export class SysVFunctionHandler {
       return type;
     });
 
-    let args = expression.arguments.map((argument, index) => {
+    let args = expression.arguments.map((argument) => {
       if (ts.isArrowFunction(argument) || ts.isFunctionExpression(argument)) {
         return this.handleArrowFunctionOrFunctionExpression(argument);
       }
 
-      const arg = handleFunctionArgument(argument, index, this.generator, env);
+      const arg = this.generator.handleExpression(argument, env);
 
-      if (arg.name.startsWith(InternalNames.Closure)) {
+      if (isClosure(arg)) {
         const originalType = this.generator.checker.getTypeAtLocation(argument);
         const originalSymbol = originalType.symbol;
         const originalDeclaration = originalSymbol!.declarations[0];
@@ -324,8 +323,8 @@ export class SysVFunctionHandler {
 
     const body = constructorDeclaration.body;
     const args =
-      expression.arguments?.map((argument, index) =>
-        this.generator.createLoadIfNecessary(handleFunctionArgument(argument, index, this.generator, env))
+      expression.arguments?.map((argument) =>
+        this.generator.createLoadIfNecessary(this.generator.handleExpression(argument, env))
       ) || [];
 
     let thisValue: llvm.Value | undefined;

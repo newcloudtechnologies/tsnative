@@ -177,7 +177,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     env?: Environment,
     ...handlers: CompoundHandler[]
   ): llvm.Value {
-    const left = this.generator.handleValueExpression(lhs, env);
+    const left = this.generator.handleExpression(lhs, env);
     let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const oldValue = this.generator.createLoadIfNecessary(left);

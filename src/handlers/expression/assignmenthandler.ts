@@ -20,70 +20,30 @@ export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     if (ts.isBinaryExpression(expression)) {
       const isSetAccessor = (expr: ts.Expression): boolean => {
-        const hasStatic = (symbol: ts.Symbol): boolean => {
-          let result = false;
-
-          for (const declaration of symbol.declarations) {
-            if (declaration.modifiers) {
-              const found = declaration.modifiers.find((modifier: ts.Modifier) => {
-                return modifier.kind === ts.SyntaxKind.StaticKeyword;
-              });
-
-              if (found) {
-                result = true;
-                break;
-              }
-            }
-          }
-
-          return result;
-        };
-
-        const hasSetDeclaration = (symbol: ts.Symbol): boolean => {
-          let result = false;
-
-          for (const declaration of symbol.declarations) {
-            if (declaration.kind === ts.SyntaxKind.SetAccessor) {
-              result = true;
-              break;
-            }
-          }
-
-          return result;
-        };
-
-        let result = false;
-
         if (!expr.parent) {
-          return result;
+          return false;
         }
 
-        if (ts.isPropertyAccessExpression(expr)) {
-          const propertyAccessExpression = expr as ts.PropertyAccessExpression;
-          const symbol = this.generator.checker.getSymbolAtLocation(propertyAccessExpression)!;
+        const symbol = this.generator.checker.getSymbolAtLocation(expr);
+        if (!symbol) {
+          return false;
+        }
 
+        if (symbol.declarations.length === 1) {
+          return symbol.declarations[0].kind === ts.SyntaxKind.SetAccessor;
+        } else if (symbol.declarations.length > 1) {
           if (ts.isBinaryExpression(expr.parent)) {
-            const binaryExpression = expr.parent as ts.BinaryExpression;
+            const binary = expr.parent as ts.BinaryExpression;
 
-            if (ts.isPropertyAccessExpression(binaryExpression.left)) {
-              if (hasSetDeclaration(symbol)) {
-                if (hasStatic(symbol)) {
-                  result =
-                    binaryExpression.operatorToken.kind === ts.SyntaxKind.EqualsToken && // if "=" operator only
-                    propertyAccessExpression.expression.kind !== ts.SyntaxKind.ThisKeyword; // && // if not "this.*"
-                } else {
-                  const s = this.generator.checker.getSymbolAtLocation(propertyAccessExpression.expression);
-                  result =
-                    binaryExpression.operatorToken.kind === ts.SyntaxKind.EqualsToken && // if "=" operator only
-                    propertyAccessExpression.expression.kind !== ts.SyntaxKind.ThisKeyword && // && // if not "this.*"
-                    !(s && ts.isClassDeclaration(s.valueDeclaration)); // if not "MyClass.*"
-                }
+            if (ts.isPropertyAccessExpression(binary.left) || ts.isPropertyAccessExpression(binary.right)) {
+              if (binary.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+                return true;
               }
             }
           }
         }
 
-        return result;
+        return false;
       };
 
       const binaryExpression = expression as ts.BinaryExpression;
@@ -109,7 +69,6 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             } else {
               rhs = this.generator.handleExpression(right, env);
             }
-
             return makeAssignment(lhs, rhs, this.generator);
           }
         default:

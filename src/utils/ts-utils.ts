@@ -208,8 +208,34 @@ export function withObjectProperties<R>(
   return resultArray;
 }
 
+export function getRandomString() {
+  return Math.random()
+    .toString(36)
+    .replace(/[^a-z]+/g, "")
+    .substr(0, 5);
+}
+
+export function createTSObjectName(props: string[]) {
+  // Reduce object's props names to string to store them as object's name.
+  // Later this name may be used for out-of-order object initialization and property access.
+  return getRandomString() + InternalNames.Object + props.join(".");
+}
+
+export function getExpressionText(expression: ts.Expression): string {
+  // @todo: are there any other ts.Kinds we might be interested in?
+  if (ts.isParenthesizedExpression(expression)) {
+    return getExpressionText(expression.expression);
+  }
+  if (ts.isAsExpression(expression)) {
+    return getExpressionText(expression.expression);
+  }
+
+  return expression.getText();
+}
+
 export enum InternalNames {
   Environment = "__environment__",
   Closure = "__closure__",
   FunctionScope = "__function_scope__",
+  Object = "__object__",
 }

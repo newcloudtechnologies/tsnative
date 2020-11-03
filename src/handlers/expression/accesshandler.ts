@@ -1,11 +1,14 @@
 import { Environment, HeapVariableDeclaration, Scope } from "@scope";
 import {
-  indexOfProperty,
-  inTSClassConstructor,
-  isUnionLLVMType,
-  unwrapPointerType,
   checkIfStaticProperty,
   error,
+  getLLVMValue,
+  getTSObjectPropsFromName,
+  indexOfProperty,
+  inTSClassConstructor,
+  isIntersectionLLVMType,
+  isUnionLLVMType,
+  unwrapPointerType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -111,13 +114,15 @@ export class AccessHandler extends AbstractExpressionHandler {
           : env.varNames.indexOf(propertyName);
 
         if (index > -1) {
-          if (!env.data.type.isStructTy()) {
-            error(`Expected environment to be of StructType, got '${env.data.type.toString()}'`);
+          if (!unwrapPointerType(env.allocated.type).isStructTy()) {
+            error(
+              `Expected environment to be of StructType, got '${unwrapPointerType(env.allocated.type).toString()}'`
+            );
           }
-          if (env.data.type.numElements === 0) {
+          if ((unwrapPointerType(env.allocated.type) as llvm.StructType).numElements === 0) {
             error("Identifier handler: Trying to extract a value from an empty struct");
           }
-          return this.generator.xbuilder.createSafeExtractValue(env.data, [index]);
+          return this.generator.xbuilder.createSafeExtractValue(getLLVMValue(env.allocated, this.generator), [index]);
         }
       }
 
@@ -188,12 +193,21 @@ export class AccessHandler extends AbstractExpressionHandler {
       }
 
       const unionMeta = meta.getUnionMeta(unionName);
-      if (!unionMeta) {
-        error(`No union meta found for ${unionName}`);
-      }
-
       const index = unionMeta.propsMap.get(propertyName);
       if (typeof index === "undefined") {
+        error(`Mapping not found for ${propertyName}`);
+      }
+
+      return builder.createLoad(xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
+    } else if (isIntersectionLLVMType(llvmValue.type)) {
+      const intersectionName = (unwrapPointerType(llvmValue.type) as llvm.StructType).name;
+      if (!intersectionName) {
+        error("Name required for IntersectionStruct");
+      }
+
+      const intersectionMeta = meta.getIntersectionMeta(intersectionName);
+      const index = intersectionMeta.props.indexOf(propertyName);
+      if (index === -1) {
         error(`Mapping not found for ${propertyName}`);
       }
 
@@ -206,10 +220,7 @@ export class AccessHandler extends AbstractExpressionHandler {
         propertyIndex = indexOfProperty(propertyName, checker.getApparentType(type), checker);
       } else {
         // Object name is its properties names reduced to string, delimited with the dot ('.').
-        const propertyNames = llvmValue.name.split("__object__")[1].split(".");
-        if (propertyNames.length === 0) {
-          error(`Expected object name to be its properties names reduced to string, delimited with the dot.`);
-        }
+        const propertyNames = getTSObjectPropsFromName(llvmValue.name);
         propertyIndex = propertyNames.indexOf(propertyName);
       }
 

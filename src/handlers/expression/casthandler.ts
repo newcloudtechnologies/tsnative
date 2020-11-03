@@ -52,14 +52,10 @@ export class CastHandler extends AbstractExpressionHandler {
         }
 
         const unionMeta = this.generator.meta.getUnionMeta(unionName);
-        if (!unionMeta) {
-          error(`Union meta not found for '${unionName}'`);
-        }
-
         if (checkIfObject(destinationType)) {
           const typeProps = this.generator.checker.getPropertiesOfType(destinationType);
           const propNames = typeProps.map((symbol) => symbol.name);
-          const objectType = getStructType(destinationType as ts.ObjectType, expression, this.generator);
+          const objectType = getStructType(destinationType, expression, this.generator);
           const allocated = this.generator.gc.allocate(objectType);
 
           for (let i = 0; i < propNames.length; ++i) {
@@ -77,10 +73,6 @@ export class CastHandler extends AbstractExpressionHandler {
         } else {
           const destinationStructType = getUnionStructType(destinationType as ts.UnionType, expression, this.generator);
           const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
-
-          if (!destinationUnionMeta) {
-            error(`Union meta not found for '${destinationStructType.name}'`);
-          }
 
           const allocated = this.generator.gc.allocate(destinationStructType);
 

@@ -16,12 +16,38 @@ type PropsMap = Map<string, number>;
 class UnionMeta {
   name: string;
   type: llvm.Type;
+  props: string[];
   propsMap: PropsMap;
 
-  constructor(name: string, type: llvm.Type, propsMap: PropsMap) {
+  constructor(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
     this.name = name;
     this.type = type;
+    this.props = props;
     this.propsMap = propsMap;
+  }
+}
+
+class IntersectionMeta {
+  name: string;
+  type: llvm.Type;
+  props: string[];
+
+  constructor(name: string, type: llvm.Type, props: string[]) {
+    this.name = name;
+    this.type = type;
+    this.props = props;
+  }
+}
+
+class StructMeta {
+  name: string;
+  type: llvm.Type;
+  props: string[];
+
+  constructor(name: string, type: llvm.Type, props: string[]) {
+    this.name = name;
+    this.type = type;
+    this.props = props;
   }
 }
 
@@ -39,14 +65,44 @@ class ObjectMeta {
 
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
+  readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
+  readonly structMetaInfoStorage: StructMeta[] = [];
   readonly objectMetaInfoStorage: ObjectMeta[] = [];
 
-  registerUnionMeta(name: string, type: llvm.Type, propsMap: PropsMap) {
-    this.unionMetaInfoStorage.push(new UnionMeta(name, type, propsMap));
+  registerUnionMeta(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
+    this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
   }
 
   getUnionMeta(name: string) {
-    return this.unionMetaInfoStorage.find((value) => value.name === name);
+    const meta = this.unionMetaInfoStorage.find((value) => value.name === name);
+    if (!meta) {
+      error(`No union meta found for '${name}'`);
+    }
+    return meta;
+  }
+
+  registerIntersectionMeta(name: string, type: llvm.Type, props: string[]) {
+    this.intersectionMetaInfoStorage.push(new IntersectionMeta(name, type, props));
+  }
+
+  getIntersectionMeta(name: string) {
+    const meta = this.intersectionMetaInfoStorage.find((value) => value.name === name);
+    if (!meta) {
+      error(`No intersection meta found for '${name}'`);
+    }
+    return meta;
+  }
+
+  registerStructMeta(name: string, type: llvm.Type, props: string[]) {
+    this.structMetaInfoStorage.push(new StructMeta(name, type, props));
+  }
+
+  getStructMeta(name: string) {
+    const meta = this.structMetaInfoStorage.find((value) => value.name === name);
+    if (!meta) {
+      error(`No struct meta found for '${name}'`);
+    }
+    return meta;
   }
 
   registerObjectMeta(name: string, type: llvm.StructType, props: string[]) {
@@ -54,7 +110,20 @@ export class MetaInfoStorage {
   }
 
   getObjectMeta(name: string) {
-    return this.objectMetaInfoStorage.find((value) => value.name === name);
+    const meta = this.objectMetaInfoStorage.find((value) => value.name === name);
+    if (!meta) {
+      error(`No object meta found for '${name}'`);
+    }
+    return meta;
+  }
+
+  try<T>(getter: (name: string) => T, name: string) {
+    try {
+      const meta = getter.call(this, name);
+      return meta;
+    } catch (_) {
+      return undefined;
+    }
   }
 }
 

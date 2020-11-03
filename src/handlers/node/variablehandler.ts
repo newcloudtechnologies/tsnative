@@ -15,7 +15,6 @@ import {
   checkIfUnion,
   initializeUnion,
   tryResolveGenericTypeIfNecessary,
-  InternalNames,
   getUnionStructType,
   getLLVMType,
   isUnionWithUndefinedLLVMType,
@@ -27,6 +26,7 @@ import {
   unwrapPointerType,
   error,
   getStructType,
+  isClosure,
 } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
@@ -60,8 +60,7 @@ export class VariableHandler extends AbstractNodeHandler {
       return;
     }
 
-    if (initializer.name.startsWith(InternalNames.Closure)) {
-      // @todo: cls__ check
+    if (isClosure(initializer)) {
       parentScope.set(name, initializer);
       return;
     }

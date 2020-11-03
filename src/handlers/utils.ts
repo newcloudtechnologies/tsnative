@@ -15,9 +15,10 @@ import {
   isCppPrimitiveType,
   getLLVMValue,
   adjustLLVMValueToType,
-  handleFunctionArgument,
   unwrapPointerType,
   checkIfMethod,
+  getExpressionText,
+  tryResolveGenericTypeIfNecessary,
   checkIfStaticProperty,
 } from "@utils";
 import * as llvm from "llvm-node";
@@ -371,7 +372,7 @@ export function getFunctionEnvironmentVariables(
           let result = false;
           const symbol = generator.checker.getSymbolAtLocation(n);
 
-          if (symbol && symbol!.valueDeclaration.kind === ts.SyntaxKind.PropertyDeclaration) {
+          if (symbol && symbol!.valueDeclaration?.kind === ts.SyntaxKind.PropertyDeclaration) {
             const propertyDeclaration = symbol!.valueDeclaration as ts.PropertyDeclaration;
 
             result = checkIfStaticProperty(propertyDeclaration);
@@ -403,7 +404,7 @@ export function getFunctionEnvironmentVariables(
               functionDeclaration as ts.SignatureDeclaration
             )!;
             externalVariables.push(
-              ...getFunctionEnvironmentVariables(functionDeclaration.body, innerFunctionSignature!, generator)
+              ...getFunctionEnvironmentVariables(functionDeclaration.body, innerFunctionSignature, generator)
             );
           }
         }
@@ -450,7 +451,7 @@ export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, gene
 
       const visitor = (node: ts.Node) => {
         const symbol = generator.checker.getSymbolAtLocation(node);
-        if (symbol && symbol!.valueDeclaration.kind === ts.SyntaxKind.ClassDeclaration) {
+        if (symbol && symbol!.valueDeclaration?.kind === ts.SyntaxKind.ClassDeclaration) {
           const parentText = node.parent.getText();
           externalVariables.push(parentText);
         }
@@ -513,35 +514,31 @@ export function getFunctionScopes(body: ts.ConciseBody, generator: LLVMGenerator
   });
 }
 
-export function getEffectiveArguments(
-  closureParameterNames: string[] | undefined,
-  declaration: ts.FunctionLikeDeclaration | undefined,
-  generator: LLVMGenerator,
-  env?: Environment
-) {
-  if (!closureParameterNames || !declaration || !declaration.body) {
-    return [];
-  }
+export function getEffectiveArguments(closure: string, body: ts.ConciseBody, generator: LLVMGenerator) {
+  const effectiveArguments = new Map<string, llvm.Value>();
 
-  const effectiveArguments: llvm.Value[] = [];
-  const visitor = (node: ts.Node) => {
-    if (ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
+  const searchForEffectiveArgumentsNames = (node: ts.Node) => {
+    if (effectiveArguments.size > 0) {
+      // @todo: This guard makes it impossible to call closure parameter more than once.
       return;
     }
-    if (ts.isCallExpression(node)) {
-      if (closureParameterNames.includes(node.expression.getText())) {
-        // @todo: Multiple calls not supported!
-        effectiveArguments.push(
-          ...node.arguments.map((argument, index) => handleFunctionArgument(argument, index, generator, env))
+
+    if (ts.isCallExpression(node) && node.expression.getText() === closure) {
+      node.arguments.forEach((arg) => {
+        const llvmType = getLLVMType(
+          tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(arg), generator),
+          node,
+          generator
         );
-      }
+        effectiveArguments.set(getExpressionText(arg), llvm.Constant.getNullValue(llvmType));
+      });
     }
+
     if (node.getChildCount() > 0) {
-      node.forEachChild(visitor);
+      node.forEachChild(searchForEffectiveArgumentsNames);
     }
   };
 
-  // Get effective arguments.
-  declaration.body.forEachChild(visitor);
-  return effectiveArguments;
+  ts.forEachChild(body, searchForEffectiveArgumentsNames);
+  return Array.from(effectiveArguments.values());
 }

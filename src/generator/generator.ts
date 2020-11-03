@@ -121,7 +121,7 @@ export class LLVMGenerator {
       error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
   }
 
-  handleValueExpression(expression: ts.Expression, env?: Environment): llvm.Value {
+  handleExpression(expression: ts.Expression, env?: Environment): llvm.Value {
     const value = this.expressionHandlerChain.handle(expression, env);
     if (value) {
       return value;
@@ -130,10 +130,6 @@ export class LLVMGenerator {
     error(
       `Unhandled expression of kind ${expression.kind}: '${ts.SyntaxKind[expression.kind]}' at ${expression.getText()}`
     );
-  }
-
-  handleExpression(expression: ts.Expression, env?: Environment): llvm.Value {
-    return this.handleValueExpression(expression, env);
   }
 
   createLoadIfNecessary(value: llvm.Value) {
