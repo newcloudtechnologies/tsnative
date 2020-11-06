@@ -22,6 +22,7 @@
     "pretty": true
   },
   "cppDirs": [],
+  "libs": [],
   "include": [
     "src/*"
   ]

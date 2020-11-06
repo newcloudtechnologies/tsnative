@@ -25,6 +25,9 @@ argv
   .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
   .option("--compiler [value]", "specify C++ compiler", "g++")
   .option("--cbackend", "use CBackend instead of llc")
+  .option("-L, --libs <items>", "specify external libraries (comma separated list)", (value: string) => {
+    return value.split(",");
+  })
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -53,6 +56,7 @@ async function main() {
 
   const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
+  const libs: string[] = [STDLIB];
   options.lib = [DEFINITIONS];
   options.types = [];
   options.traceResolution = true;
@@ -60,6 +64,20 @@ async function main() {
   const host = ts.createCompilerHost(options);
   const program = ts.createProgram(files, options, host);
   const diagnostics = ts.getPreEmitDiagnostics(program);
+
+  if (tsconfig.libs) {
+    for (const it of tsconfig.libs) {
+      libs.push(it);
+    }
+  }
+
+  if (argv.libs) {
+    const list = argv.libs as string[];
+    list.forEach((v: string, i: number, a: string[]) => {
+      a[i] = v.trim();
+    });
+    libs.push(...list);
+  }
 
   if (diagnostics.length > 0) {
     process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
@@ -72,7 +90,7 @@ async function main() {
   llvm.initializeAllAsmParsers();
   llvm.initializeAllAsmPrinters();
 
-  const { mangledSymbols, demangledSymbols, dependencies } = await prepareExternalSymbols(tsconfig.cppDirs, [STDLIB]);
+  const { mangledSymbols, demangledSymbols, dependencies } = await prepareExternalSymbols(tsconfig.cppDirs, libs);
 
   const templateInstantiator = new TemplateInstantiator(program, demangledSymbols, tsconfig);
   const instantiationResult = await templateInstantiator.instantiate();
