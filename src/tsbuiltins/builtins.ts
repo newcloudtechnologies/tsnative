@@ -154,8 +154,10 @@ export class BuiltinString extends Builtin {
     const concatDeclaration = declaration.members.find(
       (m) => ts.isMethodDeclaration(m) && m.name.getText() === "concat"
     );
-
-    const { qualifiedName } = FunctionMangler.mangle(concatDeclaration!, undefined, thisType, [], this.generator);
+    const argTypes = (concatDeclaration! as ts.MethodDeclaration).parameters.map((p) =>
+      this.generator.checker.getTypeAtLocation(p)
+    );
+    const { qualifiedName } = FunctionMangler.mangle(concatDeclaration!, undefined, thisType, argTypes, this.generator);
 
     const llvmReturnType = llvmThisType;
     const llvmArgumentTypes = [llvmThisType, llvmThisType, llvmThisType];

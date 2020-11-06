@@ -15,6 +15,7 @@ import {
   getEnvironmentType,
   getStructType,
   InternalNames,
+  tryResolveGenericTypeIfNecessary,
   unwrapPointerType,
 } from "@utils";
 import * as llvm from "llvm-node";
@@ -23,6 +24,7 @@ import { GenericTypeMapper, LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
 
 import { cloneDeep } from "lodash";
+import { getArrayType } from "@handlers";
 
 export class Environment {
   varNames: string[];
@@ -55,7 +57,21 @@ export function addClassScope(
   parentScope: Scope,
   generator: LLVMGenerator
 ): void {
-  const thisType = generator.checker.getTypeAtLocation(expression);
+  let thisType;
+  if (ts.isArrayLiteralExpression(expression)) {
+    thisType = getArrayType(expression, generator);
+  } else if (
+    ts.isVariableDeclaration(expression) &&
+    expression.initializer &&
+    ts.isArrayLiteralExpression(expression.initializer)
+  ) {
+    thisType = getArrayType(expression.initializer, generator);
+  } else {
+    thisType = tryResolveGenericTypeIfNecessary(
+      generator.checker.getApparentType(generator.checker.getTypeAtLocation(expression)),
+      generator
+    );
+  }
 
   if (!thisType.symbol) {
     return;

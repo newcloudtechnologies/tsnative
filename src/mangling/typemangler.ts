@@ -9,32 +9,43 @@
  *
  */
 
-import { getTypeGenericArguments, getTypename } from "@utils";
+import { checkIfArray, getTypeGenericArguments, getTypename } from "@utils";
 import * as ts from "typescript";
 
 export class TypeMangler {
   static mangle(type: ts.Type, checker: ts.TypeChecker, declaration?: ts.Declaration): string {
+    if (checkIfArray(type)) {
+      const types = getTypeGenericArguments(type)
+        .map((typeArgument) => checker.typeToString(typeArgument))
+        .join("_");
+      return "Array__" + types + "__class";
+    }
+
+    if (declaration) {
+      if (
+        ts.isMethodDeclaration(declaration) ||
+        ts.isGetAccessorDeclaration(declaration) ||
+        ts.isSetAccessorDeclaration(declaration)
+      ) {
+        declaration = declaration.parent;
+      }
+    }
+
     let suffix: string = "";
-    const typename: string = checker.typeToString(type);
-    if (typename === "String") {
+    const typename: string = checker.typeToString(checker.getApparentType(type));
+    if (typename === "String" || typename === "string") {
       return "string";
     }
-    if (this.typeToSuffixMap[typename]) {
-      suffix = this.typeToSuffixMap[typename];
-    } else {
-      if (declaration) {
-        if (ts.isInterfaceDeclaration(declaration)) {
-          suffix = "interface";
-        } else if (ts.isClassDeclaration(declaration)) {
-          suffix = "class";
-        }
+
+    if (declaration) {
+      if (ts.isInterfaceDeclaration(declaration)) {
+        suffix = "interface";
+      } else if (ts.isClassDeclaration(declaration)) {
+        suffix = "class";
       }
-      this.typeToSuffixMap[typename] = suffix;
     }
 
     const typeArguments = getTypeGenericArguments(type).map((typeArgument) => this.mangle(typeArgument, checker));
     return [getTypename(type, checker), ...typeArguments].concat(suffix || []).join("__");
   }
-
-  private static readonly typeToSuffixMap: { [type: string]: string } = {};
 }

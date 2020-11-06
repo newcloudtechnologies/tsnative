@@ -19,7 +19,6 @@ import {
   getLLVMType,
   isUnionWithUndefinedLLVMType,
   isUnionWithNullLLVMType,
-  getTypeGenericArguments,
   checkIfIntersection,
   initializeIntersection,
   getIntersectionStructType,
@@ -31,7 +30,6 @@ import {
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import * as llvm from "llvm-node";
-import { createArrayConstructor, createArrayPush } from "@handlers";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -153,22 +151,6 @@ export class VariableHandler extends AbstractNodeHandler {
       this.generator.xbuilder.createSafeStore(initializer, alloca);
       parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
       initializer = undefined;
-    } else if (ts.isArrayLiteralExpression(declaration.initializer)) {
-      addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
-
-      const arrayType = this.generator.checker.getTypeAtLocation(declaration);
-      const elementType = getTypeGenericArguments(arrayType)[0];
-
-      const { constructor, allocated } = createArrayConstructor(arrayType, declaration.initializer, this.generator);
-      this.generator.xbuilder.createSafeCall(constructor, [allocated]);
-
-      const push = createArrayPush(arrayType, elementType, declaration.initializer, this.generator);
-      for (const element of declaration.initializer.elements) {
-        const elementValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(element));
-        this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
-      }
-
-      initializer = allocated;
     } else {
       initializer = this.generator.handleExpression(declaration.initializer, env);
     }

@@ -44,10 +44,7 @@ function parseTSConfig(): any {
 // entry point
 main().catch((e) => {
   console.log(e.stack);
-  if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
-    fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
-    fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
-  }
+  TemplateInstantiator.cleanup();
   process.exit(1);
 });
 
@@ -92,7 +89,7 @@ async function main() {
 
   const { mangledSymbols, demangledSymbols, dependencies } = await prepareExternalSymbols(tsconfig.cppDirs, libs);
 
-  const templateInstantiator = new TemplateInstantiator(program, demangledSymbols, tsconfig);
+  const templateInstantiator = new TemplateInstantiator(program, tsconfig);
   const instantiationResult = await templateInstantiator.instantiate();
   if (instantiationResult) {
     mangledSymbols.push(...instantiationResult.mangledSymbols);
@@ -108,10 +105,7 @@ async function main() {
   } catch (e) {
     console.log(files);
     console.log(e);
-    if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
-      fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
-      fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
-    }
+    TemplateInstantiator.cleanup();
     process.exit(1);
   }
 
@@ -139,8 +133,5 @@ async function main() {
     writeExecutableToFile(llvmModule, program, argv, dependencies);
   }
 
-  if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
-    fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
-    fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
-  }
+  TemplateInstantiator.cleanup();
 }

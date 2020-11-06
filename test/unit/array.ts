@@ -237,3 +237,18 @@ const is_equal = function (a: number[], b: number[]): boolean {
 
   console.assert(is_equal(numbers, expected2), "array: forEach(fn2). (function) failed");
 }
+
+{
+  const fns: (() => number)[] = []
+  const subscribe = function subscribe(fn: () => number) {
+    fns.push(fn)
+  };
+
+  const f = function f() {
+    return 1;
+  };
+
+  subscribe(f);
+  const f0 = fns[0];
+  console.assert(f0() === 1, "Function expression in function pointers array test failed");
+}

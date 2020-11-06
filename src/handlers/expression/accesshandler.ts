@@ -65,7 +65,7 @@ export class AccessHandler extends AbstractExpressionHandler {
   private findInHeritageClasses(node: ts.Node, visitor: (classDeclaration: ts.ClassDeclaration) => boolean): boolean {
     const symbol = this.generator.checker.getSymbolAtLocation(node);
 
-    if (symbol && ts.isClassDeclaration(symbol.valueDeclaration)) {
+    if (symbol && symbol.valueDeclaration && ts.isClassDeclaration(symbol.valueDeclaration)) {
       const classDeclaration = symbol.valueDeclaration;
       if (visitor(classDeclaration)) {
         return true; // has found

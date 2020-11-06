@@ -12,7 +12,6 @@ import {
   initializeUnion,
   isUnionWithUndefinedLLVMValue,
   isUnionWithNullLLVMValue,
-  isCppPrimitiveType,
   getLLVMValue,
   adjustLLVMValueToType,
   unwrapPointerType,
@@ -20,10 +19,17 @@ import {
   getExpressionText,
   tryResolveGenericTypeIfNecessary,
   checkIfStaticProperty,
+  correctCppPrimitiveType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { Environment, FunctionDeclarationScopeEnvironment, isFunctionDeclarationScopeEnvironment, Scope } from "@scope";
+import {
+  addClassScope,
+  Environment,
+  FunctionDeclarationScopeEnvironment,
+  isFunctionDeclarationScopeEnvironment,
+  Scope,
+} from "@scope";
 
 export function castToInt32AndBack(
   values: llvm.Value[],
@@ -185,18 +191,66 @@ export function getFunctionDeclarationScope(
   }
 }
 
+export function getArgumentArrayType(expression: ts.ArrayLiteralExpression, checker: ts.TypeChecker) {
+  if (!ts.isCallExpression(expression.parent)) {
+    error(`Expected expression parent to be of kind ts.CallExpression, got '${ts.SyntaxKind[expression.parent.kind]}'`);
+  }
+
+  const parentType = checker.getTypeAtLocation(expression.parent.expression);
+  if (!parentType.symbol) {
+    error(`Symbol not found for '${checker.typeToString(parentType)}'`);
+  }
+
+  const argumentIndex = expression.parent.arguments.findIndex((argument) => argument === expression);
+  if (argumentIndex === -1) {
+    error(`Argument '${expression.getText()}' not found`); // unreachable
+  }
+
+  const parentDeclaration = parentType.symbol.valueDeclaration as ts.FunctionLikeDeclaration;
+  return checker.getTypeAtLocation(parentDeclaration.parameters[argumentIndex]);
+}
+
+export function getArrayType(expression: ts.ArrayLiteralExpression, generator: LLVMGenerator) {
+  let arrayType: ts.Type | undefined;
+  if (expression.elements.length === 0) {
+    if (ts.isVariableDeclaration(expression.parent)) {
+      arrayType = tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(expression.parent), generator);
+    } else if (ts.isCallExpression(expression.parent)) {
+      arrayType = getArgumentArrayType(expression, generator.checker);
+    }
+  }
+
+  if (!arrayType) {
+    arrayType = tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(expression), generator);
+  }
+
+  return arrayType;
+}
+
 export function createArrayConstructor(
-  arrayType: ts.Type,
   expression: ts.ArrayLiteralExpression,
   generator: LLVMGenerator
 ): { constructor: llvm.Value; allocated: llvm.Value } {
-  const symbol = generator.checker.getTypeAtLocation(expression).symbol;
-  const valueDeclaration = getAliasedSymbolIfNecessary(symbol, generator.checker).valueDeclaration;
+  addClassScope(expression, generator.symbolTable.globalScope, generator);
+
+  const arrayType = getArrayType(expression, generator);
+  const symbol = getAliasedSymbolIfNecessary(arrayType.symbol, generator.checker);
+  const valueDeclaration = symbol.valueDeclaration;
+
   const constructorDeclaration = (valueDeclaration as ts.ClassDeclaration).members.find(ts.isConstructorDeclaration)!;
 
-  const { qualifiedName } = FunctionMangler.mangle(constructorDeclaration, expression, arrayType, [], generator);
+  const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+    constructorDeclaration,
+    expression,
+    arrayType,
+    [],
+    generator
+  );
+  if (!isExternalSymbol) {
+    error(`Array constructor for type '${generator.checker.typeToString(arrayType)}' not found`);
+  }
 
-  const parentScope = getFunctionDeclarationScope(constructorDeclaration, arrayType, generator);
+  const parentScope = getFunctionDeclarationScope(valueDeclaration, arrayType, generator);
   const thisValue = parentScope.thisData!.llvmType;
 
   const { fn: constructor } = createLLVMFunction(thisValue, [thisValue], qualifiedName, generator.module);
@@ -205,21 +259,30 @@ export function createArrayConstructor(
 }
 
 export function createArrayPush(
-  arrayType: ts.Type,
   elementType: ts.Type,
   expression: ts.ArrayLiteralExpression,
   generator: LLVMGenerator
 ): llvm.Value {
+  const arrayType = getArrayType(expression, generator);
+
   const pushSymbol = generator.checker.getPropertyOfType(arrayType, "push")!;
   const pushDeclaration = pushSymbol.valueDeclaration;
-  let parameterType = getLLVMType(elementType, expression, generator);
 
-  if (parameterType.isPointerTy() && isCppPrimitiveType(parameterType.elementType)) {
-    parameterType = parameterType.elementType;
-  }
+  const parameterType = correctCppPrimitiveType(getLLVMType(elementType, expression, generator));
 
   const scope = getFunctionDeclarationScope(pushDeclaration, arrayType, generator);
-  const { qualifiedName } = FunctionMangler.mangle(pushDeclaration, expression, arrayType, [elementType], generator);
+  const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+    pushDeclaration,
+    expression,
+    arrayType,
+    [elementType],
+    generator
+  );
+
+  if (!isExternalSymbol) {
+    error(`Array 'push' for type '${generator.checker.typeToString(arrayType)}' not found`);
+  }
+
   const { fn: push } = createLLVMFunction(
     llvm.Type.getDoubleTy(generator.context),
     [scope.thisData!.llvmType, parameterType],
@@ -235,7 +298,7 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
   const valueDeclaration = getAliasedSymbolIfNecessary(arrayType.symbol, generator.checker).valueDeclaration;
   const declaration = (valueDeclaration as ts.ClassDeclaration).members.find(ts.isIndexSignatureDeclaration)!;
 
-  const { qualifiedName } = FunctionMangler.mangle(
+  const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
     declaration,
     expression,
     arrayType,
@@ -243,9 +306,13 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
     generator
   );
 
+  if (!isExternalSymbol) {
+    error(`Array 'subscription' for type '${generator.checker.typeToString(arrayType)}' not found`);
+  }
+
   const retType = getLLVMType(elementType, expression.expression, generator);
 
-  const scope = getFunctionDeclarationScope(declaration, arrayType, generator);
+  const scope = getFunctionDeclarationScope(valueDeclaration, arrayType, generator);
 
   const { fn: subscript } = createLLVMFunction(
     retType,

@@ -13,11 +13,11 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { ExternalSymbolsProvider, prepareExternalSymbols } from "@mangling";
-import { checkIfArray, checkIfObject, checkIfString } from "@utils";
+import { checkIfArray, checkIfString, error } from "@utils";
+import { getArgumentArrayType } from "@handlers/utils";
 
 export class TemplateInstantiator {
-  private readonly templatesTable = ["console::log", "Array"];
-  private readonly program: ts.Program;
+  private readonly sources: ts.SourceFile[];
   private readonly checker: ts.TypeChecker;
   private readonly tsconfig: any;
   private readonly stdIncludes: string[] = [
@@ -26,118 +26,217 @@ export class TemplateInstantiator {
     "std-typescript-llvm/include/stdstring.h",
   ];
   private generatedContent: string[] = [];
-  private readonly demangledSymbols: string[];
+
+  private readonly mangled: string[] = [];
+  private readonly demangled: string[] = [];
+  private readonly dependencies: string[] = [];
+
   static CPP_SOURCE_DIR: string = path.join(process.cwd(), process.pid.toString());
   static CPP_SOURCE: string = path.join(TemplateInstantiator.CPP_SOURCE_DIR, "instantiated_templates.cpp");
+  static CPP_CLASSES_SOURCE: string = path.join(TemplateInstantiator.CPP_SOURCE_DIR, "instantiated_classes.cpp");
 
-  constructor(program: ts.Program, demangledSymbols: string[], tsconfig: any) {
-    this.program = program;
+  constructor(program: ts.Program, tsconfig: any) {
+    // filter declarations
+    this.sources = program.getSourceFiles().filter((source) => !source.fileName.endsWith("d.ts"));
     this.checker = program.getTypeChecker();
-    this.demangledSymbols = demangledSymbols;
     this.tsconfig = tsconfig;
   }
 
-  private nodeVisitor(node: ts.Node): void {
-    if (ts.isCallExpression(node) || (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression))) {
-      if (!ts.isCallExpression(node)) {
-        (node.expression as ts.CallExpression).arguments.forEach(this.nodeVisitor.bind(this));
-      } else {
-        (node as ts.CallExpression).arguments.forEach(this.nodeVisitor.bind(this));
-      }
-
-      const callExpression = ts.isCallExpression(node)
-        ? node
-        : ((node as ts.ExpressionStatement).expression as ts.CallExpression);
-      let tsFunctionName = "";
-
-      if (ts.isPropertyAccessExpression(callExpression.expression)) {
-        let prefix = "";
-        const symbol = this.checker.getSymbolAtLocation(callExpression.expression.expression);
-
-        if (symbol && symbol.valueDeclaration && ts.isModuleDeclaration(symbol.valueDeclaration)) {
-          // access namespace's function
-          prefix = symbol.escapedName.toString();
-        } else if (
-          ts.isArrayLiteralExpression(callExpression.expression.expression) ||
-          ts.isIdentifier(callExpression.expression.expression)
-        ) {
-          prefix = ExternalSymbolsProvider.jsTypeToCpp(
-            this.checker.getTypeAtLocation(callExpression.expression.expression),
-            this.checker
-          );
-        }
-
-        tsFunctionName = prefix + "::" + callExpression.expression.name.getText();
-      }
-
-      if (this.templatesTable.some((template) => tsFunctionName.includes(template))) {
-        const resolvedSignature = this.checker.getResolvedSignature(callExpression)!;
-        const jsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature);
-        let returnType = ExternalSymbolsProvider.jsTypeToCpp(jsReturnType, this.checker);
-
-        if (checkIfString(jsReturnType, this.checker)) {
-          returnType += "*";
-        }
-
-        const argumentTypes =
-          callExpression.arguments?.map((a) => {
-            const tsType = this.checker.getTypeAtLocation(a);
-
-            let cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
-            if (checkIfArray(tsType) || checkIfObject(tsType)) {
-              cppType += " const&";
-            }
-
-            if (checkIfString(tsType, this.checker)) {
-              cppType += "*";
-            }
-
-            return cppType;
-          }) || [];
-        const cppFunctionName = tsFunctionName.replace(".", "::");
-
-        const maybeExists = this.demangledSymbols.filter((s) => s.includes(cppFunctionName));
-        const exists = maybeExists.some(
-          (signature) =>
-            ExternalSymbolsProvider.extractParameterTypes(signature) ===
-            ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-        );
-        if (!exists) {
-          const templateSignature =
-            "template " + returnType + " " + cppFunctionName + "(" + argumentTypes.join(", ") + ");"; // @todo: constness handling
-          this.generatedContent.push(templateSignature);
-        }
-      }
-    } else if (ts.isVariableStatement(node)) {
-      node.declarationList.declarations.forEach((declaration) => {
-        if (declaration.initializer) {
-          this.nodeVisitor(declaration.initializer);
-        }
-      });
-    } else if (ts.isArrowFunction(node)) {
-      if (ts.isBlock(node.body)) {
-        node.body.forEachChild(this.nodeVisitor.bind(this));
-      } else {
-        this.nodeVisitor(node.body);
-      }
-    } else if (ts.isClassDeclaration(node)) {
-      node.forEachChild(this.nodeVisitor.bind(this));
-    } else if (
-      (ts.isMethodDeclaration(node) || ts.isFunctionDeclaration(node) || ts.isConstructorDeclaration(node)) &&
-      node.body &&
-      !node.typeParameters
-    ) {
-      node.body.forEachChild(this.nodeVisitor.bind(this));
-    } else {
-      node.forEachChild(this.nodeVisitor.bind(this));
+  static cleanup() {
+    if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
+      fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
+    }
+    if (fs.existsSync(TemplateInstantiator.CPP_CLASSES_SOURCE)) {
+      fs.unlinkSync(TemplateInstantiator.CPP_CLASSES_SOURCE);
+    }
+    if (fs.existsSync(TemplateInstantiator.CPP_SOURCE_DIR)) {
+      fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
     }
   }
 
-  async instantiate() {
-    for (const sourceFile of this.program.getSourceFiles()) {
-      sourceFile.forEachChild(this.nodeVisitor.bind(this));
+  private correctQualifiers(tsType: ts.Type, cppType: string) {
+    if (checkIfArray(tsType)) {
+      cppType += " const&";
+    } else if (checkIfString(tsType, this.checker)) {
+      cppType += "*";
     }
 
+    return cppType;
+  }
+
+  private getTSType(node: ts.Node) {
+    return this.checker.getApparentType(this.checker.getTypeAtLocation(node));
+  }
+
+  private handleConsoleLog(node: ts.Node) {
+    let call;
+    if (ts.isExpressionStatement(node)) {
+      call = node.expression as ts.CallExpression;
+    } else if (ts.isCallExpression(node)) {
+      call = node;
+    } else {
+      error(
+        `Expected 'console.log' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${
+          ts.SyntaxKind[node.kind]
+        }`
+      );
+    }
+
+    const argumentTypes = call.arguments.map((arg) => {
+      const tsType = this.getTSType(arg);
+      return this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
+    });
+
+    const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
+    this.generatedContent.push(templateSignature);
+  }
+
+  private handleArrayFromVariableDeclaration(node: ts.VariableDeclaration) {
+    if (!node.initializer) {
+      error(`Expected initializer: error at ${node.getText()}`);
+    }
+
+    if (ts.isArrayLiteralExpression(node.initializer)) {
+      let templateInstance;
+      if (node.initializer.elements.length > 0) {
+        // const arr = [1, 2, 3];
+        // Use elements to figure out array type.
+        const tsType = this.getTSType(node.initializer.elements[0]);
+        const tsTypename = this.checker.typeToString(tsType);
+
+        // Arrays with values of different types not supported. Make a check.
+        // @todo: Move this check to special correctness-check pass.
+        if (
+          node.initializer.elements.some((element) => {
+            return this.checker.typeToString(this.getTSType(element)) !== tsTypename;
+          })
+        ) {
+          error(`All array's elements have to be of same type: error at '${node.getText()}'`);
+        }
+
+        const cppType = this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
+        templateInstance = `template class Array<${cppType}>;`;
+      } else {
+        // const arr: number[] = [];
+        // Use declared type as array type.
+        const tsType = this.checker.getTypeAtLocation(node);
+        templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
+      }
+
+      this.generatedContent.push(templateInstance);
+    } else if (ts.isCallExpression(node.initializer)) {
+      const tsType = this.checker.getTypeAtLocation(node);
+      if (!checkIfArray(tsType)) {
+        error(`Array type expected, got '${this.checker.typeToString(tsType)}'`); // unreachable
+      }
+      const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
+      this.generatedContent.push(templateInstance);
+    }
+  }
+
+  private handleArray(node: ts.Node) {
+    if (ts.isVariableDeclaration(node)) {
+      this.handleArrayFromVariableDeclaration(node);
+    } else {
+      if (ts.isCallExpression(node.parent) && ts.isArrayLiteralExpression(node) && node.elements.length === 0) {
+        const typeFromParameterDeclaration = getArgumentArrayType(node, this.checker);
+        const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(
+          typeFromParameterDeclaration,
+          this.checker
+        )};`;
+        this.generatedContent.push(templateInstance);
+      } else {
+        const tsType = this.checker.getTypeAtLocation(node);
+        const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
+        this.generatedContent.push(templateInstance);
+      }
+    }
+  }
+
+  private handleArrayMethods(node: ts.CallExpression) {
+    if (!ts.isPropertyAccessExpression(node.expression)) {
+      error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[node.expression.kind]}'`);
+    }
+
+    const tsArrayType = this.checker.getTypeAtLocation(node.expression.expression);
+    const cppArrayType = ExternalSymbolsProvider.jsTypeToCpp(tsArrayType, this.checker);
+    const methodName = node.expression.name.getText();
+
+    const resolvedSignature = this.checker.getResolvedSignature(node);
+    const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature!);
+    const cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker);
+
+    const argumentTypes =
+      node.arguments?.map((a) => {
+        const tsType = this.checker.getTypeAtLocation(a);
+        return this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
+      }) || [];
+
+    const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
+    const exists = maybeExists.some(
+      (signature) =>
+        ExternalSymbolsProvider.extractParameterTypes(signature) ===
+        ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
+    );
+    if (!exists) {
+      const templateSignature =
+        "template " + cppReturnType + " " + cppArrayType + "::" + methodName + "(" + argumentTypes.join(", ") + ");"; // @todo: constness handling
+      this.generatedContent.push(templateSignature);
+    }
+  }
+
+  private methodsVisitor(node: ts.Node) {
+    if (ts.isImportDeclaration(node)) {
+      return;
+    }
+
+    if (ts.isCallExpression(node)) {
+      node.arguments.forEach((arg) => ts.forEachChild(arg, this.methodsVisitor.bind(this)));
+    }
+    if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
+      node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.methodsVisitor.bind(this)));
+    }
+
+    if (node.getText().startsWith("console.log")) {
+      this.handleConsoleLog(node);
+    } else if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      checkIfArray(this.checker.getTypeAtLocation(node.expression.expression))
+    ) {
+      this.handleArrayMethods(node);
+    } else if (
+      ts.isExpressionStatement(node) &&
+      ts.isCallExpression(node.expression) &&
+      ts.isPropertyAccessExpression(node.expression.expression) &&
+      checkIfArray(this.checker.getTypeAtLocation(node.expression.expression.expression))
+    ) {
+      this.handleArrayMethods(node.expression);
+    } else {
+      ts.forEachChild(node, this.methodsVisitor.bind(this));
+    }
+  }
+
+  private arrayNodeVisitor(node: ts.Node) {
+    if (ts.isImportDeclaration(node)) {
+      return;
+    }
+
+    if (ts.isCallExpression(node)) {
+      node.arguments.forEach((arg) => ts.forEachChild(arg, this.arrayNodeVisitor.bind(this)));
+    }
+    if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
+      node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.arrayNodeVisitor.bind(this)));
+    }
+
+    if (checkIfArray(this.checker.getTypeAtLocation(node))) {
+      this.handleArray(node);
+    } else {
+      ts.forEachChild(node, this.arrayNodeVisitor.bind(this));
+    }
+  }
+
+  private async handleInstantiated(source: string) {
     if (this.generatedContent.length > 0) {
       this.generatedContent = this.generatedContent.filter((s, idx) => this.generatedContent.indexOf(s) === idx);
 
@@ -151,11 +250,61 @@ export class TemplateInstantiator {
         }
       }
 
-      fs.mkdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
-      fs.writeFileSync(TemplateInstantiator.CPP_SOURCE, this.generatedContent.join("\n"));
+      fs.writeFileSync(source, this.generatedContent.join("\n"));
+
+      this.generatedContent = [];
+
       return prepareExternalSymbols([path.join(process.cwd(), process.pid.toString())]);
     }
 
     return;
+  }
+
+  private async instantiateArrays() {
+    for (const sourceFile of this.sources) {
+      sourceFile.forEachChild(this.arrayNodeVisitor.bind(this));
+    }
+
+    if (this.generatedContent.length > 0) {
+      return this.handleInstantiated(TemplateInstantiator.CPP_CLASSES_SOURCE);
+    }
+
+    return;
+  }
+
+  private async instantiateFunctions() {
+    for (const sourceFile of this.sources) {
+      sourceFile.forEachChild(this.methodsVisitor.bind(this));
+    }
+
+    if (this.generatedContent.length > 0) {
+      return this.handleInstantiated(TemplateInstantiator.CPP_SOURCE);
+    }
+
+    return;
+  }
+
+  async instantiate() {
+    fs.mkdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
+
+    const arrays = await this.instantiateArrays();
+    if (arrays) {
+      this.mangled.push(...arrays.mangledSymbols);
+      this.demangled.push(...arrays.demangledSymbols);
+      this.dependencies.push(...arrays.dependencies);
+    }
+
+    const functions = await this.instantiateFunctions();
+    if (functions) {
+      this.mangled.push(...functions.mangledSymbols);
+      this.demangled.push(...functions.demangledSymbols);
+      this.dependencies.push(...functions.dependencies);
+    }
+
+    return {
+      mangledSymbols: this.mangled,
+      demangledSymbols: this.demangled,
+      dependencies: this.dependencies,
+    };
   }
 }

@@ -19,7 +19,6 @@ import {
   checkIfMethod,
   getArgumentTypes,
   getReturnType,
-  isCppPrimitiveType,
   adjustLLVMValueToType,
   isUnionLLVMType,
   zip,
@@ -27,6 +26,7 @@ import {
   tryResolveGenericTypeIfNecessary,
   isIntersectionLLVMType,
   isClosure,
+  correctCppPrimitiveType,
 } from "@utils";
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -49,11 +49,11 @@ export class SysVFunctionHandler {
     const symbol = this.generator.checker.getSymbolAtLocation(expression);
     const valueDeclaration = symbol!.valueDeclaration as ts.GetAccessorDeclaration;
 
-    const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
+    const parentScope = getFunctionDeclarationScope(valueDeclaration.parent, thisType, this.generator);
     const llvmThisType = parentScope.thisData!.llvmType;
     const returnType: ts.Type = this.generator.checker.getTypeAtLocation(expression);
 
-    const llvmReturnType = getLLVMType(returnType, expression, this.generator);
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
     const llvmArgumentTypes = [llvmThisType];
 
     const returnsValue = checkIfReturnsValueType(valueDeclaration);
@@ -149,17 +149,9 @@ export class SysVFunctionHandler {
     const signature = this.generator.checker.getSignatureFromDeclaration(expression)!;
     const tsReturnType = this.generator.checker.getReturnTypeOfSignature(signature);
     const tsArgumentTypes = expression.parameters.map(this.generator.checker.getTypeAtLocation);
-    let llvmReturnType = getLLVMType(tsReturnType, expression, this.generator);
-    if (llvmReturnType.isPointerTy() && isCppPrimitiveType(llvmReturnType.elementType)) {
-      llvmReturnType = llvmReturnType.elementType;
-    }
-
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(tsReturnType, expression, this.generator));
     const llvmArgumentTypes = tsArgumentTypes.map((arg) => {
-      let type = getLLVMType(arg, expression, this.generator);
-      if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
-        type = type.elementType;
-      }
-      return type;
+      return correctCppPrimitiveType(getLLVMType(arg, expression, this.generator));
     });
 
     const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, "", this.generator.module);
@@ -179,22 +171,12 @@ export class SysVFunctionHandler {
       return type;
     });
 
-    let llvmReturnType = getLLVMType(tsReturnType, node, this.generator);
-    if (llvmReturnType.isPointerTy() && isCppPrimitiveType(llvmReturnType.elementType)) {
-      llvmReturnType = llvmReturnType.elementType;
-    }
-
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(tsReturnType, node, this.generator));
     const llvmParameters = [];
 
     llvmParameters.push(
       ...tsParameterTypes.map((parameterType) => {
-        let type = getLLVMType(parameterType, node, this.generator);
-
-        if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
-          type = type.elementType;
-        }
-
-        return type;
+        return correctCppPrimitiveType(getLLVMType(parameterType, node, this.generator));
       })
     );
 
@@ -220,22 +202,14 @@ export class SysVFunctionHandler {
     const llvmThisType = thisType ? parentScope.thisData!.llvmType : undefined;
 
     const returnType = getReturnType(expression, this.generator);
-    let llvmReturnType = getLLVMType(returnType, expression, this.generator);
-    if (llvmReturnType.isPointerTy() && isCppPrimitiveType(llvmReturnType.elementType)) {
-      llvmReturnType = llvmReturnType.elementType;
-    }
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
 
     const llvmArgumentTypes = argumentTypes.map((argumentType) => {
       if (checkIfFunction(argumentType)) {
         return this.getFunctionType(argumentType, expression);
       }
 
-      const type = getLLVMType(argumentType, expression, this.generator);
-
-      if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
-        return type.elementType;
-      }
-      return type;
+      return correctCppPrimitiveType(getLLVMType(argumentType, expression, this.generator));
     });
 
     let args = expression.arguments.map((argument) => {
@@ -243,15 +217,49 @@ export class SysVFunctionHandler {
         return this.handleArrowFunctionOrFunctionExpression(argument);
       }
 
+      const originalType = tryResolveGenericTypeIfNecessary(
+        this.generator.checker.getApparentType(this.generator.checker.getTypeAtLocation(argument)),
+        this.generator
+      );
+
+      if (!originalType.symbol) {
+        error(`Cannot find symbol for type '${this.generator.checker.typeToString(originalType)}'`);
+      }
+
+      const originalSymbol = getAliasedSymbolIfNecessary(originalType.symbol, this.generator.checker);
+      const originalDeclaration = originalSymbol.declarations[0];
+
+      if (ts.isFunctionTypeNode(originalDeclaration)) {
+        // we have got declaration of parent function's parameter. get real original declaration,
+        // then handle it
+
+        let parentFunction = expression.parent;
+        while (!ts.isFunctionLike(parentFunction)) {
+          parentFunction = parentFunction.parent;
+        }
+
+        if (!parentFunction.name) {
+          error(`'${parentFunction.getText()}' have to have a name`); // @todo
+        }
+
+        const realDeclaration = this.generator.meta.getClosureParameterDeclaration(
+          parentFunction.name.getText(),
+          argument.getText()
+        );
+        if (ts.isArrowFunction(realDeclaration) || ts.isFunctionExpression(realDeclaration)) {
+          return this.handleArrowFunctionOrFunctionExpression(realDeclaration);
+        } else {
+          error(`Unexpected declaration of kind '${realDeclaration.kind}'`);
+        }
+      }
+
       const arg = this.generator.handleExpression(argument, env);
 
       if (isClosure(arg)) {
-        const originalType = this.generator.checker.getTypeAtLocation(argument);
-        const originalSymbol = originalType.symbol;
-        const originalDeclaration = originalSymbol!.declarations[0];
-
         if (ts.isArrowFunction(originalDeclaration) || ts.isFunctionExpression(originalDeclaration)) {
           return this.handleArrowFunctionOrFunctionExpression(originalDeclaration);
+        } else {
+          error(`Unexpected closure declaration of kind '${originalDeclaration.kind}'`);
         }
       }
 
@@ -306,11 +314,7 @@ export class SysVFunctionHandler {
     const llvmThisType: llvm.PointerType = parentScope.thisData!.llvmType as llvm.PointerType;
 
     const parameterTypes = argumentTypes.map((argumentType) => {
-      const type = getLLVMType(argumentType, expression, this.generator);
-      if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
-        return type.elementType;
-      }
-      return type;
+      return correctCppPrimitiveType(getLLVMType(argumentType, expression, this.generator));
     });
 
     parameterTypes.unshift(llvmThisType);

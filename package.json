@@ -29,7 +29,7 @@
     "lookpath": "^1.0.4",
     "module-alias": "^2.2.2",
     "segfault-handler": "^1.0.1",
-    "std-typescript-llvm": "git+ssh://git@dsfgit.devos.club:222/antiq/std-typescript-llvm.git",
+    "std-typescript-llvm": "git+ssh://git@gitea.devos.club:222/antiq/std-typescript-llvm.git",
     "typescript": "^3.8.3"
   },
   "devDependencies": {

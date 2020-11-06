@@ -41,9 +41,27 @@ export function createLLVMFunction(
   module: llvm.Module,
   linkage: llvm.LinkageTypes = llvm.LinkageTypes.ExternalLinkage
 ): { fn: llvm.Function; existing: boolean } {
-  const existing = module.getFunction(name);
-  if (existing) {
-    return { fn: existing, existing: true };
+  const fn = module.getFunction(name);
+  if (fn) {
+    if (!fn.type.elementType.returnType.equals(returnType)) {
+      error(
+        `Function '${name}' already exists with different return type: existing - '${fn.type.elementType.returnType.toString()}, requested - '${returnType.toString()}'`
+      );
+    }
+
+    if (
+      fn.getArguments().length !== parameterTypes.length ||
+      fn.getArguments().some((arg, index) => !arg.type.equals(parameterTypes[index]))
+    ) {
+      error(
+        `Function '${name}' already exists with different parameter types: existing - '${fn
+          .getArguments()
+          .map((arg) => arg.type.toString())
+          .join(" ")}', requested - '${parameterTypes.map((type) => type.toString()).join(" ")}'`
+      );
+    }
+
+    return { fn, existing: true };
   }
 
   const type = llvm.FunctionType.get(returnType, parameterTypes, false);
@@ -139,14 +157,15 @@ export function getLLVMType(
       return tsType;
     });
 
-    const llvmReturnType = getLLVMType(tsReturnType, node, generator, environmentDataType);
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(tsReturnType, node, generator, environmentDataType));
+
     const llvmParameters = [];
     if (environmentDataType) {
       llvmParameters.push(environmentDataType);
     } else {
       llvmParameters.push(
         ...tsParameterTypes.map((parameterType) => {
-          return getLLVMType(parameterType, node, generator);
+          return correctCppPrimitiveType(getLLVMType(parameterType, node, generator));
         })
       );
     }
@@ -369,6 +388,11 @@ export function isClosure(value: llvm.Value) {
   return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("cls__"));
 }
 
+export function isEnvironment(value: llvm.Value) {
+  // @todo: tightly bounded to 'getEnvironmentType'
+  return getLLVMTypename(value.type).startsWith('"env__');
+}
+
 export function getObjectPropsLLVMTypesNames(
   type: ts.Type,
   node: ts.Node,
@@ -470,6 +494,14 @@ export function isCppPrimitiveType(type: llvm.Type) {
   return type.isIntegerTy() || type.isDoubleTy();
 }
 
+export function correctCppPrimitiveType(type: llvm.Type) {
+  if (type.isPointerTy() && isCppPrimitiveType(type.elementType)) {
+    type = type.elementType;
+  }
+
+  return type;
+}
+
 export function adjustLLVMValueToType(value: llvm.Value, type: llvm.Type, generator: LLVMGenerator): llvm.Value {
   if (value.type.equals(type) || isConvertible(value.type, type)) {
     return value;
@@ -542,6 +574,33 @@ export function unwrapPointerType(type: llvm.Type) {
     type = type.elementType;
   }
   return type;
+}
+
+export function makeEnvironmentWithEffectiveArguments(
+  source: llvm.Value,
+  effectiveArguments: llvm.Value[],
+  generator: LLVMGenerator
+) {
+  const elementTypes = effectiveArguments.map((arg) => arg.type);
+  const closureEnvironmentType = unwrapPointerType(source.type) as llvm.StructType;
+  for (let i = effectiveArguments.length; i < closureEnvironmentType.numElements; ++i) {
+    elementTypes.push(closureEnvironmentType.getElementType(i));
+  }
+  const environmentType = llvm.StructType.get(generator.context, elementTypes);
+  const environment = generator.gc.allocate(environmentType);
+
+  for (let i = 0; i < effectiveArguments.length; ++i) {
+    const ptr = generator.xbuilder.createSafeInBoundsGEP(environment, [0, i]);
+    generator.xbuilder.createSafeStore(effectiveArguments[i], ptr);
+  }
+
+  for (let i = effectiveArguments.length; i < closureEnvironmentType.numElements; ++i) {
+    const destinationPtr = generator.xbuilder.createSafeInBoundsGEP(environment, [0, i]);
+    const value = generator.builder.createLoad(generator.xbuilder.createSafeInBoundsGEP(source, [0, i]));
+    generator.xbuilder.createSafeStore(value, destinationPtr);
+  }
+
+  return environment;
 }
 
 export function makeClosureWithEffectiveArguments(
@@ -861,7 +920,7 @@ export function createHeapAllocatedFromValue(value: llvm.Value, generator: LLVMG
 }
 
 export function inTSClassConstructor(generator: LLVMGenerator) {
-  return Boolean(generator.currentFunction.name?.endsWith("__class__constructor"));
+  return Boolean(generator.currentFunction.name?.endsWith("__constructor"));
 }
 
 export function getTSObjectPropsFromName(name: string) {

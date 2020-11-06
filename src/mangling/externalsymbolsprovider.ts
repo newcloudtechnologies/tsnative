@@ -119,6 +119,7 @@ export class ExternalSymbolsProvider {
     switch (typename) {
       case "String": // @todo
         return "string";
+      case "Number":
       case "number":
         return "double";
       case "boolean":
@@ -322,23 +323,50 @@ export class ExternalSymbolsProvider {
         candidates.push({ index: i, signature: candidate });
       }
     }
-    if (candidates.length < 2) {
-      return externalMangledSymbolsTable[candidates[0]?.index];
-    }
 
     candidates = candidates.filter((candidate) => this.isMatching(candidate.signature));
     if (candidates.length > 1) {
-      candidates = candidates.filter((c) => c.signature.includes("*")); // @todo Very, VERY fragile thing
-      if (candidates.length > 1) {
+      if (candidates.some((c) => c.signature.includes("*"))) {
+        // @todo Very, VERY fragile thing
+        candidates = candidates.filter((c) => c.signature.includes("*"));
+      }
+
+      // duplicates may appear because of TemplateInstantiator
+      const duplicatesOnly = candidates.every((candidate) => candidate.signature === candidates[0].signature);
+      if (candidates.length > 1 && !duplicatesOnly) {
         console.log(candidates);
         error("Ambiguous function call");
       }
     }
     return externalMangledSymbolsTable[candidates[0]?.index];
   }
+
+  static getParametersFromSignature(signature: string) {
+    const OPEN_PAREN = "(";
+    const CLOSE_PAREN = ")";
+
+    const stack = [];
+    let parameters = "";
+    const startIndex = signature.lastIndexOf(CLOSE_PAREN); // @todo: handle noexcept(...) case
+    for (let i = startIndex; i >= 0; --i) {
+      const token = signature[i];
+      if (token === CLOSE_PAREN) {
+        stack.push(token);
+      } else if (token === OPEN_PAREN) {
+        stack.pop();
+        if (stack.length === 0) {
+          break;
+        }
+      }
+
+      parameters = token + parameters;
+    }
+
+    return parameters.substring(0, parameters.length - 1);
+  }
+
   static extractParameterTypes(cppSignature: string): string {
-    // @todo: use lazy cache
-    return this.unqualifyParameters(cppSignature.match(/(?<=\().*(?=\))/)![0].split(","));
+    return this.unqualifyParameters(this.getParametersFromSignature(cppSignature).split(","));
   }
   static unqualifyParameters(parameters: string[]): string {
     return parameters

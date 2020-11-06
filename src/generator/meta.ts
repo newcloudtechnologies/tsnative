@@ -10,7 +10,7 @@
  */
 
 import { error } from "@utils";
-import { Type } from "typescript";
+import { FunctionDeclaration, Type } from "typescript";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -63,11 +63,21 @@ class ObjectMeta {
   }
 }
 
+class ClosureParametersMetaStorage {
+  readonly storage = new Map<string, Map<string, FunctionDeclaration>>();
+}
+
+class DirtyClosureAssociatedEnvironmentVariables {
+  readonly storage = new Map<string, string[]>();
+}
+
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
   readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
   readonly structMetaInfoStorage: StructMeta[] = [];
   readonly objectMetaInfoStorage: ObjectMeta[] = [];
+  readonly closureParametersMeta = new ClosureParametersMetaStorage();
+  readonly dirtyClosureAssociatedVariables = new DirtyClosureAssociatedEnvironmentVariables();
 
   registerUnionMeta(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -115,6 +125,48 @@ export class MetaInfoStorage {
       error(`No object meta found for '${name}'`);
     }
     return meta;
+  }
+
+  registerClosureParameter(
+    parentFunction: string,
+    closureParameter: string,
+    closureFunctionDeclaration: FunctionDeclaration
+  ) {
+    const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);
+    if (!knownClosureParameters) {
+      const closuresForParentFunction = new Map<string, FunctionDeclaration>();
+      closuresForParentFunction.set(closureParameter, closureFunctionDeclaration);
+      this.closureParametersMeta.storage.set(parentFunction, closuresForParentFunction);
+    } else {
+      knownClosureParameters.set(closureParameter, closureFunctionDeclaration);
+      this.closureParametersMeta.storage.set(parentFunction, knownClosureParameters);
+    }
+  }
+
+  getClosureParameterDeclaration(parentFunction: string, closureParameter: string) {
+    const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);
+    if (!knownClosureParameters) {
+      error(`No closure parameters registered for '${parentFunction}'`);
+    }
+
+    const declaration = knownClosureParameters.get(closureParameter);
+    if (!declaration) {
+      error(`No declaration registered for '${closureParameter}'`);
+    }
+
+    return declaration;
+  }
+
+  registerDirtyClosureAssociatedVariables(name: string, variables: string[]) {
+    this.dirtyClosureAssociatedVariables.storage.set(name, variables);
+  }
+
+  getDirtyClosureAssociatedVariables(name: string) {
+    const associated = this.dirtyClosureAssociatedVariables.storage.get(name);
+    if (!associated) {
+      error(`No associated environment variables for '${name}'`);
+    }
+    return associated;
   }
 
   try<T>(getter: (name: string) => T, name: string) {

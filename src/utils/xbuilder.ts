@@ -112,7 +112,7 @@ export class XBuilder {
       const calleeArg = calleeArgs[i];
       const arg = args[i];
       if (!calleeArg.type.equals(arg.type)) {
-        error(`Types mismatch: '${calleeArg.type.toString()}' - '${arg.type.toString()}'`);
+        error(`Types mismatch: '${calleeArg.type.toString()}' - '${arg.type.toString()}' at index: ${i}`);
       }
     }
   }

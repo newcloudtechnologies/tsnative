@@ -1,4 +1,4 @@
-gitea_creds = 'jenkins_dsf_gitea'
+gitea_creds = 'jenkins_gitea'
 
 pipeline {
     agent none
