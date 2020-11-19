@@ -20,7 +20,6 @@ import {
   getGenericsToActualMapFromSignature,
   checkIfString,
   checkIfObject,
-  checkIfArray,
 } from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
@@ -64,38 +63,9 @@ class Itanium {
 
 type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
 export class ExternalSymbolsProvider {
-  private static toCppFunctionSignature(type: ts.Type, checker: ts.TypeChecker): string {
-    const signature = checker.getSignaturesOfType(type, ts.SignatureKind.Call)[0];
-    const parameters = signature.getDeclaration().parameters;
-    const cppParameterTypes = parameters.map((parameter) => {
-      const jsType = checker.getTypeFromTypeNode(parameter.type!);
-      let cppType = ExternalSymbolsProvider.jsTypeToCpp(jsType, checker);
-
-      if (checkIfArray(jsType) || checkIfObject(jsType)) {
-        cppType += " const&";
-      }
-
-      if (checkIfString(jsType, checker)) {
-        cppType += "*";
-      }
-
-      return cppType;
-    });
-
-    const jsReturnType = checker.getReturnTypeOfSignature(signature);
-    let cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(jsReturnType, checker);
-
-    if (checkIfString(jsReturnType, checker)) {
-      cppReturnType += "*";
-    }
-
-    const cppSignature = cppReturnType + " (*)(" + cppParameterTypes.join(",") + ")";
-    return cppSignature;
-  }
-
   static jsTypeToCpp(type: ts.Type, checker: ts.TypeChecker): string {
     if (checkIfFunction(type)) {
-      return this.toCppFunctionSignature(type, checker);
+      return "TSClosure*";
     }
     if (ts.isArrayTypeNode(checker.typeToTypeNode(type)!)) {
       const elementType = getTypeGenericArguments(type)[0]!;
@@ -122,6 +92,7 @@ export class ExternalSymbolsProvider {
       case "Number":
       case "number":
         return "double";
+      case "Boolean":
       case "boolean":
       case "true":
       case "false":
@@ -146,6 +117,7 @@ export class ExternalSymbolsProvider {
         return typename;
     }
   }
+
   private readonly namespace: string;
   private readonly thisTypeName: string = "";
   private readonly baseTypeNames: string[] = [];
@@ -167,9 +139,9 @@ export class ExternalSymbolsProvider {
     if (thisType) {
       this.thisTypeName = getTypename(thisType, checker);
       this.baseTypeNames = this.extractBaseTypeNames(declaration);
-      this.classTemplateParametersPattern = getTypeGenericArguments(thisType)
-        .map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
-        .join(",");
+      this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
+        getTypeGenericArguments(thisType).map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
+      );
     }
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
@@ -406,6 +378,7 @@ export class ExternalSymbolsProvider {
     const parameters = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
 
     let matching: boolean = parameters === this.parametersPattern;
+
     if (matching) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
 

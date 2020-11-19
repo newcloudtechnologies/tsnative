@@ -11,11 +11,10 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment, createEnvironment } from "@scope";
+import { Scope, Environment } from "@scope";
 import { getLLVMType, getAliasedSymbolIfNecessary, error } from "@utils";
 import * as llvm from "llvm-node";
 import { getLLVMReturnType } from "@handlers";
-import { getEnvironmentVariablesFromBody, getFunctionScopes } from "@handlers/utils";
 import { LLVMGenerator } from "@generator";
 
 const utilityReturnType = "ReturnType";
@@ -23,7 +22,7 @@ const utilityTypeNames = [utilityReturnType];
 
 function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator: LLVMGenerator) {
   // Handling something like `type DocStoreType = ReturnType<typeof createInitialStore>` where `createInitialStore` (e.g.) is a function that returns a closure
-  let llvmType;
+  let llvmType: llvm.Type | undefined;
   const typeArgument = typeReference.typeArguments![0];
   // typeof <name>
   if (ts.isTypeQueryNode(typeArgument)) {
@@ -43,39 +42,11 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
                 const signature = generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
                 const tsReturnType = generator.checker.getReturnTypeOfSignature(signature);
 
-                const tsArgumentTypes = declaration.initializer!.parameters.map(generator.checker.getTypeAtLocation);
-                const llvmArgumentTypes = tsArgumentTypes.map((arg) =>
-                  getLLVMType(arg, declaration.initializer!, generator)
-                );
-                const dummyArguments = llvmArgumentTypes.map((type) =>
-                  llvm.Constant.getNullValue(type.isPointerTy() ? type : type.getPointerTo())
-                );
-
                 if (!declaration.initializer) {
                   error("Declaration initializer required");
                 }
 
-                const environmentVariables = getEnvironmentVariablesFromBody(
-                  (declaration.initializer as ts.FunctionLikeDeclaration).body!,
-                  signature,
-                  generator
-                );
-                const innerScopes = getFunctionScopes(valueDeclaration.body!, generator);
-                for (const innerScope of innerScopes) {
-                  generator.symbolTable.currentScope.set(innerScope.name!, innerScope);
-                }
-                const env = createEnvironment(generator.symbolTable.currentScope, environmentVariables, generator, {
-                  args: dummyArguments,
-                  signature,
-                });
-
-                llvmType = getLLVMReturnType(
-                  tsReturnType,
-                  declaration.initializer,
-                  (declaration.initializer as ts.FunctionDeclaration).body!,
-                  generator,
-                  env
-                );
+                llvmType = getLLVMReturnType(tsReturnType, declaration.initializer, generator);
               } else if (ts.isCallExpression(declaration.initializer)) {
                 const type = generator.checker.getTypeAtLocation(declaration.initializer);
                 llvmType = getLLVMType(type, declaration.initializer, generator);
@@ -114,7 +85,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
           declaration = symbol.declarations[0] as ts.ClassDeclaration | ts.InterfaceDeclaration;
         }
 
-        let llvmType;
+        let llvmType: llvm.Type | undefined;
         const typeReference = typeAlias.type as ts.TypeReferenceNode;
         const typeReferenceName = typeReference.typeName;
         if (typeReferenceName?.getText() === utilityReturnType) {
@@ -122,18 +93,24 @@ export class TypeAliasHandler extends AbstractNodeHandler {
           llvmType = adjustDeducedReturnType(typeReference, this.generator);
         }
         if (!llvmType) {
-          llvmType = getLLVMType(type, node, this.generator) as llvm.StructType;
+          llvmType = getLLVMType(type, node, this.generator);
         }
 
         const tsType = this.generator.checker.getTypeAtLocation(declaration as ts.Node);
 
         const scope: Scope = new Scope(name, name, undefined, {
           declaration,
-          llvmType,
+          llvmType: llvmType.isPointerTy() ? llvmType : llvmType.getPointerTo(),
           tsType,
         });
 
-        parentScope.set(name, scope);
+        // @todo: this logic is required because of builtins
+        if (parentScope.get(name)) {
+          parentScope.overwrite(name, scope);
+        } else {
+          parentScope.set(name, scope);
+        }
+
         return true;
       default:
         break;

@@ -7,26 +7,36 @@ import { promisify } from "util";
 const execFile = promisify(child_process.execFile);
 const unlink = promisify(fs.unlink);
 
+const TEST_OUT_DIR = path.join(__dirname, "../test_out");
+
+function cleanup() {
+  const files = fs.readdirSync(TEST_OUT_DIR);
+  for (const file of files) {
+    fs.unlinkSync(path.join(TEST_OUT_DIR, file));
+  }
+  fs.rmdirSync(TEST_OUT_DIR);
+}
+
 async function runUnitTest(file: string) {
   const compilerPath = path.join(__dirname, "..", "src", "main.ts");
   const inputFile = path.join(__dirname, "unit", file);
 
-  const compileCommand = ["ts-node", compilerPath, inputFile];
+  const executable = path.join(TEST_OUT_DIR, replaceOrAddExtension(file, ""));
+  const compileCommand = ["ts-node", compilerPath, inputFile, "--output", executable];
   await execFile(compileCommand[0], compileCommand.slice(1));
-  const executable = path.join(__dirname, "..", replaceOrAddExtension(file, ""));
   try {
     await execFile(executable);
   } catch (error) {
-    await unlink(executable);
     console.log(error.stdout || error.toString());
+    cleanup();
     process.exit(1);
   }
-
-  await unlink(executable);
 }
 
 async function main() {
   try {
+    fs.mkdirSync(TEST_OUT_DIR);
+
     const unitTests = fs.readdirSync(path.join(__dirname, "unit")).filter((file) => file.endsWith(".ts"));
 
     await Promise.all(unitTests.map(runUnitTest));
@@ -34,7 +44,10 @@ async function main() {
     console.log(`All ${unitTests.length} tests passed.`);
   } catch (error) {
     console.log(error.stdout || error.toString());
+    cleanup();
     process.exit(1);
+  } finally {
+    cleanup();
   }
 }
 

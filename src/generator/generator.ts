@@ -15,7 +15,7 @@ import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
 import { createLLVMFunction, error, isCppPrimitiveType, XBuilder } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC } from "@builtins";
+import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
 import { MetaInfoStorage } from "@generator";
 
 export class LLVMGenerator {
@@ -37,6 +37,7 @@ export class LLVMGenerator {
   readonly builtinInt8: BuiltinInt8;
   readonly builtinUInt32: BuiltinUInt32;
   readonly builtinString: BuiltinString;
+  readonly builtinTSClosure: BuiltinTSClosure;
 
   private garbageCollector: GC | undefined;
 
@@ -52,6 +53,7 @@ export class LLVMGenerator {
     this.builtinInt8 = new BuiltinInt8(this);
     this.builtinUInt32 = new BuiltinUInt32(this);
     this.builtinString = new BuiltinString(this);
+    this.builtinTSClosure = new BuiltinTSClosure(this);
   }
 
   createModule(): llvm.Module {

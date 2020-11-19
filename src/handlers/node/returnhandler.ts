@@ -12,7 +12,8 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { checkIfUnion, initializeUnion, isSimilarStructs } from "@utils";
+import { initializeUnion, isSimilarStructs, isUnionLLVMType } from "@utils";
+import { PointerType } from "llvm-node";
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -20,21 +21,17 @@ export class ReturnHandler extends AbstractNodeHandler {
       const statement = node as ts.ReturnStatement;
       if (statement.expression) {
         let ret = this.generator.handleExpression(statement.expression, env);
-        const retType = this.generator.checker.getTypeAtLocation(statement.expression);
+        const currentFunctionReturnType = this.generator.currentFunction.type.elementType.returnType;
 
-        if (checkIfUnion(retType)) {
-          ret = initializeUnion(this.generator.currentFunction.type, ret, this.generator);
-          this.generator.xbuilder.createSafeRet(ret);
-        } else {
-          const currentFunctionReturnType = this.generator.currentFunction.type.elementType.returnType;
-          if (!ret.type.equals(currentFunctionReturnType)) {
-            if (isSimilarStructs(ret.type, currentFunctionReturnType)) {
-              ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
-            }
+        if (!ret.type.equals(currentFunctionReturnType)) {
+          if (isSimilarStructs(ret.type, currentFunctionReturnType)) {
+            ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
+          } else if (isUnionLLVMType(currentFunctionReturnType)) {
+            ret = initializeUnion(currentFunctionReturnType as PointerType, ret, this.generator);
           }
-
-          this.generator.xbuilder.createSafeRet(ret);
         }
+
+        this.generator.xbuilder.createSafeRet(ret);
       } else {
         this.generator.builder.createRetVoid();
       }

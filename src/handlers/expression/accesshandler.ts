@@ -168,10 +168,12 @@ export class AccessHandler extends AbstractExpressionHandler {
   private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): llvm.Value {
     const subscription = createArraySubscription(expression, this.generator);
     const array = this.generator.handleExpression(expression.expression, env);
+    const arrayUntyped = this.generator.xbuilder.asVoidStar(array);
     const index = this.generator.createLoadIfNecessary(
       this.generator.handleExpression(expression.argumentExpression, env)
     );
-    return this.generator.xbuilder.createSafeCall(subscription, [array, index]);
+
+    return this.generator.xbuilder.createSafeCall(subscription, [arrayUntyped, index]);
   }
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): llvm.Value {

@@ -8,7 +8,7 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { DEFINITIONS, STDLIB } from "std-typescript-llvm/constants";
+import { STDLIB, DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
 import { error, writeBitcodeToFile, writeExecutableToFile, writeIRToFile } from "@utils";
@@ -54,7 +54,7 @@ async function main() {
   const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
   const libs: string[] = [STDLIB];
-  options.lib = [DEFINITIONS];
+  options.lib = [DEFINITIONS, UTILITY_DEFINITIONS];
   options.types = [];
   options.traceResolution = true;
 

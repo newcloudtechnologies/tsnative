@@ -106,12 +106,7 @@ export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean
   );
 }
 
-export function getLLVMType(
-  type: ts.Type,
-  node: ts.Node,
-  generator: LLVMGenerator,
-  environmentDataType?: llvm.PointerType
-): llvm.Type {
+export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerator): llvm.Type {
   const { context, checker } = generator;
 
   if (type.isIntersection()) {
@@ -147,31 +142,7 @@ export function getLLVMType(
   }
 
   if (checkIfFunction(type)) {
-    const signature = checker.getSignaturesOfType(type, ts.SignatureKind.Call)[0];
-    let tsReturnType = checker.getReturnTypeOfSignature(signature);
-    tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, generator);
-
-    const tsParameterTypes = signature.getParameters().map((parameter) => {
-      let tsType = checker.getTypeOfSymbolAtLocation(parameter, node);
-      tsType = tryResolveGenericTypeIfNecessary(tsType, generator);
-      return tsType;
-    });
-
-    const llvmReturnType = correctCppPrimitiveType(getLLVMType(tsReturnType, node, generator, environmentDataType));
-
-    const llvmParameters = [];
-    if (environmentDataType) {
-      llvmParameters.push(environmentDataType);
-    } else {
-      llvmParameters.push(
-        ...tsParameterTypes.map((parameterType) => {
-          return correctCppPrimitiveType(getLLVMType(parameterType, node, generator));
-        })
-      );
-    }
-
-    const functionType = llvm.FunctionType.get(llvmReturnType, llvmParameters, false);
-    return functionType.getPointerTo();
+    return generator.builtinTSClosure.getLLVMType();
   }
 
   if (checkIfUndefined(type, checker)) {
@@ -350,47 +321,13 @@ export function getEnvironmentType(types: llvm.Type[], generator: LLVMGenerator)
   return envType;
 }
 
-export function getClosureType(types: llvm.Type[], generator: LLVMGenerator, dirty: boolean) {
-  if (types.some((type) => !type.isPointerTy())) {
-    error(
-      `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}'`
-    );
-  }
-
-  const closureName =
-    (dirty ? "dirty__" : "") +
-    "cls__(" +
-    types.reduce((acc, curr) => {
-      return acc + "_" + curr.toString().replace(/\"/g, "");
-    }, "") +
-    ")";
-
-  let closureType = generator.module.getTypeByName(closureName);
-  if (!closureType) {
-    closureType = llvm.StructType.create(generator.context, closureName);
-    closureType.setBody(types);
-  }
-
-  return closureType;
+export function isTSClosure(value: llvm.Value) {
+  return isTSClosureType(value.type);
 }
 
-export function isDirtyClosure(value: llvm.Value) {
-  const nakedType = unwrapPointerType(value.type);
-  return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("dirty__cls__"));
-}
-
-export function isClosure(value: llvm.Value) {
-  if (value.name.startsWith(InternalNames.Closure)) {
-    return true;
-  }
-
-  const nakedType = unwrapPointerType(value.type);
-  return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("cls__"));
-}
-
-export function isEnvironment(value: llvm.Value) {
-  // @todo: tightly bounded to 'getEnvironmentType'
-  return getLLVMTypename(value.type).startsWith('"env__');
+export function isTSClosureType(type: llvm.Type) {
+  const nakedType = unwrapPointerType(type);
+  return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("TSClosure__class"));
 }
 
 export function getObjectPropsLLVMTypesNames(
@@ -408,7 +345,9 @@ export function getObjectPropsLLVMTypesNames(
 
   return getProperties(type, generator.checker).map((property) => {
     const tsType = generator.checker.getTypeOfSymbolAtLocation(property, node);
-    const llvmType = getLLVMType(tsType, node, generator);
+    const llvmType = checkIfFunction(tsType)
+      ? generator.builtinTSClosure.getLLVMType()
+      : getLLVMType(tsType, node, generator);
     const valueType = property.valueDeclaration?.decorators?.some((decorator) => decorator.getText() === "@ValueType");
     return { type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name };
   });
@@ -511,7 +450,7 @@ export function adjustLLVMValueToType(value: llvm.Value, type: llvm.Type, genera
       return adjustLLVMValueToType(value, type, generator);
     } else if (isSamePointerLevel(value.type, type)) {
       if (!value.type.equals(type)) {
-        if (isSimilarStructs(value.type, type)) {
+        if (isSimilarStructs(value.type, type) || (value.type.isPointerTy() && value.type.elementType.isIntegerTy(8))) {
           value = generator.builder.createBitCast(value, type);
         } else if (isUnionLLVMType(type)) {
           value = initializeUnion(type as llvm.PointerType, value, generator);
@@ -574,72 +513,6 @@ export function unwrapPointerType(type: llvm.Type) {
     type = type.elementType;
   }
   return type;
-}
-
-export function makeEnvironmentWithEffectiveArguments(
-  source: llvm.Value,
-  effectiveArguments: llvm.Value[],
-  generator: LLVMGenerator
-) {
-  const elementTypes = effectiveArguments.map((arg) => arg.type);
-  const closureEnvironmentType = unwrapPointerType(source.type) as llvm.StructType;
-  for (let i = effectiveArguments.length; i < closureEnvironmentType.numElements; ++i) {
-    elementTypes.push(closureEnvironmentType.getElementType(i));
-  }
-  const environmentType = llvm.StructType.get(generator.context, elementTypes);
-  const environment = generator.gc.allocate(environmentType);
-
-  for (let i = 0; i < effectiveArguments.length; ++i) {
-    const ptr = generator.xbuilder.createSafeInBoundsGEP(environment, [0, i]);
-    generator.xbuilder.createSafeStore(effectiveArguments[i], ptr);
-  }
-
-  for (let i = effectiveArguments.length; i < closureEnvironmentType.numElements; ++i) {
-    const destinationPtr = generator.xbuilder.createSafeInBoundsGEP(environment, [0, i]);
-    const value = generator.builder.createLoad(generator.xbuilder.createSafeInBoundsGEP(source, [0, i]));
-    generator.xbuilder.createSafeStore(value, destinationPtr);
-  }
-
-  return environment;
-}
-
-export function makeClosureWithEffectiveArguments(
-  source: llvm.Value,
-  effectiveArguments: llvm.Value[],
-  environmentData: llvm.Value,
-  generator: LLVMGenerator
-) {
-  const environmentType = unwrapPointerType(environmentData.type) as llvm.StructType;
-
-  if (effectiveArguments.length < environmentType.numElements) {
-    // There are some variables in closure along with unresolved arguments. Keep them in new environment.
-    environmentData = getLLVMValue(environmentData, generator);
-    for (let i = effectiveArguments.length; i < environmentType.numElements; ++i) {
-      const closureValue = generator.xbuilder.createSafeExtractValue(environmentData, [i]);
-      effectiveArguments.push(closureValue);
-    }
-  } else if (effectiveArguments.length > environmentType.numElements) {
-    error("Unreachable");
-  }
-
-  const newEnv = effectiveArguments.reduce((acc, value, index) => {
-    const elementType = (acc.type as llvm.StructType).getElementType(index) as llvm.PointerType;
-
-    if (!value.type.equals(elementType)) {
-      value = adjustLLVMValueToType(value, elementType, generator);
-    }
-    return generator.xbuilder.createSafeInsert(acc, value, [index]);
-  }, llvm.Constant.getNullValue(environmentType));
-  const allocatedNewEnv = generator.gc.allocate(newEnv.type);
-  generator.xbuilder.createSafeStore(newEnv, allocatedNewEnv);
-
-  let newClosure = llvm.Constant.getNullValue(unwrapPointerType(source.type));
-  const closureFn = generator.xbuilder.createSafeExtractValue(getLLVMValue(source, generator), [0]);
-  newClosure = generator.xbuilder.createSafeInsert(newClosure, closureFn, [0]) as llvm.Constant;
-  newClosure = generator.xbuilder.createSafeInsert(newClosure, allocatedNewEnv, [1]) as llvm.Constant;
-  const allocatedNewClosure = generator.gc.allocate(newClosure.type);
-  generator.xbuilder.createSafeStore(newClosure, allocatedNewClosure);
-  return allocatedNewClosure;
 }
 
 function findIndexOfType(types: llvm.Type[], initializerType: llvm.Type) {
@@ -816,16 +689,17 @@ export function extractFromIntersection(
     destinationElementTypes.push(type);
   }
 
-  const intersectionTypeNames = getIntersectionSubtypesNames(intersectionStructType);
-  const dest = getLLVMTypename(destinationType);
+  let startIndex = findIndexOfSubarray(
+    intersectionElementTypes,
+    destinationElementTypes,
+    (lhs: llvm.Type, rhs: llvm.Type) => lhs.equals(rhs)
+  );
 
-  let startIndex = intersectionTypeNames.indexOf(dest);
   if (startIndex === -1) {
-    startIndex = findIndexOfSubarray(
-      intersectionElementTypes,
-      destinationElementTypes,
-      (lhs: llvm.Type, rhs: llvm.Type) => lhs.equals(rhs)
-    );
+    const intersectionTypeNames = getIntersectionSubtypesNames(intersectionStructType);
+    const dest = getLLVMTypename(destinationType);
+    startIndex = intersectionTypeNames.indexOf(dest);
+
     if (startIndex === -1) {
       error(`Cannot find types intersection '${intersectionStructType.toString()}' '${destinationType.toString()}'`);
     }

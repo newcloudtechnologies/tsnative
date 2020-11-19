@@ -32,7 +32,7 @@ export class CastHandler extends AbstractExpressionHandler {
         const union = this.generator.handleExpression(asExpression.expression, env);
 
         if (!isUnionLLVMValue(union)) {
-          error("Non-union type cast not supported");
+          error(`Non-union type cast not supported, got '${union.type.toString()}'`);
         }
 
         const destinationType = tryResolveGenericTypeIfNecessary(

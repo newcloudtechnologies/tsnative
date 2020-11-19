@@ -239,9 +239,9 @@ const is_equal = function (a: number[], b: number[]): boolean {
 }
 
 {
-  const fns: (() => number)[] = []
+  const fns: (() => number)[] = [];
   const subscribe = function subscribe(fn: () => number) {
-    fns.push(fn)
+    fns.push(fn);
   };
 
   const f = function f() {
@@ -251,4 +251,21 @@ const is_equal = function (a: number[], b: number[]): boolean {
   subscribe(f);
   const f0 = fns[0];
   console.assert(f0() === 1, "Function expression in function pointers array test failed");
+}
+
+{
+  const fns: (() => void)[] = [];
+  let i = 0;
+  let k = 0;
+  const f1 = () => { ++i; };
+  const f2 = () => { ++i; };
+  const f3 = () => { ++i; ++k; };
+  fns.push(f1);
+  fns.push(f2);
+  fns.push(f3);
+
+  fns.forEach((f) => f());
+
+  console.assert(i === 3, "Array of closures test failed (1)");
+  console.assert(k === 1, "Array of closures test failed (2)");
 }

@@ -9,8 +9,8 @@
  *
  */
 
-import { checkIfLLVMString, checkIfLLVMArray } from "@utils";
-import { SIZEOF_STRING, SIZEOF_ARRAY } from "@cpp";
+import { checkIfLLVMString, checkIfLLVMArray, isTSClosureType } from "@utils";
+import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE } from "@cpp";
 
 export class SizeOf {
   static getByLLVMType(type: llvm.Type): number | undefined {
@@ -18,6 +18,8 @@ export class SizeOf {
       return SIZEOF_STRING;
     } else if (checkIfLLVMArray(type)) {
       return SIZEOF_ARRAY;
+    } else if (isTSClosureType(type)) {
+      return SIZEOF_TSCLOSURE;
     }
     return;
   }
@@ -27,6 +29,8 @@ export class SizeOf {
       return SIZEOF_STRING;
     } else if (name.startsWith("Array__")) {
       return SIZEOF_ARRAY;
+    } else if (name.startsWith("TSClosure__class")) {
+      return SIZEOF_TSCLOSURE;
     }
     return;
   }

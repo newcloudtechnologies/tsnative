@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { getStructType, isTypeDeclared, checkIfStaticProperty, error } from "@utils";
+import { getStructType, isTypeDeclared, checkIfStaticProperty, error, getDeclarationNamespace } from "@utils";
 import { TypeMangler } from "@mangling";
 import { LLVMGenerator } from "@generator";
 
@@ -37,7 +37,9 @@ export class ClassHandler extends AbstractNodeHandler {
     }
 
     const thisType = generator.checker.getTypeAtLocation(declaration);
-    if (isTypeDeclared(thisType, declaration, generator)) {
+    const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
+
+    if (isTypeDeclared(thisType, declaration, generator) && parentScope.get(mangledTypename)) {
       return;
     }
 
@@ -67,6 +69,10 @@ export class ClassHandler extends AbstractNodeHandler {
         for (const type of clause.types) {
           const symbol = this.generator.checker.getSymbolAtLocation(type.expression)!;
           const baseClassDeclaration = symbol.valueDeclaration as ts.ClassDeclaration;
+          if (!baseClassDeclaration) {
+            // For imported symbols valueDeclaration is unreachable
+            return;
+          }
 
           const baseClassThisType = generator.checker.getTypeAtLocation(baseClassDeclaration);
           const mangledBaseClassTypename: string = TypeMangler.mangle(
@@ -75,7 +81,9 @@ export class ClassHandler extends AbstractNodeHandler {
             baseClassDeclaration
           );
 
-          const baseClassScope = parentScope.get(mangledBaseClassTypename) as Scope;
+          const namespace: string[] = getDeclarationNamespace(baseClassDeclaration);
+          const qualifiedName = namespace.concat(mangledBaseClassTypename).join(".");
+          const baseClassScope = parentScope.get(qualifiedName) as Scope;
 
           if (!baseClassScope) {
             error(`Scope is not found: ${mangledBaseClassTypename}`);
@@ -102,8 +110,6 @@ export class ClassHandler extends AbstractNodeHandler {
 
     populateStaticProperties(staticProperties, declaration);
 
-    const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
-
     const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
     const scope = new Scope(declaration.name!.getText(), mangledTypename, undefined, {
       declaration,
@@ -112,7 +118,12 @@ export class ClassHandler extends AbstractNodeHandler {
       staticProperties,
     });
 
-    parentScope.set(mangledTypename, scope);
+    // @todo: this logic is required because of builtins
+    if (parentScope.get(mangledTypename)) {
+      parentScope.overwrite(mangledTypename, scope);
+    } else {
+      parentScope.set(mangledTypename, scope);
+    }
 
     const methods = declaration.members.filter((member) => !ts.isPropertyDeclaration(member));
     for (const method of methods) {

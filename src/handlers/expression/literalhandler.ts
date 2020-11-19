@@ -1,21 +1,15 @@
 import {
-  adjustLLVMValueToType,
   checkIfFunction,
-  correctCppPrimitiveType,
-  createLLVMFunction,
+  checkIfNumber,
   createTSObjectName,
   error,
   getAliasedSymbolIfNecessary,
-  getLLVMType,
   getLLVMTypename,
   getTSObjectPropsFromName,
   getTypeGenericArguments,
-  isClosure,
   isIntersectionLLVMType,
-  isUnionLLVMType,
   tryResolveGenericTypeIfNecessary,
   withObjectProperties,
-  zip,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -188,98 +182,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return object;
   }
 
-  private checkIfSupportedReturn(expression: ts.Expression, llvmReturnType: llvm.Type) {
-    if (ts.isFunctionExpression(expression)) {
-      error("Function values in return are not supported");
-    }
-
-    if (isUnionLLVMType(llvmReturnType)) {
-      error("Unions in return are not supported");
-    }
-
-    if (isIntersectionLLVMType(llvmReturnType)) {
-      error("Intersections in return are not supported");
-    }
-  }
-
-  private handleFunctionBody(
-    llvmReturnType: llvm.Type,
-    thisType: ts.Type | undefined,
-    declaration: ts.FunctionLikeDeclaration,
-    fn: llvm.Function
-  ): void {
-    this.generator.withInsertBlockKeeping(() => {
-      this.generator.symbolTable.withLocalScope((bodyScope) => {
-        const parameters = this.generator.checker.getSignatureFromDeclaration(declaration)!.parameters;
-        const parameterNames = parameters.map((parameter) => parameter.name);
-
-        if (thisType) {
-          parameterNames.unshift("this");
-        }
-        for (const [parameterName, argument] of zip(parameterNames, fn.getArguments())) {
-          argument.name = parameterName;
-          bodyScope.set(parameterName, argument);
-        }
-
-        const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", fn);
-        this.generator.builder.setInsertionPoint(entryBlock);
-
-        if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
-          declaration.body!.forEachChild((node) => {
-            if (ts.isReturnStatement(node) && node.expression) {
-              this.checkIfSupportedReturn(node.expression, llvmReturnType);
-              let returnValue = this.generator.handleExpression(node.expression);
-              if (!returnValue.type.equals(llvmReturnType)) {
-                returnValue = adjustLLVMValueToType(returnValue, llvmReturnType, this.generator);
-              }
-              this.generator.xbuilder.createSafeRet(returnValue);
-              return;
-            }
-
-            this.generator.handleNode(node, bodyScope);
-          });
-        } else if (ts.isBlock(declaration.body!)) {
-          // Empty block
-          this.generator.builder.createRetVoid();
-        } else {
-          this.checkIfSupportedReturn(declaration.body! as ts.Expression, llvmReturnType);
-
-          const blocklessArrowFunctionReturn = this.generator.handleExpression(declaration.body! as ts.Expression);
-
-          if (blocklessArrowFunctionReturn.type.isVoidTy()) {
-            this.generator.builder.createRetVoid();
-          } else {
-            this.generator.xbuilder.createSafeRet(blocklessArrowFunctionReturn);
-          }
-        }
-
-        if (!this.generator.isCurrentBlockTerminated) {
-          if (llvmReturnType.isVoidTy()) {
-            this.generator.builder.createRetVoid();
-          } else {
-            error("No return statement in function returning non-void");
-          }
-        }
-      }, this.generator.symbolTable.currentScope);
-    });
-  }
-
-  private handleArrowFunctionOrFunctionExpression(expression: ts.ArrowFunction | ts.FunctionExpression): llvm.Value {
-    const signature = this.generator.checker.getSignatureFromDeclaration(expression)!;
-    const tsReturnType = this.generator.checker.getReturnTypeOfSignature(signature);
-    const tsArgumentTypes = expression.parameters.map(this.generator.checker.getTypeAtLocation);
-    const llvmReturnType = correctCppPrimitiveType(getLLVMType(tsReturnType, expression, this.generator));
-    const llvmArgumentTypes = tsArgumentTypes.map((arg) => {
-      return correctCppPrimitiveType(getLLVMType(arg, expression, this.generator));
-    });
-
-    const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, "", this.generator.module);
-
-    this.handleFunctionBody(llvmReturnType, undefined, expression, fn);
-    return fn;
-  }
-
-  private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, env?: Environment): llvm.Value {
+  private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): llvm.Value {
     const arrayType = getArrayType(expression, this.generator);
     const elementType = getTypeGenericArguments(arrayType)[0];
 
@@ -288,66 +191,11 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
     const push = createArrayPush(elementType, expression, this.generator);
     for (const element of expression.elements) {
-      if (ts.isArrowFunction(element) || ts.isFunctionExpression(element)) {
-        const elementValue = this.handleArrowFunctionOrFunctionExpression(
-          element as ts.ArrowFunction | ts.FunctionExpression
-        );
-        this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
-        continue;
+      let elementValue = this.generator.handleExpression(element, outerEnv);
+
+      if (checkIfNumber(this.generator.checker.getTypeAtLocation(element))) {
+        elementValue = this.generator.createLoadIfNecessary(elementValue);
       }
-
-      const originalType = tryResolveGenericTypeIfNecessary(
-        this.generator.checker.getApparentType(this.generator.checker.getTypeAtLocation(element)),
-        this.generator
-      );
-
-      if (!originalType.symbol) {
-        error(`Cannot find symbol for type '${this.generator.checker.typeToString(originalType)}'`);
-      }
-
-      const originalSymbol = getAliasedSymbolIfNecessary(originalType.symbol, this.generator.checker);
-      const originalDeclaration = originalSymbol.declarations[0];
-
-      if (ts.isFunctionTypeNode(originalDeclaration)) {
-        // we have got declaration of parent function's parameter. get real original declaration,
-        // then handle it
-
-        let parentFunction = expression.parent;
-        while (!ts.isFunctionLike(parentFunction)) {
-          parentFunction = parentFunction.parent;
-        }
-
-        if (!parentFunction.name) {
-          error(`'${parentFunction.getText()}' have to have a name`); // @todo
-        }
-
-        const realDeclaration = this.generator.meta.getClosureParameterDeclaration(
-          parentFunction.name.getText(),
-          element.getText()
-        );
-
-        if (ts.isArrowFunction(realDeclaration) || ts.isFunctionExpression(realDeclaration)) {
-          const elementValue = this.handleArrowFunctionOrFunctionExpression(realDeclaration);
-          this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
-          continue;
-        } else {
-          error(`Unexpected declaration of kind '${realDeclaration.kind}'`);
-        }
-      }
-
-      let elementValue = this.generator.handleExpression(element, env);
-
-      if (isClosure(elementValue)) {
-        if (ts.isArrowFunction(originalDeclaration) || ts.isFunctionExpression(originalDeclaration)) {
-          elementValue = this.handleArrowFunctionOrFunctionExpression(originalDeclaration);
-          this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
-          continue;
-        } else {
-          error(`Unexpected closure declaration of kind '${originalDeclaration.kind}'`);
-        }
-      }
-
-      elementValue = this.generator.createLoadIfNecessary(elementValue);
 
       this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
     }

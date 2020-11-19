@@ -134,4 +134,14 @@ export class XBuilder {
     this.checkRet(value);
     return this.generator.builder.createRet(value);
   }
+
+  asVoidStar(value: llvm.Value) {
+    // It might looks strange, but void* in LLVM is i8*.
+    return this.generator.builder.createBitCast(value, llvm.Type.getInt8PtrTy(this.generator.context));
+  }
+
+  asVoidStarStar(value: llvm.Value) {
+    // It might looks strange, but void* in LLVM is i8*.
+    return this.generator.builder.createBitCast(value, llvm.Type.getInt8PtrTy(this.generator.context).getPointerTo());
+  }
 }

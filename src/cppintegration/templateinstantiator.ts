@@ -24,6 +24,7 @@ export class TemplateInstantiator {
     "std-typescript-llvm/include/array.h",
     "std-typescript-llvm/include/console.h",
     "std-typescript-llvm/include/stdstring.h",
+    "std-typescript-llvm/include/tsclosure.h",
   ];
   private generatedContent: string[] = [];
 
@@ -64,10 +65,6 @@ export class TemplateInstantiator {
     return cppType;
   }
 
-  private getTSType(node: ts.Node) {
-    return this.checker.getApparentType(this.checker.getTypeAtLocation(node));
-  }
-
   private handleConsoleLog(node: ts.Node) {
     let call;
     if (ts.isExpressionStatement(node)) {
@@ -83,7 +80,7 @@ export class TemplateInstantiator {
     }
 
     const argumentTypes = call.arguments.map((arg) => {
-      const tsType = this.getTSType(arg);
+      const tsType = this.checker.getTypeAtLocation(arg);
       return this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
     });
 
@@ -101,14 +98,16 @@ export class TemplateInstantiator {
       if (node.initializer.elements.length > 0) {
         // const arr = [1, 2, 3];
         // Use elements to figure out array type.
-        const tsType = this.getTSType(node.initializer.elements[0]);
-        const tsTypename = this.checker.typeToString(tsType);
+        const tsType = this.checker.getTypeAtLocation(node.initializer.elements[0]);
+        const tsTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
 
         // Arrays with values of different types not supported. Make a check.
         // @todo: Move this check to special correctness-check pass.
         if (
           node.initializer.elements.some((element) => {
-            return this.checker.typeToString(this.getTSType(element)) !== tsTypename;
+            const elementType = this.checker.getTypeAtLocation(element);
+            const elementTypename = ExternalSymbolsProvider.jsTypeToCpp(elementType, this.checker);
+            return elementTypename !== tsTypename;
           })
         ) {
           error(`All array's elements have to be of same type: error at '${node.getText()}'`);
@@ -173,11 +172,13 @@ export class TemplateInstantiator {
       }) || [];
 
     const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
-    const exists = maybeExists.some(
-      (signature) =>
+    const exists = maybeExists.some((signature) => {
+      return (
         ExternalSymbolsProvider.extractParameterTypes(signature) ===
         ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-    );
+      );
+    });
+
     if (!exists) {
       const templateSignature =
         "template " + cppReturnType + " " + cppArrayType + "::" + methodName + "(" + argumentTypes.join(", ") + ");"; // @todo: constness handling

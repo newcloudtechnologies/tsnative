@@ -80,7 +80,7 @@ export class SymbolTable {
       error(`No scope provided for '${parts}'`);
     }
     if (parts.length === 1) {
-      if (scope.name === parts[0]) {
+      if (scope.name === parts[0] || scope.mangledName === parts[0]) {
         return scope;
       } else {
         const value = scope.get(parts[0]);

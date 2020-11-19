@@ -280,7 +280,7 @@ export function isFunctionDeclarationScopeEnvironment(value: ScopeValue) {
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
-  readonly llvmType: llvm.StructType | llvm.PointerType;
+  readonly llvmType: llvm.PointerType;
   readonly tsType: ts.Type;
   readonly staticProperties?: Map<string, llvm.Value>;
 }

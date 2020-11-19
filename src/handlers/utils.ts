@@ -15,17 +15,16 @@ import {
   getLLVMValue,
   adjustLLVMValueToType,
   unwrapPointerType,
-  checkIfMethod,
   getExpressionText,
   tryResolveGenericTypeIfNecessary,
   checkIfStaticProperty,
   correctCppPrimitiveType,
+  checkIfFunction,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import {
   addClassScope,
-  Environment,
   FunctionDeclarationScopeEnvironment,
   isFunctionDeclarationScopeEnvironment,
   Scope,
@@ -253,9 +252,15 @@ export function createArrayConstructor(
   const parentScope = getFunctionDeclarationScope(valueDeclaration, arrayType, generator);
   const thisValue = parentScope.thisData!.llvmType;
 
-  const { fn: constructor } = createLLVMFunction(thisValue, [thisValue], qualifiedName, generator.module);
+  const { fn: constructor } = createLLVMFunction(
+    llvm.Type.getVoidTy(generator.context),
+    [llvm.Type.getInt8PtrTy(generator.context)],
+    qualifiedName,
+    generator.module
+  );
   const allocated = generator.gc.allocate((thisValue as llvm.PointerType).elementType);
-  return { constructor, allocated };
+  const untypedAllocated = generator.xbuilder.asVoidStar(allocated);
+  return { constructor, allocated: untypedAllocated };
 }
 
 export function createArrayPush(
@@ -264,13 +269,15 @@ export function createArrayPush(
   generator: LLVMGenerator
 ): llvm.Value {
   const arrayType = getArrayType(expression, generator);
+  if (checkIfFunction(elementType)) {
+    elementType = generator.builtinTSClosure.getTSType();
+  }
 
   const pushSymbol = generator.checker.getPropertyOfType(arrayType, "push")!;
   const pushDeclaration = pushSymbol.valueDeclaration;
 
   const parameterType = correctCppPrimitiveType(getLLVMType(elementType, expression, generator));
 
-  const scope = getFunctionDeclarationScope(pushDeclaration, arrayType, generator);
   const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
     pushDeclaration,
     expression,
@@ -285,7 +292,7 @@ export function createArrayPush(
 
   const { fn: push } = createLLVMFunction(
     llvm.Type.getDoubleTy(generator.context),
-    [scope.thisData!.llvmType, parameterType],
+    [llvm.Type.getInt8PtrTy(generator.context), parameterType],
     qualifiedName,
     generator.module
   );
@@ -294,7 +301,10 @@ export function createArrayPush(
 
 export function createArraySubscription(expression: ts.ElementAccessExpression, generator: LLVMGenerator): llvm.Value {
   const arrayType = generator.checker.getTypeAtLocation(expression.expression);
-  const elementType = getTypeGenericArguments(arrayType)[0];
+  let elementType = getTypeGenericArguments(arrayType)[0];
+  if (checkIfFunction(elementType)) {
+    elementType = generator.builtinTSClosure.getTSType();
+  }
   const valueDeclaration = getAliasedSymbolIfNecessary(arrayType.symbol, generator.checker).valueDeclaration;
   const declaration = (valueDeclaration as ts.ClassDeclaration).members.find(ts.isIndexSignatureDeclaration)!;
 
@@ -312,11 +322,9 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
 
   const retType = getLLVMType(elementType, expression.expression, generator);
 
-  const scope = getFunctionDeclarationScope(valueDeclaration, arrayType, generator);
-
   const { fn: subscript } = createLLVMFunction(
     retType,
-    [scope.thisData!.llvmType, llvm.Type.getDoubleTy(generator.context)],
+    [llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getDoubleTy(generator.context)],
     qualifiedName,
     generator.module
   );
@@ -345,63 +353,8 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
   return namespace;
 }
 
-function getLLVMReturnTypeFromFunctionBody(
-  functionBody: ts.ConciseBody,
-  generator: LLVMGenerator,
-  env?: Environment,
-  expression?: ts.Expression
-) {
-  return generator.withInsertBlockKeeping(() => {
-    return generator.symbolTable.withLocalScope((bodyScope) => {
-      let returnType: llvm.Type | undefined;
-      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
-      generator.builder.setInsertionPoint(dummyBlock);
-
-      if (expression) {
-        if (ts.isCallExpression(expression)) {
-          if (checkIfMethod(expression.expression, generator.checker)) {
-            const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-            const val = generator.handleExpression(propertyAccess.expression, env);
-            bodyScope.set("this", val);
-          }
-        }
-      }
-
-      if (ts.isBlock(functionBody)) {
-        functionBody.forEachChild((node) => {
-          if (ts.isReturnStatement(node) && node.expression) {
-            const value = generator.handleExpression(node.expression, env);
-            returnType = value.type;
-          } else {
-            if (
-              ts.isVariableStatement(node) ||
-              (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression))
-            ) {
-              generator.handleNode(node, bodyScope, env);
-            }
-          }
-        });
-      } else {
-        const value = generator.handleExpression(functionBody as ts.Expression, env);
-        returnType = value.type;
-      }
-
-      dummyBlock.eraseFromParent();
-      return returnType;
-    }, generator.symbolTable.currentScope);
-  });
-}
-
-export function getLLVMReturnType(
-  tsReturnType: ts.Type,
-  expression: ts.Expression,
-  functionBody: ts.ConciseBody,
-  generator: LLVMGenerator,
-  env?: Environment
-) {
-  const llvmReturnType =
-    getLLVMReturnTypeFromFunctionBody(functionBody, generator, env, expression) ||
-    getLLVMType(tsReturnType, expression, generator);
+export function getLLVMReturnType(tsReturnType: ts.Type, expression: ts.Expression, generator: LLVMGenerator) {
+  const llvmReturnType = getLLVMType(tsReturnType, expression, generator);
 
   if (llvmReturnType.isVoidTy()) {
     return llvmReturnType;

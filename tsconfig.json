@@ -21,7 +21,9 @@
     "forceConsistentCasingInFileNames": true,
     "pretty": true
   },
-  "cppDirs": [],
+  "cppDirs": [
+    "test/unit/cpp"
+  ],
   "libs": [],
   "include": [
     "src/*"

@@ -149,15 +149,15 @@
 
     const firstCombine = combine(acceptsD_returnsNewD, acceptsE_returnsModifiedE);
     const firstResult = firstCombine({ d1: "1", d2: 2, e1: 3, e2: "4" }, { f1: "c", g1: 3 });
-    console.assert(firstResult.d1 === "1", "1");
-    console.assert(firstResult.d2 === 2, "2");
-    console.assert(firstResult.e1 === 3, "3");
-    console.assert(firstResult.e2 === "4", "4");
+    console.assert(firstResult.d1 === "1", "firstResult: 1");
+    console.assert(firstResult.d2 === 2, "firstResult: 2");
+    console.assert(firstResult.e1 === 3, "firstResult: 3");
+    console.assert(firstResult.e2 === "4", "firstResult: 4");
 
     const secondCombine = combine(acceptsD_returnsModifiedD, acceptsE_returnsNewE);
     const secondResult = secondCombine({ d1: "1", d2: 2, e1: 3, e2: "4" }, { f1: "c", g1: 3 });
-    console.assert(secondResult.d1 === "a1_modified", "1");
-    console.assert(secondResult.d2 === 3, "2");
-    console.assert(secondResult.e1 === 3, "3");
-    console.assert(secondResult.e2 === "4", "4");
+    console.assert(secondResult.d1 === "a1_modified", "secondResult: 1");
+    console.assert(secondResult.d2 === 3, "secondResult: 2");
+    console.assert(secondResult.e1 === 3, "secondResult: 3");
+    console.assert(secondResult.e2 === "4", "secondResult: 4");
 }

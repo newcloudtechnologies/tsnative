@@ -25,7 +25,6 @@ import {
   unwrapPointerType,
   error,
   getStructType,
-  isClosure,
 } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
@@ -55,11 +54,6 @@ export class VariableHandler extends AbstractNodeHandler {
     const name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
     let initializer = this.getInitializer(declaration, name, parentScope, env);
     if (!initializer) {
-      return;
-    }
-
-    if (isClosure(initializer)) {
-      parentScope.set(name, initializer);
       return;
     }
 

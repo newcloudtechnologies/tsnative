@@ -67,17 +67,12 @@ class ClosureParametersMetaStorage {
   readonly storage = new Map<string, Map<string, FunctionDeclaration>>();
 }
 
-class DirtyClosureAssociatedEnvironmentVariables {
-  readonly storage = new Map<string, string[]>();
-}
-
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
   readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
   readonly structMetaInfoStorage: StructMeta[] = [];
   readonly objectMetaInfoStorage: ObjectMeta[] = [];
   readonly closureParametersMeta = new ClosureParametersMetaStorage();
-  readonly dirtyClosureAssociatedVariables = new DirtyClosureAssociatedEnvironmentVariables();
 
   registerUnionMeta(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -155,18 +150,6 @@ export class MetaInfoStorage {
     }
 
     return declaration;
-  }
-
-  registerDirtyClosureAssociatedVariables(name: string, variables: string[]) {
-    this.dirtyClosureAssociatedVariables.storage.set(name, variables);
-  }
-
-  getDirtyClosureAssociatedVariables(name: string) {
-    const associated = this.dirtyClosureAssociatedVariables.storage.get(name);
-    if (!associated) {
-      error(`No associated environment variables for '${name}'`);
-    }
-    return associated;
   }
 
   try<T>(getter: (name: string) => T, name: string) {
