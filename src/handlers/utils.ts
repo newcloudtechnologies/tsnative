@@ -20,6 +20,7 @@ import {
   checkIfStaticProperty,
   correctCppPrimitiveType,
   checkIfFunction,
+  checkIfObject,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -276,8 +277,6 @@ export function createArrayPush(
   const pushSymbol = generator.checker.getPropertyOfType(arrayType, "push")!;
   const pushDeclaration = pushSymbol.valueDeclaration;
 
-  const parameterType = correctCppPrimitiveType(getLLVMType(elementType, expression, generator));
-
   const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
     pushDeclaration,
     expression,
@@ -289,6 +288,11 @@ export function createArrayPush(
   if (!isExternalSymbol) {
     error(`Array 'push' for type '${generator.checker.typeToString(arrayType)}' not found`);
   }
+
+  const parameterType =
+    checkIfObject(elementType) || checkIfFunction(elementType)
+      ? llvm.Type.getInt8PtrTy(generator.context)
+      : correctCppPrimitiveType(getLLVMType(elementType, expression, generator));
 
   const { fn: push } = createLLVMFunction(
     llvm.Type.getDoubleTy(generator.context),

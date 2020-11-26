@@ -9,7 +9,7 @@
  *
  */
 
-import { flatten, replaceOrAddExtension } from "@utils";
+import { flatten, getRandomString, replaceOrAddExtension } from "@utils";
 import { execFileSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
@@ -30,7 +30,7 @@ export class NmSymbolExtractor {
     const dependencyObjects: string[] = [];
     try {
       dependencies.forEach((file) => {
-        const outFile = path.join(outPath, path.basename(replaceOrAddExtension(file, ".o")));
+        const outFile = path.join(outPath, getRandomString() + path.basename(replaceOrAddExtension(file, ".o")));
         execFileSync("g++", [optimizationLevel, file, "-c", "-o", outFile, "-std=c++11", "-Werror"]);
         dependencyObjects.push(outFile);
       });
@@ -44,13 +44,13 @@ export class NmSymbolExtractor {
 
     const mangledSymbols: string[] = flatten(
       dependencyObjects.concat(objectFiles || []).map((libObj) => {
-        const output = execFileSync("nm", [libObj]).toString();
+        const output = execFileSync("nm", [libObj], { maxBuffer: Number.POSITIVE_INFINITY }).toString();
         return this.getExportedSymbols(output);
       })
     );
     const demangledSymbols: string[] = flatten(
       dependencyObjects.concat(objectFiles || []).map((libObj) => {
-        const output = execFileSync("nm", ["-C", libObj]).toString();
+        const output = execFileSync("nm", ["-C", libObj], { maxBuffer: Number.POSITIVE_INFINITY }).toString();
         return this.getExportedSymbols(output);
       })
     );

@@ -22,7 +22,10 @@ import {
   adjustLLVMValueToType,
   checkIfFunction,
   correctCppPrimitiveType,
-  checkIfNumber,
+  unwrapPointerType,
+  isCppPrimitiveType,
+  callerShouldAllocateSpace,
+  checkIfObject,
 } from "@utils";
 import { getFunctionDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -47,12 +50,18 @@ export class SysVFunctionHandler {
     const returnType: ts.Type = this.generator.checker.getTypeAtLocation(expression);
 
     const llvmThisType = llvm.Type.getInt8PtrTy(this.generator.context);
-    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
     const llvmArgumentTypes = [llvmThisType];
 
     const returnsValue = checkIfReturnsValueType(valueDeclaration);
+    let llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
     if (returnsValue) {
-      llvmArgumentTypes.unshift(llvmReturnType as llvm.PointerType);
+      if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
+        if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
+          llvmArgumentTypes.unshift(llvmReturnType.isPointerTy() ? llvmReturnType : llvmReturnType.getPointerTo());
+        } else {
+          llvmReturnType = unwrapPointerType(llvmReturnType);
+        }
+      }
     }
 
     const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
@@ -66,16 +75,31 @@ export class SysVFunctionHandler {
     const args = [thisValueUntyped];
 
     if (returnsValue) {
-      const shadowReturnType = llvmReturnType.isPointerTy() ? llvmReturnType.elementType : llvmReturnType;
-      const sret = this.generator.gc.allocate(shadowReturnType);
-      args.unshift(sret);
+      if (!unwrapPointerType(llvmArgumentTypes[0]).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
+        if (callerShouldAllocateSpace(llvmArgumentTypes[0], returnType, this.generator)) {
+          const shadowReturnType = unwrapPointerType(llvmArgumentTypes[0]);
+          const sret = this.generator.gc.allocate(shadowReturnType);
+          args.unshift(sret);
+
+          return this.generator.xbuilder.createSafeCall(fn, args);
+        }
+      }
     }
 
-    if (returnsValue) {
-      return args[0];
+    const callResult = this.generator.xbuilder.createSafeCall(fn, args);
+
+    if (callResult.type.isVoidTy()) {
+      return callResult;
     }
 
-    return this.generator.xbuilder.createSafeCall(fn, args);
+    if (!returnsValue && callResult.type.isPointerTy()) {
+      return callResult;
+    }
+
+    const allocated = this.generator.gc.allocate(unwrapPointerType(callResult.type));
+    this.generator.xbuilder.createSafeStore(callResult, allocated);
+
+    return allocated;
   }
 
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): llvm.Value {
@@ -95,24 +119,24 @@ export class SysVFunctionHandler {
     const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
     const llvmThisType = thisType ? parentScope.thisData!.llvmType : undefined;
 
-    const returnType = getReturnType(expression, this.generator);
-    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
-
     const llvmArgumentTypes = argumentTypes.map((argumentType) => {
-      if (checkIfFunction(argumentType)) {
-        return this.generator.builtinTSClosure.getLLVMType();
+      const llvmType = getLLVMType(argumentType, expression, this.generator);
+
+      if (checkIfObject(argumentType) || checkIfFunction(argumentType)) {
+        return llvm.Type.getInt8PtrTy(this.generator.context);
       }
 
-      return correctCppPrimitiveType(getLLVMType(argumentType, expression, this.generator));
+      return correctCppPrimitiveType(llvmType);
     });
 
     let args = expression.arguments.map((argument) => {
       const arg = this.generator.handleExpression(argument, env);
-      if (checkIfNumber(this.generator.checker.getTypeAtLocation(argument))) {
-        return this.generator.createLoadIfNecessary(arg);
-      } else {
-        return arg;
+      const tsType = this.generator.checker.getTypeAtLocation(argument);
+      if (checkIfObject(tsType) || checkIfFunction(tsType)) {
+        return this.generator.xbuilder.asVoidStar(arg);
       }
+
+      return this.generator.createLoadIfNecessary(arg);
     });
 
     args = this.adjustParameters(args, llvmArgumentTypes);
@@ -125,9 +149,19 @@ export class SysVFunctionHandler {
       llvmArgumentTypes.unshift(llvm.Type.getInt8PtrTy(this.generator.context));
     }
 
+    const returnType = getReturnType(expression, this.generator);
+    let llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
+
     const returnsValue = checkIfReturnsValueType(valueDeclaration);
+
     if (returnsValue) {
-      llvmArgumentTypes.unshift(llvmReturnType);
+      if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
+        if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
+          llvmArgumentTypes.unshift(llvmReturnType);
+        } else {
+          llvmReturnType = unwrapPointerType(llvmReturnType);
+        }
+      }
     }
 
     const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
@@ -137,20 +171,42 @@ export class SysVFunctionHandler {
 
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-      const thisValue = this.generator.handleExpression(propertyAccess.expression, env);
+      let thisValue = this.generator.handleExpression(propertyAccess.expression, env);
+      if (!thisValue.type.isPointerTy()) {
+        const allocated = this.generator.gc.allocate(thisValue.type);
+        this.generator.xbuilder.createSafeStore(thisValue, allocated);
+        thisValue = allocated;
+      }
       const thisValueUntyped = this.generator.xbuilder.asVoidStar(thisValue);
       args.unshift(thisValueUntyped);
     }
 
     if (returnsValue) {
-      const shadowReturnType = llvmReturnType.isPointerTy() ? llvmReturnType.elementType : llvmReturnType;
-      const sret = this.generator.gc.allocate(shadowReturnType);
-      args.unshift(sret);
-      this.generator.xbuilder.createSafeCall(fn, args);
-      return sret;
+      if (!unwrapPointerType(llvmArgumentTypes[0]).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
+        if (callerShouldAllocateSpace(llvmArgumentTypes[0], returnType, this.generator)) {
+          const shadowReturnType = unwrapPointerType(llvmArgumentTypes[0]);
+          const sret = this.generator.gc.allocate(shadowReturnType);
+          args.unshift(sret);
+
+          return this.generator.xbuilder.createSafeCall(fn, args);
+        }
+      }
     }
 
-    return this.generator.xbuilder.createSafeCall(fn, args);
+    const callResult = this.generator.xbuilder.createSafeCall(fn, args);
+
+    if (callResult.type.isVoidTy()) {
+      return callResult;
+    }
+
+    if (!returnsValue && callResult.type.isPointerTy()) {
+      return callResult;
+    }
+
+    const allocated = this.generator.gc.allocate(unwrapPointerType(callResult.type));
+    this.generator.xbuilder.createSafeStore(callResult, allocated);
+
+    return allocated;
   }
 
   handleNewExpression(expression: ts.NewExpression, qualifiedName: string, env?: Environment): llvm.Value {
@@ -158,37 +214,54 @@ export class SysVFunctionHandler {
     const classDeclaration = getAliasedSymbolIfNecessary(thisType.symbol, this.generator.checker)
       .valueDeclaration as ts.ClassLikeDeclaration;
     const constructorDeclaration = classDeclaration.members.find(ts.isConstructorDeclaration)!;
+
+    if (constructorDeclaration.body) {
+      error(`External symbol '${qualifiedName}' cannot have constructor body`);
+    }
+
     const argumentTypes = expression.arguments?.map(this.generator.checker.getTypeAtLocation) || [];
 
     const parentScope = getFunctionDeclarationScope(classDeclaration, thisType, this.generator);
     const llvmThisType: llvm.PointerType = parentScope.thisData!.llvmType as llvm.PointerType;
 
-    const parameterTypes = argumentTypes.map((argumentType) => {
-      return correctCppPrimitiveType(getLLVMType(argumentType, expression, this.generator));
+    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
+      const llvmType = getLLVMType(argumentType, expression, this.generator);
+
+      if (checkIfObject(argumentType) || checkIfFunction(argumentType)) {
+        return llvm.Type.getInt8PtrTy(this.generator.context);
+      }
+
+      return correctCppPrimitiveType(llvmType);
     });
 
-    parameterTypes.unshift(llvmThisType);
-    const { fn: constructor, existing } = createLLVMFunction(
-      llvmThisType,
-      parameterTypes,
+    let args =
+      expression.arguments?.map((argument) => {
+        const arg = this.generator.handleExpression(argument, env);
+        const tsType = this.generator.checker.getTypeAtLocation(argument);
+        if (checkIfObject(tsType) || checkIfFunction(tsType)) {
+          return this.generator.xbuilder.asVoidStar(arg);
+        }
+
+        return this.generator.createLoadIfNecessary(arg);
+      }) || [];
+
+    args = this.adjustParameters(args, llvmArgumentTypes);
+
+    llvmArgumentTypes.unshift(llvm.Type.getInt8PtrTy(this.generator.context));
+
+    const { fn: constructor } = createLLVMFunction(
+      llvm.Type.getVoidTy(this.generator.context),
+      llvmArgumentTypes,
       qualifiedName,
       this.generator.module
     );
 
-    const body = constructorDeclaration.body;
-    const args =
-      expression.arguments?.map((argument) =>
-        this.generator.createLoadIfNecessary(this.generator.handleExpression(argument, env))
-      ) || [];
-
-    if (body && !existing) {
-      error(`External symbol '${qualifiedName}' cannot have constructor body`);
-    }
-
     const thisValue = this.generator.gc.allocate(llvmThisType.elementType);
-    args.unshift(thisValue);
+    const thisValueUntyped = this.generator.xbuilder.asVoidStar(thisValue);
+    args.unshift(thisValueUntyped);
+
     this.generator.xbuilder.createSafeCall(constructor, args);
-    return thisValue;
+    return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
   }
 
   private adjustParameters(parameters: llvm.Value[], types: llvm.Type[]) {

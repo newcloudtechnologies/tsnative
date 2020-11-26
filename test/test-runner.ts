@@ -4,8 +4,8 @@ import * as child_process from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
+import { flatten, last } from "lodash";
 const execFile = promisify(child_process.execFile);
-const unlink = promisify(fs.unlink);
 
 const TEST_OUT_DIR = path.join(__dirname, "../test_out");
 
@@ -19,10 +19,9 @@ function cleanup() {
 
 async function runUnitTest(file: string) {
   const compilerPath = path.join(__dirname, "..", "src", "main.ts");
-  const inputFile = path.join(__dirname, "unit", file);
 
-  const executable = path.join(TEST_OUT_DIR, replaceOrAddExtension(file, ""));
-  const compileCommand = ["ts-node", compilerPath, inputFile, "--output", executable];
+  const executable = path.join(TEST_OUT_DIR, replaceOrAddExtension(last(file.split(path.sep))!, ""));
+  const compileCommand = ["ts-node", compilerPath, file, "--output", executable];
   await execFile(compileCommand[0], compileCommand.slice(1));
   try {
     await execFile(executable);
@@ -33,11 +32,23 @@ async function runUnitTest(file: string) {
   }
 }
 
+function getTests(directory: string): string[] {
+  const nestedDirents = fs.readdirSync(directory, { withFileTypes: true });
+  const tests = nestedDirents.map((value) => {
+    return value.isDirectory() ? getTests(path.join(directory, value.name)) : path.join(directory, value.name);
+  });
+  return flatten(tests).filter((filename) => !filename.endsWith(".d.ts") && filename.endsWith(".ts"));
+}
+
 async function main() {
   try {
+    if (fs.existsSync(TEST_OUT_DIR)) {
+      cleanup();
+    }
+
     fs.mkdirSync(TEST_OUT_DIR);
 
-    const unitTests = fs.readdirSync(path.join(__dirname, "unit")).filter((file) => file.endsWith(".ts"));
+    const unitTests = getTests(path.join(__dirname, "unit"));
 
     await Promise.all(unitTests.map(runUnitTest));
 

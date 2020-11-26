@@ -20,6 +20,7 @@ import {
   getGenericsToActualMapFromSignature,
   checkIfString,
   checkIfObject,
+  getTypeNamespace,
 } from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
@@ -145,8 +146,13 @@ export class ExternalSymbolsProvider {
     }
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
-      argumentTypes.map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
+      argumentTypes.map((type) => {
+        const typeNamespace = getTypeNamespace(type);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, checker);
+        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+      })
     );
+
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }
   tryGet(declaration: ts.NamedDeclaration): string | undefined {

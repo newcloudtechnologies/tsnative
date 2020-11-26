@@ -20,10 +20,12 @@ export function isCppNumericType(type: string): boolean {
     case "int8_t":
     case "int16_t":
     case "int32_t":
+    case "int64_t":
 
     case "uint8_t":
     case "uint16_t":
     case "uint32_t":
+    case "uint64_t":
       return true;
     default:
       return false;
@@ -42,6 +44,9 @@ export function getNumericType(type: ts.Type, generator: LLVMGenerator): llvm.Ty
     case "int32_t":
     case "uint32_t":
       return llvm.Type.getInt32Ty(context);
+    case "int64_t":
+    case "uint64_t":
+      return llvm.Type.getInt64Ty(context);
     default:
       return;
   }
@@ -113,6 +118,10 @@ const integralAdjust: {
     isSigned: true,
     typeGetter: llvm.Type.getInt32Ty,
   },
+  int64_t: {
+    isSigned: true,
+    typeGetter: llvm.Type.getInt64Ty,
+  },
   uint8_t: {
     isSigned: false,
     typeGetter: llvm.Type.getInt8Ty,
@@ -124,6 +133,10 @@ const integralAdjust: {
   uint32_t: {
     isSigned: false,
     typeGetter: llvm.Type.getInt32Ty,
+  },
+  uint64_t: {
+    isSigned: false,
+    typeGetter: llvm.Type.getInt64Ty,
   },
 };
 /* tslint:enable:object-literal-sort-keys */

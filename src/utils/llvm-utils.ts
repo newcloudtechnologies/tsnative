@@ -29,6 +29,9 @@ import {
   checkIfNull,
   checkIfArray,
   InternalNames,
+  checkIfHasVTable,
+  checkIfUnaligned,
+  checkIfNonPod,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -84,6 +87,17 @@ export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
     return size;
   }
   return module.dataLayout.getTypeStoreSize(type);
+}
+
+export function callerShouldAllocateSpace(llvmType: llvm.Type, tsType: ts.Type, generator: LLVMGenerator) {
+  const EIGHT_EIGHTBYTES = 64;
+  return (
+    getTypeSize(unwrapPointerType(llvmType), generator.module) > EIGHT_EIGHTBYTES ||
+    (tsType.symbol &&
+      (checkIfUnaligned(tsType.symbol.valueDeclaration as ts.ClassDeclaration) ||
+        checkIfHasVTable(tsType.symbol.valueDeclaration as ts.ClassDeclaration) ||
+        checkIfNonPod(tsType.symbol.valueDeclaration as ts.ClassDeclaration)))
+  );
 }
 
 export function isTypeDeclared(thisType: ts.Type, declaration: ts.Declaration, generator: LLVMGenerator): boolean {
@@ -343,14 +357,41 @@ export function getObjectPropsLLVMTypesNames(
     ).filter((value, index, array) => array.findIndex((v) => v.name === value.name) === index);
   }
 
-  return getProperties(type, generator.checker).map((property) => {
+  const getTypeAndNameFromProperty = (property: ts.Symbol): { type: llvm.Type; name: string }[] => {
     const tsType = generator.checker.getTypeOfSymbolAtLocation(property, node);
-    const llvmType = checkIfFunction(tsType)
-      ? generator.builtinTSClosure.getLLVMType()
-      : getLLVMType(tsType, node, generator);
+
+    const llvmType = getLLVMType(tsType, node, generator);
     const valueType = property.valueDeclaration?.decorators?.some((decorator) => decorator.getText() === "@ValueType");
-    return { type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name };
-  });
+
+    return [{ type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name }];
+  };
+
+  const properties = getProperties(type, generator.checker).map(getTypeAndNameFromProperty);
+
+  if (
+    type.symbol?.valueDeclaration &&
+    ts.isClassDeclaration(type.symbol.valueDeclaration) &&
+    type.symbol.valueDeclaration.heritageClauses
+  ) {
+    const inheritedProps = flatten(
+      type.symbol.valueDeclaration.heritageClauses.map((clause) => {
+        const clauseProps = clause.types.map((expressionWithTypeArgs) =>
+          flatten(
+            getProperties(
+              generator.checker.getTypeAtLocation(expressionWithTypeArgs.expression),
+              generator.checker
+            ).map(getTypeAndNameFromProperty)
+          )
+        );
+
+        return flatten(clauseProps);
+      })
+    );
+
+    properties.push(inheritedProps);
+  }
+
+  return flatten(properties);
 }
 
 export function getStructType(type: ts.Type, node: ts.Node, generator: LLVMGenerator) {
@@ -376,7 +417,12 @@ export function getStructType(type: ts.Type, node: ts.Node, generator: LLVMGener
         const syntheticBody = getSyntheticBody(knownSize, context);
         structType.setBody(syntheticBody);
       } else {
-        structType.setBody(elements.map((element) => element.type));
+        const structElements = elements.map((element) => element.type);
+        if (ts.isClassDeclaration(declaration) && checkIfHasVTable(declaration)) {
+          // vptr
+          structElements.unshift(llvm.Type.getInt32Ty(generator.context).getPointerTo());
+        }
+        structType.setBody(structElements);
       }
 
       generator.meta.registerStructMeta(

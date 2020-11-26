@@ -1,6 +1,6 @@
 import {
   checkIfFunction,
-  checkIfNumber,
+  checkIfObject,
   createTSObjectName,
   error,
   getAliasedSymbolIfNecessary,
@@ -193,9 +193,11 @@ export class LiteralHandler extends AbstractExpressionHandler {
     for (const element of expression.elements) {
       let elementValue = this.generator.handleExpression(element, outerEnv);
 
-      if (checkIfNumber(this.generator.checker.getTypeAtLocation(element))) {
-        elementValue = this.generator.createLoadIfNecessary(elementValue);
-      }
+      const tsType = this.generator.checker.getTypeAtLocation(element);
+      elementValue =
+        checkIfObject(tsType) || checkIfFunction(tsType)
+          ? this.generator.xbuilder.asVoidStar(elementValue)
+          : this.generator.createLoadIfNecessary(elementValue);
 
       this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
     }

@@ -36,6 +36,13 @@ export class SymbolTable {
   }
 
   get(identifier: string): ScopeValue {
+    for (const scope of reverse(this.scopes)) {
+      const value = scope.get(identifier);
+      if (value) {
+        return value;
+      }
+    }
+
     const parts = identifier.split(".");
     if (parts.length > 1) {
       const outerScope = this.get(parts[0]);
@@ -45,12 +52,6 @@ export class SymbolTable {
       return this.getNested(parts, outerScope);
     }
 
-    for (const scope of reverse(this.scopes)) {
-      const value = scope.get(identifier);
-      if (value) {
-        return value;
-      }
-    }
     error(`Identifier '${identifier}' not found`);
   }
 

@@ -12,6 +12,7 @@
 import {
   error,
   getAliasedSymbolIfNecessary,
+  getDeclarationNamespace,
   getEnvironmentType,
   getStructType,
   InternalNames,
@@ -84,7 +85,9 @@ export function addClassScope(
     return;
   }
 
-  const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
+  let mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
+  const namespace: string[] = getDeclarationNamespace(declaration);
+  mangledTypename = namespace.concat(mangledTypename).join(".");
 
   if (parentScope.get(mangledTypename)) {
     return;

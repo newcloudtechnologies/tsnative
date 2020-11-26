@@ -25,7 +25,22 @@ export function checkIfReturnsValueType(declaration: ts.FunctionLikeDeclaration)
 
 const valueTypeDecorator: string = "ValueType";
 export function checkIfValueTypeProperty(declaration: ts.Declaration): boolean {
-  return Boolean(declaration.decorators?.some((decorator) => decorator.getText() === valueTypeDecorator));
+  return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === valueTypeDecorator));
+}
+
+const withVTableDecorator: string = "VTable";
+export function checkIfHasVTable(declaration: ts.ClassDeclaration) {
+  return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator));
+}
+
+const unalignedDecorator: string = "Unaligned";
+export function checkIfUnaligned(declaration: ts.ClassDeclaration) {
+  return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === unalignedDecorator));
+}
+
+const nonPodDecorator = "NonPod";
+export function checkIfNonPod(declaration: ts.ClassDeclaration) {
+  return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === nonPodDecorator));
 }
 
 export function getExpressionTypename(expression: ts.Expression, checker: ts.TypeChecker): string {
@@ -41,6 +56,15 @@ export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeC
     return checker.getAliasedSymbol(symbol);
   }
   return symbol;
+}
+
+export function getTypeNamespace(type: ts.Type) {
+  const symbol = type.symbol;
+  if (!symbol || !symbol.valueDeclaration) {
+    return "";
+  }
+
+  return getDeclarationNamespace(symbol.valueDeclaration).join("::");
 }
 
 export function getDeclarationNamespace(declaration: ts.Declaration): string[] {

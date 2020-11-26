@@ -37,7 +37,7 @@ export class ClassHandler extends AbstractNodeHandler {
     }
 
     const thisType = generator.checker.getTypeAtLocation(declaration);
-    const mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
+    let mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
 
     if (isTypeDeclared(thisType, declaration, generator) && parentScope.get(mangledTypename)) {
       return;
@@ -117,6 +117,9 @@ export class ClassHandler extends AbstractNodeHandler {
       tsType: thisType,
       staticProperties,
     });
+
+    const declarationNamespace: string[] = getDeclarationNamespace(declaration);
+    mangledTypename = declarationNamespace.concat(mangledTypename).join(".");
 
     // @todo: this logic is required because of builtins
     if (parentScope.get(mangledTypename)) {
