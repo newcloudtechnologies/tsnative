@@ -52,7 +52,7 @@ export function getProperties(type: ts.Type, checker: ts.TypeChecker) {
 }
 
 export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeChecker) {
-  if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+  if ((symbol?.flags & ts.SymbolFlags.Alias) !== 0) {
     return checker.getAliasedSymbol(symbol);
   }
   return symbol;

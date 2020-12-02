@@ -15,7 +15,7 @@ import { error, getExpressionTypename } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
-export function isCppNumericType(type: string): boolean {
+export function isCppIntegralType(type: string): boolean {
   switch (type) {
     case "int8_t":
     case "int16_t":
@@ -32,7 +32,7 @@ export function isCppNumericType(type: string): boolean {
   }
 }
 
-export function getNumericType(type: ts.Type, generator: LLVMGenerator): llvm.Type | undefined {
+export function getIntegralType(type: ts.Type, generator: LLVMGenerator): llvm.Type | undefined {
   const { checker, context } = generator;
   switch (checker.typeToString(type)) {
     case "int8_t":
@@ -52,15 +52,30 @@ export function getNumericType(type: ts.Type, generator: LLVMGenerator): llvm.Ty
   }
 }
 
-export function isSigned(expression: ts.Expression, generator: LLVMGenerator): boolean {
-  switch (getExpressionTypename(expression, generator.checker)) {
+export function isSignedType(type: string) {
+  switch (type) {
     case "int8_t":
     case "int16_t":
     case "int32_t":
+    case "int64_t":
       return true;
-    default:
+    case "uint8_t":
+    case "uint16_t":
+    case "uint32_t":
+    case "uint64_t":
       return false;
+    default:
+      error(`Expected integral type, got '${type}'`);
   }
+}
+
+export function isSigned(expression: ts.Expression, generator: LLVMGenerator): boolean {
+  const typename = getExpressionTypename(expression, generator.checker);
+  if (!isCppIntegralType(typename)) {
+    return false;
+  }
+
+  return isSignedType(typename);
 }
 
 function signedOperand(expression: ts.Expression, generator: LLVMGenerator): boolean {
@@ -142,7 +157,7 @@ const integralAdjust: {
 /* tslint:enable:object-literal-sort-keys */
 
 export function adjustValue(value: llvm.Value, typename: string, generator: LLVMGenerator): llvm.Value {
-  if (isCppNumericType(typename)) {
+  if (isCppIntegralType(typename)) {
     const loaded = generator.createLoadIfNecessary(value);
     if (!loaded.type.isIntegerTy()) {
       const adjustParameters = integralAdjust[typename];

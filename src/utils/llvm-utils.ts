@@ -9,7 +9,7 @@
  *
  */
 
-import { getNumericType, isCppNumericType, SizeOf } from "@cpp";
+import { getIntegralType, isCppIntegralType, SizeOf } from "@cpp";
 import { LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
 import {
@@ -116,7 +116,7 @@ export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean
     checkIfVoid(type) ||
     checkIfUndefined(type, checker) ||
     checkIfNull(type, checker) ||
-    isCppNumericType(checker.typeToString(type))
+    isCppIntegralType(checker.typeToString(type))
   );
 }
 
@@ -131,8 +131,8 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
     return getUnionStructType(type as ts.UnionType, node, generator).getPointerTo();
   }
 
-  if (isCppNumericType(checker.typeToString(type))) {
-    return getNumericType(type, generator)!;
+  if (isCppIntegralType(checker.typeToString(type))) {
+    return getIntegralType(type, generator)!;
   }
 
   if (Boolean(type.flags & ts.TypeFlags.Enum)) {

@@ -1,7 +1,8 @@
 import { DerivedFromVirtualBase, Mixin } from "./declarations/cpp";
 
 const m = new Mixin(1, 1, 11, 11);
-console.assert(m.getRect().getSquare() === 100, "Square test failed");
+const r = m.getRect();
+console.assert(r.getSquare() === 100, "Square test failed");
 
 const topLeft = m.getTopLeft(); 
 console.assert(topLeft.x() === 1, "Top left x test failed");

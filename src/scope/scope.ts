@@ -28,12 +28,56 @@ import { cloneDeep } from "lodash";
 import { getArrayType } from "@handlers";
 
 export class Environment {
-  varNames: string[];
-  allocated: llvm.Value;
+  private readonly pVariables: string[];
+  private pAllocated: llvm.Value;
+  private readonly pLLVMType: llvm.PointerType;
+  private readonly pGenerator: LLVMGenerator;
 
-  constructor(varNames: string[], allocated: llvm.Value) {
-    this.varNames = varNames;
-    this.allocated = allocated;
+  constructor(variables: string[], allocated: llvm.Value, llvmType: llvm.PointerType, generator: LLVMGenerator) {
+    if (!allocated.type.isPointerTy() || !allocated.type.elementType.isIntegerTy(8)) {
+      error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
+    }
+
+    if (!llvmType.elementType.isStructTy()) {
+      error(`Expected llvmType to be of llvm.StructType*, got '${llvmType.toString()}'`);
+    }
+
+    this.pVariables = variables;
+    this.pAllocated = allocated;
+    this.pLLVMType = llvmType;
+    this.pGenerator = generator;
+  }
+
+  get untyped() {
+    return this.pAllocated;
+  }
+
+  set untyped(allocated: llvm.Value) {
+    if (!allocated.type.isPointerTy() || !allocated.type.elementType.isIntegerTy(8)) {
+      error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
+    }
+
+    this.pAllocated = allocated;
+  }
+
+  get voidStar() {
+    return llvm.Type.getInt8PtrTy(this.pGenerator.context);
+  }
+
+  get typed() {
+    return this.pGenerator.builder.createBitCast(this.pAllocated, this.pLLVMType);
+  }
+
+  get type() {
+    return this.pLLVMType;
+  }
+
+  get variables() {
+    return this.pVariables;
+  }
+
+  getVariableIndex(variable: string) {
+    return this.pVariables.indexOf(variable);
   }
 }
 
@@ -159,7 +203,7 @@ export function createEnvironment(
   });
 
   if (outerEnv) {
-    const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.allocated;
+    const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.typed;
 
     if (data) {
       const envElementType = unwrapPointerType(data.type) as llvm.StructType;
@@ -180,7 +224,7 @@ export function createEnvironment(
         outerValues.push(extracted);
       }
 
-      outerEnv.varNames
+      outerEnv.variables
         .filter((name) => name !== InternalNames.Environment)
         .forEach((value, index) => {
           map.set(value, { type: types[index], allocated: outerValues[index] });
@@ -201,7 +245,12 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
 
-  return new Environment(names, environmentAlloca);
+  return new Environment(
+    names,
+    generator.xbuilder.asVoidStar(environmentAlloca),
+    environmentAlloca.type as llvm.PointerType,
+    generator
+  );
 }
 
 export function populateContext(generator: LLVMGenerator, scope: Scope, environmentVariables: string[]) {

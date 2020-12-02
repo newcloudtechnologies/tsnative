@@ -13,6 +13,7 @@ import { STDLIB, DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/co
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
 import { error, writeBitcodeToFile, writeExecutableToFile, writeIRToFile } from "@utils";
 import { TemplateInstantiator } from "@cpp";
+import { Preprocessor } from "@preprocessing";
 
 SegfaultHandler.registerHandler("ts-llvm-crash.log");
 
@@ -59,12 +60,13 @@ async function main() {
   options.traceResolution = true;
 
   const host = ts.createCompilerHost(options);
-  const program = ts.createProgram(files, options, host);
+  const program = new Preprocessor(files, options, host).program;
+
   const diagnostics = ts.getPreEmitDiagnostics(program);
 
   if (tsconfig.libs) {
     for (const it of tsconfig.libs) {
-      libs.push(it);
+      libs.push(path.resolve(path.dirname(argv.tsconfig), it));
     }
   }
 

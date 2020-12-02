@@ -35,9 +35,9 @@ export class IdentifierHandler extends AbstractExpressionHandler {
 
   private handleIdentifier(expression: ts.Identifier, env?: Environment): llvm.Value {
     if (env) {
-      const index = env.varNames.indexOf(expression.text);
+      const index = env.getVariableIndex(expression.text);
       if (index > -1) {
-        const agg = this.generator.builder.createLoad(env.allocated);
+        const agg = this.generator.builder.createLoad(env.typed);
         if ((agg.type as llvm.StructType).numElements === 0) {
           error("Identifier handler: Trying to extract a value from an empty struct");
         }

@@ -9,7 +9,7 @@
  *
  */
 
-import { adjustValue, isCppNumericType } from "@cpp";
+import { adjustValue, isCppIntegralType } from "@cpp";
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
 import {
   checkIfUnion,
@@ -60,7 +60,7 @@ export class VariableHandler extends AbstractNodeHandler {
     let type = this.generator.checker.getTypeAtLocation(declaration);
     type = tryResolveGenericTypeIfNecessary(type, this.generator);
     const typename = this.generator.checker.typeToString(type);
-    if (isCppNumericType(typename)) {
+    if (isCppIntegralType(typename)) {
       initializer = adjustValue(initializer, typename, this.generator);
     }
 

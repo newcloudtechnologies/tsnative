@@ -13,7 +13,7 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { ExternalSymbolsProvider, prepareExternalSymbols } from "@mangling";
-import { checkIfArray, checkIfString, error } from "@utils";
+import { checkIfArray, checkIfObject, checkIfString, error, flatten, getTypeNamespace } from "@utils";
 import { getArgumentArrayType } from "@handlers/utils";
 
 export class TemplateInstantiator {
@@ -57,8 +57,9 @@ export class TemplateInstantiator {
 
   private correctQualifiers(tsType: ts.Type, cppType: string) {
     if (checkIfArray(tsType)) {
+      // @todo: unify behavior
       cppType += " const&";
-    } else if (checkIfString(tsType, this.checker)) {
+    } else if (checkIfString(tsType, this.checker) || checkIfObject(tsType)) {
       cppType += "*";
     }
 
@@ -81,7 +82,12 @@ export class TemplateInstantiator {
 
     const argumentTypes = call.arguments.map((arg) => {
       const tsType = this.checker.getTypeAtLocation(arg);
-      return this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
+      const typeNamespace = getTypeNamespace(tsType);
+      const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+      return this.correctQualifiers(
+        tsType,
+        typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
+      );
     });
 
     const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
@@ -113,7 +119,10 @@ export class TemplateInstantiator {
           error(`All array's elements have to be of same type: error at '${node.getText()}'`);
         }
 
-        const cppType = this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
+        const typeNamespace = getTypeNamespace(tsType);
+        let cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        cppType = this.correctQualifiers(tsType, typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType);
+
         templateInstance = `template class Array<${cppType}>;`;
       } else {
         // const arr: number[] = [];
@@ -168,7 +177,9 @@ export class TemplateInstantiator {
     const argumentTypes =
       node.arguments?.map((a) => {
         const tsType = this.checker.getTypeAtLocation(a);
-        return this.correctQualifiers(tsType, ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker));
+        const typeNamespace = getTypeNamespace(tsType);
+        const cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        return this.correctQualifiers(tsType, typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType);
       }) || [];
 
     const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
@@ -237,6 +248,20 @@ export class TemplateInstantiator {
     }
   }
 
+  private getIncludes(directory: string | undefined): string[] {
+    if (!directory) {
+      return [];
+    }
+
+    const nestedDirents = fs.readdirSync(directory, { withFileTypes: true });
+    const includes = nestedDirents.map((value) => {
+      return value.isDirectory()
+        ? this.getIncludes(path.join(directory, value.name))
+        : [path.join(directory, value.name)];
+    });
+    return flatten(includes).filter((filename) => filename.endsWith(".h"));
+  }
+
   private async handleInstantiated(source: string) {
     if (this.generatedContent.length > 0) {
       this.generatedContent = this.generatedContent.filter((s, idx) => this.generatedContent.indexOf(s) === idx);
@@ -245,10 +270,9 @@ export class TemplateInstantiator {
         this.generatedContent.unshift(`#include <${stdInclude}>`);
       }
 
-      if (this.tsconfig.cppIncludes) {
-        for (const include of this.tsconfig.cppIncludes) {
-          this.generatedContent.unshift(`#include "../${include}"`);
-        }
+      const includes = flatten(this.tsconfig.cppDirs?.map((dir: string) => this.getIncludes(dir)));
+      for (const include of includes) {
+        this.generatedContent.unshift(`#include "../${include}"`);
       }
 
       fs.writeFileSync(source, this.generatedContent.join("\n"));

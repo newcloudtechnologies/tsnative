@@ -55,10 +55,11 @@ export function checkIfStaticProperty(propertyDeclaration: ts.PropertyDeclaratio
 }
 
 export function checkIfMethod(expression: ts.Expression, checker: ts.TypeChecker): boolean {
-  return (
+  return Boolean(
     ts.isPropertyAccessExpression(expression) &&
-    (checker.getTypeAtLocation(expression).symbol.flags & ts.SymbolFlags.Method) !== 0 &&
-    !checkIfStaticMethod(checker.getTypeAtLocation(expression).getSymbol()!.valueDeclaration)
+      (checker.getTypeAtLocation(expression).symbol?.flags & ts.SymbolFlags.Method) !== 0 &&
+      checker.getTypeAtLocation(expression).getSymbol() &&
+      !checkIfStaticMethod(checker.getTypeAtLocation(expression).getSymbol()!.valueDeclaration)
   );
 }
 
@@ -113,4 +114,13 @@ export function checkIfIntersection(type: ts.Type): boolean {
 
 export function checkIfProperty(symbol: ts.Symbol): boolean {
   return Boolean(symbol.flags & ts.SymbolFlags.Property);
+}
+
+export function isTSObjectType(type: ts.Type, checker: ts.TypeChecker) {
+  return (
+    (checkIfObject(type) || checkIfIntersection(type) || checkIfUnion(type)) &&
+    !checkIfArray(type) &&
+    !checkIfString(type, checker) &&
+    !type.symbol?.valueDeclaration?.getSourceFile().isDeclarationFile
+  );
 }

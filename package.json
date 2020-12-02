@@ -51,6 +51,7 @@
     "@generator": "build/generator",
     "@mangling": "build/mangling",
     "@scope": "build/scope",
-    "@utils": "build/utils"
+    "@utils": "build/utils",
+    "@preprocessing": "build/preprocessing"
   }
 }

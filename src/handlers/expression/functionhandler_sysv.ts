@@ -27,10 +27,11 @@ import {
   callerShouldAllocateSpace,
   checkIfObject,
 } from "@utils";
-import { getFunctionDeclarationScope } from "@handlers";
+import { castFPToIntegralType, getFunctionDeclarationScope, isConvertible, promoteIntegralToFP } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import * as llvm from "llvm-node";
 import { Environment } from "@scope";
+import { getIntegralType, isCppIntegralType, isSignedType } from "@cpp";
 
 export class SysVFunctionHandler {
   private readonly generator: LLVMGenerator;
@@ -119,11 +120,24 @@ export class SysVFunctionHandler {
     const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
     const llvmThisType = thisType ? parentScope.thisData!.llvmType : undefined;
 
-    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
+    const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration);
+    if (!signature) {
+      error(`No signature found for '${expression.getText()}'`);
+    }
+
+    const parameters = signature.getParameters();
+    const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
       const llvmType = getLLVMType(argumentType, expression, this.generator);
 
       if (checkIfObject(argumentType) || checkIfFunction(argumentType)) {
         return llvm.Type.getInt8PtrTy(this.generator.context);
+      }
+
+      if (parameters[index]) {
+        const tsParameterType = this.generator.checker.getTypeOfSymbolAtLocation(parameters[index], valueDeclaration);
+        if (isCppIntegralType(this.generator.checker.typeToString(tsParameterType))) {
+          return getIntegralType(tsParameterType, this.generator)!;
+        }
       }
 
       return correctCppPrimitiveType(llvmType);
@@ -136,10 +150,13 @@ export class SysVFunctionHandler {
         return this.generator.xbuilder.asVoidStar(arg);
       }
 
-      return this.generator.createLoadIfNecessary(arg);
+      return arg;
     });
 
-    args = this.adjustParameters(args, llvmArgumentTypes);
+    const parametersTypes = parameters.map((p) =>
+      this.generator.checker.getTypeOfSymbolAtLocation(p, valueDeclaration)
+    );
+    args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 
     if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
       error("Parameters adjusting failed");
@@ -224,11 +241,27 @@ export class SysVFunctionHandler {
     const parentScope = getFunctionDeclarationScope(classDeclaration, thisType, this.generator);
     const llvmThisType: llvm.PointerType = parentScope.thisData!.llvmType as llvm.PointerType;
 
-    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
+    const signature = this.generator.checker.getSignatureFromDeclaration(constructorDeclaration);
+    if (!signature) {
+      error(`No signature found for '${expression.getText()}'`);
+    }
+
+    const parameters = signature.getParameters();
+    const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
       const llvmType = getLLVMType(argumentType, expression, this.generator);
 
       if (checkIfObject(argumentType) || checkIfFunction(argumentType)) {
         return llvm.Type.getInt8PtrTy(this.generator.context);
+      }
+
+      if (parameters[index]) {
+        const tsParameterType = this.generator.checker.getTypeOfSymbolAtLocation(
+          parameters[index],
+          constructorDeclaration
+        );
+        if (isCppIntegralType(this.generator.checker.typeToString(tsParameterType))) {
+          return getIntegralType(tsParameterType, this.generator)!;
+        }
       }
 
       return correctCppPrimitiveType(llvmType);
@@ -242,10 +275,13 @@ export class SysVFunctionHandler {
           return this.generator.xbuilder.asVoidStar(arg);
         }
 
-        return this.generator.createLoadIfNecessary(arg);
+        return arg;
       }) || [];
 
-    args = this.adjustParameters(args, llvmArgumentTypes);
+    const parametersTypes = parameters.map((p) =>
+      this.generator.checker.getTypeOfSymbolAtLocation(p, constructorDeclaration)
+    );
+    args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 
     llvmArgumentTypes.unshift(llvm.Type.getInt8PtrTy(this.generator.context));
 
@@ -264,11 +300,26 @@ export class SysVFunctionHandler {
     return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
   }
 
-  private adjustParameters(parameters: llvm.Value[], types: llvm.Type[]) {
-    if (parameters.length !== types.length) {
+  private adjustParameters(parameters: llvm.Value[], tsTypes: ts.Type[], llvmTypes: llvm.Type[]) {
+    if (parameters.length !== llvmTypes.length) {
       error("Expected arrays of same length");
     }
 
-    return parameters.map((parameter, index) => adjustLLVMValueToType(parameter, types[index], this.generator));
+    return parameters.map((parameter, index) => {
+      const destinationType = llvmTypes[index];
+      const adjusted = adjustLLVMValueToType(parameter, destinationType, this.generator);
+
+      if (isConvertible(adjusted.type, destinationType)) {
+        const converter = destinationType.isIntegerTy() ? castFPToIntegralType : promoteIntegralToFP;
+        return converter(
+          adjusted,
+          destinationType,
+          isSignedType(this.generator.checker.typeToString(tsTypes[index])),
+          this.generator
+        );
+      }
+
+      return adjusted;
+    });
   }
 }

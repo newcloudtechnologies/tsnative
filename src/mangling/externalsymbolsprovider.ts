@@ -124,7 +124,9 @@ export class ExternalSymbolsProvider {
   private readonly baseTypeNames: string[] = [];
   private readonly classTemplateParametersPattern: string = "";
   private readonly methodName: string;
+  private readonly argumentsPattern: string;
   private readonly parametersPattern: string;
+  private readonly parameterTypes: ts.Type[] = [];
   private readonly functionTemplateParametersPattern: string;
   constructor(
     declaration: ts.Declaration,
@@ -144,8 +146,23 @@ export class ExternalSymbolsProvider {
         getTypeGenericArguments(thisType).map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
       );
     }
+
+    const functionLikeDeclaration = declaration as ts.FunctionLikeDeclaration;
+    this.parameterTypes = functionLikeDeclaration.parameters.map(generator.checker.getTypeAtLocation) || [];
+
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
+
+    // defined in declaration
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
+      this.parameterTypes.map((type) => {
+        const typeNamespace = getTypeNamespace(type);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, checker);
+        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+      })
+    );
+
+    // passed in fact
+    this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
       argumentTypes.map((type) => {
         const typeNamespace = getTypeNamespace(type);
         const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, checker);
@@ -303,6 +320,7 @@ export class ExternalSymbolsProvider {
     }
 
     candidates = candidates.filter((candidate) => this.isMatching(candidate.signature));
+
     if (candidates.length > 1) {
       if (candidates.some((c) => c.signature.includes("*"))) {
         // @todo Very, VERY fragile thing
@@ -383,7 +401,13 @@ export class ExternalSymbolsProvider {
   private isMatching(cppSignature: string): boolean {
     const parameters = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
 
+    // check with parameters pattern first
     let matching: boolean = parameters === this.parametersPattern;
+
+    // check with arguments pattern if is not matched
+    if (!matching) {
+      matching = parameters === this.argumentsPattern;
+    }
 
     if (matching) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);

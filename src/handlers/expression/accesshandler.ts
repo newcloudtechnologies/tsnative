@@ -110,19 +110,11 @@ export class AccessHandler extends AbstractExpressionHandler {
     if (ts.isIdentifier(left)) {
       if (env) {
         const index = isStaticProperty(left, propertyName)
-          ? env.varNames.indexOf(left.getText() + "." + propertyName) // Clazz.i
-          : env.varNames.indexOf(propertyName);
+          ? env.getVariableIndex(left.getText() + "." + propertyName) // Clazz.i
+          : env.getVariableIndex(propertyName);
 
         if (index > -1) {
-          if (!unwrapPointerType(env.allocated.type).isStructTy()) {
-            error(
-              `Expected environment to be of StructType, got '${unwrapPointerType(env.allocated.type).toString()}'`
-            );
-          }
-          if ((unwrapPointerType(env.allocated.type) as llvm.StructType).numElements === 0) {
-            error("Identifier handler: Trying to extract a value from an empty struct");
-          }
-          return this.generator.xbuilder.createSafeExtractValue(getLLVMValue(env.allocated, this.generator), [index]);
+          return this.generator.xbuilder.createSafeExtractValue(getLLVMValue(env.typed, this.generator), [index]);
         }
       }
 
