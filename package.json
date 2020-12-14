@@ -7,7 +7,8 @@
     "test": "tsc && ts-node test/test-runner.ts",
     "lint": "tslint --project tsconfig.json",
     "format": "tslint --project tsconfig.json --fix",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "postinstall": "tsc"
   },
   "husky": {
     "hooks": {
@@ -23,6 +24,7 @@
   },
   "dependencies": {
     "@types/lodash": "^4.14.161",
+    "@types/node": "^13.13.1",
     "commander": "^5.0.0",
     "llvm-node": "MichaReiser/llvm-node#master",
     "lodash": "^4.17.20",
@@ -34,7 +36,6 @@
   },
   "devDependencies": {
     "@types/diff": "^3.5.1",
-    "@types/node": "^13.13.1",
     "diff": "^4.0.2",
     "husky": "^4.2.5",
     "prettier": "^2.0.5",
