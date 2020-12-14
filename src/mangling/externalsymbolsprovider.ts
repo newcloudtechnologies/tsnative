@@ -45,6 +45,7 @@ export async function prepareExternalSymbols(cppDirs: string[], objectFiles?: st
     case "linux":
     case "openbsd":
     case "sunos":
+    case "win32":
       const nm = await lookpath("nm");
       if (!nm) {
         error(`nm utility not found`);
@@ -52,7 +53,6 @@ export async function prepareExternalSymbols(cppDirs: string[], objectFiles?: st
 
       const extractor: NmSymbolExtractor = new NmSymbolExtractor();
       return extractor.extractSymbols(cppDirs || [], objectFiles);
-    case "win32":
     default:
       error(`Unsupported platform ${process.platform}`);
   }
@@ -105,7 +105,7 @@ export class ExternalSymbolsProvider {
       case "int32_t":
         return "int";
       case "int64_t":
-        return "long";
+        return "long long"; // nix: return "long"; @todo: make me os-specific
       case "uint8_t":
         return "unsigned char";
       case "uint16_t":
@@ -113,7 +113,7 @@ export class ExternalSymbolsProvider {
       case "uint32_t":
         return "unsigned int";
       case "uint64_t":
-        return "unsigned long";
+        return "unsigned long long"; // nix: return "unsigned long"; @todo: make me os-specific
       default:
         return typename;
     }

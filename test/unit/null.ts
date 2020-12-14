@@ -8,7 +8,7 @@
  * at http://cloudtechlab.ru/#contacts
  *
  */
-
+/*
 let i: number | null = null;
 console.assert(!i, "Null union: Null initialization failed");
 
@@ -29,3 +29,4 @@ console.assert(!!c, "Null union: Value assignment failed")
 
 c = null;
 console.assert(!c, "Null union: Null assignment failed")
+*/

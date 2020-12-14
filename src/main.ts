@@ -54,10 +54,10 @@ async function main() {
 
   const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
-  const libs: string[] = [STDLIB];
+  const libs: string[] = [];
   options.lib = [DEFINITIONS, UTILITY_DEFINITIONS];
   options.types = [];
-  options.traceResolution = true;
+  options.traceResolution = false;
 
   const host = ts.createCompilerHost(options);
   const program = new Preprocessor(files, options, host).program;
@@ -78,6 +78,8 @@ async function main() {
     libs.push(...list);
   }
 
+  libs.push(STDLIB);
+
   if (diagnostics.length > 0) {
     process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
     process.exit(1);
@@ -91,7 +93,7 @@ async function main() {
 
   const { mangledSymbols, demangledSymbols, dependencies } = await prepareExternalSymbols(tsconfig.cppDirs, libs);
 
-  const templateInstantiator = new TemplateInstantiator(program, tsconfig);
+  const templateInstantiator = new TemplateInstantiator(program, tsconfig, demangledSymbols);
   const instantiationResult = await templateInstantiator.instantiate();
   if (instantiationResult) {
     mangledSymbols.push(...instantiationResult.mangledSymbols);

@@ -46,7 +46,7 @@ export function castFPToIntegralType(
   signed: boolean,
   generator: LLVMGenerator
 ): llvm.Value {
-  const extended = generator.builder.createFPToSI(value, llvm.Type.getInt128Ty(generator.context));
+  const extended = generator.builder.createFPToSI(value, llvm.Type.getInt64Ty(generator.context));
   return generator.builder.createIntCast(extended, target, signed);
 }
 
@@ -56,7 +56,7 @@ export function promoteIntegralToFP(
   signed: boolean,
   generator: LLVMGenerator
 ): llvm.Value {
-  const extended = generator.builder.createIntCast(value, llvm.Type.getInt128Ty(generator.context), signed);
+  const extended = generator.builder.createIntCast(value, llvm.Type.getInt64Ty(generator.context), signed);
   return generator.builder.createSIToFP(extended, target);
 }
 

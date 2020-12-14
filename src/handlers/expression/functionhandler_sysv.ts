@@ -199,13 +199,14 @@ export class SysVFunctionHandler {
     }
 
     if (returnsValue) {
-      if (!unwrapPointerType(llvmArgumentTypes[0]).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
-        if (callerShouldAllocateSpace(llvmArgumentTypes[0], returnType, this.generator)) {
-          const shadowReturnType = unwrapPointerType(llvmArgumentTypes[0]);
+      if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
+        if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
+          const shadowReturnType = unwrapPointerType(llvmReturnType);
           const sret = this.generator.gc.allocate(shadowReturnType);
           args.unshift(sret);
 
-          return this.generator.xbuilder.createSafeCall(fn, args);
+          this.generator.xbuilder.createSafeCall(fn, args);
+          return sret;
         }
       }
     }

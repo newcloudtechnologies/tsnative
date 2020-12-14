@@ -130,10 +130,8 @@ export class VariableHandler extends AbstractNodeHandler {
         const declarationType = this.generator.checker.getTypeAtLocation(declaration);
         declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
       }
+      initializer = llvm.Constant.getNullValue(unwrapPointerType(declarationLLVMType));
 
-      initializer = llvm.Constant.getNullValue(
-        declarationLLVMType.isPointerTy() ? declarationLLVMType.elementType : declarationLLVMType
-      );
       if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
         initializer = this.generator.xbuilder.createSafeInsert(
           initializer,
@@ -141,7 +139,7 @@ export class VariableHandler extends AbstractNodeHandler {
           [0]
         );
       }
-      const alloca = this.generator.gc.allocate(declarationLLVMType);
+      const alloca = this.generator.gc.allocate(unwrapPointerType(declarationLLVMType));
       this.generator.xbuilder.createSafeStore(initializer, alloca);
       parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
       initializer = undefined;

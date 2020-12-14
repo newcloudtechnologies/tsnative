@@ -30,17 +30,19 @@ export class TemplateInstantiator {
 
   private readonly mangled: string[] = [];
   private readonly demangled: string[] = [];
+  private readonly externalDemangled: string[] = [];
   private readonly dependencies: string[] = [];
 
   static CPP_SOURCE_DIR: string = path.join(process.cwd(), process.pid.toString());
   static CPP_SOURCE: string = path.join(TemplateInstantiator.CPP_SOURCE_DIR, "instantiated_templates.cpp");
   static CPP_CLASSES_SOURCE: string = path.join(TemplateInstantiator.CPP_SOURCE_DIR, "instantiated_classes.cpp");
 
-  constructor(program: ts.Program, tsconfig: any) {
+  constructor(program: ts.Program, tsconfig: any, externalDemangled: string[]) {
     // filter declarations
     this.sources = program.getSourceFiles().filter((source) => !source.fileName.endsWith("d.ts"));
     this.checker = program.getTypeChecker();
     this.tsconfig = tsconfig;
+    this.externalDemangled = externalDemangled;
   }
 
   static cleanup() {
@@ -90,8 +92,18 @@ export class TemplateInstantiator {
       );
     });
 
-    const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
-    this.generatedContent.push(templateSignature);
+    const maybeExists = this.externalDemangled.filter((s) => s.includes("console::log"));
+    const exists = maybeExists.some((signature) => {
+      return (
+        ExternalSymbolsProvider.extractParameterTypes(signature) ===
+        ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
+      );
+    });
+
+    if (!exists) {
+      const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
+      this.generatedContent.push(templateSignature);
+    }
   }
 
   private handleArrayFromVariableDeclaration(node: ts.VariableDeclaration) {

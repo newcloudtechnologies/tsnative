@@ -400,7 +400,9 @@ export function getStructType(type: ts.Type, node: ts.Node, generator: LLVMGener
   const elements = getObjectPropsLLVMTypesNames(type, node, generator);
 
   let structType: llvm.StructType | null;
-  const declaration = type.getSymbol()?.declarations[0];
+  const declaration =
+    type.getSymbol()?.declarations.find(ts.isClassDeclaration) ||
+    type.getSymbol()?.declarations.find(ts.isInterfaceDeclaration);
 
   if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
     const name = ts.isClassDeclaration(declaration)

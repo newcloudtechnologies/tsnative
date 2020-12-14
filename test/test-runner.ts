@@ -22,7 +22,7 @@ async function runUnitTest(file: string) {
 
   const executable = path.join(TEST_OUT_DIR, replaceOrAddExtension(last(file.split(path.sep))!, ""));
   const compileCommand = ["ts-node", compilerPath, file, "--output", executable];
-  await execFile(compileCommand[0], compileCommand.slice(1));
+  await execFile(compileCommand[0], compileCommand.slice(1), { "shell": true });
   try {
     await execFile(executable);
   } catch (error) {
@@ -50,7 +50,11 @@ async function main() {
 
     const unitTests = getTests(path.join(__dirname, "unit"));
 
-    await Promise.all(unitTests.map(runUnitTest));
+    for (const test of unitTests) {
+      console.log(`Starting '${test}'...`);
+      await runUnitTest(test);
+      console.log(`'${test}' passed.`);
+    }
 
     console.log(`All ${unitTests.length} tests passed.`);
   } catch (error) {

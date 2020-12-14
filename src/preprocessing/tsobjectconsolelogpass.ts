@@ -32,7 +32,19 @@ export class TSObjectConsoleLogPass {
     const generatedSources = program.getSourceFiles().map((file) => {
       let filePath = file.fileName;
       if (!path.isAbsolute(filePath)) {
+        // @todo: revise this "implementation"
+        if (filePath.startsWith("C:/")) {
+          filePath = filePath.split("C:/")[1];
+        } else if (filePath.startsWith("C:\\")) {
+          filePath = filePath.split("C:\\")[1];
+        }
         filePath = path.resolve(process.cwd(), filePath);
+      }
+      // @todo: revise this "implementation"
+      if (filePath.startsWith("C:/")) {
+        filePath = filePath.split("C:/")[1];
+      } else if (filePath.startsWith("C:\\")) {
+        filePath = filePath.split("C:\\")[1];
       }
 
       const outFile = path.join(outputDir, filePath);

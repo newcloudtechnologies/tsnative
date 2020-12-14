@@ -31,7 +31,16 @@ export class NmSymbolExtractor {
     try {
       dependencies.forEach((file) => {
         const outFile = path.join(outPath, getRandomString() + path.basename(replaceOrAddExtension(file, ".o")));
-        execFileSync("g++", [optimizationLevel, file, "-c", "-o", outFile, "-std=c++11", "-Werror"]);
+        execFileSync("g++", [
+          "-I./node_modules",
+          optimizationLevel,
+          file,
+          "-c",
+          "-o",
+          outFile,
+          "-std=c++11",
+          "-Werror",
+        ]);
         dependencyObjects.push(outFile);
       });
     } catch (e) {

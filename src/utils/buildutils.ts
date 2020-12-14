@@ -60,7 +60,15 @@ export function writeExecutableToFile(
       dependencies.unshift(objectFile);
     }
 
-    const compilerParameters = [optimizationLevel, ...dependencies, "-o", executableFile, "-std=c++11", "-Werror"];
+    const compilerParameters = [
+      "-I./node_modules",
+      optimizationLevel,
+      ...dependencies,
+      "-o",
+      executableFile,
+      "-std=c++11",
+      "-Werror",
+    ];
     execFileSync(argv.compiler, compilerParameters);
   } finally {
     if (bitcodeFile && fs.existsSync(bitcodeFile)) {

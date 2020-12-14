@@ -4,7 +4,7 @@ import { Point, Printable } from "./declarations/cpp";
 
 const point = new Point(1, 22);
 const s = "STRINGEST STRING";
-const i: int64_t = 324;
+const i: int32_t = 324;
 
 const printable = new Printable(point, s, i);
 console.log(printable);
