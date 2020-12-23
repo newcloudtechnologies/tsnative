@@ -6,11 +6,10 @@ pipeline {
         stage('Build and test') {
             agent {
                 docker {
-                    image "docreg.devos.club/ubuntu-typescript:1.2"
+                    image "docreg.devos.club/typescript-environment:1.0"
                     args "--user root"
                     registryUrl 'https://docreg.devos.club'
                     registryCredentialsId 'docker_kos'
-                    label 'linux64'
                 }
             }
             steps {
