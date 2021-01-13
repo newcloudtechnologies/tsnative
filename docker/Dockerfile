@@ -23,12 +23,12 @@ RUN apt-get update && apt-get install -y \
 
 RUN mkdir llvm && cd /llvm && wget https://apt.llvm.org/llvm.sh
 RUN chmod +x /llvm/llvm.sh
-RUN /llvm/llvm.sh 9
+RUN /llvm/llvm.sh 11
 RUN rm -rf /llvm
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 60
-RUN update-alternatives --install /usr/bin/llc llc /usr/lib/llvm-9/bin/llc 60
+RUN update-alternatives --install /usr/bin/llc llc /usr/lib/llvm-11/bin/llc 60
 
 RUN npm i -g n
 
