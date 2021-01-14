@@ -50,6 +50,7 @@ import {
   isSimilarStructs,
   initializeUnion,
   initializeIntersection,
+  isUnionWithUndefinedLLVMType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -1259,7 +1260,43 @@ export class FunctionHandler extends AbstractExpressionHandler {
                 if (llvmReturnType.isVoidTy()) {
                   this.generator.builder.createRetVoid();
                 } else {
-                  error("No return statement in function returning non-void");
+                  const currentFn = this.generator.currentFunction;
+                  const currentFnReturnType = (currentFn.type.elementType as llvm.FunctionType).returnType;
+
+                  // Check if there is switch's default clause terminated by 'return'
+                  const currentFunctionBlocks = currentFn.getBasicBlocks();
+                  let hasTerminatedSwitchDefaultClause = false;
+                  for (const block of currentFunctionBlocks) {
+                    if (block.name.startsWith("default")) {
+                      hasTerminatedSwitchDefaultClause = Boolean(block.getTerminator());
+                    }
+                  }
+
+                  if (!this.generator.isCurrentBlockTerminated) {
+                    const defaultReturn = this.generator.gc.allocate(unwrapPointerType(currentFnReturnType));
+
+                    /*
+                    Every function have implicit 'return undefined' if 'return' is not specified.
+                    This makes return type of function to be 'undefined | T' automagically in such a case:
+
+                    function f() {
+                      if (smth) {
+                        return smth;
+                      }
+                    }
+                    */
+                    if (isUnionWithUndefinedLLVMType(currentFnReturnType)) {
+                      const marker = this.generator.xbuilder.createSafeInBoundsGEP(defaultReturn, [0, 0]);
+                      this.generator.xbuilder.createSafeStore(
+                        llvm.ConstantInt.get(this.generator.context, -1, 8),
+                        marker
+                      );
+                    } else if (!hasTerminatedSwitchDefaultClause) {
+                      error("No return statement in function returning non-void");
+                    }
+
+                    this.generator.xbuilder.createSafeRet(defaultReturn);
+                  }
                 }
               }
             },
