@@ -161,13 +161,11 @@ export function adjustValue(value: llvm.Value, typename: string, generator: LLVM
     const loaded = generator.createLoadIfNecessary(value);
     if (!loaded.type.isIntegerTy()) {
       const adjustParameters = integralAdjust[typename];
-      // use the widest integral type to control overflow during initialization
-      const singed = generator.builder.createFPToSI(loaded, llvm.Type.getInt64Ty(generator.context));
-      value = generator.builder.createIntCast(
-        singed,
-        adjustParameters.typeGetter(generator.context),
-        adjustParameters.isSigned
-      );
+      const typeGetter = adjustParameters.typeGetter(generator.context);
+
+      value = adjustParameters.isSigned
+        ? generator.builder.createFPToSI(loaded, typeGetter)
+        : generator.builder.createFPToUI(loaded, typeGetter);
 
       // @todo: how to avoid extra allocation?
       const allocated = generator.gc.allocate(value.type);

@@ -32,6 +32,8 @@ import {
   checkIfHasVTable,
   checkIfUnaligned,
   checkIfNonPod,
+  checkIfHasConstructor,
+  checkIfHasInheritance,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -91,12 +93,15 @@ export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
 
 export function callerShouldAllocateSpace(llvmType: llvm.Type, tsType: ts.Type, generator: LLVMGenerator) {
   const EIGHT_EIGHTBYTES = 64;
+  const typeValueDeclaration = tsType.symbol?.valueDeclaration as ts.ClassDeclaration;
   return (
     getTypeSize(unwrapPointerType(llvmType), generator.module) > EIGHT_EIGHTBYTES ||
-    (tsType.symbol &&
-      (checkIfUnaligned(tsType.symbol.valueDeclaration as ts.ClassDeclaration) ||
-        checkIfHasVTable(tsType.symbol.valueDeclaration as ts.ClassDeclaration) ||
-        checkIfNonPod(tsType.symbol.valueDeclaration as ts.ClassDeclaration)))
+    (typeValueDeclaration &&
+      (checkIfUnaligned(typeValueDeclaration) ||
+        checkIfHasVTable(typeValueDeclaration) ||
+        checkIfNonPod(typeValueDeclaration) ||
+        (process.platform === "win32" &&
+          (checkIfHasConstructor(typeValueDeclaration) || checkIfHasInheritance(typeValueDeclaration)))))
   );
 }
 

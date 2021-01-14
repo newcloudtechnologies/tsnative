@@ -26,7 +26,7 @@
     "@types/lodash": "^4.14.161",
     "@types/node": "^13.13.1",
     "commander": "^5.0.0",
-    "llvm-node": "MichaReiser/llvm-node#master",
+    "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#mgt_patches",
     "lodash": "^4.17.20",
     "lookpath": "^1.0.4",
     "module-alias": "^2.2.2",

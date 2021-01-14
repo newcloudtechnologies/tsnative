@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 declare module "cpp" {
-    @NonPod
+    @HasConstructor
     export class Point {
         constructor(x: number, y: number);
 

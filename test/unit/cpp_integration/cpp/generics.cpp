@@ -5,12 +5,11 @@
 
 template <typename T, typename R> R sum(T op1, T op2) { return op1 + op2; }
 
+template double sum(double, double);
+
 template <> int32_t sum(const string &op1, const string &op2) {
   return op1.length() + op2.length();
 }
-
-template double sum(double, double);
-template int32_t sum(const string &, const string &);
 
 namespace NS {
 namespace innerNS {

@@ -43,6 +43,20 @@ export function checkIfNonPod(declaration: ts.ClassDeclaration) {
   return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === nonPodDecorator));
 }
 
+const hasConstructorDecorator = "HasConstructor";
+export function checkIfHasConstructor(declaration: ts.ClassDeclaration) {
+  return Boolean(
+    declaration.decorators?.some((decorator) => decorator.expression.getText() === hasConstructorDecorator)
+  );
+}
+
+const hasInheritanceDecorator = "HasInheritance";
+export function checkIfHasInheritance(declaration: ts.ClassDeclaration) {
+  return Boolean(
+    declaration.decorators?.some((decorator) => decorator.expression.getText() === hasInheritanceDecorator)
+  );
+}
+
 export function getExpressionTypename(expression: ts.Expression, checker: ts.TypeChecker): string {
   return checker.typeToString(checker.getTypeAtLocation(expression));
 }

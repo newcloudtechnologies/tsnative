@@ -14,7 +14,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { isUnionWithNullLLVMType } from "@utils";
+import { error, isUnionWithNullLLVMType, unwrapPointerType } from "@utils";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -51,26 +51,30 @@ export class AssignmentHandler extends AbstractExpressionHandler {
 
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
+          const lhs = this.generator.handleExpression(left, env);
+          let rhs;
+
           if (isSetAccessor(left)) {
-            const lhs = this.generator.handleExpression(left, env);
             return lhs;
-          } else {
-            const lhs = this.generator.handleExpression(left, env);
-            let rhs;
-            if (right.kind === ts.SyntaxKind.NullKeyword) {
-              rhs = llvm.Constant.getNullValue(lhs.type);
-              if (isUnionWithNullLLVMType(lhs.type)) {
-                rhs = this.generator.builder.createInsertValue(
-                  rhs,
-                  llvm.ConstantInt.get(this.generator.context, -1, 8),
-                  [0]
-                );
-              }
-            } else {
-              rhs = this.generator.handleExpression(right, env);
-            }
-            return makeAssignment(lhs, rhs, this.generator);
           }
+
+          if (right.kind === ts.SyntaxKind.NullKeyword) {
+            if (!isUnionWithNullLLVMType(lhs.type)) {
+              error(
+                `Expected left hand side operand to be union with null type, got '${unwrapPointerType(
+                  lhs.type
+                ).toString()}'`
+              );
+            }
+
+            rhs = this.generator.gc.allocate(unwrapPointerType(lhs.type));
+            const marker = this.generator.xbuilder.createSafeInBoundsGEP(rhs, [0, 0]);
+            this.generator.xbuilder.createSafeStore(llvm.ConstantInt.get(this.generator.context, -1, 8), marker);
+          } else {
+            rhs = this.generator.handleExpression(right, env);
+          }
+
+          return makeAssignment(lhs, rhs, this.generator);
         default:
           break;
       }

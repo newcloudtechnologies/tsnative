@@ -2,8 +2,7 @@
 
 namespace cpp {
 
-class Point
-{
+class Point {
 public:
   Point(double x, double y);
 
@@ -20,4 +19,4 @@ private:
   double _y;
 };
 
-}
+} // namespace cpp

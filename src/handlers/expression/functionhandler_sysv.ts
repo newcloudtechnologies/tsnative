@@ -107,18 +107,9 @@ export class SysVFunctionHandler {
     const argumentTypes = getArgumentTypes(expression, this.generator);
     const isMethod = checkIfMethod(expression.expression, this.generator.checker);
 
-    let thisType: ts.Type | undefined;
-    if (isMethod) {
-      const methodReference = expression.expression as ts.PropertyAccessExpression;
-      thisType = this.generator.checker.getTypeAtLocation(methodReference.expression);
-    }
-
     const symbol = this.generator.checker.getTypeAtLocation(expression.expression).symbol;
     const valueDeclaration = getAliasedSymbolIfNecessary(symbol, this.generator.checker)
       .valueDeclaration as ts.FunctionLikeDeclaration;
-
-    const parentScope = getFunctionDeclarationScope(valueDeclaration, thisType, this.generator);
-    const llvmThisType = thisType ? parentScope.thisData!.llvmType : undefined;
 
     const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration);
     if (!signature) {
@@ -162,7 +153,7 @@ export class SysVFunctionHandler {
       error("Parameters adjusting failed");
     }
 
-    if (llvmThisType) {
+    if (isMethod) {
       llvmArgumentTypes.unshift(llvm.Type.getInt8PtrTy(this.generator.context));
     }
 

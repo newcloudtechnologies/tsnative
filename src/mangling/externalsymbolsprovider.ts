@@ -105,7 +105,7 @@ export class ExternalSymbolsProvider {
       case "int32_t":
         return "int";
       case "int64_t":
-        return "long long"; // nix: return "long"; @todo: make me os-specific
+        return getInt64Type();
       case "uint8_t":
         return "unsigned char";
       case "uint16_t":
@@ -113,7 +113,7 @@ export class ExternalSymbolsProvider {
       case "uint32_t":
         return "unsigned int";
       case "uint64_t":
-        return "unsigned long long"; // nix: return "unsigned long"; @todo: make me os-specific
+        return getUInt64Type();
       default:
         return typename;
     }
@@ -430,5 +430,23 @@ export class ExternalSymbolsProvider {
       }
     }
     return matching;
+  }
+}
+
+function getInt64Type() {
+  switch (process.platform) {
+    case "win32":
+      return "long long";
+    default:
+      return "long";
+  }
+}
+
+function getUInt64Type() {
+  switch (process.platform) {
+    case "win32":
+      return "unsigned long long";
+    default:
+      return "unsigned long";
   }
 }

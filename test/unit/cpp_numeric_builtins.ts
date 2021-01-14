@@ -11,8 +11,8 @@
 
 // int8_t tests
 {
-  const INT8_MIN = -128;
-  const INT8_MAX = 127;
+  const INT8_MIN: int8_t = -128;
+  const INT8_MAX: int8_t = 127;
 
   let i: int8_t = -1;
   const ii: int8_t = 1;
@@ -88,8 +88,8 @@
 
 // uint8_t tests
 {
-  const UINT8_MIN = 0;
-  const UINT8_MAX = 255;
+  const UINT8_MIN: uint8_t = 0;
+  const UINT8_MAX: uint8_t = 255;
 
   let i: uint8_t = -1;
   const ii: uint8_t = 1;
@@ -135,8 +135,8 @@
 
 // int16_t tests
 {
-  const INT16_MIN = -32768;
-  const INT16_MAX = 32767;
+  const INT16_MIN: int16_t = -32768;
+  const INT16_MAX: int16_t = 32767;
 
   let i: int16_t = -1;
   const ii: int16_t = 1;
@@ -177,8 +177,8 @@
 
 // uint16_t tests
 {
-  const UINT16_MIN = 0;
-  const UINT16_MAX = 65535;
+  const UINT16_MIN: uint16_t = 0;
+  const UINT16_MAX: uint16_t = 65535;
 
   let i: uint16_t = -1;
   const ii: uint16_t = 1;
@@ -224,8 +224,8 @@
 
 // int32_t tests
 {
-  const INT32_MIN = -2147483648;
-  const INT32_MAX = 2147483647;
+  const INT32_MIN: int32_t = -2147483648;
+  const INT32_MAX: int32_t = 2147483647;
 
   let i: int32_t = -1;
   const ii: int32_t = 1;
@@ -266,9 +266,8 @@
 
 // uint32_t tests
 {
-  const UINT32_MIN = 0;
-  const UINT32_MAX = 4294967295;
-
+  const UINT32_MIN: uint32_t = 0;
+  const UINT32_MAX: uint32_t = 4294967295;
   let i: uint32_t = -1;
   const ii: uint32_t = 1;
 

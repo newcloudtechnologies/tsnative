@@ -1,4 +1,3 @@
-/*
 import { Point } from "./declarations/cpp";
 
 const p1 = new Point(1, 1);
@@ -18,4 +17,3 @@ p2.setY(p2.y() - 1);
 console.assert(p2.x() !== p2.y(), "Point x/y not equals test failed");
 
 console.assert(p1 !== p2, "C++ objects comparison test failed");
-*/

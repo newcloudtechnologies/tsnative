@@ -10,14 +10,14 @@ namespace cpp {
 
 class Printable {
 public:
-  Printable(Point *point, string *s, int32_t i);
+  Printable(Point *point, string *s, int64_t i);
 
   friend std::ostream &operator<<(std::ostream &os, Printable *s);
 
 private:
   Point point_;
   string string_;
-  int32_t i_;
+  int64_t i_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, Printable* p)
