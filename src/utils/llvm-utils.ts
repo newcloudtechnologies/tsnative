@@ -344,6 +344,29 @@ export function isTSClosure(value: llvm.Value) {
   return isTSClosureType(value.type);
 }
 
+export function isOptionalTSClosure(value: llvm.Value, generator: LLVMGenerator) {
+  const isOptionalUnion = isUnionWithNullLLVMValue(value) || isUnionWithUndefinedLLVMValue(value);
+  if (!isOptionalUnion) {
+    return false;
+  }
+
+  let structType: llvm.StructType;
+  if (value.type.isPointerTy()) {
+    structType = value.type.elementType as llvm.StructType;
+  } else if (value.type.isStructTy()) {
+    structType = value.type;
+  } else {
+    error("Unreachable");
+  }
+
+  // Optional functions expected to be unions of exactly two elements: marker and one closure pointer
+  const isPair = structType.numElements === 2;
+  const secondPairPtr = value.type.isPointerTy()
+    ? generator.xbuilder.createSafeInBoundsGEP(value, [0, 1])
+    : generator.xbuilder.createSafeExtractValue(value, [1]);
+  return isPair && isTSClosureType(secondPairPtr.type);
+}
+
 export function isTSClosureType(type: llvm.Type) {
   const nakedType = unwrapPointerType(type);
   return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("TSClosure__class"));
@@ -642,7 +665,11 @@ export function initializeUnion(
   const allocated = generator.gc.allocate(unionStructType);
   generator.xbuilder.createSafeStore(unionValue, allocated);
 
-  if (!checkIfLLVMString(initializer.type) && unwrapPointerType(initializer.type).isStructTy()) {
+  if (
+    !checkIfLLVMString(initializer.type) &&
+    !isOptionalTSClosure(unionValue, generator) &&
+    unwrapPointerType(initializer.type).isStructTy()
+  ) {
     const propNames = [];
 
     // @todo: can initializer be an intersection?

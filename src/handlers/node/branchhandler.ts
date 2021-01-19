@@ -9,18 +9,26 @@
  *
  */
 
-import { BasicBlock } from "llvm-node";
+import { BasicBlock, ConstantInt } from "llvm-node";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
+import { isUnionWithNullLLVMValue, isUnionWithUndefinedLLVMValue } from "@utils";
+import { makeBoolean } from "@handlers/utils";
 
 export class BranchHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isIfStatement(node)) {
       const statement = node as ts.IfStatement;
-      const condition = this.generator.createLoadIfNecessary(
-        this.generator.handleExpression(statement.expression, env)
-      );
+      let condition = this.generator.createLoadIfNecessary(this.generator.handleExpression(statement.expression, env));
+
+      if (isUnionWithUndefinedLLVMValue(condition) || isUnionWithNullLLVMValue(condition)) {
+        condition = makeBoolean(condition, statement.expression, this.generator);
+      } else if (condition.type.isPointerTy()) {
+        // All the nullable and optional types are represented as unions, so there is a guarantee for pointer to have actual value
+        condition = ConstantInt.getTrue(this.generator.context);
+      }
+
       const thenBlock = BasicBlock.create(this.generator.context, "then", this.generator.currentFunction);
       const elseBlock = BasicBlock.create(this.generator.context, "else", this.generator.currentFunction);
       const endBlock = BasicBlock.create(this.generator.context, "endif", this.generator.currentFunction);

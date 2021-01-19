@@ -21,6 +21,7 @@ import {
   correctCppPrimitiveType,
   checkIfFunction,
   checkIfObject,
+  isTSClosure,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -106,6 +107,10 @@ export function makeBoolean(value: llvm.Value, expression: ts.Expression, genera
       return generator.builder.createICmpNE(marker, llvm.ConstantInt.get(generator.context, -1, 8));
     }
 
+    return llvm.ConstantInt.getTrue(generator.context);
+  }
+
+  if (isTSClosure(value)) {
     return llvm.ConstantInt.getTrue(generator.context);
   }
 
@@ -372,7 +377,9 @@ export function getEnvironmentVariablesFromBody(
 ) {
   const vars = getFunctionEnvironmentVariables(body, signature, generator);
   const varsStatic = getStaticFunctionEnvironmentVariables(body, generator);
-  return vars.concat(varsStatic);
+  // Do not take 'undefined' since it is injected for every source file and available globally
+  // as variable of 'i8' type that breaks further logic (all the variables expected to be pointers). @todo: turn 'undefined' into pointer?
+  return vars.concat(varsStatic).filter((variable) => variable !== "undefined");
 }
 
 export function getFunctionEnvironmentVariables(

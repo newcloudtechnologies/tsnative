@@ -51,6 +51,7 @@ import {
   initializeUnion,
   initializeIntersection,
   isUnionWithUndefinedLLVMType,
+  isOptionalTSClosure,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -297,6 +298,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (unwrapPointerType(ptr.type).isFunctionTy()) {
       return this.generator.xbuilder.createSafeCall(ptr, args);
+    }
+
+    if (isOptionalTSClosure(ptr, this.generator)) {
+      const closurePtrPtr = this.generator.xbuilder.createSafeInBoundsGEP(ptr, [0, 1]);
+      const closurePtr = this.generator.builder.createLoad(closurePtrPtr);
+      return this.handleTSClosureCall(expression, signature, args, valueDeclaration, closurePtr, outerEnv);
     }
 
     if (isTSClosure(ptr)) {

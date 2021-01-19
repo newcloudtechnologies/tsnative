@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2021
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+const f = function () {}
+
+if (!f) {
+    console.assert(false, "Function negation failed");
+}
+
+if (!!f) {
+    console.assert(true, "Function double negation failed");
+}
+
+type VoidFunction = () => void;
+
+let callCounter = 0;
+
+const onceNull = function (fn: VoidFunction | null) {
+    return function (): void {
+        if (fn) {
+            fn();
+            fn = null;
+            ++callCounter;
+        }
+    }
+}
+
+const onceUndefined = function (fn: VoidFunction | undefined) {
+    return function (): void {
+        if (fn) {
+            fn();
+            fn = undefined;
+            ++callCounter;
+        }
+    }
+}
+
+const on = onceNull(f);
+on();
+console.assert(callCounter === 1, "Nullable function: once call failed (1)");
+on();
+console.assert(callCounter === 1, "Nullable function: once call failed (2)");
+
+callCounter = 0;
+
+const ou = onceUndefined(f);
+ou();
+console.assert(callCounter === 1, "Optional function: once call failed (1)");
+ou();
+console.assert(callCounter === 1, "Optional function: once call failed (2)");
