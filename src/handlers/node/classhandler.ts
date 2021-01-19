@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { getStructType, isTypeDeclared, checkIfStaticProperty, error, getDeclarationNamespace } from "@utils";
+import { getStructType, isTypeDeclared, checkIfStaticProperty, getDeclarationNamespace } from "@utils";
 import { TypeMangler } from "@mangling";
 import { LLVMGenerator } from "@generator";
 
@@ -85,11 +85,7 @@ export class ClassHandler extends AbstractNodeHandler {
           const qualifiedName = namespace.concat(mangledBaseClassTypename).join(".");
           const baseClassScope = parentScope.get(qualifiedName) as Scope;
 
-          if (!baseClassScope) {
-            error(`Scope is not found: ${mangledBaseClassTypename}`);
-          }
-
-          if (baseClassScope.thisData && baseClassScope.thisData.staticProperties) {
+          if (baseClassScope && baseClassScope.thisData && baseClassScope.thisData.staticProperties) {
             baseClassScope.thisData.staticProperties.forEach((value, key) => {
               if (key.includes(".")) {
                 staticProperties.set(key, value);

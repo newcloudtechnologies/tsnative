@@ -26,3 +26,5 @@ string VirtualBase::virtualMethod() const { return s; }
 
 DerivedFromVirtualBase::DerivedFromVirtualBase() {}
 int32_t DerivedFromVirtualBase::pureVirtualMethodToOverride() const { return i; }
+
+DerivedFromBaseInOtherNamespace::DerivedFromBaseInOtherNamespace() {}

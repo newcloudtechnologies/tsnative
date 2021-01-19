@@ -1,6 +1,11 @@
 // @ts-nocheck
 
+/// <reference path="dummy_base.d.ts" />
+
 declare module "cpp" {
+
+    import { Base } from "test";
+
     export declare interface PointPair {
         getTopLeft(): Point;
         getBottomRight(): Point;
@@ -75,5 +80,11 @@ declare module "cpp" {
         pureVirtualMethodToOverride(): int32_t;
 
         private _i: int32_t;
+    }
+
+    export declare class DerivedFromBaseInOtherNamespace implements Base {
+        constructor();
+
+        test(): void;
     }
 }

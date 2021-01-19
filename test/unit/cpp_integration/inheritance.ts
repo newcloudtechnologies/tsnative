@@ -1,3 +1,4 @@
+import { DerivedFromBaseInOtherNamespace } from "cpp";
 import { DerivedFromVirtualBase, Mixin } from "./declarations/cpp";
 
 const m = new Mixin(1, 1, 11, 11);
@@ -26,3 +27,7 @@ console.assert(scaledBottomRight.y() === 110, "Scaled bottom right y test failed
 const derivedFromVirtualBase = new DerivedFromVirtualBase();
 console.assert(derivedFromVirtualBase.virtualMethod() === "base virtual method", "'DerivedFromVirtualBase.virtualMethod' test failed");
 console.assert(derivedFromVirtualBase.pureVirtualMethodToOverride() === 324, "'DerivedFromVirtualBase.pureVirtualMethodToOverride' test failed");
+
+// Just test buildability
+const d = new DerivedFromBaseInOtherNamespace;
+d.test();

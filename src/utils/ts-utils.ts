@@ -74,11 +74,11 @@ export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeC
 
 export function getTypeNamespace(type: ts.Type) {
   const symbol = type.symbol;
-  if (!symbol || !symbol.valueDeclaration) {
+  if (!symbol || !symbol.valueDeclaration || !symbol.declarations[0]) {
     return "";
   }
 
-  return getDeclarationNamespace(symbol.valueDeclaration).join("::");
+  return getDeclarationNamespace(symbol.valueDeclaration || symbol.declarations[0]).join("::");
 }
 
 export function getDeclarationNamespace(declaration: ts.Declaration): string[] {

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "dummy_base.h"
 #include "point.h"
 #include "rect.h"
 
@@ -59,6 +60,11 @@ public:
 
 private:
   int32_t i{324};
+};
+
+class DerivedFromBaseInOtherNamespace : public test::Base {
+public:
+  DerivedFromBaseInOtherNamespace();
 };
 
 } // namespace cpp

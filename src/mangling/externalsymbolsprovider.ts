@@ -12,7 +12,6 @@
 import { NmSymbolExtractor } from "@mangling";
 import {
   error,
-  flatten,
   getDeclarationNamespace,
   getTypeGenericArguments,
   getTypename,
@@ -121,13 +120,14 @@ export class ExternalSymbolsProvider {
 
   private readonly namespace: string;
   private readonly thisTypeName: string = "";
-  private readonly baseTypeNames: string[] = [];
   private readonly classTemplateParametersPattern: string = "";
   private readonly methodName: string;
   private readonly argumentsPattern: string;
   private readonly parametersPattern: string;
   private readonly parameterTypes: ts.Type[] = [];
   private readonly functionTemplateParametersPattern: string;
+  private readonly generator: LLVMGenerator;
+
   constructor(
     declaration: ts.Declaration,
     expression: ts.NewExpression | ts.CallExpression | undefined,
@@ -136,14 +136,13 @@ export class ExternalSymbolsProvider {
     generator: LLVMGenerator,
     knownMethodName?: string
   ) {
-    const { checker } = generator;
+    this.generator = generator;
     const namespace = getDeclarationNamespace(declaration).join("::");
     this.namespace = namespace ? namespace + "::" : "";
     if (thisType) {
-      this.thisTypeName = getTypename(thisType, checker);
-      this.baseTypeNames = this.extractBaseTypeNames(declaration);
+      this.thisTypeName = getTypename(thisType, generator.checker);
       this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
-        getTypeGenericArguments(thisType).map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, checker))
+        getTypeGenericArguments(thisType).map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker))
       );
     }
 
@@ -156,7 +155,7 @@ export class ExternalSymbolsProvider {
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
       this.parameterTypes.map((type) => {
         const typeNamespace = getTypeNamespace(type);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, checker);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
         return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
       })
     );
@@ -165,7 +164,7 @@ export class ExternalSymbolsProvider {
     this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
       argumentTypes.map((type) => {
         const typeNamespace = getTypeNamespace(type);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, checker);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
         return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
       })
     );
@@ -180,15 +179,22 @@ export class ExternalSymbolsProvider {
     }
 
     if (ts.isMethodDeclaration(declaration)) {
-      for (const baseTypeName of this.baseTypeNames) {
-        const classMethodPattern = new RegExp(
-          `(?=(^| )${this.namespace}${baseTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
-        );
-        mangledName = this.handleDeclarationWithPredicate((cppSignature: string) => {
-          return classMethodPattern.test(cppSignature);
-        });
-        if (mangledName) {
-          return mangledName;
+      const classDeclaration = declaration.parent as ts.ClassLikeDeclaration;
+
+      for (const clause of classDeclaration.heritageClauses || []) {
+        for (const type of clause.types) {
+          const className = type.expression.getText();
+          const classType = this.generator.checker.getTypeAtLocation(type.expression);
+          const classNamespace = getTypeNamespace(classType);
+          const classMethodPattern = new RegExp(
+            `(?=(^| )${classNamespace}::${className}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+          );
+          mangledName = this.handleDeclarationWithPredicate((cppSignature: string) => {
+            return classMethodPattern.test(cppSignature);
+          });
+          if (mangledName) {
+            return mangledName;
+          }
         }
       }
     }
@@ -203,26 +209,7 @@ export class ExternalSymbolsProvider {
         return declaration.name?.getText() || "";
     }
   }
-  private extractBaseTypeNames(declaration: ts.Declaration): string[] {
-    let baseTypeNames: string[] = [];
-    const declarationHeritageClausesToTypeNames = (classLikeDeclaration: ts.ClassLikeDeclaration): string[] => {
-      return flatten(
-        classLikeDeclaration.heritageClauses?.map((clause) => {
-          return clause.types.map((expressionWithType) => expressionWithType.getText());
-        }) || []
-      );
-    };
-    if (ts.isConstructorDeclaration(declaration)) {
-      const parentConstructorDeclaration = (declaration as ts.ConstructorDeclaration).parent;
-      baseTypeNames = declarationHeritageClausesToTypeNames(parentConstructorDeclaration);
-    } else if (ts.isMethodDeclaration(declaration)) {
-      if (ts.isClassLike(declaration.parent)) {
-        const parentClassLikeDeclaration = declaration.parent as ts.ClassLikeDeclaration;
-        baseTypeNames = declarationHeritageClausesToTypeNames(parentClassLikeDeclaration);
-      }
-    }
-    return baseTypeNames;
-  }
+
   private extractFunctionTemplateParameters(
     declaration: ts.Declaration,
     expression: ts.CallExpression | ts.NewExpression | undefined,
