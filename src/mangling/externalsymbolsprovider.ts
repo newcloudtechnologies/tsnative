@@ -20,6 +20,7 @@ import {
   checkIfString,
   checkIfObject,
   getTypeNamespace,
+  getAliasedSymbolIfNecessary,
 } from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
@@ -183,12 +184,22 @@ export class ExternalSymbolsProvider {
 
       for (const clause of classDeclaration.heritageClauses || []) {
         for (const type of clause.types) {
-          const className = type.expression.getText();
-          const classType = this.generator.checker.getTypeAtLocation(type.expression);
-          const classNamespace = getTypeNamespace(classType);
+          let classSymbol = this.generator.checker.getSymbolAtLocation(type.expression);
+          if (!classSymbol) {
+            error(`No class symbol found at '${type.expression.getText()}'`);
+          }
+
+          classSymbol = getAliasedSymbolIfNecessary(classSymbol, this.generator.checker);
+
+          const classNamespace = getDeclarationNamespace(classSymbol.declarations[0]).join("::");
+          const className = classSymbol.escapedName;
+
           const classMethodPattern = new RegExp(
-            `(?=(^| )${classNamespace}::${className}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+            `(?=(^| )${classNamespace.length > 0 ? classNamespace + "::" : ""}${className}(<.*>::|::)${
+              this.methodName
+            }(\\(|<.*>\\())`
           );
+
           mangledName = this.handleDeclarationWithPredicate((cppSignature: string) => {
             return classMethodPattern.test(cppSignature);
           });

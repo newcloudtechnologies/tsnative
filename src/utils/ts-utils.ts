@@ -74,7 +74,8 @@ export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeC
 
 export function getTypeNamespace(type: ts.Type) {
   const symbol = type.symbol;
-  if (!symbol || !symbol.valueDeclaration || !symbol.declarations[0]) {
+
+  if (!symbol || (!symbol.valueDeclaration && !symbol.declarations[0])) {
     return "";
   }
 

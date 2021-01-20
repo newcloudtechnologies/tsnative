@@ -6,16 +6,16 @@ declare module "cpp" {
 
     import { Base } from "test";
 
-    export declare interface PointPair {
+    export interface PointPair {
         getTopLeft(): Point;
         getBottomRight(): Point;
     }
 
-    export declare interface RectHolder {
+    export interface RectHolder {
         getRect(): Rect;
     }
 
-    export declare class PointPair {
+    export class PointPair {
         constructor(x1: number, y1: number, x2: number, y2: number);
 
         @ReturnsValueType
@@ -29,7 +29,7 @@ declare module "cpp" {
         private bottomRight: Point;
     }
 
-    export declare class RectHolder {
+    export class RectHolder {
         constructor(rect: Rect);
 
         @ReturnsValueType
@@ -39,7 +39,7 @@ declare module "cpp" {
         private rect: Rect;
     }
 
-    export declare class Mixin implements PointPair, RectHolder {
+    export class Mixin implements PointPair, RectHolder {
         constructor(x1: number, y1: number, x2: number, y2: number);
 
         @ReturnsValueType
@@ -54,13 +54,13 @@ declare module "cpp" {
         getScaled(factor: number): this;
     }
 
-    export declare interface VirtualBase {
+    export interface VirtualBase {
         virtualMethod(): string;
         pureVirtualMethodToOverride(): int32_t;
     }
 
     @VTable
-    export declare class VirtualBase {
+    export class VirtualBase {
         constructor();
 
         @ReturnsValueType
@@ -72,7 +72,7 @@ declare module "cpp" {
     }
 
     @VTable
-    export declare class DerivedFromVirtualBase implements VirtualBase {
+    export class DerivedFromVirtualBase implements VirtualBase {
         constructor();
 
         @ReturnsValueType
@@ -82,7 +82,7 @@ declare module "cpp" {
         private _i: int32_t;
     }
 
-    export declare class DerivedFromBaseInOtherNamespace implements Base {
+    export class DerivedFromBaseInOtherNamespace implements Base {
         constructor();
 
         test(): void;
