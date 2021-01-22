@@ -25,6 +25,7 @@ import {
   checkIfUnion,
   findIndexOfSubarray,
   tryResolveGenericTypeIfNecessary,
+  getAliasedSymbolIfNecessary,
   checkIfUndefined,
   checkIfNull,
   checkIfArray,
@@ -377,6 +378,10 @@ export function getObjectPropsLLVMTypesNames(
   node: ts.Node,
   generator: LLVMGenerator
 ): { type: llvm.Type; name: string }[] {
+  if (!type.symbol) {
+    error("No symbol found");
+  }
+
   if (type.isUnionOrIntersection()) {
     return flatten(
       type.types.map((subtype) => {
@@ -386,7 +391,10 @@ export function getObjectPropsLLVMTypesNames(
   }
 
   const getTypeAndNameFromProperty = (property: ts.Symbol): { type: llvm.Type; name: string }[] => {
-    const tsType = generator.checker.getTypeOfSymbolAtLocation(property, node);
+    const tsType = generator.checker.getTypeOfSymbolAtLocation(
+      getAliasedSymbolIfNecessary(property, generator.checker),
+      node
+    );
 
     const llvmType = getLLVMType(tsType, node, generator);
     const valueType = property.valueDeclaration?.decorators?.some((decorator) => decorator.getText() === "@ValueType");
@@ -395,22 +403,22 @@ export function getObjectPropsLLVMTypesNames(
   };
 
   const properties = getProperties(type, generator.checker).map(getTypeAndNameFromProperty);
+  const symbol = getAliasedSymbolIfNecessary(type.symbol, generator.checker);
 
   if (
-    type.symbol?.valueDeclaration &&
-    ts.isClassDeclaration(type.symbol.valueDeclaration) &&
-    type.symbol.valueDeclaration.heritageClauses
+    symbol.valueDeclaration &&
+    ts.isClassDeclaration(symbol.valueDeclaration) &&
+    symbol.valueDeclaration.heritageClauses
   ) {
     const inheritedProps = flatten(
-      type.symbol.valueDeclaration.heritageClauses.map((clause) => {
-        const clauseProps = clause.types.map((expressionWithTypeArgs) =>
-          flatten(
-            getProperties(
-              generator.checker.getTypeAtLocation(expressionWithTypeArgs.expression),
-              generator.checker
-            ).map(getTypeAndNameFromProperty)
-          )
-        );
+      symbol.valueDeclaration.heritageClauses.map((clause) => {
+        const clauseProps = clause.types.map((expressionWithTypeArgs) => {
+          return flatten(
+            getProperties(generator.checker.getTypeAtLocation(expressionWithTypeArgs), generator.checker).map(
+              getTypeAndNameFromProperty
+            )
+          );
+        });
 
         return flatten(clauseProps);
       })
