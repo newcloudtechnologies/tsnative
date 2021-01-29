@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2021
  *
  * You can not use the contents of the file in any way without
  * Laboratory of Cloud Technologies, Ltd. written permission.
@@ -10,5 +10,8 @@
  */
 
 export * from "./stringliteralhelper";
+export * from "./preprocessingchain";
 export * from "./preprocessor";
-export * from "./tsobjectconsolelogpass";
+export * from "./abstractpreprocessor";
+export * from "./tsobjectconsolelogpreprocessor";
+export * from "./parametersrandomizingpreprocessor";
