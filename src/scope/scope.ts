@@ -17,7 +17,6 @@ import {
   getStructType,
   InternalNames,
   tryResolveGenericTypeIfNecessary,
-  unwrapPointerType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -205,30 +204,29 @@ export function createEnvironment(
   if (outerEnv) {
     const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.typed;
 
-    if (data) {
-      const envElementType = unwrapPointerType(data.type) as llvm.StructType;
-      const types: llvm.Type[] = [];
-      for (let i = 0; i < envElementType.numElements; ++i) {
-        const elementType = envElementType.getElementType(i);
-        if (!elementType.isPointerTy()) {
-          error(`Outer environment element expected to be of PointerType, got '${elementType.toString()}'`);
-        }
-        types.push(envElementType.getElementType(i));
+    const parameters = functionData?.signature.getParameters().map((parameter) => parameter.escapedName.toString());
+    const outerEnvValuesIndexes = [];
+    for (let i = 0; i < outerEnv.variables.length; ++i) {
+      if (parameters && !parameters.includes(outerEnv.variables[i])) {
+        outerEnvValuesIndexes.push(i);
       }
+    }
 
-      const outerValues: llvm.Value[] = [];
-      for (let i = 0; i < envElementType.numElements; ++i) {
-        const extracted = data.type.isPointerTy()
-          ? generator.builder.createLoad(generator.xbuilder.createSafeInBoundsGEP(data, [0, i]))
-          : generator.xbuilder.createSafeExtractValue(data, [i]);
-        outerValues.push(extracted);
-      }
+    const outerValues: llvm.Value[] = [];
+    for (const index of outerEnvValuesIndexes) {
+      const extracted = data.type.isPointerTy()
+        ? generator.builder.createLoad(generator.xbuilder.createSafeInBoundsGEP(data, [0, index]))
+        : generator.xbuilder.createSafeExtractValue(data, [index]);
+      outerValues.push(extracted);
+    }
 
-      outerEnv.variables
-        .filter((name) => name !== InternalNames.Environment)
-        .forEach((value, index) => {
-          map.set(value, { type: types[index], allocated: outerValues[index] });
-        });
+    const types = outerValues.reduce((acc, value) => {
+      acc.push(value.type);
+      return acc;
+    }, new Array<llvm.Type>());
+
+    for (let i = 0; i < outerEnvValuesIndexes.length; ++i) {
+      map.set(outerEnv.variables[outerEnvValuesIndexes[i]], { type: types[i], allocated: outerValues[i] });
     }
   }
 

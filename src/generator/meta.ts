@@ -9,8 +9,10 @@
  *
  */
 
+import { Environment } from "@scope";
 import { error } from "@utils";
-import { FunctionDeclaration, Type } from "typescript";
+import * as ts from "typescript";
+import * as crypto from "crypto";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -64,7 +66,11 @@ class ObjectMeta {
 }
 
 class ClosureParametersMetaStorage {
-  readonly storage = new Map<string, Map<string, FunctionDeclaration>>();
+  readonly storage = new Map<string, Map<string, ts.FunctionDeclaration>>();
+}
+
+class FunctionExpressionEnvStorage {
+  readonly storage = new Map<string, Environment>();
 }
 
 export class MetaInfoStorage {
@@ -73,6 +79,7 @@ export class MetaInfoStorage {
   readonly structMetaInfoStorage: StructMeta[] = [];
   readonly objectMetaInfoStorage: ObjectMeta[] = [];
   readonly closureParametersMeta = new ClosureParametersMetaStorage();
+  readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
 
   registerUnionMeta(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -125,11 +132,11 @@ export class MetaInfoStorage {
   registerClosureParameter(
     parentFunction: string,
     closureParameter: string,
-    closureFunctionDeclaration: FunctionDeclaration
+    closureFunctionDeclaration: ts.FunctionDeclaration
   ) {
     const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);
     if (!knownClosureParameters) {
-      const closuresForParentFunction = new Map<string, FunctionDeclaration>();
+      const closuresForParentFunction = new Map<string, ts.FunctionDeclaration>();
       closuresForParentFunction.set(closureParameter, closureFunctionDeclaration);
       this.closureParametersMeta.storage.set(parentFunction, closuresForParentFunction);
     } else {
@@ -152,9 +159,26 @@ export class MetaInfoStorage {
     return declaration;
   }
 
-  try<T>(getter: (name: string) => T, name: string) {
+  registerFunctionEnvironment(declaration: ts.Declaration, env: Environment) {
+    this.functionExpressionEnv.storage.set(
+      crypto.createHash("sha256").update(declaration.getText()).digest("hex"),
+      env
+    );
+  }
+
+  getFunctionEnvironment(declaration: ts.Declaration): Environment {
+    const hash = crypto.createHash("sha256").update(declaration.getText()).digest("hex");
+    const stored = this.functionExpressionEnv.storage.get(hash);
+    if (!stored) {
+      error(`No environment registered`);
+    }
+
+    return stored;
+  }
+
+  try<A, T>(getter: (_: A) => T, arg: A) {
     try {
-      const meta = getter.call(this, name);
+      const meta = getter.call(this, arg);
       return meta;
     } catch (_) {
       return undefined;
@@ -163,9 +187,9 @@ export class MetaInfoStorage {
 }
 
 export class GenericTypeMapper {
-  readonly genericTypenameTypeMap = new Map<string, Type>();
+  readonly genericTypenameTypeMap = new Map<string, ts.Type>();
 
-  register(name: string, type: Type) {
+  register(name: string, type: ts.Type) {
     this.genericTypenameTypeMap.set(name, type);
   }
 

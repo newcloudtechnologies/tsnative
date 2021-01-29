@@ -72,6 +72,8 @@
     acceptsABCunion(returnsBCunion())
 }
 
+import { test } from "./dummy_ns"
+
 {
     interface D {
         d1: string
@@ -92,9 +94,11 @@
     }
 
     const acceptsD_returnsNewD = (d: D, f: F): D => {
+        test.value
+
         return {
             ...d
-        }
+        };
     }
 
     const acceptsD_returnsModifiedD = (d: D, f: F): D => {
@@ -103,13 +107,13 @@
         return d;
     }
 
-    const acceptsE_returnsNewE = (e: E, g: G): E => {
+    const acceptsE_returnsNewE = function (e: E, g: G): E {
         return {
             ...e
         };
     }
 
-    const acceptsE_returnsModifiedE = (e: E, g: G): E => {
+    const acceptsE_returnsModifiedE = function (e: E, g: G): E {
         e.e1 = 2
         return e;
     }
@@ -122,24 +126,20 @@
             {
                 const d: D = acceptsDF_returnsD(de, (fg as F));
                 if (d !== de) {
-                    const r: D & E = {
+                    return {
                         ...de,
                         ...d
                     };
-
-                    return r;
                 }
             }
 
             {
                 const e: E = acceptsEG_returnsE(de, (fg as G));
                 if (e !== de) {
-                    const r: D & E = {
+                    return {
                         ...de,
                         ...e
                     };
-
-                    return r;
                 }
             }
 

@@ -401,7 +401,7 @@ export function getFunctionEnvironmentVariables(
           let result = false;
           const symbol = generator.checker.getSymbolAtLocation(n);
 
-          if (symbol && symbol!.valueDeclaration?.kind === ts.SyntaxKind.PropertyDeclaration) {
+          if (symbol && symbol.valueDeclaration?.kind === ts.SyntaxKind.PropertyDeclaration) {
             const propertyDeclaration = symbol!.valueDeclaration as ts.PropertyDeclaration;
 
             result = checkIfStaticProperty(propertyDeclaration);
