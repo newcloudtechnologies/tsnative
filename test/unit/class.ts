@@ -363,3 +363,13 @@
   console.assert(Factory.arg === "Drink", "class: Factory.arg === 'Drink' failed");
   console.assert(inst2.kind === Factory.arg, "class: inst1.kind === Factory.arg failed");
 }
+
+{
+  class WithoutConstructorDeclaration { };
+  // classes without constructor declaration provided should be compilable due to empty constructor generation during preprocessing
+  new WithoutConstructorDeclaration;
+
+  class DerivedWithoutConstructorDeclaration extends WithoutConstructorDeclaration { };
+  // 'super' call should also be generated
+  new DerivedWithoutConstructorDeclaration;
+}

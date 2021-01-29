@@ -224,6 +224,10 @@ export class SysVFunctionHandler {
       .valueDeclaration as ts.ClassLikeDeclaration;
     const constructorDeclaration = classDeclaration.members.find(ts.isConstructorDeclaration)!;
 
+    if (!constructorDeclaration) {
+      error(`External symbol '${qualifiedName}' declaration have no constructor provided`);
+    }
+
     if (constructorDeclaration.body) {
       error(`External symbol '${qualifiedName}' cannot have constructor body`);
     }

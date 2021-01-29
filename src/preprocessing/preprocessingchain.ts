@@ -14,6 +14,7 @@ import {
   AbstractPreprocessor,
   TSObjectConsoleLogPreprocessor,
   ParametersRandomizingPreprocessor,
+  ConstructorGeneratingPreprocessor,
 } from "@preprocessing";
 
 export class PreprocessingChain {
@@ -22,8 +23,10 @@ export class PreprocessingChain {
   constructor(checker: ts.TypeChecker) {
     const tsObjectConsoleLog = new TSObjectConsoleLogPreprocessor(checker);
     const parametersRandomizer = new ParametersRandomizingPreprocessor(checker);
+    const defaultConstructorGenerator = new ConstructorGeneratingPreprocessor(checker);
 
     tsObjectConsoleLog.setNext(parametersRandomizer);
+    parametersRandomizer.setNext(defaultConstructorGenerator);
 
     this.root = tsObjectConsoleLog;
   }
