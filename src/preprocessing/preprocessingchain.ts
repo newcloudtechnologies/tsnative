@@ -15,18 +15,22 @@ import {
   TSObjectConsoleLogPreprocessor,
   ParametersRandomizingPreprocessor,
   ConstructorGeneratingPreprocessor,
+  RestParametersPreprocessor,
 } from "@preprocessing";
+import { LLVMGenerator } from "@generator";
 
 export class PreprocessingChain {
   private readonly root: AbstractPreprocessor;
 
-  constructor(checker: ts.TypeChecker) {
-    const tsObjectConsoleLog = new TSObjectConsoleLogPreprocessor(checker);
-    const parametersRandomizer = new ParametersRandomizingPreprocessor(checker);
-    const defaultConstructorGenerator = new ConstructorGeneratingPreprocessor(checker);
+  constructor(generator: LLVMGenerator) {
+    const tsObjectConsoleLog = new TSObjectConsoleLogPreprocessor(generator);
+    const parametersRandomizer = new ParametersRandomizingPreprocessor(generator);
+    const defaultConstructorGenerator = new ConstructorGeneratingPreprocessor(generator);
+    const restParametersImplementor = new RestParametersPreprocessor(generator);
 
     tsObjectConsoleLog.setNext(parametersRandomizer);
     parametersRandomizer.setNext(defaultConstructorGenerator);
+    defaultConstructorGenerator.setNext(restParametersImplementor);
 
     this.root = tsObjectConsoleLog;
   }

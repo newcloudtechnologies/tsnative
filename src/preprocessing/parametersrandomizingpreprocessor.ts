@@ -40,7 +40,10 @@ export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
         // `undefined` is declared as 'type undefined = any', so it has no declaration
         return node;
       }
-      const symbol = getAliasedSymbolIfNecessary(this.checker.getSymbolAtLocation(node)!, this.checker);
+      const symbol = getAliasedSymbolIfNecessary(
+        this.generator.checker.getSymbolAtLocation(node)!,
+        this.generator.checker
+      );
       if (!symbol) {
         error("No symbol found");
       }

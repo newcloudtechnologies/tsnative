@@ -15,6 +15,7 @@ import * as fs from "fs";
 import { getRandomString } from "@utils";
 import { first } from "lodash";
 import { PreprocessingChain } from "@preprocessing";
+import { LLVMGenerator } from "@generator";
 
 export class Preprocessor {
   private readonly chain: PreprocessingChain;
@@ -23,7 +24,7 @@ export class Preprocessor {
   constructor(files: string[], options: ts.CompilerOptions, host: ts.CompilerHost) {
     const program = ts.createProgram(files, options, host);
 
-    this.chain = new PreprocessingChain(program.getTypeChecker());
+    this.chain = new PreprocessingChain(new LLVMGenerator(program));
 
     const outputDir = path.join(process.cwd(), path.sep, getRandomString() + "_generated");
     if (!fs.existsSync(outputDir)) {
