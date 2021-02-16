@@ -12,7 +12,7 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { createLLVMFunction, error, isCppPrimitiveType, XBuilder } from "@utils";
+import { createLLVMFunction, error, isCppPrimitiveType, LazyClosure, XBuilder } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
@@ -38,6 +38,8 @@ export class LLVMGenerator {
   readonly builtinUInt32: BuiltinUInt32;
   readonly builtinString: BuiltinString;
   readonly builtinTSClosure: BuiltinTSClosure;
+
+  private lazyClosureInstance: LazyClosure | undefined;
 
   private garbageCollector: GC | undefined;
 
@@ -177,5 +179,12 @@ export class LLVMGenerator {
       this.initGC();
     }
     return this.garbageCollector!;
+  }
+
+  get lazyClosure() {
+    if (!this.lazyClosureInstance) {
+      this.lazyClosureInstance = new LazyClosure(this);
+    }
+    return this.lazyClosureInstance;
   }
 }

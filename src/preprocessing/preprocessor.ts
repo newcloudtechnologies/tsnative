@@ -14,17 +14,31 @@ import * as path from "path";
 import * as fs from "fs";
 import { getRandomString } from "@utils";
 import { first } from "lodash";
-import { PreprocessingChain } from "@preprocessing";
+import {
+  AbstractPreprocessor,
+  ConstructorGeneratingPreprocessor,
+  FunctionDeclarationPreprocessor,
+  ParametersRandomizingPreprocessor,
+  RestParametersPreprocessor,
+  TSObjectConsoleLogPreprocessor,
+} from "@preprocessing";
 import { LLVMGenerator } from "@generator";
 
 export class Preprocessor {
-  private readonly chain: PreprocessingChain;
   private readonly generatedProgram: ts.Program;
+  private readonly parts: AbstractPreprocessor[] = [];
 
   constructor(files: string[], options: ts.CompilerOptions, host: ts.CompilerHost) {
     const program = ts.createProgram(files, options, host);
 
-    this.chain = new PreprocessingChain(new LLVMGenerator(program));
+    const generator = new LLVMGenerator(program);
+    this.parts.push(
+      new TSObjectConsoleLogPreprocessor(generator),
+      new ParametersRandomizingPreprocessor(generator),
+      new ConstructorGeneratingPreprocessor(generator),
+      new RestParametersPreprocessor(generator),
+      new FunctionDeclarationPreprocessor(generator)
+    );
 
     const outputDir = path.join(process.cwd(), path.sep, getRandomString() + "_generated");
     if (!fs.existsSync(outputDir)) {
@@ -76,14 +90,9 @@ export class Preprocessor {
 
   private readonly transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile: ts.SourceFile) => {
-      const chainPass = (node: ts.Node): ts.Node => {
-        return this.chain.handle(node, sourceFile, context);
-      };
-      const visitor = (node: ts.Node) => {
-        return ts.visitEachChild(node, chainPass, context);
-      };
-
-      return ts.visitNode(sourceFile, visitor);
+      return this.parts.reduce((source, processor) => {
+        return processor.transformer(context)(source);
+      }, sourceFile);
     };
   };
 

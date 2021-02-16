@@ -25,12 +25,7 @@ import {
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import {
-  addClassScope,
-  FunctionDeclarationScopeEnvironment,
-  isFunctionDeclarationScopeEnvironment,
-  Scope,
-} from "@scope";
+import { addClassScope, Scope } from "@scope";
 
 export function castToInt32AndBack(
   values: llvm.Value[],
@@ -506,39 +501,6 @@ export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, gene
       dummyBlock.eraseFromParent();
 
       return externalVariables;
-    }, generator.symbolTable.currentScope);
-  });
-}
-
-export function getFunctionScopes(body: ts.ConciseBody, generator: LLVMGenerator) {
-  return generator.withInsertBlockKeeping(() => {
-    return generator.symbolTable.withLocalScope((_) => {
-      const innerScopes: Scope[] = [];
-
-      const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
-      generator.builder.setInsertionPoint(dummyBlock);
-
-      const visitor = (node: ts.Node) => {
-        if (ts.isCallExpression(node)) {
-          const functionName = node.expression.getText();
-          const knownFunction = generator.symbolTable.currentScope.tryGetThroughParentChain(functionName);
-
-          if (knownFunction) {
-            if (isFunctionDeclarationScopeEnvironment(knownFunction)) {
-              innerScopes.push((knownFunction as FunctionDeclarationScopeEnvironment).scope);
-            }
-          }
-        }
-
-        if (node.getChildCount()) {
-          node.forEachChild(visitor);
-        }
-      };
-
-      ts.forEachChild(body, visitor);
-
-      dummyBlock.eraseFromParent();
-      return innerScopes;
     }, generator.symbolTable.currentScope);
   });
 }

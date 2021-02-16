@@ -14,11 +14,9 @@ import { FunctionMangler } from "@mangling";
 import {
   setLLVMFunctionScope,
   addClassScope,
-  FunctionDeclarationScopeEnvironment,
   Scope,
   HeapVariableDeclaration,
   Environment,
-  isFunctionDeclarationScopeEnvironment,
   ScopeValue,
   createEnvironment,
 } from "@scope";
@@ -43,7 +41,6 @@ import {
   isIntersectionLLVMType,
   getIntersectionSubtypesNames,
   getLLVMTypename,
-  getRandomString,
   createTSObjectName,
   isTSClosure,
   isSimilarStructs,
@@ -52,6 +49,8 @@ import {
   isUnionWithUndefinedLLVMType,
   isOptionalTSClosure,
   flatten,
+  isTSClosureType,
+  canCreateLazyClosure,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -61,7 +60,6 @@ import {
   getLLVMReturnType,
   getEffectiveArguments,
   getEnvironmentVariablesFromBody,
-  getFunctionScopes,
   getFunctionEnvironmentVariables,
 } from "@handlers";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
@@ -231,24 +229,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     knownFunction: ScopeValue,
     outerEnv?: Environment
   ): llvm.Value {
-    if (isFunctionDeclarationScopeEnvironment(knownFunction)) {
-      const declarationScopeEnvironment = knownFunction as FunctionDeclarationScopeEnvironment;
-      // Update call with actual declaration.
-      const call = ts.updateCall(
-        expression,
-        declarationScopeEnvironment.declaration.name!,
-        expression.typeArguments,
-        expression.arguments
-      );
-
-      // Make a call.
-      return this.generator.symbolTable.withLocalScope(
-        (_: Scope) => this.handleCallExpression(call, declarationScopeEnvironment.scope, outerEnv),
-        this.generator.symbolTable.currentScope,
-        InternalNames.FunctionScope
-      );
-    }
-
     if (!(knownFunction instanceof llvm.Value)) {
       error(`Expected known function '${expression.getText()}' to be llvm.Value`);
     }
@@ -266,6 +246,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
         return this.handleCallArguments(expression, valueDeclaration, signature!, localScope, outerEnv);
       }, this.generator.symbolTable.currentScope)
       .map((value) => value.value);
+
+    if (this.generator.lazyClosure.isLazyClosure(knownFunction)) {
+      const closureEnv = this.generator.meta.getFunctionEnvironment(valueDeclaration);
+      return this.generator.symbolTable.withLocalScope(
+        (localScope: Scope) => this.handleCallExpression(expression, localScope, closureEnv),
+        this.generator.symbolTable.currentScope,
+        InternalNames.FunctionScope
+      );
+    }
 
     if (isTSClosure(knownFunction)) {
       return this.handleTSClosureCall(expression, signature, args, valueDeclaration, knownFunction, outerEnv);
@@ -388,7 +377,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           parentFunction.name.getText(),
           expression.expression.getText()
         );
-        signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
+        signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration)!;
       }
 
       const returnTypeName = getLLVMTypename(llvmReturnType);
@@ -810,11 +799,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const environmentVariables = getEnvironmentVariablesFromBody(valueDeclaration.body, signature, this.generator);
 
-    const innerScopes = getFunctionScopes(valueDeclaration.body, this.generator);
-    for (const innerScope of innerScopes) {
-      scope.set(innerScope.name! + "__" + getRandomString(), innerScope);
-    }
-
     let env = createEnvironment(scope, environmentVariables, this.generator, { args, signature }, outerEnv);
 
     const envValues = [];
@@ -966,9 +950,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         const argumentDeclaration = argumentSymbol.declarations[0] as ts.FunctionDeclaration;
 
         this.generator.meta.registerClosureParameter(
-          ts.isPropertyAccessExpression(expression.expression)
-            ? expression.expression.name.getText()
-            : expression.expression.getText(),
+          expression.expression.getText(),
           signature.getParameters()[index].escapedName.toString(),
           argumentDeclaration
         );
@@ -1270,6 +1252,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
     this.generator.meta.registerFunctionEnvironment(expression, env);
 
+    if (llvmArgumentTypes.some(isTSClosureType) && canCreateLazyClosure(expression)) {
+      return this.generator.lazyClosure.create;
+    }
     let tsReturnType = this.generator.checker.getReturnTypeOfSignature(signature);
     tsReturnType = tryResolveGenericTypeIfNecessary(tsReturnType, this.generator);
     const llvmReturnType = getLLVMReturnType(tsReturnType, expression, this.generator);

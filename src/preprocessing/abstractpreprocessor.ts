@@ -13,13 +13,9 @@ import { LLVMGenerator } from "@generator";
 import * as ts from "typescript";
 
 export abstract class AbstractPreprocessor {
-  protected next: AbstractPreprocessor | undefined;
   protected generator: LLVMGenerator;
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
   }
-  abstract handle(node: ts.Node, sourceFile: ts.SourceFile): ts.Node;
-  setNext(preprocessor: AbstractPreprocessor): void {
-    this.next = preprocessor;
-  }
+  abstract transformer: ts.TransformerFactory<ts.SourceFile>;
 }

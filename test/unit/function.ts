@@ -37,3 +37,24 @@ fnc();
 
 console.assert(isInvoked === true, "function: isInvoked failed");
 }
+
+{
+  function takesFunctionDeclaration(fn: () => void) {
+    fn();
+  }
+  function declaration() {}
+
+  takesFunctionDeclaration(declaration);
+}
+
+{
+  function dummyFunctionScope() {
+    function scopedAndTakesFunctionDeclaration(fn: () => void) {
+      fn();
+    }
+    function scopedDeclaration() { }
+
+    scopedAndTakesFunctionDeclaration(scopedDeclaration);
+}
+
+}

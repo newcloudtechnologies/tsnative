@@ -272,6 +272,18 @@ export function getExpressionText(expression: ts.Expression): string {
   return expression.getText();
 }
 
+export function isSyntheticNode(node: ts.Node) {
+  return node.pos === -1 && node.end === -1;
+}
+
+// @todo: temporary hack in fact!
+//        there is potential problem with function expression declared in body of another function in case if this function expression is a returned value
+//        its environment cannot be used on call (illformed IR will be generated)
+//        workaround this issue by this hack
+export function canCreateLazyClosure(declaration: ts.Declaration) {
+  return !ts.isPropertyAssignment(declaration.parent) && !ts.isReturnStatement(declaration.parent);
+}
+
 export enum InternalNames {
   Environment = "__environment__",
   Closure = "__closure__",

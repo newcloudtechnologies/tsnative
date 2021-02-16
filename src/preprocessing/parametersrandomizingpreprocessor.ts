@@ -9,62 +9,55 @@
  *
  */
 
-import { error, getAliasedSymbolIfNecessary } from "@utils";
+import { getAliasedSymbolIfNecessary } from "@utils";
 import * as ts from "typescript";
 import * as crypto from "crypto";
 import { AbstractPreprocessor } from "@preprocessing";
 
 export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
-  handle(node: ts.Node, sourceFile: ts.SourceFile): ts.Node {
-    if (ts.isParameter(node)) {
-      // Use parent function declaration to generate parameter's name unique suffix
-      // @todo: there may be several same functions in different scopes thus clashes are still possible.
-      const suffix = crypto.createHash("sha256").update(node.parent.getText()).digest("hex");
-      const randomizedName = `${node.name.getText()}_${suffix}`;
-      const parameterRandomized = ts.updateParameter(
-        node,
-        node.decorators,
-        node.modifiers,
-        node.dotDotDotToken,
-        randomizedName,
-        node.questionToken,
-        node.type,
-        node.initializer
-      );
-      return parameterRandomized;
-    }
+  transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
+    return (sourceFile) => {
+      const visitor = (node: ts.Node): ts.Node => {
+        if (ts.isParameter(node)) {
+          // Use parent function declaration to generate parameter's name unique suffix
+          // @todo: there may be several same functions in different scopes thus clashes are still possible.
+          const suffix = crypto.createHash("sha256").update(node.parent.getText()).digest("hex");
+          const randomizedName = `${node.name.getText()}_${suffix}`;
+          const parameterRandomized = ts.updateParameter(
+            node,
+            node.decorators,
+            node.modifiers,
+            node.dotDotDotToken,
+            randomizedName,
+            node.questionToken,
+            node.type,
+            node.initializer
+          );
+          node = parameterRandomized;
+        }
 
-    if (ts.isIdentifier(node)) {
-      // Check if identifier is a parameter and requires update
-      if (node.getText(sourceFile) === "undefined") {
+        // Check if identifier is a parameter and requires update;
         // `undefined` is declared as 'type undefined = any', so it has no declaration
-        return node;
-      }
-      const symbol = getAliasedSymbolIfNecessary(
-        this.generator.checker.getSymbolAtLocation(node)!,
-        this.generator.checker
-      );
-      if (!symbol) {
-        error("No symbol found");
-      }
+        if (ts.isIdentifier(node) && node.getText(sourceFile) !== "undefined") {
+          const symbol = getAliasedSymbolIfNecessary(
+            this.generator.checker.getSymbolAtLocation(node)!,
+            this.generator.checker
+          );
 
-      const declaration = symbol.declarations[0];
-      if (!declaration) {
-        error(`Declaration for '${node.getText()}' not found`);
-      }
+          if (symbol) {
+            const declaration = symbol.declarations[0];
+            if (declaration && ts.isParameter(declaration)) {
+              // Use parent function declaration to generate parameter's name unique suffix
+              const suffix = crypto.createHash("sha256").update(declaration.parent.getText()).digest("hex");
+              const randomizedName = `${node.getText()}_${suffix}`;
+              node = ts.createIdentifier(randomizedName);
+            }
+          }
+        }
+        return ts.visitEachChild(node, visitor, context);
+      };
 
-      if (ts.isParameter(declaration)) {
-        // Use parent function declaration to generate parameter's name unique suffix
-        const suffix = crypto.createHash("sha256").update(declaration.parent.getText()).digest("hex");
-        const randomizedName = `${node.getText()}_${suffix}`;
-        return ts.createIdentifier(randomizedName);
-      }
-    }
-
-    if (this.next) {
-      return this.next.handle(node, sourceFile);
-    }
-
-    return node;
-  }
+      return ts.visitNode(sourceFile, visitor);
+    };
+  };
 }

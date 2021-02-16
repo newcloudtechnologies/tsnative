@@ -9,52 +9,54 @@
  *
  */
 
-import { checkIfFunction, error, isTSObjectType } from "@utils";
+import { checkIfFunction, error, isSyntheticNode, isTSObjectType } from "@utils";
 import { flatten } from "lodash";
 import * as ts from "typescript";
 import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
 
 export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
-  handle(node: ts.Node, sourceFile: ts.SourceFile): ts.Node {
-    if (node.getText(sourceFile).startsWith("console.log(")) {
-      let call: ts.CallExpression;
-      if (ts.isExpressionStatement(node)) {
-        call = node.expression as ts.CallExpression;
-      } else if (ts.isCallExpression(node)) {
-        call = node;
-      } else {
-        if (ts.isSourceFile(node)) {
-          // @todo: have no idea why first statement node is classified as ts.SourceFile
-          error(`'console.log' cannot be first statement; file '${node.fileName}'`);
-        }
+  transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
+    return (sourceFile) => {
+      const visitor = (node: ts.Node): ts.Node => {
+        if (!isSyntheticNode(node) && node.getText(sourceFile).startsWith("console.log(")) {
+          let call: ts.CallExpression;
+          if (ts.isExpressionStatement(node)) {
+            call = node.expression as ts.CallExpression;
+          } else if (ts.isCallExpression(node)) {
+            call = node;
+          } else {
+            if (ts.isSourceFile(node)) {
+              // @todo: have no idea why first statement node is classified as ts.SourceFile
+              error(`'console.log' cannot be first statement; file '${node.fileName}'`);
+            }
 
-        error(`Expected 'console.log' call to be of 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]}`);
-      }
-
-      const argumentTypes = call.arguments.map(this.generator.checker.getTypeAtLocation);
-      if (argumentTypes.some((type) => isTSObjectType(type, this.generator.checker))) {
-        const logArguments: ts.Expression[] = argumentTypes.reduce((args, type, index) => {
-          const callArgument = call.arguments[index];
-
-          if (!isTSObjectType(type, this.generator.checker)) {
-            args.push(callArgument);
-            return args;
+            error(`Expected 'console.log' call to be of 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]}`);
           }
 
-          return this.handleTSObject(type, callArgument);
-        }, new Array<ts.Expression>());
+          const argumentTypes = call.arguments.map(this.generator.checker.getTypeAtLocation);
+          if (argumentTypes.some((type) => isTSObjectType(type, this.generator.checker))) {
+            const logArguments: ts.Expression[] = argumentTypes.reduce((args, type, index) => {
+              const callArgument = call.arguments[index];
 
-        call = ts.updateCall(call, call.expression, undefined, logArguments);
-        return call;
-      }
-    }
+              if (!isTSObjectType(type, this.generator.checker)) {
+                args.push(callArgument);
+                return args;
+              }
 
-    if (this.next) {
-      return this.next.handle(node, sourceFile);
-    }
+              return this.handleTSObject(type, callArgument);
+            }, new Array<ts.Expression>());
 
-    return node;
-  }
+            call = ts.updateCall(call, call.expression, undefined, logArguments);
+            node = call;
+          }
+        }
+
+        return ts.visitEachChild(node, visitor, context);
+      };
+
+      return ts.visitNode(sourceFile, visitor);
+    };
+  };
 
   private handleTSObject(type: ts.Type, callArgument: ts.Expression, nestedProperty?: string) {
     const nestedLevel = nestedProperty ? nestedProperty.split(".").length + 1 : 1;

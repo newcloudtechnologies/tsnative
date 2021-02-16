@@ -10,10 +10,10 @@
  */
 
 export * from "./stringliteralhelper";
-export * from "./preprocessingchain";
 export * from "./preprocessor";
 export * from "./abstractpreprocessor";
 export * from "./tsobjectconsolelogpreprocessor";
 export * from "./parametersrandomizingpreprocessor";
 export * from "./constructorgeneratingpreprocessor";
 export * from "./restparameterspreprocessor";
+export * from "./functiondeclarationpreprocessor";

@@ -35,6 +35,7 @@ import {
   checkIfNonPod,
   checkIfHasConstructor,
   checkIfHasInheritance,
+  canCreateLazyClosure,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -162,6 +163,31 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
   }
 
   if (checkIfFunction(type)) {
+    const symbol = type.symbol;
+    if (!symbol) {
+      error("Function symbol not found");
+    }
+    const declaration = symbol.declarations[0];
+    if (!declaration) {
+      error("Function declaration not found");
+    }
+
+    if (canCreateLazyClosure(declaration)) {
+      const signature = generator.checker.getSignatureFromDeclaration(declaration as ts.SignatureDeclaration);
+      if (!signature) {
+        error("Function signature not found");
+      }
+
+      const withFunargs = signature.parameters.some((parameter) => {
+        const symbolType = generator.checker.getTypeOfSymbolAtLocation(parameter, declaration);
+        return checkIfFunction(symbolType);
+      });
+
+      if (withFunargs) {
+        return generator.lazyClosure.type;
+      }
+    }
+
     return generator.builtinTSClosure.getLLVMType();
   }
 
@@ -912,4 +938,31 @@ export function isSimilarStructs(lhs: llvm.Type, rhs: llvm.Type) {
   }
 
   return true;
+}
+
+export class LazyClosure {
+  private readonly tag = "__lazy_closure";
+
+  private readonly generator: LLVMGenerator;
+  private readonly llvmType: llvm.PointerType;
+
+  constructor(generator: LLVMGenerator) {
+    const structType = llvm.StructType.create(generator.context, this.tag);
+    structType.setBody([]);
+    this.generator = generator;
+    this.llvmType = structType.getPointerTo();
+  }
+
+  get type() {
+    return this.llvmType;
+  }
+
+  get create() {
+    return this.generator.gc.allocate(this.llvmType.elementType);
+  }
+
+  isLazyClosure(value: llvm.Value) {
+    const nakedType = unwrapPointerType(value.type);
+    return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith(this.tag));
+  }
 }

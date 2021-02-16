@@ -18,7 +18,6 @@ import {
   BypassingHandler,
   ClassHandler,
   ExpressionStatementHandler,
-  FunctionDeclarationHandler,
   ImportsHandler,
   LoopHandler,
   ModuleHandler,
@@ -36,7 +35,6 @@ export class NodeHandlerChain {
 
   constructor(generator: LLVMGenerator) {
     const imports = new ImportsHandler(generator);
-    const functionDeclaraion = new FunctionDeclarationHandler(generator);
 
     const block = new BlockHandler(generator);
     const branch = new BranchHandler(generator);
@@ -53,8 +51,7 @@ export class NodeHandlerChain {
     imports.setNext(typeAlias);
     typeAlias.setNext(expressionStatement);
     expressionStatement.setNext(variable);
-    variable.setNext(functionDeclaraion);
-    functionDeclaraion.setNext(block);
+    variable.setNext(block);
     block.setNext(branch);
     branch.setNext(switchStatement);
     switchStatement.setNext(bypassing);
