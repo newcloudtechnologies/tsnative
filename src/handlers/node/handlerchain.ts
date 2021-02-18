@@ -25,6 +25,7 @@ import {
   TypeAliasHandler,
   VariableHandler,
   SwitchHandler,
+  EnumHandler,
 } from "@handlers/node";
 
 import { AbstractNodeHandler } from "./nodehandler";
@@ -47,6 +48,7 @@ export class NodeHandlerChain {
     const typeAlias = new TypeAliasHandler(generator);
     const variable = new VariableHandler(generator);
     const switchStatement = new SwitchHandler(generator);
+    const enumHandler = new EnumHandler(generator);
 
     imports.setNext(typeAlias);
     typeAlias.setNext(expressionStatement);
@@ -59,6 +61,7 @@ export class NodeHandlerChain {
     clazz.setNext(loop);
     loop.setNext(module);
     module.setNext(ret);
+    ret.setNext(enumHandler);
 
     this.root = imports;
   }

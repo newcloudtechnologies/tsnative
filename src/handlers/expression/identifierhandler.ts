@@ -13,7 +13,8 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment } from "@scope";
-import { error } from "@utils";
+import { error, getAliasedSymbolIfNecessary, getDeclarationNamespace, tryResolveGenericTypeIfNecessary } from "@utils";
+import { TypeMangler } from "@mangling";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -42,7 +43,24 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       }
     }
 
-    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(expression.text, false);
+    let symbol = this.generator.checker.getSymbolAtLocation(expression);
+    if (!symbol) {
+      error("No symbol found");
+    }
+
+    symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+    const declaration = symbol.valueDeclaration;
+
+    let identifier = expression.getText();
+    if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
+      let type = this.generator.checker.getTypeOfSymbolAtLocation(symbol, expression);
+      type = tryResolveGenericTypeIfNecessary(type, this.generator);
+
+      const namespace = getDeclarationNamespace(declaration);
+      identifier = namespace.concat(TypeMangler.mangle(type, this.generator.checker, declaration)).join(".");
+    }
+
+    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier, false);
     if (value) {
       if (value instanceof HeapVariableDeclaration) {
         return value.allocated;

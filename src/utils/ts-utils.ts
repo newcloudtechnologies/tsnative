@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { checkIfProperty, checkIfFunction } from "./tsc-utils";
-import { isTypeSupported, error } from "@utils";
+import { isTypeSupported, error, flatten } from "@utils";
 import { LLVMGenerator } from "@generator";
 
 import { cloneDeep } from "lodash";
@@ -61,8 +61,33 @@ export function getExpressionTypename(expression: ts.Expression, checker: ts.Typ
   return checker.typeToString(checker.getTypeAtLocation(expression));
 }
 
-export function getProperties(type: ts.Type, checker: ts.TypeChecker) {
-  return checker.getPropertiesOfType(type).filter(checkIfProperty);
+export function getProperties(type: ts.Type, checker: ts.TypeChecker): ts.Symbol[] {
+  if (!type.symbol) {
+    error("No symbol found");
+  }
+
+  const symbol = getAliasedSymbolIfNecessary(type.symbol, checker);
+  const properties: ts.Symbol[] = [];
+  if (
+    symbol.valueDeclaration &&
+    ts.isClassDeclaration(symbol.valueDeclaration) &&
+    symbol.valueDeclaration.heritageClauses
+  ) {
+    const inheritedProps = flatten(
+      symbol.valueDeclaration.heritageClauses.map((clause) => {
+        const clauseProps = clause.types.map((expressionWithTypeArgs) => {
+          return getProperties(checker.getTypeAtLocation(expressionWithTypeArgs), checker);
+        });
+
+        return clauseProps;
+      })
+    );
+
+    properties.push(...flatten(inheritedProps));
+  }
+
+  properties.push(...checker.getPropertiesOfType(type).filter(checkIfProperty));
+  return properties;
 }
 
 export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeChecker) {
@@ -284,9 +309,56 @@ export function canCreateLazyClosure(declaration: ts.Declaration) {
   return !ts.isPropertyAssignment(declaration.parent) && !ts.isReturnStatement(declaration.parent);
 }
 
+export function getAccessorType(
+  expression: ts.Expression,
+  generator: LLVMGenerator
+): ts.SyntaxKind.GetAccessor | ts.SyntaxKind.SetAccessor | undefined {
+  let result: ts.SyntaxKind.GetAccessor | ts.SyntaxKind.SetAccessor | undefined;
+
+  let symbol = generator.checker.getSymbolAtLocation(expression);
+  if (!symbol) {
+    error("No symbol found");
+  }
+
+  symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+
+  if (symbol.declarations.length === 1) {
+    if (ts.isGetAccessorDeclaration(symbol.declarations[0])) {
+      result = ts.SyntaxKind.GetAccessor;
+    } else if (ts.isSetAccessorDeclaration(symbol.declarations[0])) {
+      result = ts.SyntaxKind.SetAccessor;
+    }
+  } else if (
+    symbol.declarations.length > 1 &&
+    symbol.declarations.some(
+      (declaration) => ts.isGetAccessorDeclaration(declaration) || ts.isSetAccessorDeclaration(declaration)
+    )
+  ) {
+    if (ts.isBinaryExpression(expression.parent)) {
+      // @todo: what about property access chains?
+      if (
+        ts.isPropertyAccessExpression(expression.parent.left) ||
+        ts.isPropertyAccessExpression(expression.parent.right)
+      ) {
+        result =
+          expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+            ? ts.SyntaxKind.SetAccessor
+            : ts.SyntaxKind.GetAccessor;
+      } else if (ts.isPropertyAccessExpression(expression)) {
+        result = ts.SyntaxKind.GetAccessor;
+      }
+    } else {
+      result = ts.SyntaxKind.GetAccessor;
+    }
+  }
+
+  return result;
+}
+
 export enum InternalNames {
   Environment = "__environment__",
   Closure = "__closure__",
   FunctionScope = "__function_scope__",
   Object = "__object__",
+  TSConstructorMemory = "__ts_constructor_memory__",
 }

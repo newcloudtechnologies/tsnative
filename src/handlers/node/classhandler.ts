@@ -12,7 +12,14 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { getStructType, isTypeDeclared, checkIfStaticProperty, getDeclarationNamespace } from "@utils";
+import {
+  getStructType,
+  isTypeDeclared,
+  checkIfStaticProperty,
+  getDeclarationNamespace,
+  error,
+  getAliasedSymbolIfNecessary,
+} from "@utils";
 import { TypeMangler } from "@mangling";
 import { LLVMGenerator } from "@generator";
 
@@ -30,54 +37,27 @@ export class ClassHandler extends AbstractNodeHandler {
     return false;
   }
 
-  private handleClassDeclaration(declaration: ts.ClassDeclaration, parentScope: Scope, generator: LLVMGenerator): void {
-    if (declaration.typeParameters) {
-      // Generics will be handled once called to figure out actual generic arguments.
-      return;
-    }
-
-    const thisType = generator.checker.getTypeAtLocation(declaration);
-    let mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
-
-    if (isTypeDeclared(thisType, declaration, generator) && parentScope.get(mangledTypename)) {
-      return;
-    }
-
-    const populateStaticProperties = (map: Map<string, llvm.Value>, classDeclatation: ts.ClassDeclaration) => {
-      // iterate static properties
-      for (const memberDecl of classDeclatation.members) {
-        if (ts.isPropertyDeclaration(memberDecl)) {
-          const propertyDeclaration = memberDecl as ts.PropertyDeclaration;
-
-          if (propertyDeclaration.initializer && checkIfStaticProperty(propertyDeclaration)) {
-            const propertyName = propertyDeclaration.name;
-            const initializer = propertyDeclaration.initializer!;
-
-            const initializerValue: llvm.Value = this.generator.handleExpression(initializer);
-            if (map.has(propertyName.getText())) map.delete(propertyName.getText());
-
-            map.set(propertyName.getText(), initializerValue);
-          }
-        }
-      }
-    };
-
+  private getStaticPropertiesFromDeclaration(declaration: ts.ClassDeclaration, parentScope: Scope) {
     const staticProperties = new Map<string, llvm.Value>();
 
     if (declaration.heritageClauses) {
-      for (const clause of declaration.heritageClauses!) {
+      for (const clause of declaration.heritageClauses) {
         for (const type of clause.types) {
-          const symbol = this.generator.checker.getSymbolAtLocation(type.expression)!;
-          const baseClassDeclaration = symbol.valueDeclaration as ts.ClassDeclaration;
+          let symbol = this.generator.checker.getSymbolAtLocation(type.expression);
+          if (!symbol) {
+            error(`No symbol found ${declaration.getText()}`);
+          }
+          symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+
+          const baseClassDeclaration = symbol.declarations[0] as ts.ClassDeclaration;
           if (!baseClassDeclaration) {
-            // For imported symbols valueDeclaration is unreachable
-            return;
+            error("Base class declaration not found");
           }
 
-          const baseClassThisType = generator.checker.getTypeAtLocation(baseClassDeclaration);
+          const baseClassThisType = this.generator.checker.getTypeAtLocation(baseClassDeclaration);
           const mangledBaseClassTypename: string = TypeMangler.mangle(
             baseClassThisType,
-            generator.checker,
+            this.generator.checker,
             baseClassDeclaration
           );
 
@@ -85,48 +65,57 @@ export class ClassHandler extends AbstractNodeHandler {
           const qualifiedName = namespace.concat(mangledBaseClassTypename).join(".");
           const baseClassScope = parentScope.get(qualifiedName) as Scope;
 
-          if (baseClassScope && baseClassScope.thisData && baseClassScope.thisData.staticProperties) {
-            baseClassScope.thisData.staticProperties.forEach((value, key) => {
-              if (key.includes(".")) {
-                staticProperties.set(key, value);
-
-                const parts = key.split(".");
-                if (parts[0] === baseClassScope.name) {
-                  staticProperties.set(declaration.name!.getText() + "." + parts[1], value);
-                }
-              } else {
-                staticProperties.set(declaration.name!.getText() + "." + key, value);
-                staticProperties.set(baseClassScope.name + "." + key, value);
-              }
-            });
-          }
+          baseClassScope?.thisData?.staticProperties?.forEach((value, key) => {
+            staticProperties.set(key, value);
+          });
         }
       }
     }
 
-    populateStaticProperties(staticProperties, declaration);
+    for (const memberDecl of declaration.members) {
+      if (ts.isPropertyDeclaration(memberDecl) && memberDecl.initializer && checkIfStaticProperty(memberDecl)) {
+        const initializerValue = this.generator.handleExpression(memberDecl.initializer);
+        staticProperties.set(memberDecl.name.getText(), initializerValue);
+      }
+    }
+
+    return staticProperties;
+  }
+
+  private handleClassDeclaration(declaration: ts.ClassDeclaration, parentScope: Scope, generator: LLVMGenerator): void {
+    if (declaration.typeParameters) {
+      // Generics will be handled once called to figure out actual generic arguments.
+      return;
+    }
+
+    const name = declaration.name!.getText();
+    const thisType = generator.checker.getTypeAtLocation(declaration);
+    if (isTypeDeclared(thisType, declaration, generator) && parentScope.get(name)) {
+      return;
+    }
 
     const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
-    const scope = new Scope(declaration.name!.getText(), mangledTypename, undefined, {
+
+    const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
+
+    const mangledTypename = TypeMangler.mangle(thisType, generator.checker, declaration);
+    const scope = new Scope(name, mangledTypename, parentScope, {
       declaration,
       llvmType,
       tsType: thisType,
       staticProperties,
     });
 
-    const declarationNamespace: string[] = getDeclarationNamespace(declaration);
-    mangledTypename = declarationNamespace.concat(mangledTypename).join(".");
+    const methods = declaration.members.filter((member) => !ts.isPropertyDeclaration(member));
+    for (const method of methods) {
+      generator.handleNode(method, scope);
+    }
 
     // @todo: this logic is required because of builtins
     if (parentScope.get(mangledTypename)) {
       parentScope.overwrite(mangledTypename, scope);
     } else {
       parentScope.set(mangledTypename, scope);
-    }
-
-    const methods = declaration.members.filter((member) => !ts.isPropertyDeclaration(member));
-    for (const method of methods) {
-      generator.handleNode(method, scope);
     }
   }
 }

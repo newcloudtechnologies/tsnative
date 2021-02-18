@@ -269,3 +269,47 @@ const is_equal = function (a: number[], b: number[]): boolean {
   console.assert(i === 3, "Array of closures test failed (1)");
   console.assert(k === 1, "Array of closures test failed (2)");
 }
+
+{
+  class C {
+    n: number;
+
+    constructor(n: number) {
+      this.n = n;
+    }
+  }
+
+  const arr: C[] = [new C(1)];
+  console.assert(arr[0].n === 1, "Array of ts classes test failed (1)");
+
+  arr.push(new C(2));
+  console.assert(arr[1].n === 2, "Array of ts classes test failed (2)");
+}
+
+{
+  class C {
+    i: number;
+
+    constructor(i: number) {
+      this.i = i;
+    }
+  }
+
+  class X extends C {
+    o: number;
+
+    constructor(i: number) {
+      super(i);
+      this.o = 777
+    }
+  }
+
+  const a: C[] = [new X(2), new C(1)];
+  const x = a[0] as X;
+
+  console.assert(x.i === 2, "Cast to base class failed (1)");
+  console.assert(x.o === 777, "Cast to base class failed (2)");
+
+  const c = a[1];
+  console.assert(c.i === 1, "Polymorphic array test failed");
+}

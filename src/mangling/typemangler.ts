@@ -23,6 +23,7 @@ export class TypeMangler {
 
     if (declaration) {
       if (
+        ts.isConstructorDeclaration(declaration) ||
         ts.isMethodDeclaration(declaration) ||
         ts.isGetAccessorDeclaration(declaration) ||
         ts.isSetAccessorDeclaration(declaration)

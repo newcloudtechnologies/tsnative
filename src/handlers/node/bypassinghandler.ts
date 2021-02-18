@@ -22,7 +22,6 @@ export class BypassingHandler extends AbstractNodeHandler {
       // Declarations have no actual arguments. Handle them when called.
       case ts.SyntaxKind.EndOfFileToken:
       case ts.SyntaxKind.EmptyStatement:
-      case ts.SyntaxKind.EnumDeclaration:
       case ts.SyntaxKind.ImportDeclaration:
       case ts.SyntaxKind.ExportDeclaration:
       case ts.SyntaxKind.InterfaceDeclaration:

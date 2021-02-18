@@ -98,7 +98,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
 
         const tsType = this.generator.checker.getTypeAtLocation(declaration as ts.Node);
 
-        const scope: Scope = new Scope(name, name, undefined, {
+        const scope: Scope = new Scope(name, name, parentScope, {
           declaration,
           llvmType: llvmType.isPointerTy() ? llvmType : llvmType.getPointerTo(),
           tsType,

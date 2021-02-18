@@ -21,6 +21,8 @@ import {
   checkIfObject,
   getTypeNamespace,
   getAliasedSymbolIfNecessary,
+  checkIfIntersection,
+  checkIfUnion,
 } from "@utils";
 import { lookpath } from "lookpath";
 import * as ts from "typescript";
@@ -85,6 +87,22 @@ export class ExternalSymbolsProvider {
       typename = "string";
     } else {
       typename = checker.typeToString(type);
+      if (checkIfUnion(type) || checkIfIntersection(type)) {
+        typename = "void*";
+      } else {
+        let symbol = type.getSymbol();
+        if (symbol) {
+          symbol = getAliasedSymbolIfNecessary(symbol, checker);
+          const declaration = symbol.declarations[0];
+
+          if (ts.isClassDeclaration(declaration)) {
+            const ambientDeclaration = !declaration.members.find(ts.isConstructorDeclaration)?.body;
+            if (!ambientDeclaration) {
+              typename = "void";
+            }
+          }
+        }
+      }
     }
 
     switch (typename) {
@@ -125,7 +143,6 @@ export class ExternalSymbolsProvider {
   private readonly methodName: string;
   private readonly argumentsPattern: string;
   private readonly parametersPattern: string;
-  private readonly parameterTypes: ts.Type[] = [];
   private readonly functionTemplateParametersPattern: string;
   private readonly generator: LLVMGenerator;
 
@@ -148,13 +165,13 @@ export class ExternalSymbolsProvider {
     }
 
     const functionLikeDeclaration = declaration as ts.FunctionLikeDeclaration;
-    this.parameterTypes = functionLikeDeclaration.parameters.map(generator.checker.getTypeAtLocation) || [];
+    const parameterTypes = functionLikeDeclaration.parameters.map(generator.checker.getTypeAtLocation) || [];
 
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
 
     // defined in declaration
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
-      this.parameterTypes.map((type) => {
+      parameterTypes.map((type) => {
         const typeNamespace = getTypeNamespace(type);
         const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
         return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;

@@ -135,7 +135,10 @@ export class TemplateInstantiator {
         let cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
         cppType = this.correctQualifiers(tsType, typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType);
 
-        templateInstance = `template class Array<${cppType}>;`;
+        templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(
+          this.checker.getTypeAtLocation(node.initializer),
+          this.checker
+        )};`;
       } else {
         // const arr: number[] = [];
         // Use declared type as array type.
@@ -166,7 +169,12 @@ export class TemplateInstantiator {
         )};`;
         this.generatedContent.push(templateInstance);
       } else {
-        const tsType = this.checker.getTypeAtLocation(node);
+        let tsType = this.checker.getTypeAtLocation(node);
+
+        if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+          tsType = this.checker.getTypeAtLocation(node.left);
+        }
+
         const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
         this.generatedContent.push(templateInstance);
       }
@@ -298,7 +306,7 @@ export class TemplateInstantiator {
   }
 
   private async instantiateArrays() {
-    for (const sourceFile of this.sources) {
+    for (const sourceFile of this.sources.filter((source) => source.fileName.includes("generated"))) {
       sourceFile.forEachChild(this.arrayNodeVisitor.bind(this));
     }
 
@@ -310,7 +318,7 @@ export class TemplateInstantiator {
   }
 
   private async instantiateFunctions() {
-    for (const sourceFile of this.sources) {
+    for (const sourceFile of this.sources.filter((source) => source.fileName.includes("generated"))) {
       sourceFile.forEachChild(this.methodsVisitor.bind(this));
     }
 

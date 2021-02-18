@@ -17,3 +17,4 @@ export * from "./parametersrandomizingpreprocessor";
 export * from "./constructorgeneratingpreprocessor";
 export * from "./restparameterspreprocessor";
 export * from "./functiondeclarationpreprocessor";
+export * from "./defaultpropertiespreprocessor";

@@ -24,12 +24,9 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
             call = node.expression as ts.CallExpression;
           } else if (ts.isCallExpression(node)) {
             call = node;
+          } else if (ts.isSourceFile(node)) {
+            call = (node.statements[0] as ts.ExpressionStatement).expression as ts.CallExpression;
           } else {
-            if (ts.isSourceFile(node)) {
-              // @todo: have no idea why first statement node is classified as ts.SourceFile
-              error(`'console.log' cannot be first statement; file '${node.fileName}'`);
-            }
-
             error(`Expected 'console.log' call to be of 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]}`);
           }
 
@@ -43,10 +40,16 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
                 return args;
               }
 
-              return this.handleTSObject(type, callArgument);
+              args.push(...this.handleTSObject(type, callArgument));
+              return args;
             }, new Array<ts.Expression>());
 
             call = ts.updateCall(call, call.expression, undefined, logArguments);
+            ts.addSyntheticLeadingComment(
+              call,
+              ts.SyntaxKind.SingleLineCommentTrivia,
+              "@ts-ignore (Ignore possible access to protected/private fields)"
+            );
             node = call;
           }
         }

@@ -11,30 +11,44 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { getAliasedSymbolIfNecessary } from "@utils";
+import { error, getAliasedSymbolIfNecessary, isSyntheticNode } from "@utils";
 import { last } from "lodash";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
       const visitor = (node: ts.Node): ts.Node => {
-        if (ts.isCallExpression(node)) {
-          let symbol = this.generator.checker.getTypeAtLocation(node.expression).symbol;
-          symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
-
+        if (!isSyntheticNode(node) && ts.isCallExpression(node)) {
+          let symbol = this.generator.checker.getSymbolAtLocation(node.expression);
           if (symbol) {
-            const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+            symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+            let declaration = symbol.declarations[0];
 
-            if (valueDeclaration.body) {
+            if (ts.isVariableDeclaration(declaration)) {
+              if (!declaration.initializer) {
+                error(`Initializer required for '${declaration.getText()}'`);
+              }
+
+              const initializerType = this.generator.checker.getTypeAtLocation(declaration.initializer);
+              symbol = initializerType.getSymbol();
+              if (!symbol) {
+                error("No symbol found");
+              }
+
+              symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+              declaration = symbol.declarations[0];
+            }
+
+            if ((declaration as ts.FunctionLikeDeclaration).body) {
               // Skip declarations since they are used for C++ integration
               // @todo: is there a better way to check if declaration is declared in ambient context?
 
               const signature = this.generator.checker.getSignatureFromDeclaration(
-                valueDeclaration as ts.SignatureDeclaration
+                declaration as ts.SignatureDeclaration
               )!;
               const lastParameter = last(signature.getParameters());
 
-              if (lastParameter && this.isRestParameters(lastParameter.valueDeclaration as ts.ParameterDeclaration)) {
+              if (lastParameter && this.isRestParameters(lastParameter.declarations[0] as ts.ParameterDeclaration)) {
                 const nonRestParametersCount = signature.getParameters().length - 1;
                 const restArguments = node.arguments.slice(nonRestParametersCount);
                 const restArgumentsArray = ts.createArrayLiteral(restArguments);

@@ -22,10 +22,12 @@ import {
   checkIfFunction,
   checkIfObject,
   isTSClosure,
+  InternalNames,
+  getAccessorType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { addClassScope, Scope } from "@scope";
+import { addClassScope, Environment, Scope } from "@scope";
 
 export function castToInt32AndBack(
   values: llvm.Value[],
@@ -215,6 +217,11 @@ export function getArrayType(expression: ts.ArrayLiteralExpression, generator: L
       arrayType = tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(expression.parent), generator);
     } else if (ts.isCallExpression(expression.parent)) {
       arrayType = getArgumentArrayType(expression, generator.checker);
+    } else if (ts.isBinaryExpression(expression.parent)) {
+      arrayType = tryResolveGenericTypeIfNecessary(
+        generator.checker.getTypeAtLocation(expression.parent.left),
+        generator
+      );
     }
   }
 
@@ -288,7 +295,7 @@ export function createArrayPush(
   }
 
   const parameterType =
-    checkIfObject(elementType) || checkIfFunction(elementType)
+    checkIfObject(elementType) || checkIfFunction(elementType) || elementType.isUnionOrIntersection()
       ? llvm.Type.getInt8PtrTy(generator.context)
       : correctCppPrimitiveType(getLLVMType(elementType, expression, generator));
 
@@ -365,11 +372,21 @@ export function getLLVMReturnType(tsReturnType: ts.Type, expression: ts.Expressi
   return llvmReturnType.isPointerTy() ? llvmReturnType : llvmReturnType.getPointerTo();
 }
 
-export function getEnvironmentVariablesFromBody(
+export function getEnvironmentVariables(
   body: ts.ConciseBody,
   signature: ts.Signature,
-  generator: LLVMGenerator
+  generator: LLVMGenerator,
+  outerEnv?: Environment
 ) {
+  const environmentVariables = getEnvironmentVariablesFromBody(body, signature, generator);
+  if (outerEnv) {
+    environmentVariables.push(...outerEnv.variables);
+  }
+  // ts object memory must be required explicitly
+  return environmentVariables.filter((variable) => variable !== InternalNames.TSConstructorMemory);
+}
+
+function getEnvironmentVariablesFromBody(body: ts.ConciseBody, signature: ts.Signature, generator: LLVMGenerator) {
   const vars = getFunctionEnvironmentVariables(body, signature, generator);
   const varsStatic = getStaticFunctionEnvironmentVariables(body, generator);
   // Do not take 'undefined' since it is injected for every source file and available globally
@@ -377,15 +394,14 @@ export function getEnvironmentVariablesFromBody(
   return vars.concat(varsStatic).filter((variable) => variable !== "undefined");
 }
 
-export function getFunctionEnvironmentVariables(
+function getFunctionEnvironmentVariables(
   body: ts.ConciseBody,
   signature: ts.Signature,
-  generator: LLVMGenerator
+  generator: LLVMGenerator,
+  externalVariables: string[] = []
 ) {
   return generator.withInsertBlockKeeping(() => {
     return generator.symbolTable.withLocalScope((bodyScope) => {
-      const externalVariables: string[] = [];
-
       const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
       generator.builder.setInsertionPoint(dummyBlock);
 
@@ -409,27 +425,92 @@ export function getFunctionEnvironmentVariables(
 
         if (
           ts.isIdentifier(node) &&
+          !ts.isNewExpression(node.parent) &&
           !ts.isPropertyAssignment(node.parent) &&
-          !bodyScope.map.get(nodeText) &&
-          !externalVariables.includes(nodeText) &&
-          !isStaticProperty(node)
+          !isStaticProperty(node) &&
+          !externalVariables.includes(nodeText)
         ) {
           externalVariables.push(nodeText);
         }
 
-        if (ts.isCallExpression(node)) {
-          let symbol = generator.checker.getTypeAtLocation(node.expression).symbol;
-          symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
-          // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead
-          const functionDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+        if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+          const innerFunctionSignature = generator.checker.getSignatureFromDeclaration(
+            node as ts.SignatureDeclaration
+          )!;
 
-          if (functionDeclaration.body) {
-            const innerFunctionSignature = generator.checker.getSignatureFromDeclaration(
-              functionDeclaration as ts.SignatureDeclaration
-            )!;
-            externalVariables.push(
-              ...getFunctionEnvironmentVariables(functionDeclaration.body, innerFunctionSignature, generator)
+          getFunctionEnvironmentVariables(node.body, innerFunctionSignature, generator, externalVariables);
+        } else if (ts.isPropertyAccessExpression(node)) {
+          const accessorType = getAccessorType(node, generator);
+          if (accessorType) {
+            let symbol = generator.checker.getSymbolAtLocation(node);
+            if (!symbol) {
+              error("Symbol not found");
+            }
+
+            symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+
+            const declaration = symbol.declarations.find(
+              accessorType === ts.SyntaxKind.GetAccessor ? ts.isGetAccessorDeclaration : ts.isSetAccessorDeclaration
             );
+            if (!declaration) {
+              error("No accessor declaration found");
+            }
+
+            const declarationBody = (declaration as ts.FunctionLikeDeclaration).body;
+            if (declarationBody) {
+              const innerFunctionSignature = generator.checker.getSignatureFromDeclaration(
+                declaration as ts.SignatureDeclaration
+              )!;
+
+              getFunctionEnvironmentVariables(declarationBody, innerFunctionSignature, generator, externalVariables);
+            }
+          }
+        } else if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+          const type = generator.checker.getTypeAtLocation(node.expression);
+          let symbol = type.getSymbol();
+          if (!symbol) {
+            error("No symbol found");
+          }
+          symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+
+          // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead
+          // @todo: what about setters/getters?
+          let declaration = symbol.declarations[0];
+          if (ts.isNewExpression(node)) {
+            const constructorDeclaration = (declaration as ts.ClassDeclaration).members.find(
+              ts.isConstructorDeclaration
+            );
+            if (!constructorDeclaration) {
+              // unreachable if source is preprocessed correctly
+              error(`No constructor provided: ${declaration.getText()}`);
+            }
+
+            const thisType = generator.checker.getTypeAtLocation(node);
+            const declarationScope = getFunctionDeclarationScope(constructorDeclaration, thisType, generator);
+            if (!declarationScope.mangledName) {
+              error("No scope name provided");
+            }
+
+            let destinationScope = bodyScope.parent!;
+            while (destinationScope && destinationScope.parent) {
+              destinationScope = destinationScope.parent;
+            }
+
+            if (!destinationScope.get(declarationScope.mangledName)) {
+              destinationScope.set(declarationScope.mangledName, declarationScope);
+            }
+
+            declaration = constructorDeclaration;
+          }
+
+          const declarationBody = (declaration as ts.FunctionLikeDeclaration).body;
+
+          if (declarationBody) {
+            const innerFunctionSignature = generator.checker.getSignatureFromDeclaration(
+              declaration as ts.SignatureDeclaration
+            )!;
+
+            getFunctionEnvironmentVariables(declarationBody, innerFunctionSignature, generator, externalVariables);
           }
         }
 
@@ -474,10 +555,16 @@ export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, gene
       generator.builder.setInsertionPoint(dummyBlock);
 
       const visitor = (node: ts.Node) => {
-        const symbol = generator.checker.getSymbolAtLocation(node);
-        if (symbol && symbol!.valueDeclaration?.kind === ts.SyntaxKind.ClassDeclaration) {
-          const parentText = node.parent.getText();
-          externalVariables.push(parentText);
+        if (ts.isPropertyAccessExpression(node)) {
+          const propertyAccess = node.name;
+          const symbol = generator.checker.getSymbolAtLocation(propertyAccess);
+          if (!symbol) {
+            error("No symbol found");
+          }
+          const declaration = symbol.declarations[0] as ts.PropertyDeclaration;
+          if (declaration.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)) {
+            externalVariables.push(node.getText());
+          }
         }
 
         if (node.getChildCount()) {

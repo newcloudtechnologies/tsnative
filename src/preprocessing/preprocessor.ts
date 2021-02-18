@@ -21,6 +21,7 @@ import {
   ParametersRandomizingPreprocessor,
   RestParametersPreprocessor,
   TSObjectConsoleLogPreprocessor,
+  DefaultPropertiesPreprocessor,
 } from "@preprocessing";
 import { LLVMGenerator } from "@generator";
 
@@ -35,9 +36,10 @@ export class Preprocessor {
     this.parts.push(
       new TSObjectConsoleLogPreprocessor(generator),
       new ParametersRandomizingPreprocessor(generator),
-      new ConstructorGeneratingPreprocessor(generator),
       new RestParametersPreprocessor(generator),
-      new FunctionDeclarationPreprocessor(generator)
+      new FunctionDeclarationPreprocessor(generator),
+      new ConstructorGeneratingPreprocessor(generator),
+      new DefaultPropertiesPreprocessor(generator)
     );
 
     const outputDir = path.join(process.cwd(), path.sep, getRandomString() + "_generated");

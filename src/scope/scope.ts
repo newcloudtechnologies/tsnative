@@ -23,7 +23,6 @@ import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
 
-import { cloneDeep } from "lodash";
 import { getArrayType } from "@handlers";
 
 export class Environment {
@@ -121,10 +120,11 @@ export function addClassScope(
     return;
   }
 
-  const declaration = getAliasedSymbolIfNecessary(thisType.symbol, generator.checker)
-    .valueDeclaration as ts.ClassDeclaration;
+  const declaration = getAliasedSymbolIfNecessary(thisType.symbol, generator.checker).declarations.find(
+    ts.isClassDeclaration
+  );
 
-  if (!declaration || !declaration.members) {
+  if (!declaration) {
     return;
   }
 
@@ -132,13 +132,15 @@ export function addClassScope(
   const namespace: string[] = getDeclarationNamespace(declaration);
   mangledTypename = namespace.concat(mangledTypename).join(".");
 
+  const name = declaration.name!.getText();
   if (parentScope.get(mangledTypename)) {
     return;
   }
 
   const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
   const tsType = generator.checker.getTypeAtLocation(declaration as ts.Node);
-  const scope = new Scope(declaration.name!.getText(), mangledTypename, undefined, { declaration, llvmType, tsType });
+  const scope = new Scope(name, mangledTypename, parentScope, { declaration, llvmType, tsType });
+
   parentScope.set(mangledTypename, scope);
   for (const method of declaration.members.filter((member) => !ts.isPropertyDeclaration(member))) {
     generator.handleNode(method, scope);
@@ -202,21 +204,31 @@ export function createEnvironment(
   });
 
   if (outerEnv) {
-    const data = (scope.get(InternalNames.Environment) as llvm.Value) || outerEnv.typed;
+    const data = generator.builder.createLoad(outerEnv.typed);
 
     const parameters = functionData?.signature.getParameters().map((parameter) => parameter.escapedName.toString());
     const outerEnvValuesIndexes = [];
     for (let i = 0; i < outerEnv.variables.length; ++i) {
-      if (parameters && !parameters.includes(outerEnv.variables[i])) {
-        outerEnvValuesIndexes.push(i);
+      const variableName = outerEnv.variables[i];
+
+      if (!environmentVariables.includes(variableName)) {
+        continue;
       }
+
+      if (parameters?.includes(variableName)) {
+        continue;
+      }
+
+      if (variableName === InternalNames.TSConstructorMemory && map.has(variableName)) {
+        continue;
+      }
+
+      outerEnvValuesIndexes.push(i);
     }
 
     const outerValues: llvm.Value[] = [];
     for (const index of outerEnvValuesIndexes) {
-      const extracted = data.type.isPointerTy()
-        ? generator.builder.createLoad(generator.xbuilder.createSafeInBoundsGEP(data, [0, index]))
-        : generator.xbuilder.createSafeExtractValue(data, [index]);
+      const extracted = generator.xbuilder.createSafeExtractValue(data, [index]);
       outerValues.push(extracted);
     }
 
@@ -251,82 +263,94 @@ export function createEnvironment(
   );
 }
 
-export function populateContext(generator: LLVMGenerator, scope: Scope, environmentVariables: string[]) {
-  const context: HeapVariableDeclaration[] = [];
+function populateStaticContext(scope: Scope, environmentVariables: string[]) {
+  const staticContext: HeapVariableDeclaration[] = [];
 
-  // Prevent original scope modification.
-  scope = cloneDeep(scope);
+  scope.thisData?.staticProperties?.forEach((value, key) => {
+    const idx = environmentVariables.findIndex((variable) => {
+      if (variable === key) {
+        return true;
+      }
 
-  scope.map.forEach((scopeVal, key) => {
-    if (scopeVal instanceof Scope) {
-      // prevent potentially endless recursion
-      scope.map.delete(key);
-      context.push(...populateContext(generator, scopeVal, environmentVariables));
+      const [identifier, property] = variable.split(".");
+      return (identifier === scope.name || identifier === scope.mangledName) && property === key;
+    });
+
+    if (idx === -1) {
       return;
     }
 
-    if (environmentVariables.indexOf(key) === -1 && key !== InternalNames.Environment) {
-      return;
-    }
-
-    if (scopeVal instanceof HeapVariableDeclaration) {
-      scopeVal.name = key;
-      context.push(scopeVal);
-    } else if (scopeVal instanceof llvm.Value) {
-      context.push(new HeapVariableDeclaration(scopeVal, scopeVal, key));
+    if (value instanceof HeapVariableDeclaration) {
+      value.name = environmentVariables[idx];
+      staticContext.push(value);
+    } else if (value instanceof llvm.Value) {
+      staticContext.push(new HeapVariableDeclaration(value, value, environmentVariables[idx]));
     }
   });
 
-  if (scope.thisData && scope.thisData.staticProperties) {
-    scope.thisData.staticProperties.forEach((scopeVal, key) => {
-      const pred = (v: string) => {
-        let result = false;
+  return staticContext;
+}
 
-        if (v === key) {
-          result = true;
-        } else if (v.includes(".")) {
-          const parts = v.split(".");
+export function populateContext(
+  generator: LLVMGenerator,
+  scope: Scope,
+  environmentVariables: string[],
+  seenScopes: Scope[] = []
+) {
+  const context: HeapVariableDeclaration[] = [];
 
-          if (parts[0] === scope.name && parts[1] === key) {
-            result = true;
-          }
-        }
+  const addToContextRecursively = (value: ScopeValue, key: string) => {
+    if (key === "undefined") {
+      return;
+    }
 
-        return result;
-      };
-
-      const idx = environmentVariables.findIndex(pred);
-
-      if (idx === -1 && key !== InternalNames.Environment) {
-        return;
+    const index = environmentVariables.findIndex((variable) => {
+      if (variable === key || variable + "__class" === key) {
+        return true;
       }
 
-      if (scopeVal instanceof HeapVariableDeclaration) {
-        scopeVal.name = environmentVariables[idx];
-        context.push(scopeVal);
-      } else if (scopeVal instanceof llvm.Value) {
-        context.push(new HeapVariableDeclaration(scopeVal, scopeVal, environmentVariables[idx]));
+      if (value instanceof Scope && variable.includes(".")) {
+        const [identifier, property] = variable.split(".");
+        return value.name === identifier && (value.get(property) || value.getStatic(property));
       }
+
+      return false;
     });
-  }
 
-  if (scope.parent) {
-    context.push(...populateContext(generator, scope.parent, environmentVariables));
+    if (index === -1 && key !== InternalNames.Environment) {
+      return;
+    }
+
+    if (value instanceof Scope && !seenScopes.includes(value)) {
+      seenScopes.push(value);
+      value.map.forEach((v, k) => {
+        addToContextRecursively(v, k);
+      });
+
+      context.push(...populateStaticContext(value, environmentVariables));
+
+      if (value.parent && !seenScopes.includes(value.parent)) {
+        context.push(...populateContext(generator, value.parent, environmentVariables, seenScopes));
+      }
+    } else if (value instanceof HeapVariableDeclaration) {
+      context.push(value);
+    } else if (value instanceof llvm.Value) {
+      context.push(new HeapVariableDeclaration(value, value, key));
+    }
+  };
+
+  context.push(...populateStaticContext(scope, environmentVariables));
+  scope.map.forEach(addToContextRecursively);
+
+  if (scope.parent && !seenScopes.includes(scope.parent)) {
+    seenScopes.push(scope.parent);
+    context.push(...populateContext(generator, scope.parent, environmentVariables, seenScopes));
   }
 
   return context;
 }
 
-export interface FunctionDeclarationScopeEnvironment {
-  declaration: ts.FunctionDeclaration;
-  scope: Scope;
-}
-
-export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope | FunctionDeclarationScopeEnvironment;
-
-export function isFunctionDeclarationScopeEnvironment(value: ScopeValue) {
-  return "declaration" in value && "scope" in value;
-}
+export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope;
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
@@ -368,9 +392,8 @@ export class Scope {
     if (!result) {
       for (const [_, value] of this.map) {
         if (value instanceof Scope) {
-          const s: Scope = value;
-          if (s.name === identifier || s.mangledName === identifier) {
-            result = s;
+          if (value.mangledName === identifier) {
+            result = value;
             break;
           }
         }
@@ -380,14 +403,8 @@ export class Scope {
     return result;
   }
 
-  getStatic(identifier: string): llvm.Value | undefined {
-    let result: llvm.Value | undefined;
-
-    if (!result && this.thisData && this.thisData.staticProperties) {
-      result = this.thisData!.staticProperties!.get(identifier);
-    }
-
-    return result;
+  getStatic(identifier: string) {
+    return this.thisData?.staticProperties?.get(identifier);
   }
 
   names(): string[] {
@@ -396,8 +413,8 @@ export class Scope {
       result.push(it[0]);
     }
 
-    if (this.thisData && this.thisData.staticProperties) {
-      for (const [name] of this.thisData!.staticProperties!) {
+    if (this.thisData?.staticProperties) {
+      for (const [name] of this.thisData.staticProperties) {
         result.push(name);
       }
     }
@@ -418,7 +435,7 @@ export class Scope {
   }
 
   set(identifier: string, value: ScopeValue) {
-    if (!this.map.get(identifier)) {
+    if (!this.get(identifier)) {
       return this.map.set(identifier, value);
     }
 
@@ -426,10 +443,27 @@ export class Scope {
   }
 
   overwrite(identifier: string, value: ScopeValue) {
-    if (this.map.get(identifier)) {
+    if (this.get(identifier)) {
       return this.map.set(identifier, value);
     }
 
     error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+  }
+
+  dump(pad = 0, seen: Scope[] = []) {
+    console.log("--".repeat(pad), this.name, this.mangledName);
+
+    for (const [key, value] of this.map) {
+      if (!(value instanceof Scope)) {
+        console.log("--".repeat(pad + 1), key, value instanceof llvm.Value ? "(llvm value)" : "(heap variable)");
+      } else if (!seen.includes(value)) {
+        seen.push(value);
+        value.dump(++pad, seen);
+      }
+    }
+
+    if (this.parent && !seen.includes(this.parent)) {
+      this.parent.dump(++pad, seen);
+    }
   }
 }

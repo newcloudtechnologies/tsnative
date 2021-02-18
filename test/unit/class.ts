@@ -361,7 +361,7 @@
   const inst2 = Factory.make();
 
   console.assert(Factory.arg === "Drink", "class: Factory.arg === 'Drink' failed");
-  console.assert(inst2.kind === Factory.arg, "class: inst1.kind === Factory.arg failed");
+  console.assert(inst2.kind === Factory.arg, "class: inst2.kind === Factory.arg failed");
 }
 
 {
@@ -372,4 +372,17 @@
   class DerivedWithoutConstructorDeclaration extends WithoutConstructorDeclaration { };
   // 'super' call should also be generated
   new DerivedWithoutConstructorDeclaration;
+}
+
+{
+  class C {
+    i = 42;
+  }
+
+  class X extends C {
+    n = 22;
+  }
+
+  const x = new X;
+  console.assert(x.i === 42 && x.n === 22, "Inherited and own properties test failed");
 }

@@ -11,6 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
+import { error, getAliasedSymbolIfNecessary } from "@utils";
 
 export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -20,17 +21,41 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
           const constructorDeclaration = node.members.find(ts.isConstructorDeclaration);
           if (!constructorDeclaration) {
             const constructorStatements = [];
+            const parameters = [];
+            const args = [];
             if (node.heritageClauses) {
+              const extendsClause = node.heritageClauses.find(
+                (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+              );
+              if (extendsClause) {
+                const expessionWithTypeArgs = extendsClause.types[0];
+                const type = this.generator.checker.getTypeAtLocation(expessionWithTypeArgs);
+                if (!type.symbol) {
+                  error("Symbol not found");
+                }
+
+                const symbol = getAliasedSymbolIfNecessary(type.symbol, this.generator.checker);
+                const declaration = symbol.declarations[0] as ts.ClassDeclaration;
+
+                const baseConstructor = declaration.members.find(ts.isConstructorDeclaration);
+                if (!baseConstructor) {
+                  error(`No constructor provided for '${this.generator.checker.typeToString(type)}'`);
+                }
+
+                parameters.push(...baseConstructor.parameters);
+                args.push(...parameters.map((parameter) => ts.createIdentifier(parameter.name.getText())));
+              }
+
               const superExpression = ts.createSuper();
-              const superCall = ts.createCall(superExpression, undefined, undefined);
+              const superCall = ts.createCall(superExpression, undefined, args);
               const superCallExpression = ts.createExpressionStatement(superCall);
               constructorStatements.push(superCallExpression);
             }
             const constructorBody = ts.createBlock(constructorStatements);
-            const defaultConstructor = ts.createConstructor(undefined, undefined, [], constructorBody);
+            const defaultConstructor = ts.createConstructor(undefined, undefined, parameters, constructorBody);
             const updatedMembers = [defaultConstructor, ...node.members];
 
-            node = ts.updateClassDeclaration(
+            const updated = ts.updateClassDeclaration(
               node,
               node.decorators,
               node.modifiers,
@@ -39,6 +64,15 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
               node.heritageClauses,
               updatedMembers
             );
+
+            const type = this.generator.checker.getTypeAtLocation(node);
+            const symbol = getAliasedSymbolIfNecessary(type.symbol, this.generator.checker);
+
+            defaultConstructor.parent = updated;
+            updated.parent = node.parent || sourceFile;
+            symbol.declarations[0] = updated;
+
+            node = updated;
           }
         }
 

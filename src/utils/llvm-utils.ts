@@ -232,21 +232,20 @@ export function getLLVMTypename(type: llvm.Type) {
   return type.toString().replace(/%|\*/g, "");
 }
 
-export function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
-  const { context, checker, module } = generator;
-
-  const intersectionName = getUnionOrIntersectionName(type, generator).concat(".intersection");
-  let intersection = module.getTypeByName(intersectionName);
-  if (intersection) {
-    return intersection;
-  }
-
-  const elements = flatten(
+function getIntersectionTypeProperties(
+  type: ts.IntersectionType,
+  node: ts.Node,
+  generator: LLVMGenerator
+): { type: llvm.Type; name: string }[] {
+  return flatten(
     type.types
       .map((t) => tryResolveGenericTypeIfNecessary(t, generator))
       .map((t) => {
-        return getProperties(t, checker).map((property) => {
-          const tsType = checker.getTypeOfSymbolAtLocation(property, node);
+        if (t.isIntersection()) {
+          return getIntersectionTypeProperties(t, node, generator);
+        }
+        return getProperties(t, generator.checker).map((property) => {
+          const tsType = generator.checker.getTypeOfSymbolAtLocation(property, node);
           const llvmType = getLLVMType(tsType, node, generator);
           const valueType = property.valueDeclaration.decorators?.some(
             (decorator) => decorator.getText() === "@ValueType"
@@ -255,6 +254,18 @@ export function getIntersectionStructType(type: ts.IntersectionType, node: ts.No
         });
       })
   );
+}
+
+export function getIntersectionStructType(type: ts.IntersectionType, node: ts.Node, generator: LLVMGenerator) {
+  const { context, module } = generator;
+
+  const intersectionName = getUnionOrIntersectionName(type, generator).concat(".intersection");
+  let intersection = module.getTypeByName(intersectionName);
+  if (intersection) {
+    return intersection;
+  }
+
+  const elements = getIntersectionTypeProperties(type, node, generator);
 
   if (elements.length === 0) {
     // So unlikely but have to be checked.
@@ -416,7 +427,7 @@ export function getObjectPropsLLVMTypesNames(
     ).filter((value, index, array) => array.findIndex((v) => v.name === value.name) === index);
   }
 
-  const getTypeAndNameFromProperty = (property: ts.Symbol): { type: llvm.Type; name: string }[] => {
+  const getTypeAndNameFromProperty = (property: ts.Symbol): { type: llvm.Type; name: string } => {
     const tsType = generator.checker.getTypeOfSymbolAtLocation(
       getAliasedSymbolIfNecessary(property, generator.checker),
       node
@@ -425,12 +436,12 @@ export function getObjectPropsLLVMTypesNames(
     const llvmType = getLLVMType(tsType, node, generator);
     const valueType = property.valueDeclaration?.decorators?.some((decorator) => decorator.getText() === "@ValueType");
 
-    return [{ type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name }];
+    return { type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name };
   };
 
-  const properties = getProperties(type, generator.checker).map(getTypeAndNameFromProperty);
   const symbol = getAliasedSymbolIfNecessary(type.symbol, generator.checker);
 
+  const properties: { type: llvm.Type; name: string }[] = [];
   if (
     symbol.valueDeclaration &&
     ts.isClassDeclaration(symbol.valueDeclaration) &&
@@ -439,10 +450,8 @@ export function getObjectPropsLLVMTypesNames(
     const inheritedProps = flatten(
       symbol.valueDeclaration.heritageClauses.map((clause) => {
         const clauseProps = clause.types.map((expressionWithTypeArgs) => {
-          return flatten(
-            getProperties(generator.checker.getTypeAtLocation(expressionWithTypeArgs), generator.checker).map(
-              getTypeAndNameFromProperty
-            )
+          return getProperties(generator.checker.getTypeAtLocation(expressionWithTypeArgs), generator.checker).map(
+            getTypeAndNameFromProperty
           );
         });
 
@@ -450,10 +459,16 @@ export function getObjectPropsLLVMTypesNames(
       })
     );
 
-    properties.push(inheritedProps);
+    properties.push(...inheritedProps);
   }
 
-  return flatten(properties);
+  properties.push(
+    ...getProperties(type, generator.checker)
+      .map(getTypeAndNameFromProperty)
+      .filter((property) => !properties.find((p) => property.name === p.name))
+  );
+
+  return properties;
 }
 
 export function getStructType(type: ts.Type, node: ts.Node, generator: LLVMGenerator) {

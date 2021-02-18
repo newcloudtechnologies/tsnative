@@ -32,7 +32,7 @@ export class ImportsHandler extends AbstractNodeHandler {
               } catch (_) {
                 // Or maybe it is a class?
                 const value = this.generator.symbolTable.get(name + "__class");
-                parentScope.set(name, value);
+                parentScope.set(name + "__class", value);
               }
 
               // Ignore empty catch block

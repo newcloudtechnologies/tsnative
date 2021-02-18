@@ -33,24 +33,31 @@ export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
             node.type,
             node.initializer
           );
+
+          parameterRandomized.parent = node.parent;
           node = parameterRandomized;
         }
 
         // Check if identifier is a parameter and requires update;
         // `undefined` is declared as 'type undefined = any', so it has no declaration
         if (ts.isIdentifier(node) && node.getText(sourceFile) !== "undefined") {
-          const symbol = getAliasedSymbolIfNecessary(
-            this.generator.checker.getSymbolAtLocation(node)!,
-            this.generator.checker
-          );
+          if (node.parent && ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) {
+            return ts.visitEachChild(node, visitor, context);
+          }
+          const location = node.parent && ts.isPropertyAccessExpression(node.parent) ? node.parent.expression : node;
 
+          let symbol = this.generator.checker.getSymbolAtLocation(location);
           if (symbol) {
+            symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
             const declaration = symbol.declarations[0];
+
             if (declaration && ts.isParameter(declaration)) {
               // Use parent function declaration to generate parameter's name unique suffix
               const suffix = crypto.createHash("sha256").update(declaration.parent.getText()).digest("hex");
               const randomizedName = `${node.getText()}_${suffix}`;
-              node = ts.createIdentifier(randomizedName);
+              const updated = ts.createIdentifier(randomizedName);
+              updated.parent = node.parent;
+              node = updated;
             }
           }
         }

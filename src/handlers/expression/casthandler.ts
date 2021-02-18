@@ -15,6 +15,7 @@ import {
   checkIfObject,
   checkIfUnion,
   error,
+  getLLVMType,
   getStructType,
   getUnionStructType,
   isUnionLLVMValue,
@@ -29,16 +30,16 @@ export class CastHandler extends AbstractExpressionHandler {
     switch (expression.kind) {
       case ts.SyntaxKind.AsExpression:
         const asExpression = expression as ts.AsExpression;
-        const union = this.generator.handleExpression(asExpression.expression, env);
-
-        if (!isUnionLLVMValue(union)) {
-          error(`Non-union type cast not supported, got '${union.type.toString()}'`);
-        }
+        const value = this.generator.handleExpression(asExpression.expression, env);
 
         const destinationType = tryResolveGenericTypeIfNecessary(
           this.generator.checker.getTypeFromTypeNode(asExpression.type),
           this.generator
         );
+
+        if (!isUnionLLVMValue(value)) {
+          return this.generator.builder.createBitCast(value, getLLVMType(destinationType, expression, this.generator));
+        }
 
         if (!checkIfObject(destinationType) && !checkIfUnion(destinationType)) {
           error(`Cast to non-object/union not supported; trying to cast
@@ -46,7 +47,7 @@ export class CastHandler extends AbstractExpressionHandler {
           to '${this.generator.checker.typeToString(destinationType)}'`);
         }
 
-        const unionName = (unwrapPointerType(union.type) as llvm.StructType).name;
+        const unionName = (unwrapPointerType(value.type) as llvm.StructType).name;
         if (!unionName) {
           error("Name required for UnionStruct");
         }
@@ -65,9 +66,9 @@ export class CastHandler extends AbstractExpressionHandler {
             }
 
             const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
-            const valuePtr = this.generator.xbuilder.createSafeInBoundsGEP(union, [0, valueIndex]);
-            const value = this.generator.builder.createLoad(valuePtr);
-            this.generator.xbuilder.createSafeStore(value, destinationPtr);
+            const propValuePtr = this.generator.xbuilder.createSafeInBoundsGEP(value, [0, valueIndex]);
+            const propValue = this.generator.builder.createLoad(propValuePtr);
+            this.generator.xbuilder.createSafeStore(propValue, destinationPtr);
           }
           return allocated;
         } else {
@@ -83,9 +84,9 @@ export class CastHandler extends AbstractExpressionHandler {
             }
 
             const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, index]);
-            const valuePtr = this.generator.xbuilder.createSafeInBoundsGEP(union, [0, sourceIndex]);
-            const value = this.generator.builder.createLoad(valuePtr);
-            this.generator.xbuilder.createSafeStore(value, destinationPtr);
+            const propValuePtr = this.generator.xbuilder.createSafeInBoundsGEP(value, [0, sourceIndex]);
+            const propValue = this.generator.builder.createLoad(propValuePtr);
+            this.generator.xbuilder.createSafeStore(propValue, destinationPtr);
           });
 
           return allocated;

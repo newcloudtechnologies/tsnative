@@ -10,14 +10,14 @@
  */
 
 import * as ts from "typescript";
-import { error } from "./common";
+import { error, getProperties } from "@utils";
 
 export function isConst(node: ts.VariableDeclaration | ts.VariableDeclarationList): boolean {
   return Boolean(ts.getCombinedNodeFlags(node) & ts.NodeFlags.Const);
 }
 
 export function indexOfProperty(name: string, type: ts.Type, checker: ts.TypeChecker): number {
-  const index = checker.getPropertiesOfType(type).findIndex((property) => property.name === name);
+  const index = getProperties(type, checker).findIndex((property) => property.name === name);
   if (index < 0) {
     error(`No property '${name}' on type '${checker.typeToString(type)}'`);
   }

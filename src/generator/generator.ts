@@ -66,6 +66,10 @@ export class LLVMGenerator {
 
     this.builder.setInsertionPoint(entryBlock);
     for (const sourceFile of this.program.getSourceFiles()) {
+      if (!sourceFile.fileName.includes("generated") && !sourceFile.fileName.includes(".d.ts")) {
+        continue;
+      }
+
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
 
