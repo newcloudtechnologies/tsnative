@@ -135,7 +135,7 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
   }
 
   if (checkIfUnion(type)) {
-    return getUnionStructType(type as ts.UnionType, node, generator).getPointerTo();
+    return getUnionStructType(type, node, generator).getPointerTo();
   }
 
   if (isCppIntegralType(checker.typeToString(type))) {
@@ -704,10 +704,9 @@ export function initializeUnion(
     return initializer;
   }
 
-  const unionStructType = unionType.elementType as llvm.StructType;
-  const elementTypes = [];
-  for (let i = 0; i < unionStructType.numElements; ++i) {
-    elementTypes.push(unionStructType.getElementType(i));
+  const unionStructType = unwrapPointerType(unionType);
+  if (!unionStructType.isStructTy()) {
+    error("Union expected to be of StructType");
   }
 
   const unionValue = llvm.Constant.getNullValue(unionStructType);
@@ -765,6 +764,11 @@ export function initializeUnion(
       );
     });
   } else {
+    const elementTypes = [];
+    for (let i = 0; i < unionStructType.numElements; ++i) {
+      elementTypes.push(unionStructType.getElementType(i));
+    }
+
     const activeIndex = findIndexOfType(elementTypes, initializer.type);
     if (activeIndex === -1) {
       error(`Cannot find type '${initializer.type.toString()}' in union type '${unionType.toString()}'`);

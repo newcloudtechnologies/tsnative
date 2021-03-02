@@ -40,12 +40,16 @@ export class GC {
   }
 
   allocate(type: llvm.Type) {
+    if (type.isPointerTy()) {
+      error("Expected non-pointer type");
+    }
+
     const size = getTypeSize(type, this.generator.module);
     const returnValue = this.generator.xbuilder.createSafeCall(this.allocateFn, [
       llvm.ConstantInt.get(this.generator.context, size > 0 ? size : 1, 32),
     ]);
 
-    return this.generator.builder.createBitCast(returnValue, type.isPointerTy() ? type : type.getPointerTo());
+    return this.generator.builder.createBitCast(returnValue, type.getPointerTo());
   }
 }
 

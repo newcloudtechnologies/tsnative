@@ -313,3 +313,19 @@ const is_equal = function (a: number[], b: number[]): boolean {
   const c = a[1];
   console.assert(c.i === 1, "Polymorphic array test failed");
 }
+
+{
+  const array = [22];
+  const extended = [1, ...array, ...array, 666];
+  const expected = [1, 22, 22, 666];
+
+  console.assert(is_equal(extended, expected), "Array spread syntax test failed");
+}
+
+{
+  const array = [23];
+  const extended = [1].concat(array);
+  const expected = [1, 23];
+
+  console.assert(is_equal(extended, expected), "Array concat test failed");
+}

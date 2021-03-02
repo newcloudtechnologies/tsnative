@@ -14,7 +14,7 @@ import {
   getAliasedSymbolIfNecessary,
   getDeclarationNamespace,
   getEnvironmentType,
-  getStructType,
+  getLLVMType,
   InternalNames,
   tryResolveGenericTypeIfNecessary,
 } from "@utils";
@@ -137,14 +137,15 @@ export function addClassScope(
     return;
   }
 
-  const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
+  const llvmType = getLLVMType(thisType, expression, generator);
+  if (!llvmType.isPointerTy()) {
+    error("Expected pointer");
+  }
+
   const tsType = generator.checker.getTypeAtLocation(declaration as ts.Node);
   const scope = new Scope(name, mangledTypename, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
-  for (const method of declaration.members.filter((member) => !ts.isPropertyDeclaration(member))) {
-    generator.handleNode(method, scope);
-  }
 }
 
 export class HeapVariableDeclaration {

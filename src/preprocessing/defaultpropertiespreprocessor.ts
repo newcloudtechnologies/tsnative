@@ -11,17 +11,21 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { checkIfStaticProperty, error } from "@utils";
+import { checkIfStaticProperty, error, getParentFromOriginal } from "@utils";
 
 export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
       const visitor = (node: ts.Node): ts.Node => {
-        if (ts.isConstructorDeclaration(node) && node.body && node.parent) {
-          const hasSuperCall = Boolean(node.parent.heritageClauses);
+        const parent = node.parent || getParentFromOriginal(node);
+
+        if (ts.isConstructorDeclaration(node) && node.body && parent) {
+          // @ts-ignore
+          const hasSuperCall = Boolean(parent.heritageClauses);
           const constructorStatements = [...node.body.statements];
 
-          for (const member of node.parent.members.filter(ts.isPropertyDeclaration)) {
+          // @ts-ignore
+          for (const member of parent.members.filter(ts.isPropertyDeclaration)) {
             if (!member.initializer) {
               continue;
             }

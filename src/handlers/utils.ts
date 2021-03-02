@@ -24,10 +24,12 @@ import {
   isTSClosure,
   InternalNames,
   getAccessorType,
+  isSimilarStructs,
+  getDeclarationNamespace,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { addClassScope, Environment, Scope } from "@scope";
+import { addClassScope, Environment, HeapVariableDeclaration, Scope } from "@scope";
 
 export function castToInt32AndBack(
   values: llvm.Value[],
@@ -74,6 +76,15 @@ export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: L
   }
 
   if (!left.type.elementType.equals(right.type)) {
+    // @todo: narrow coercion if rhs type is inherited from lhs
+    if (isSimilarStructs(left.type, right.type)) {
+      if (!right.type.isPointerTy()) {
+        error("Expected pointer");
+      }
+
+      right = generator.builder.createBitCast(right, left.type);
+    }
+
     right = adjustLLVMValueToType(right, left.type.elementType, generator);
   }
 
@@ -256,7 +267,9 @@ export function createArrayConstructor(
   }
 
   const parentScope = getFunctionDeclarationScope(valueDeclaration, arrayType, generator);
-  const thisValue = parentScope.thisData!.llvmType;
+  if (!parentScope.thisData) {
+    error("No 'this' data found");
+  }
 
   const { fn: constructor } = createLLVMFunction(
     llvm.Type.getVoidTy(generator.context),
@@ -264,9 +277,9 @@ export function createArrayConstructor(
     qualifiedName,
     generator.module
   );
-  const allocated = generator.gc.allocate((thisValue as llvm.PointerType).elementType);
-  const untypedAllocated = generator.xbuilder.asVoidStar(allocated);
-  return { constructor, allocated: untypedAllocated };
+
+  const allocated = generator.gc.allocate(parentScope.thisData.llvmType.elementType);
+  return { constructor, allocated };
 }
 
 export function createArrayPush(
@@ -295,7 +308,7 @@ export function createArrayPush(
   }
 
   const parameterType =
-    checkIfObject(elementType) || checkIfFunction(elementType) || elementType.isUnionOrIntersection()
+    checkIfObject(elementType) || elementType.isUnionOrIntersection()
       ? llvm.Type.getInt8PtrTy(generator.context)
       : correctCppPrimitiveType(getLLVMType(elementType, expression, generator));
 
@@ -340,26 +353,34 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
   return subscript;
 }
 
-export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
-  let parentNode = declaration.parent;
-  let moduleBlockSeen = false;
-  let stopTraversing = false;
-  const namespace: string[] = [];
+export function createArrayConcat(expression: ts.ArrayLiteralExpression, generator: LLVMGenerator): llvm.Value {
+  const arrayType = getArrayType(expression, generator);
 
-  while (parentNode && !stopTraversing) {
-    // skip declarations. block itself is in the next node
-    if (!ts.isModuleDeclaration(parentNode)) {
-      if (ts.isModuleBlock(parentNode)) {
-        namespace.unshift(parentNode.parent.name.text);
-        moduleBlockSeen = true;
-      } else if (moduleBlockSeen) {
-        stopTraversing = true;
-      }
-    }
-    parentNode = parentNode.parent;
+  const symbol = generator.checker.getPropertyOfType(arrayType, "concat")!;
+  const declaration = symbol.valueDeclaration;
+
+  const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+    declaration,
+    expression,
+    arrayType,
+    [arrayType],
+    generator
+  );
+
+  if (!isExternalSymbol) {
+    error(`Array 'concat' for type '${generator.checker.typeToString(arrayType)}' not found`);
   }
 
-  return namespace;
+  const llvmArrayType = getLLVMType(arrayType, expression, generator);
+
+  const { fn: concat } = createLLVMFunction(
+    llvmArrayType,
+    [llvmArrayType, llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getInt8PtrTy(generator.context)],
+    qualifiedName,
+    generator.module
+  );
+
+  return concat;
 }
 
 export function getLLVMReturnType(tsReturnType: ts.Type, expression: ts.Expression, generator: LLVMGenerator) {
@@ -425,10 +446,10 @@ function getFunctionEnvironmentVariables(
 
         if (
           ts.isIdentifier(node) &&
-          !ts.isNewExpression(node.parent) &&
+          !bodyScope.get(nodeText) &&
+          !externalVariables.includes(nodeText) &&
           !ts.isPropertyAssignment(node.parent) &&
-          !isStaticProperty(node) &&
-          !externalVariables.includes(nodeText)
+          !isStaticProperty(node)
         ) {
           externalVariables.push(nodeText);
         }
@@ -519,16 +540,20 @@ function getFunctionEnvironmentVariables(
         }
       };
 
-      try {
-        body.forEachChild((node) => {
-          if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
-            // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
-            generator.handleNode(node, bodyScope);
-          }
-        });
-      } catch (_) {
-        /* Swallow all the errors, we are not really handling anything here, only populating the body scope. */
-      }
+      body.forEachChild((node) => {
+        if (ts.isVariableStatement(node)) {
+          node.declarationList.declarations.forEach((declaration) => {
+            bodyScope.set(
+              declaration.name.getText(),
+              new HeapVariableDeclaration(
+                llvm.ConstantInt.getFalse(generator.context),
+                llvm.ConstantInt.getFalse(generator.context),
+                ""
+              )
+            );
+          });
+        }
+      });
 
       ts.forEachChild(body, visitor);
 
@@ -548,7 +573,7 @@ function getFunctionEnvironmentVariables(
 
 export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, generator: LLVMGenerator) {
   return generator.withInsertBlockKeeping(() => {
-    return generator.symbolTable.withLocalScope((bodyScope) => {
+    return generator.symbolTable.withLocalScope((_) => {
       const externalVariables: string[] = [];
 
       const dummyBlock = llvm.BasicBlock.create(generator.context, "dummy", generator.currentFunction);
@@ -572,21 +597,9 @@ export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, gene
         }
       };
 
-      try {
-        body.forEachChild((node) => {
-          if (ts.isExpressionStatement(node) && !ts.isCallExpression(node.expression)) {
-            // Do not handle call expressions since it leads to function creation and this action cannot be undone trivially.
-            generator.handleNode(node, bodyScope);
-          }
-        });
-      } catch (_) {
-        /* Swallow all the errors, we are not really handling anything here, only populating the body scope. */
-      }
-
       ts.forEachChild(body, visitor);
 
       dummyBlock.eraseFromParent();
-
       return externalVariables;
     }, generator.symbolTable.currentScope);
   });
@@ -601,7 +614,24 @@ export function getEffectiveArguments(closure: string, body: ts.ConciseBody, gen
       return;
     }
 
-    if (ts.isCallExpression(node) && node.expression.getText() === closure) {
+    if (node.getText() === closure) {
+      const type = tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(node), generator);
+
+      let symbol = type.getSymbol();
+      if (symbol) {
+        symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+        const declaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+
+        declaration.parameters?.forEach((parameter) => {
+          const llvmType = getLLVMType(
+            tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(parameter), generator),
+            node,
+            generator
+          );
+          effectiveArguments.set(parameter.name.getText(), llvm.Constant.getNullValue(llvmType));
+        });
+      }
+    } else if (ts.isCallExpression(node) && node.expression.getText() === closure) {
       node.arguments.forEach((arg) => {
         const llvmType = getLLVMType(
           tryResolveGenericTypeIfNecessary(generator.checker.getTypeAtLocation(arg), generator),

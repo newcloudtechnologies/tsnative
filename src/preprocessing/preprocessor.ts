@@ -36,10 +36,10 @@ export class Preprocessor {
     this.parts.push(
       new TSObjectConsoleLogPreprocessor(generator),
       new ParametersRandomizingPreprocessor(generator),
-      new RestParametersPreprocessor(generator),
       new FunctionDeclarationPreprocessor(generator),
       new ConstructorGeneratingPreprocessor(generator),
-      new DefaultPropertiesPreprocessor(generator)
+      new DefaultPropertiesPreprocessor(generator),
+      new RestParametersPreprocessor(generator)
     );
 
     const outputDir = path.join(process.cwd(), path.sep, getRandomString() + "_generated");

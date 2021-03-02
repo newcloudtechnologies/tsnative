@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error, getAliasedSymbolIfNecessary, isSyntheticNode } from "@utils";
+import { error, getAliasedSymbolIfNecessary, getParentFromOriginal, isSyntheticNode } from "@utils";
 import { last } from "lodash";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
@@ -62,6 +62,14 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
                   ts.SyntaxKind.SingleLineCommentTrivia,
                   "@ts-ignore (Skip check for rest parameters)"
                 );
+
+                const parent = node.parent || getParentFromOriginal(node);
+                if (!parent) {
+                  error("No parent found");
+                }
+
+                updatedCall.parent = parent;
+
                 node = updatedCall;
               }
             }

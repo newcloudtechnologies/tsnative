@@ -9,13 +9,14 @@ import {
   getTypeGenericArguments,
   isIntersectionLLVMType,
   tryResolveGenericTypeIfNecessary,
+  unwrapPointerType,
   withObjectProperties,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "@scope";
-import { createArrayConstructor, createArrayPush, getArrayType } from "@handlers";
+import { Environment, HeapVariableDeclaration } from "@scope";
+import { createArrayConcat, createArrayConstructor, createArrayPush, getArrayType } from "@handlers";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -53,7 +54,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): llvm.Value {
-    const allocated = this.generator.gc.allocate(llvm.Type.getDoublePtrTy(this.generator.context));
+    const allocated = this.generator.gc.allocate(llvm.Type.getDoubleTy(this.generator.context));
     const value = llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
     this.generator.xbuilder.createSafeStore(value, allocated);
     return allocated;
@@ -186,20 +187,41 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const arrayType = getArrayType(expression, this.generator);
     const elementType = getTypeGenericArguments(arrayType)[0];
 
-    const { constructor, allocated } = createArrayConstructor(expression, this.generator);
-    this.generator.xbuilder.createSafeCall(constructor, [allocated]);
+    const constructorAndMemory = createArrayConstructor(expression, this.generator);
+    const { constructor } = constructorAndMemory;
+    let { allocated } = constructorAndMemory;
+
+    this.generator.xbuilder.createSafeCall(constructor, [this.generator.xbuilder.asVoidStar(allocated)]);
 
     const push = createArrayPush(elementType, expression, this.generator);
     for (const element of expression.elements) {
-      let elementValue = this.generator.handleExpression(element, outerEnv);
+      if (ts.isSpreadElement(element)) {
+        const concat = createArrayConcat(expression, this.generator);
+        const elementValue = this.generator.symbolTable.get(element.expression.getText());
 
-      const tsType = this.generator.checker.getTypeAtLocation(element);
-      elementValue =
-        checkIfObject(tsType) || checkIfFunction(tsType)
-          ? this.generator.xbuilder.asVoidStar(elementValue)
-          : this.generator.createLoadIfNecessary(elementValue);
+        if (!(elementValue instanceof HeapVariableDeclaration)) {
+          error(`Expected '${element.expression.getText()}' to be HeapVariableDeclaration`);
+        }
 
-      this.generator.xbuilder.createSafeCall(push, [allocated, elementValue]);
+        const newmem = this.generator.gc.allocate(unwrapPointerType(allocated.type));
+
+        this.generator.xbuilder.createSafeCall(concat, [
+          newmem,
+          this.generator.xbuilder.asVoidStar(allocated),
+          this.generator.xbuilder.asVoidStar(elementValue.allocated),
+        ]);
+        allocated = newmem;
+      } else {
+        let elementValue = this.generator.handleExpression(element, outerEnv);
+
+        const tsType = this.generator.checker.getTypeAtLocation(element);
+        elementValue =
+          checkIfObject(tsType) || checkIfFunction(tsType)
+            ? this.generator.xbuilder.asVoidStar(elementValue)
+            : this.generator.createLoadIfNecessary(elementValue);
+
+        this.generator.xbuilder.createSafeCall(push, [this.generator.xbuilder.asVoidStar(allocated), elementValue]);
+      }
     }
 
     return allocated;

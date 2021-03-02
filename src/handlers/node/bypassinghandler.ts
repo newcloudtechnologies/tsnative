@@ -16,7 +16,6 @@ import { Scope, Environment } from "@scope";
 export class BypassingHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
-      case ts.SyntaxKind.MethodDeclaration:
       case ts.SyntaxKind.IndexSignature:
       case ts.SyntaxKind.Constructor:
       // Declarations have no actual arguments. Handle them when called.

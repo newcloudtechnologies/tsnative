@@ -26,6 +26,7 @@ import {
   isCppPrimitiveType,
   callerShouldAllocateSpace,
   checkIfObject,
+  isTSClosure,
 } from "@utils";
 import { castFPToIntegralType, getFunctionDeclarationScope, isConvertible, promoteIntegralToFP } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -118,9 +119,11 @@ export class SysVFunctionHandler {
 
     const parameters = signature.getParameters();
     const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
-      const llvmType = getLLVMType(argumentType, expression, this.generator);
+      if (checkIfObject(argumentType)) {
+        return llvm.Type.getInt8PtrTy(this.generator.context);
+      }
 
-      if (checkIfObject(argumentType) || checkIfFunction(argumentType)) {
+      if (checkIfFunction(argumentType)) {
         return llvm.Type.getInt8PtrTy(this.generator.context);
       }
 
@@ -131,13 +134,14 @@ export class SysVFunctionHandler {
         }
       }
 
+      const llvmType = getLLVMType(argumentType, expression, this.generator);
       return correctCppPrimitiveType(llvmType);
     });
 
     let args = expression.arguments.map((argument) => {
       const arg = this.generator.handleExpression(argument, env);
       const tsType = this.generator.checker.getTypeAtLocation(argument);
-      if (checkIfObject(tsType) || checkIfFunction(tsType)) {
+      if (checkIfObject(tsType) || checkIfFunction(tsType) || isTSClosure(arg)) {
         return this.generator.xbuilder.asVoidStar(arg);
       }
 

@@ -104,7 +104,7 @@ export function checkIfVoid(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Void);
 }
 
-export function checkIfUnion(type: ts.Type): boolean {
+export function checkIfUnion(type: ts.Type): type is ts.UnionType {
   return type.isUnion() && (type.flags & ts.TypeFlags.BooleanLike) === 0;
 }
 
@@ -123,4 +123,18 @@ export function isTSObjectType(type: ts.Type, checker: ts.TypeChecker) {
     !checkIfString(type, checker) &&
     !type.symbol?.valueDeclaration?.getSourceFile().isDeclarationFile
   );
+}
+
+export function getParentFromOriginal(node: ts.Node): ts.Node | undefined {
+  // @ts-ignore
+  let original = node.original;
+  while (original) {
+    if (original.parent) {
+      return original.parent;
+    }
+
+    original = original.original;
+  }
+
+  return undefined;
 }

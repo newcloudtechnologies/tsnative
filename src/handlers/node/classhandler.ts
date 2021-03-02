@@ -19,6 +19,7 @@ import {
   getDeclarationNamespace,
   error,
   getAliasedSymbolIfNecessary,
+  checkIfFunction,
 } from "@utils";
 import { TypeMangler } from "@mangling";
 import { LLVMGenerator } from "@generator";
@@ -106,9 +107,16 @@ export class ClassHandler extends AbstractNodeHandler {
       staticProperties,
     });
 
-    const methods = declaration.members.filter((member) => !ts.isPropertyDeclaration(member));
-    for (const method of methods) {
-      generator.handleNode(method, scope);
+    for (const memberDecl of declaration.members) {
+      if (
+        ts.isPropertyDeclaration(memberDecl) &&
+        memberDecl.initializer &&
+        checkIfFunction(this.generator.checker.getTypeAtLocation(memberDecl))
+      ) {
+        const initializerValue = this.generator.handleExpression(memberDecl.initializer);
+
+        scope.set(memberDecl.name.getText(), initializerValue);
+      }
     }
 
     // @todo: this logic is required because of builtins

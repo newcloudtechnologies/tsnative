@@ -23,6 +23,7 @@ import {
   LogicHandler,
   ParenthesizedHandler,
   UnaryHandler,
+  NoopHandler,
 } from "@handlers/expression";
 import { LLVMGenerator } from "@generator";
 import * as ts from "typescript";
@@ -44,9 +45,11 @@ export class ExpressionHandlerChain {
     const identifier = new IdentifierHandler(generator);
     const literal = new LiteralHandler(generator);
     const logic = new LogicHandler(generator);
+    const noop = new NoopHandler(generator);
     const parentheses = new ParenthesizedHandler(generator);
     const unary = new UnaryHandler(generator);
 
+    noop.setNext(access);
     access.setNext(arithmetic);
     arithmetic.setNext(assignment);
     assignment.setNext(bitwise);
@@ -60,7 +63,7 @@ export class ExpressionHandlerChain {
     logic.setNext(parentheses);
     parentheses.setNext(unary);
 
-    this.root = access;
+    this.root = noop;
   }
 
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {

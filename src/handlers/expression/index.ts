@@ -22,5 +22,6 @@ export { ExpressionHandlerChain } from "./handlerchain";
 export { IdentifierHandler } from "./identifierhandler";
 export { LiteralHandler } from "./literalhandler";
 export { LogicHandler } from "./logichandler";
+export { NoopHandler } from "./noophandler";
 export { ParenthesizedHandler } from "./parenthesizedhandler";
 export { UnaryHandler } from "./unaryhandler";
