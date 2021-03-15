@@ -12,7 +12,7 @@
 import { isSigned } from "@cpp";
 import { castFPToIntegralType, castToInt32AndBack, makeAssignment, promoteIntegralToFP } from "@handlers";
 import { LLVMGenerator } from "@generator";
-import { error, checkIfLLVMString } from "@utils";
+import { error, checkIfLLVMString, createHeapAllocatedFromValue } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -67,9 +67,11 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       this.generator.builder.createAdd(l, r);
     const sHandler: CompoundHandler = (l: llvm.Value, r: llvm.Value): llvm.Value => {
       const concat = this.generator.builtinString.getLLVMConcat(lhs);
-      const sret = this.generator.gc.allocate(this.generator.builtinString.getLLVMType().elementType);
-      const lUntyped = this.generator.xbuilder.asVoidStar(l);
-      return this.generator.xbuilder.createSafeCall(concat, [sret, lUntyped, r]);
+      const untypedThis = this.generator.xbuilder.asVoidStar(l);
+      return createHeapAllocatedFromValue(
+        this.generator.xbuilder.createSafeCall(concat, [untypedThis, r]),
+        this.generator
+      );
     };
     return this.handleCompoundAssignment(lhs, rhs, env, fpHandler, iHandler, sHandler);
   }

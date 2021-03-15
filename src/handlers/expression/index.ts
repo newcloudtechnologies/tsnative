@@ -24,4 +24,5 @@ export { LiteralHandler } from "./literalhandler";
 export { LogicHandler } from "./logichandler";
 export { NoopHandler } from "./noophandler";
 export { ParenthesizedHandler } from "./parenthesizedhandler";
+export { TemplateExpressionHandler } from "./templateexpressionhandler";
 export { UnaryHandler } from "./unaryhandler";

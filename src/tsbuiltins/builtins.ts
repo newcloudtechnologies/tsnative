@@ -1,5 +1,14 @@
 import { LLVMGenerator } from "@generator";
-import { getTypeSize, createLLVMFunction, getSyntheticBody, error, unwrapPointerType, getPointerLevel } from "@utils";
+import {
+  getTypeSize,
+  createLLVMFunction,
+  getSyntheticBody,
+  error,
+  unwrapPointerType,
+  getPointerLevel,
+  getLLVMType,
+  correctCppPrimitiveType,
+} from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { ThisData, Scope } from "@scope";
@@ -265,21 +274,35 @@ export class BuiltinString extends Builtin {
     return this.llvmType;
   }
 
-  getLLVMConstructor(expression: ts.Expression): llvm.Function {
+  getLLVMConstructor(expression: ts.Expression, constructorArg?: ts.Expression): llvm.Function {
     const declaration = this.getDeclaration();
     const llvmThisType = this.getLLVMType();
 
     const constructorDeclaration = declaration.members.find(ts.isConstructorDeclaration)!;
     const thisType = this.generator.checker.getTypeAtLocation(expression);
-    const { qualifiedName } = FunctionMangler.mangle(
+
+    const argType = constructorArg
+      ? this.generator.checker.getTypeAtLocation(constructorArg)
+      : this.generator.builtinInt8.getTSType();
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       constructorDeclaration,
       undefined,
       thisType,
-      [this.generator.builtinInt8.getTSType()],
+      [argType],
       this.generator
     );
+
+    if (!isExternalSymbol) {
+      error(`String constructor for '${this.generator.checker.typeToString(thisType)}' not found`);
+    }
+
     const llvmReturnType = llvmThisType;
-    const llvmArgumentTypes = [llvmThisType, this.generator.builtinInt8.getLLVMType().getPointerTo()];
+    const llvmArgumentType = constructorArg
+      ? correctCppPrimitiveType(getLLVMType(argType, constructorArg, this.generator))
+      : this.generator.builtinInt8.getLLVMType().getPointerTo();
+
+    const llvmArgumentTypes = [llvmThisType, llvmArgumentType];
     const { fn: constructor } = createLLVMFunction(
       llvmReturnType,
       llvmArgumentTypes,
@@ -303,9 +326,10 @@ export class BuiltinString extends Builtin {
     );
     const { qualifiedName } = FunctionMangler.mangle(concatDeclaration!, undefined, thisType, argTypes, this.generator);
 
-    const llvmReturnType = llvmThisType;
-    const llvmArgumentTypes = [llvmThisType, llvm.Type.getInt8PtrTy(this.generator.context), llvmThisType];
+    const llvmReturnType = unwrapPointerType(llvmThisType);
+    const llvmArgumentTypes = [llvm.Type.getInt8PtrTy(this.generator.context), llvmThisType];
     const { fn: concat } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+
     return concat;
   }
 

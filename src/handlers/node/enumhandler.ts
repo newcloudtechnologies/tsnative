@@ -10,8 +10,10 @@
  */
 
 import * as ts from "typescript";
+import * as llvm from "llvm-node";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
+import { createHeapAllocatedFromValue } from "@utils";
 
 export class EnumHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -21,16 +23,12 @@ export class EnumHandler extends AbstractNodeHandler {
 
         parentScope.set(scope.name!, scope);
 
-        node.members.forEach((member) => {
-          if (!member.initializer) {
-            return;
-          }
-
-          let value = this.generator.handleExpression(member.initializer, env);
+        node.members.forEach((member, index) => {
+          let value = member.initializer
+            ? this.generator.handleExpression(member.initializer, env)
+            : llvm.ConstantFP.get(this.generator.context, index);
           if (!value.type.isPointerTy()) {
-            const allocated = this.generator.gc.allocate(value.type);
-            this.generator.xbuilder.createSafeStore(value, allocated);
-            value = allocated;
+            value = createHeapAllocatedFromValue(value, this.generator);
           }
           localScope.set(member.name.getText(), value);
           scope.set(member.name.getText(), value);

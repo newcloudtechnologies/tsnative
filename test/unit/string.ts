@@ -223,3 +223,11 @@
 
   console.assert(indexOfFirst3 === -1, "String: lastIndexOf('bla'): failed");
 }
+
+{
+  const i = 22;
+  const templateStringLiteral = `${i} is ${i}, ${i}`;
+  const expected = "22 is 22, 22";
+
+  console.assert(templateStringLiteral === expected, "Template string test failed");
+}

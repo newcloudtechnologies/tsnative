@@ -24,6 +24,7 @@ import {
   ParenthesizedHandler,
   UnaryHandler,
   NoopHandler,
+  TemplateExpressionHandler,
 } from "@handlers/expression";
 import { LLVMGenerator } from "@generator";
 import * as ts from "typescript";
@@ -34,34 +35,23 @@ export class ExpressionHandlerChain {
   private readonly root: AbstractExpressionHandler;
 
   constructor(generator: LLVMGenerator) {
-    const access = new AccessHandler(generator);
-    const arithmetic = new ArithmeticHandler(generator);
-    const assignment = new AssignmentHandler(generator);
-    const bitwise = new BitwiseHandler(generator);
-    const cast = new CastHandler(generator);
-    const comparison = new ComparisonHandler(generator);
-    const compound = new CompoundAssignmentHandler(generator);
-    const fn = new FunctionHandler(generator);
-    const identifier = new IdentifierHandler(generator);
-    const literal = new LiteralHandler(generator);
-    const logic = new LogicHandler(generator);
     const noop = new NoopHandler(generator);
-    const parentheses = new ParenthesizedHandler(generator);
-    const unary = new UnaryHandler(generator);
 
-    noop.setNext(access);
-    access.setNext(arithmetic);
-    arithmetic.setNext(assignment);
-    assignment.setNext(bitwise);
-    bitwise.setNext(cast);
-    cast.setNext(comparison);
-    comparison.setNext(compound);
-    compound.setNext(fn);
-    fn.setNext(identifier);
-    identifier.setNext(literal);
-    literal.setNext(logic);
-    logic.setNext(parentheses);
-    parentheses.setNext(unary);
+    noop
+      .setNext(new AccessHandler(generator))
+      .setNext(new ArithmeticHandler(generator))
+      .setNext(new AssignmentHandler(generator))
+      .setNext(new BitwiseHandler(generator))
+      .setNext(new CastHandler(generator))
+      .setNext(new ComparisonHandler(generator))
+      .setNext(new CompoundAssignmentHandler(generator))
+      .setNext(new FunctionHandler(generator))
+      .setNext(new IdentifierHandler(generator))
+      .setNext(new LiteralHandler(generator))
+      .setNext(new LogicHandler(generator))
+      .setNext(new ParenthesizedHandler(generator))
+      .setNext(new UnaryHandler(generator))
+      .setNext(new TemplateExpressionHandler(generator));
 
     this.root = noop;
   }

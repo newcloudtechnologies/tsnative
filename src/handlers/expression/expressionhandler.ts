@@ -20,7 +20,8 @@ export abstract class AbstractExpressionHandler {
     this.generator = generator;
   }
   abstract handle(expression: Expression, env?: Environment): llvm.Value | undefined;
-  setNext(handler: AbstractExpressionHandler): void {
+  setNext(handler: AbstractExpressionHandler): AbstractExpressionHandler {
     this.next = handler;
+    return this.next;
   }
 }
