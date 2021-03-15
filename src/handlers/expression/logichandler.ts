@@ -32,6 +32,22 @@ export class LogicHandler extends AbstractExpressionHandler {
       }
     }
 
+    if (ts.isConditionalExpression(expression)) {
+      const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(expression.whenTrue, env));
+      const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(expression.whenFalse, env));
+
+      const conditionValue = this.generator.createLoadIfNecessary(
+        this.generator.handleExpression(expression.condition, env)
+      );
+      const condition = makeBoolean(conditionValue, expression.condition, this.generator);
+
+      return this.generator.builder.createSelect(
+        condition,
+        this.generator.xbuilder.asVoidStar(left),
+        this.generator.xbuilder.asVoidStar(right)
+      );
+    }
+
     if (this.next) {
       return this.next.handle(expression, env);
     }

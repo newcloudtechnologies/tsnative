@@ -37,31 +37,19 @@ export class NodeHandlerChain {
   constructor(generator: LLVMGenerator) {
     const imports = new ImportsHandler(generator);
 
-    const block = new BlockHandler(generator);
-    const branch = new BranchHandler(generator);
-    const bypassing = new BypassingHandler(generator);
-    const clazz = new ClassHandler(generator);
-    const expressionStatement = new ExpressionStatementHandler(generator);
-    const loop = new LoopHandler(generator);
-    const module = new ModuleHandler(generator);
-    const ret = new ReturnHandler(generator);
-    const typeAlias = new TypeAliasHandler(generator);
-    const variable = new VariableHandler(generator);
-    const switchStatement = new SwitchHandler(generator);
-    const enumHandler = new EnumHandler(generator);
-
-    imports.setNext(typeAlias);
-    typeAlias.setNext(expressionStatement);
-    expressionStatement.setNext(variable);
-    variable.setNext(block);
-    block.setNext(branch);
-    branch.setNext(switchStatement);
-    switchStatement.setNext(bypassing);
-    bypassing.setNext(clazz);
-    clazz.setNext(loop);
-    loop.setNext(module);
-    module.setNext(ret);
-    ret.setNext(enumHandler);
+    imports
+      .setNext(new BlockHandler(generator))
+      .setNext(new BranchHandler(generator))
+      .setNext(new BypassingHandler(generator))
+      .setNext(new ClassHandler(generator))
+      .setNext(new ExpressionStatementHandler(generator))
+      .setNext(new LoopHandler(generator))
+      .setNext(new ModuleHandler(generator))
+      .setNext(new ReturnHandler(generator))
+      .setNext(new TypeAliasHandler(generator))
+      .setNext(new VariableHandler(generator))
+      .setNext(new SwitchHandler(generator))
+      .setNext(new EnumHandler(generator));
 
     this.root = imports;
   }

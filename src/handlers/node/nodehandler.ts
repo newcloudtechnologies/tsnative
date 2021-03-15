@@ -20,7 +20,8 @@ export abstract class AbstractNodeHandler {
     this.generator = generator;
   }
   abstract handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean;
-  setNext(handler: AbstractNodeHandler): void {
+  setNext(handler: AbstractNodeHandler): AbstractNodeHandler {
     this.next = handler;
+    return this.next;
   }
 }

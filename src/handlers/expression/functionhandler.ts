@@ -101,6 +101,41 @@ export class FunctionHandler extends AbstractExpressionHandler {
           return this.handleSuperCall(call, env);
         }
 
+        if (!ts.isIdentifier(call.expression) && !ts.isPropertyAccessExpression(call.expression)) {
+          const functionToCall = this.generator.handleExpression(call.expression, env);
+
+          if (functionToCall.type.isPointerTy() && functionToCall.type.elementType.isIntegerTy(8)) {
+            const type = this.generator.checker.getTypeAtLocation(call.expression);
+            let symbol = type.getSymbol();
+            if (!symbol) {
+              error("No symbol found");
+            }
+
+            symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+            const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+            const signature = this.generator.checker.getResolvedSignature(call);
+            if (!signature) {
+              error(`Signature not found at '${call.expression.getText()}'`);
+            }
+
+            const args = this.generator.symbolTable
+              .withLocalScope((localScope: Scope) => {
+                return this.handleCallArguments(call, valueDeclaration, signature!, localScope, env);
+              }, this.generator.symbolTable.currentScope)
+              .map((value) => value.value);
+
+            const declaredLLVMFunctionType = this.generator.builtinTSClosure.getLLVMType();
+            return this.handleTSClosureCall(
+              call,
+              signature,
+              args,
+              this.generator.builder.createBitCast(functionToCall, declaredLLVMFunctionType),
+              valueDeclaration,
+              env
+            );
+          }
+        }
+
         const functionName = call.expression.getText();
 
         if (env) {
@@ -204,9 +239,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
       error(`Expected known function '${expression.getText()}' to be llvm.Value`);
     }
 
-    let expressionSymbol = this.generator.checker.getTypeAtLocation(expression.expression).symbol;
-    expressionSymbol = getAliasedSymbolIfNecessary(expressionSymbol, this.generator.checker);
-    const valueDeclaration = expressionSymbol.declarations[0] as ts.FunctionLikeDeclaration;
+    const type = this.generator.checker.getTypeAtLocation(expression.expression);
+    let symbol = type.getSymbol();
+    if (!symbol) {
+      error("No symbol found");
+    }
+
+    symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+    const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
     const signature = this.generator.checker.getResolvedSignature(expression);
     if (!signature) {
       error(`Signature not found at '${expression.expression.getText()}'`);
@@ -233,9 +273,21 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (unwrapPointerType(knownFunction.type).isFunctionTy()) {
       return this.generator.xbuilder.createSafeCall(knownFunction, args);
-    } else {
-      error(`Function ${expression.expression.getText()} not found`);
     }
+
+    if (knownFunction.type.isPointerTy() && knownFunction.type.elementType.isIntegerTy(8)) {
+      const declaredLLVMFunctionType = this.generator.builtinTSClosure.getLLVMType();
+      return this.handleTSClosureCall(
+        expression,
+        signature,
+        args,
+        this.generator.builder.createBitCast(knownFunction, declaredLLVMFunctionType),
+        valueDeclaration,
+        outerEnv
+      );
+    }
+
+    error(`Failed to call '${expression.getText()}'`);
   }
 
   private handleEnvironmentKnownFunction(expression: ts.CallExpression, knownIndex: number, outerEnv: Environment) {

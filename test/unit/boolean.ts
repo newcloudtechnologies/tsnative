@@ -32,3 +32,10 @@
   console.assert(toggle(false) === true, "boolean: toggle(false) failed");
   console.assert(toggle(true) === false, "boolean: toggle(true) failed");
 }
+
+{
+  const f1 = () => 1;
+  const f2 = () => 2;
+
+  console.assert((f2() === 2 ? f2 : f1)() === 2, "Ternary operator test failed");
+}
