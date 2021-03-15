@@ -47,6 +47,8 @@ export class Preprocessor {
       fs.mkdirSync(outputDir);
     }
 
+    options.baseUrl = path.join(outputDir, process.cwd());
+
     const generatedSources = program.getSourceFiles().map((file) => {
       let filePath = file.fileName;
       if (!path.isAbsolute(filePath)) {
