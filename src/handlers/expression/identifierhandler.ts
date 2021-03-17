@@ -13,7 +13,13 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment } from "@scope";
-import { error, getAliasedSymbolIfNecessary, getDeclarationNamespace, tryResolveGenericTypeIfNecessary } from "@utils";
+import {
+  error,
+  getAliasedSymbolIfNecessary,
+  getDeclarationNamespace,
+  InternalNames,
+  tryResolveGenericTypeIfNecessary,
+} from "@utils";
 import { TypeMangler } from "@mangling";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
@@ -22,7 +28,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.Identifier:
         return this.handleIdentifier(expression as ts.Identifier, env);
       case ts.SyntaxKind.ThisKeyword:
-        return this.handleThis();
+        return this.handleThis(env);
       default:
         break;
     }
@@ -76,7 +82,15 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     error(`Identifier '${expression.text}' not found in local scope nor environment`);
   }
 
-  private handleThis(): llvm.Value {
-    return this.generator.symbolTable.get("this") as llvm.Value;
+  private handleThis(env?: Environment): llvm.Value {
+    if (env) {
+      const index = env.getVariableIndex(InternalNames.This);
+      if (index > -1) {
+        const agg = this.generator.builder.createLoad(env.typed);
+        return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
+      }
+    }
+
+    return this.generator.symbolTable.get(InternalNames.This) as llvm.Value;
   }
 }

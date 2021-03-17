@@ -6,6 +6,7 @@ import {
   getLLVMValue,
   getTSObjectPropsFromName,
   indexOfProperty,
+  InternalNames,
   inTSClassConstructor,
   isIntersectionLLVMType,
   isUnionLLVMType,
@@ -230,7 +231,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     } else {
       let propertyIndex = -1;
 
-      if (!llvmValue.name || llvmValue.name === "this") {
+      if (!llvmValue.name || llvmValue.name === InternalNames.This) {
         const type = checker.getTypeAtLocation(expression);
         propertyIndex = indexOfProperty(propertyName, checker.getApparentType(type), checker);
       } else {

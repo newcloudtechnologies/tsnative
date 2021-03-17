@@ -403,5 +403,5 @@ export enum InternalNames {
   Closure = "__closure__",
   FunctionScope = "__function_scope__",
   Object = "__object__",
-  TSConstructorMemory = "__ts_constructor_memory__",
+  This = "this",
 }

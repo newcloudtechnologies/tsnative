@@ -22,7 +22,6 @@ import {
   checkIfFunction,
   checkIfObject,
   isTSClosure,
-  InternalNames,
   getAccessorType,
   isSimilarStructs,
   getDeclarationNamespace,
@@ -395,8 +394,8 @@ export function getEnvironmentVariables(
   if (outerEnv) {
     environmentVariables.push(...outerEnv.variables);
   }
-  // ts object memory must be required explicitly
-  return environmentVariables.filter((variable) => variable !== InternalNames.TSConstructorMemory);
+
+  return environmentVariables;
 }
 
 function getEnvironmentVariablesFromBody(body: ts.ConciseBody, signature: ts.Signature, generator: LLVMGenerator) {

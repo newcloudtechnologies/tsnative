@@ -221,13 +221,25 @@ export class HeapVariableDeclaration {
   }
 }
 
+function getInnerEnvironmentFromExpression(expression: ts.CallExpression, generator: LLVMGenerator) {
+  const type = generator.checker.getTypeAtLocation(expression.expression);
+  const symbol = type.getSymbol();
+  if (!symbol) {
+    error("No symbol found");
+  }
+
+  const declaration = symbol.declarations[0];
+  return generator.meta.try(MetaInfoStorage.prototype.getFunctionEnvironment, declaration);
+}
+
 export function createEnvironment(
   scope: Scope,
   environmentVariables: string[],
   generator: LLVMGenerator,
   functionData?: { args: llvm.Value[]; signature: ts.Signature },
   outerEnv?: Environment,
-  functionBody?: ts.ConciseBody
+  functionBody?: ts.ConciseBody,
+  preferLocalThis?: boolean
 ) {
   const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
 
@@ -280,7 +292,7 @@ export function createEnvironment(
         continue;
       }
 
-      if (variableName === InternalNames.TSConstructorMemory && map.has(variableName)) {
+      if (variableName === InternalNames.This && typeof preferLocalThis !== "undefined" && preferLocalThis) {
         continue;
       }
 
@@ -293,13 +305,9 @@ export function createEnvironment(
       outerValues.push(extracted);
     }
 
-    const types = outerValues.reduce((acc, value) => {
-      acc.push(value.type);
-      return acc;
-    }, new Array<llvm.Type>());
-
     for (let i = 0; i < outerEnvValuesIndexes.length; ++i) {
-      map.set(outerEnv.variables[outerEnvValuesIndexes[i]], { type: types[i], allocated: outerValues[i] });
+      const value = outerValues[i];
+      map.set(outerEnv.variables[outerEnvValuesIndexes[i]], { type: value.type, allocated: value });
     }
   }
 
@@ -332,28 +340,16 @@ export function createEnvironment(
             return;
           }
 
-          const type = generator.checker.getTypeAtLocation(node.expression);
-          const symbol = type.getSymbol();
-          if (!symbol) {
-            error("No symbol found");
+          const innerEnvironment = getInnerEnvironmentFromExpression(node, generator);
+          if (innerEnvironment) {
+            innerEnvironments.push(innerEnvironment);
           }
-
-          const declaration = symbol.declarations[0];
-          const innerEnvironment = generator.meta.getFunctionEnvironment(declaration);
-          innerEnvironments.push(innerEnvironment);
         }
       });
     } else {
       if (ts.isCallExpression(functionBody) && ts.isIdentifier(functionBody.expression)) {
         if (!generator.symbolTable.currentScope.get(functionBody.expression.getText())) {
-          const type = generator.checker.getTypeAtLocation(functionBody.expression);
-          const symbol = type.getSymbol();
-          if (!symbol) {
-            error("No symbol found");
-          }
-
-          const declaration = symbol.declarations[0];
-          const innerEnvironment = generator.meta.try(MetaInfoStorage.prototype.getFunctionEnvironment, declaration);
+          const innerEnvironment = getInnerEnvironmentFromExpression(functionBody, generator);
           if (innerEnvironment) {
             innerEnvironments.push(innerEnvironment);
           }
