@@ -179,27 +179,19 @@ export function handleBinaryWithConversion(
   error("Invalid types to handle with conversion");
 }
 
-export function getFunctionDeclarationScope(
-  declaration: ts.NamedDeclaration,
+export function getDeclarationScope(
+  declaration: ts.Declaration,
   thisType: ts.Type | undefined,
   generator: LLVMGenerator
 ): Scope {
-  const namespace: string[] = getDeclarationNamespace(declaration);
-
   if (thisType) {
+    const namespace = getDeclarationNamespace(declaration);
     const typename = TypeMangler.mangle(thisType, generator.checker, declaration);
     const qualifiedName = namespace.concat(typename).join(".");
     return generator.symbolTable.get(qualifiedName) as Scope;
   }
 
-  const { parent } = declaration;
-  if (ts.isSourceFile(parent)) {
-    return generator.symbolTable.globalScope;
-  } else if (ts.isModuleBlock(parent)) {
-    return generator.symbolTable.get(namespace.join(".")) as Scope;
-  } else {
-    return generator.symbolTable.currentScope;
-  }
+  return generator.symbolTable.currentScope;
 }
 
 export function getArgumentArrayType(expression: ts.ArrayLiteralExpression, checker: ts.TypeChecker) {
@@ -266,7 +258,7 @@ export function createArrayConstructor(
     error(`Array constructor for type '${generator.checker.typeToString(arrayType)}' not found`);
   }
 
-  const parentScope = getFunctionDeclarationScope(valueDeclaration, arrayType, generator);
+  const parentScope = getDeclarationScope(valueDeclaration, arrayType, generator);
   if (!parentScope.thisData) {
     error("No 'this' data found");
   }
@@ -507,7 +499,7 @@ function getFunctionEnvironmentVariables(
             }
 
             const thisType = generator.checker.getTypeAtLocation(node);
-            const declarationScope = getFunctionDeclarationScope(constructorDeclaration, thisType, generator);
+            const declarationScope = getDeclarationScope(constructorDeclaration, thisType, generator);
             if (!declarationScope.mangledName) {
               error("No scope name provided");
             }

@@ -10,11 +10,12 @@
  */
 
 import * as ts from "typescript";
-import { checkIfProperty, checkIfFunction } from "./tsc-utils";
+import { checkIfProperty, checkIfFunction, checkIfStaticMethod, checkIfMethod } from "./tsc-utils";
 import { isTypeSupported, error, flatten } from "@utils";
 import { LLVMGenerator } from "@generator";
 
 import { cloneDeep } from "lodash";
+import { FunctionMangler } from "@mangling";
 
 const returnsValueTypeDecorator: string = "ReturnsValueType";
 export function checkIfReturnsValueType(declaration: ts.FunctionLikeDeclaration): boolean {
@@ -305,8 +306,50 @@ export function isSyntheticNode(node: ts.Node) {
 //        there is potential problem with function expression declared in body of another function in case if this function expression is a returned value
 //        its environment cannot be used on call (illformed IR will be generated)
 //        workaround this issue by this hack
-export function canCreateLazyClosure(declaration: ts.Declaration) {
-  return !ts.isPropertyAssignment(declaration.parent) && !ts.isReturnStatement(declaration.parent);
+export function canCreateLazyClosure(declaration: ts.Declaration, generator: LLVMGenerator) {
+  if (ts.isPropertyAssignment(declaration.parent)) {
+    return false;
+  }
+
+  if (ts.isReturnStatement(declaration.parent)) {
+    return false;
+  }
+
+  if (ts.isCallExpression(declaration.parent)) {
+    const callExpression = declaration.parent;
+
+    const argumentTypes = getArgumentTypes(callExpression, generator);
+    const isMethod = checkIfMethod(callExpression.expression, generator.checker);
+    let thisType: ts.Type | undefined;
+    if (isMethod) {
+      const methodReference = callExpression.expression as ts.PropertyAccessExpression;
+      thisType = generator.checker.getTypeAtLocation(methodReference.expression);
+    }
+
+    let symbol = generator.checker.getTypeAtLocation(callExpression.expression).symbol;
+    symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
+
+    const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+
+    const thisTypeForMangling = checkIfStaticMethod(valueDeclaration)
+      ? generator.checker.getTypeAtLocation((callExpression.expression as ts.PropertyAccessExpression).expression)
+      : thisType;
+
+    const { isExternalSymbol } = FunctionMangler.mangle(
+      valueDeclaration,
+      callExpression,
+      thisTypeForMangling,
+      argumentTypes,
+      generator
+    );
+
+    if (isExternalSymbol) {
+      // C++ backend knows nothing about `lazy` closures
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function getAccessorType(

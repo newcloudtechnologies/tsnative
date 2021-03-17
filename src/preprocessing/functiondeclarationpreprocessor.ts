@@ -11,79 +11,13 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
+import { error } from "@utils";
 
 export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
       const visitor = (node: ts.Node): ts.Node | ts.Node[] => {
         if (ts.isFunctionDeclaration(node) && node.body) {
-          if (
-            node.modifiers &&
-            node.modifiers.find((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) &&
-            node.modifiers.find((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)
-          ) {
-            /*
-            Transform default exported function declarations in such a manner:
-            before:
-                export default function f() {}
-            after:
-                export default (function () {
-                    const f = function f() {};
-                    return f;
-                });
-
-            since 'export default const ...' is illegal expression
-            @todo: solution looks too hackish and restricts usage of default exported function declarations (they cannot be used as argument)
-            */
-
-            return ts.createExportAssignment(
-              undefined,
-              undefined,
-              undefined,
-              ts.createCall(
-                ts.createParen(
-                  ts.createFunctionExpression(
-                    undefined,
-                    undefined,
-                    node.name!.getText(),
-                    undefined,
-                    [],
-                    undefined,
-                    ts.createBlock(
-                      [
-                        ts.createVariableStatement(
-                          undefined,
-                          ts.createVariableDeclarationList(
-                            [
-                              ts.createVariableDeclaration(
-                                ts.createIdentifier(node.name!.text),
-                                undefined,
-                                ts.createFunctionExpression(
-                                  undefined,
-                                  node.asteriskToken,
-                                  node.name,
-                                  node.typeParameters,
-                                  node.parameters,
-                                  node.type,
-                                  node.body
-                                )
-                              ),
-                            ],
-                            ts.NodeFlags.Const
-                          )
-                        ),
-                        ts.createReturn(ts.createIdentifier(node.name!.text)),
-                      ],
-                      true
-                    )
-                  )
-                ),
-                undefined,
-                []
-              )
-            );
-          }
-
           const functionExpression = ts.createFunctionExpression(
             undefined,
             node.asteriskToken,
@@ -94,13 +28,33 @@ export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
             node.body
           );
 
-          node = ts.createVariableStatement(
-            node.modifiers,
+          if (!node.name) {
+            error("Name not provided");
+          }
+
+          const isDefaultExport = Boolean(
+            node.modifiers &&
+              node.modifiers.find((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) &&
+              node.modifiers.find((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)
+          );
+
+          const identifier = ts.createIdentifier(node.name.text);
+
+          const variableStatement = ts.createVariableStatement(
+            isDefaultExport ? undefined : node.modifiers,
             ts.createVariableDeclarationList(
-              [ts.createVariableDeclaration(ts.createIdentifier(node.name!.text), undefined, functionExpression)],
+              [ts.createVariableDeclaration(identifier, undefined, functionExpression)],
               ts.NodeFlags.Const
             )
           );
+
+          if (isDefaultExport) {
+            const exportAssignment = ts.createExportAssignment(node.decorators, node.modifiers, undefined, identifier);
+
+            return [variableStatement, exportAssignment];
+          } else {
+            node = variableStatement;
+          }
         }
 
         return ts.visitEachChild(node, visitor, context);

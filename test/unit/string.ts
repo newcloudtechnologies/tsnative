@@ -229,5 +229,16 @@
   const templateStringLiteral = `${i} is ${i}, ${i}`;
   const expected = "22 is 22, 22";
 
-  console.assert(templateStringLiteral === expected, "Template string test failed");
+  console.assert(templateStringLiteral === expected, "Template string test failed (1)");
+}
+
+{
+  function getWorld() {
+    return "world";
+  }
+
+  const expected = "hello world!";
+  const templateStringLiteral = `hello ${getWorld() + "!"}`;
+
+  console.assert(templateStringLiteral === expected, "Template string test failed (2)");
 }

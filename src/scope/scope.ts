@@ -11,16 +11,18 @@
 
 import {
   error,
+  flatten,
   getAliasedSymbolIfNecessary,
   getDeclarationNamespace,
   getEnvironmentType,
   getLLVMType,
   InternalNames,
   tryResolveGenericTypeIfNecessary,
+  unwrapPointerType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { GenericTypeMapper, LLVMGenerator } from "@generator";
+import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "@generator";
 import { TypeMangler } from "@mangling";
 
 import { getArrayType } from "@handlers";
@@ -76,6 +78,63 @@ export class Environment {
 
   getVariableIndex(variable: string) {
     return this.pVariables.indexOf(variable);
+  }
+
+  static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
+    const baseValues = [];
+    const envStructType = unwrapPointerType(base.type) as llvm.StructType;
+    const envValue = generator.builder.createLoad(base.typed);
+    for (let i = 0; i < envStructType.numElements; ++i) {
+      const value = generator.xbuilder.createSafeExtractValue(envValue, [i]);
+      baseValues.push(value);
+    }
+
+    const values = flatten(
+      envs.map((e) => {
+        const envValues = [];
+        const structType = unwrapPointerType(e.type) as llvm.StructType;
+        const structValue = generator.builder.createLoad(e.typed);
+        for (let i = 0; i < structType.numElements; ++i) {
+          const value = generator.xbuilder.createSafeExtractValue(structValue, [i]);
+          envValues.push(value);
+        }
+
+        return envValues;
+      })
+    );
+
+    const names = flatten(envs.map((e) => e.variables));
+
+    const allVariables = base.variables.concat(names);
+    const uniqueIndexes = allVariables.reduce((acc, variable, index) => {
+      if (allVariables.indexOf(variable) === index) {
+        acc.push(index);
+      }
+      return acc;
+    }, new Array<number>());
+    const mergedVariableNames = uniqueIndexes.reduce((acc, index) => {
+      acc.push(allVariables[index]);
+      return acc;
+    }, new Array<string>());
+
+    const mergedValues = baseValues.concat(values).filter((_, index) => uniqueIndexes.includes(index));
+    const mergedEnvironmentType = llvm.StructType.get(
+      generator.context,
+      mergedValues.map((v) => v.type)
+    );
+    const allocatedMergedEnvironment = generator.gc.allocate(mergedEnvironmentType);
+
+    for (let i = 0; i < mergedValues.length; ++i) {
+      const elementPtr = generator.xbuilder.createSafeInBoundsGEP(allocatedMergedEnvironment, [0, i]);
+      generator.xbuilder.createSafeStore(mergedValues[i], elementPtr);
+    }
+
+    return new Environment(
+      mergedVariableNames,
+      generator.xbuilder.asVoidStar(allocatedMergedEnvironment),
+      allocatedMergedEnvironment.type as llvm.PointerType,
+      generator
+    );
   }
 }
 
@@ -167,7 +226,8 @@ export function createEnvironment(
   environmentVariables: string[],
   generator: LLVMGenerator,
   functionData?: { args: llvm.Value[]; signature: ts.Signature },
-  outerEnv?: Environment
+  outerEnv?: Environment,
+  functionBody?: ts.ConciseBody
 ) {
   const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
 
@@ -256,12 +316,57 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
 
-  return new Environment(
+  let env = new Environment(
     names,
     generator.xbuilder.asVoidStar(environmentAlloca),
     environmentAlloca.type as llvm.PointerType,
     generator
   );
+
+  if (functionBody) {
+    const innerEnvironments = [];
+    if (ts.isBlock(functionBody)) {
+      functionBody.forEachChild((node) => {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+          if (generator.symbolTable.currentScope.get(node.expression.getText())) {
+            return;
+          }
+
+          const type = generator.checker.getTypeAtLocation(node.expression);
+          const symbol = type.getSymbol();
+          if (!symbol) {
+            error("No symbol found");
+          }
+
+          const declaration = symbol.declarations[0];
+          const innerEnvironment = generator.meta.getFunctionEnvironment(declaration);
+          innerEnvironments.push(innerEnvironment);
+        }
+      });
+    } else {
+      if (ts.isCallExpression(functionBody) && ts.isIdentifier(functionBody.expression)) {
+        if (!generator.symbolTable.currentScope.get(functionBody.expression.getText())) {
+          const type = generator.checker.getTypeAtLocation(functionBody.expression);
+          const symbol = type.getSymbol();
+          if (!symbol) {
+            error("No symbol found");
+          }
+
+          const declaration = symbol.declarations[0];
+          const innerEnvironment = generator.meta.try(MetaInfoStorage.prototype.getFunctionEnvironment, declaration);
+          if (innerEnvironment) {
+            innerEnvironments.push(innerEnvironment);
+          }
+        }
+      }
+    }
+
+    if (innerEnvironments.length > 0) {
+      env = Environment.merge(env, innerEnvironments, generator);
+    }
+  }
+
+  return env;
 }
 
 function populateStaticContext(scope: Scope, environmentVariables: string[]) {

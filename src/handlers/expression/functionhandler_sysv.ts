@@ -28,7 +28,7 @@ import {
   checkIfObject,
   isTSClosure,
 } from "@utils";
-import { castFPToIntegralType, getFunctionDeclarationScope, isConvertible, promoteIntegralToFP } from "@handlers";
+import { castFPToIntegralType, getDeclarationScope, isConvertible, promoteIntegralToFP } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import * as llvm from "llvm-node";
 import { Environment } from "@scope";
@@ -238,7 +238,7 @@ export class SysVFunctionHandler {
 
     const argumentTypes = expression.arguments?.map(this.generator.checker.getTypeAtLocation) || [];
 
-    const parentScope = getFunctionDeclarationScope(classDeclaration, thisType, this.generator);
+    const parentScope = getDeclarationScope(classDeclaration, thisType, this.generator);
     const llvmThisType: llvm.PointerType = parentScope.thisData!.llvmType as llvm.PointerType;
 
     const signature = this.generator.checker.getSignatureFromDeclaration(constructorDeclaration);

@@ -57,7 +57,13 @@ async function main() {
   const libs: string[] = [];
   options.lib = [DEFINITIONS, UTILITY_DEFINITIONS];
   options.types = [];
-  options.traceResolution = false;
+
+  if (!options.strict) {
+    console.warn(
+      "It seems like strict mode is not enabled in tsconfig.json. Strict mode will be enforced by compiler and MAY require your code to be changed accordingly."
+    );
+    options.strict = true;
+  }
 
   const host = ts.createCompilerHost(options);
   const program = new Preprocessor(files, options, host).program;

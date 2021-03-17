@@ -77,9 +77,11 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
 
     if (checkIfLLVMString(left.type) && checkIfLLVMString(right.type)) {
       const concat = this.generator.builtinString.getLLVMConcat(lhs);
-      const sret = this.generator.gc.allocate(this.generator.builtinString.getLLVMType().elementType);
-      this.generator.xbuilder.createSafeCall(concat, [sret, left, right]);
-      return sret;
+      const untypedThis = this.generator.xbuilder.asVoidStar(left);
+      return createHeapAllocatedFromValue(
+        this.generator.xbuilder.createSafeCall(concat, [untypedThis, right]),
+        this.generator
+      );
     }
 
     error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);

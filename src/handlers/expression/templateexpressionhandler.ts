@@ -13,7 +13,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error, getLLVMValue, isCppPrimitiveType } from "@utils";
+import { checkIfLLVMString, error, getLLVMValue, isCppPrimitiveType } from "@utils";
 
 export class TemplateExpressionHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -42,16 +42,21 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     for (const span of expression.templateSpans) {
       const value = getLLVMValue(this.generator.handleExpression(span.expression, env), this.generator);
 
-      if (!isCppPrimitiveType(value.type)) {
-        error("Only primitives supported");
+      if (!isCppPrimitiveType(value.type) && !checkIfLLVMString(value.type)) {
+        error("Only primitives and strings supported");
       }
 
-      const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(
-        expression,
-        span.expression
-      );
-      const allocatedSpanExpression = this.generator.gc.allocate(stringType.elementType);
-      this.generator.xbuilder.createSafeCall(stringFromPrimitiveConstructor, [allocatedSpanExpression, value]);
+      let allocatedSpanExpression;
+      if (isCppPrimitiveType(value.type)) {
+        const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(
+          expression,
+          span.expression
+        );
+        allocatedSpanExpression = this.generator.gc.allocate(stringType.elementType);
+        this.generator.xbuilder.createSafeCall(stringFromPrimitiveConstructor, [allocatedSpanExpression, value]);
+      } else {
+        allocatedSpanExpression = value;
+      }
 
       concatResultHolder = this.generator.xbuilder.createSafeCall(stringConcat, [
         this.generator.xbuilder.asVoidStar(allocated),

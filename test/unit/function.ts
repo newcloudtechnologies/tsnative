@@ -9,9 +9,6 @@
  *
  */
 
-// @ts-nocheck
-// supess TS2367
-
 {
   function foo(a: number, b: number) {
     return a + b;
@@ -35,6 +32,7 @@ function fnc() {
 
 fnc();
 
+// @ts-ignore
 console.assert(isInvoked === true, "function: isInvoked failed");
 }
 

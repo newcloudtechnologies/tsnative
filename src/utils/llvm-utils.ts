@@ -172,7 +172,7 @@ export function getLLVMType(type: ts.Type, node: ts.Node, generator: LLVMGenerat
       error("Function declaration not found");
     }
 
-    if (canCreateLazyClosure(declaration)) {
+    if (canCreateLazyClosure(declaration, generator)) {
       const signature = generator.checker.getSignatureFromDeclaration(declaration as ts.SignatureDeclaration);
       if (!signature) {
         error("Function signature not found");
