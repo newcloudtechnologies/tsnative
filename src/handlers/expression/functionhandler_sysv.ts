@@ -166,17 +166,24 @@ export class SysVFunctionHandler {
 
     const returnsValue = checkIfReturnsValueType(valueDeclaration);
 
+    let voidRet = false;
     if (returnsValue) {
       if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
         if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
           llvmArgumentTypes.unshift(llvmReturnType);
+          voidRet = true;
         } else {
           llvmReturnType = unwrapPointerType(llvmReturnType);
         }
       }
     }
 
-    const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+    const { fn } = createLLVMFunction(
+      voidRet ? llvm.Type.getVoidTy(this.generator.context) : llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName,
+      this.generator.module
+    );
     if (valueDeclaration.body) {
       error(`External symbol '${qualifiedName}' cannot have function body`);
     }

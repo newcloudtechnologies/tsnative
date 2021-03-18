@@ -326,8 +326,8 @@ export class BuiltinString extends Builtin {
     );
     const { qualifiedName } = FunctionMangler.mangle(concatDeclaration!, undefined, thisType, argTypes, this.generator);
 
-    const llvmReturnType = unwrapPointerType(llvmThisType);
-    const llvmArgumentTypes = [llvm.Type.getInt8PtrTy(this.generator.context), llvmThisType];
+    const llvmReturnType = llvm.Type.getVoidTy(this.generator.context);
+    const llvmArgumentTypes = [llvmThisType, llvm.Type.getInt8PtrTy(this.generator.context), llvmThisType];
     const { fn: concat } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
 
     return concat;
