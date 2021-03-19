@@ -58,13 +58,26 @@ export class LLVMGenerator {
     this.builtinTSClosure = new BuiltinTSClosure(this);
   }
 
+  private mainBlock: llvm.BasicBlock | undefined;
+
+  inMain<R>(action: () => R) {
+    if (!this.mainBlock) {
+      error("No main block created");
+    }
+
+    return this.withInsertBlockKeeping(() => {
+      this.builder.setInsertionPoint(this.mainBlock!);
+      return action();
+    })
+  } 
+
   createModule(): llvm.Module {
     const mainReturnType = llvm.Type.getInt32Ty(this.context);
     const { fn: main } = createLLVMFunction(mainReturnType, [], "main", this.module);
 
-    const entryBlock = llvm.BasicBlock.create(this.context, "entry", main);
+    this.mainBlock = llvm.BasicBlock.create(this.context, "entry", main);
 
-    this.builder.setInsertionPoint(entryBlock);
+    this.builder.setInsertionPoint(this.mainBlock);
     for (const sourceFile of this.program.getSourceFiles()) {
       if (!sourceFile.fileName.includes("generated") && !sourceFile.fileName.includes(".d.ts")) {
         continue;
@@ -119,6 +132,7 @@ export class LLVMGenerator {
 
   withInsertBlockKeeping<R>(action: () => R): R {
     const insertBlock = this.builder.getInsertBlock();
+    console.log("current insert block:", insertBlock?.name)
     const result = action();
     this.builder.setInsertionPoint(insertBlock!);
     return result;

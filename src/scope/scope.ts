@@ -241,128 +241,130 @@ export function createEnvironment(
   functionBody?: ts.ConciseBody,
   preferLocalThis?: boolean
 ) {
-  const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
+  return generator.inMain(() => {
+    const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
 
-  if (functionData) {
-    const argsTypes = functionData.args.map((arg) => {
-      if (!arg.type.isPointerTy()) {
-        error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
-      }
-      return arg.type;
-    });
+    if (functionData) {
+      const argsTypes = functionData.args.map((arg) => {
+        if (!arg.type.isPointerTy()) {
+          error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
+        }
+        return arg.type;
+      });
 
-    const parameters = functionData.signature.getParameters();
+      const parameters = functionData.signature.getParameters();
 
-    argsTypes.forEach((argType, index) => {
-      if (!parameters[index]) {
-        // ignore optional parameters that were not provided
+      argsTypes.forEach((argType, index) => {
+        if (!parameters[index]) {
+          // ignore optional parameters that were not provided
+          return;
+        }
+
+        const allocated = functionData.args[index];
+        map.set(parameters[index].escapedName.toString(), { type: argType, allocated });
+      });
+    }
+
+    const context = populateContext(generator, scope, environmentVariables);
+
+    context.forEach((value) => {
+      if (value.name === InternalNames.Environment) {
         return;
       }
 
-      const allocated = functionData.args[index];
-      map.set(parameters[index].escapedName.toString(), { type: argType, allocated });
+      if (!map.has(value.name)) {
+        map.set(value.name, { type: value.allocated.type, allocated: value.allocated });
+      }
     });
-  }
 
-  const context = populateContext(generator, scope, environmentVariables);
+    if (outerEnv) {
+      const data = generator.builder.createLoad(outerEnv.typed);
 
-  context.forEach((value) => {
-    if (value.name === InternalNames.Environment) {
-      return;
+      const parameters = functionData?.signature.getParameters().map((parameter) => parameter.escapedName.toString());
+      const outerEnvValuesIndexes = [];
+      for (let i = 0; i < outerEnv.variables.length; ++i) {
+        const variableName = outerEnv.variables[i];
+
+        if (!environmentVariables.includes(variableName)) {
+          continue;
+        }
+
+        if (parameters?.includes(variableName)) {
+          continue;
+        }
+
+        if (variableName === InternalNames.This && typeof preferLocalThis !== "undefined" && preferLocalThis) {
+          continue;
+        }
+
+        outerEnvValuesIndexes.push(i);
+      }
+
+      const outerValues: llvm.Value[] = [];
+      for (const index of outerEnvValuesIndexes) {
+        const extracted = generator.xbuilder.createSafeExtractValue(data, [index]);
+        outerValues.push(extracted);
+      }
+
+      for (let i = 0; i < outerEnvValuesIndexes.length; ++i) {
+        const value = outerValues[i];
+        map.set(outerEnv.variables[outerEnvValuesIndexes[i]], { type: value.type, allocated: value });
+      }
     }
 
-    if (!map.has(value.name)) {
-      map.set(value.name, { type: value.allocated.type, allocated: value.allocated });
+    const names = Array.from(map.keys());
+    const types = Array.from(map.values()).map((value) => value.type);
+    const allocations = Array.from(map.values()).map((value) => value.allocated);
+
+    const environmentDataType = getEnvironmentType(types, generator);
+    const environmentData = allocations.reduce(
+      (acc, allocation, idx) => generator.xbuilder.createSafeInsert(acc, allocation, [idx]),
+      llvm.Constant.getNullValue(environmentDataType)
+    ) as llvm.Constant;
+
+    const environmentAlloca = generator.gc.allocate(environmentDataType);
+    generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
+
+    let env = new Environment(
+      names,
+      generator.xbuilder.asVoidStar(environmentAlloca),
+      environmentAlloca.type as llvm.PointerType,
+      generator
+    );
+
+    if (functionBody) {
+      const innerEnvironments = [];
+      if (ts.isBlock(functionBody)) {
+        functionBody.forEachChild((node) => {
+          if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+            if (generator.symbolTable.currentScope.get(node.expression.getText())) {
+              return;
+            }
+
+            const innerEnvironment = getInnerEnvironmentFromExpression(node, generator);
+            if (innerEnvironment) {
+              innerEnvironments.push(innerEnvironment);
+            }
+          }
+        });
+      } else {
+        if (ts.isCallExpression(functionBody) && ts.isIdentifier(functionBody.expression)) {
+          if (!generator.symbolTable.currentScope.get(functionBody.expression.getText())) {
+            const innerEnvironment = getInnerEnvironmentFromExpression(functionBody, generator);
+            if (innerEnvironment) {
+              innerEnvironments.push(innerEnvironment);
+            }
+          }
+        }
+      }
+
+      if (innerEnvironments.length > 0) {
+        env = Environment.merge(env, innerEnvironments, generator);
+      }
     }
+
+    return env;
   });
-
-  if (outerEnv) {
-    const data = generator.builder.createLoad(outerEnv.typed);
-
-    const parameters = functionData?.signature.getParameters().map((parameter) => parameter.escapedName.toString());
-    const outerEnvValuesIndexes = [];
-    for (let i = 0; i < outerEnv.variables.length; ++i) {
-      const variableName = outerEnv.variables[i];
-
-      if (!environmentVariables.includes(variableName)) {
-        continue;
-      }
-
-      if (parameters?.includes(variableName)) {
-        continue;
-      }
-
-      if (variableName === InternalNames.This && typeof preferLocalThis !== "undefined" && preferLocalThis) {
-        continue;
-      }
-
-      outerEnvValuesIndexes.push(i);
-    }
-
-    const outerValues: llvm.Value[] = [];
-    for (const index of outerEnvValuesIndexes) {
-      const extracted = generator.xbuilder.createSafeExtractValue(data, [index]);
-      outerValues.push(extracted);
-    }
-
-    for (let i = 0; i < outerEnvValuesIndexes.length; ++i) {
-      const value = outerValues[i];
-      map.set(outerEnv.variables[outerEnvValuesIndexes[i]], { type: value.type, allocated: value });
-    }
-  }
-
-  const names = Array.from(map.keys());
-  const types = Array.from(map.values()).map((value) => value.type);
-  const allocations = Array.from(map.values()).map((value) => value.allocated);
-
-  const environmentDataType = getEnvironmentType(types, generator);
-  const environmentData = allocations.reduce(
-    (acc, allocation, idx) => generator.xbuilder.createSafeInsert(acc, allocation, [idx]),
-    llvm.Constant.getNullValue(environmentDataType)
-  ) as llvm.Constant;
-
-  const environmentAlloca = generator.gc.allocate(environmentDataType);
-  generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
-
-  let env = new Environment(
-    names,
-    generator.xbuilder.asVoidStar(environmentAlloca),
-    environmentAlloca.type as llvm.PointerType,
-    generator
-  );
-
-  if (functionBody) {
-    const innerEnvironments = [];
-    if (ts.isBlock(functionBody)) {
-      functionBody.forEachChild((node) => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-          if (generator.symbolTable.currentScope.get(node.expression.getText())) {
-            return;
-          }
-
-          const innerEnvironment = getInnerEnvironmentFromExpression(node, generator);
-          if (innerEnvironment) {
-            innerEnvironments.push(innerEnvironment);
-          }
-        }
-      });
-    } else {
-      if (ts.isCallExpression(functionBody) && ts.isIdentifier(functionBody.expression)) {
-        if (!generator.symbolTable.currentScope.get(functionBody.expression.getText())) {
-          const innerEnvironment = getInnerEnvironmentFromExpression(functionBody, generator);
-          if (innerEnvironment) {
-            innerEnvironments.push(innerEnvironment);
-          }
-        }
-      }
-    }
-
-    if (innerEnvironments.length > 0) {
-      env = Environment.merge(env, innerEnvironments, generator);
-    }
-  }
-
-  return env;
 }
 
 function populateStaticContext(scope: Scope, environmentVariables: string[]) {

@@ -20,7 +20,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "pretty": true
+    "pretty": true,
+    "sourceMap": true
   },
   "cppDirs": [
     "test/unit/cpp",

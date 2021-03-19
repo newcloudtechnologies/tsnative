@@ -307,14 +307,6 @@ export function isSyntheticNode(node: ts.Node) {
 //        its environment cannot be used on call (illformed IR will be generated)
 //        workaround this issue by this hack
 export function canCreateLazyClosure(declaration: ts.Declaration, generator: LLVMGenerator) {
-  if (ts.isPropertyAssignment(declaration.parent)) {
-    return false;
-  }
-
-  if (ts.isReturnStatement(declaration.parent)) {
-    return false;
-  }
-
   if (ts.isCallExpression(declaration.parent)) {
     const callExpression = declaration.parent;
 

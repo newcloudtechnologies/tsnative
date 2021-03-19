@@ -55,6 +55,15 @@ export class SymbolTable {
     error(`Identifier '${identifier}' not found`);
   }
 
+  tryGet(identifier: string) {
+    let value;
+    try {
+      value = this.get(identifier);
+    } catch (_) {}
+
+    return value;
+  }
+
   addScope(name: string): void {
     const scope = new Scope(name, name);
     this.scopes.push(scope);
