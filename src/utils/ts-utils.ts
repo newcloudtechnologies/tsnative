@@ -391,7 +391,6 @@ export function getAccessorType(
 }
 
 export enum InternalNames {
-  Environment = "__environment__",
   Closure = "__closure__",
   FunctionScope = "__function_scope__",
   Object = "__object__",

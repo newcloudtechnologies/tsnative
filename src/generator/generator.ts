@@ -132,7 +132,6 @@ export class LLVMGenerator {
 
   withInsertBlockKeeping<R>(action: () => R): R {
     const insertBlock = this.builder.getInsertBlock();
-    console.log("current insert block:", insertBlock?.name)
     const result = action();
     this.builder.setInsertionPoint(insertBlock!);
     return result;

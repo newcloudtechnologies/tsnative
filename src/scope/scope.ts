@@ -30,10 +30,11 @@ import { getArrayType } from "@handlers";
 export class Environment {
   private readonly pVariables: string[];
   private pAllocated: llvm.Value;
+  private pArgumentReference: llvm.Value | undefined;
   private readonly pLLVMType: llvm.PointerType;
   private readonly pGenerator: LLVMGenerator;
 
-  constructor(variables: string[], allocated: llvm.Value, llvmType: llvm.PointerType, generator: LLVMGenerator) {
+  constructor(variables: string[], allocated: llvm.Value, reference: llvm.Value | undefined, llvmType: llvm.PointerType, generator: LLVMGenerator) {
     if (!allocated.type.isPointerTy() || !allocated.type.elementType.isIntegerTy(8)) {
       error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
@@ -44,6 +45,7 @@ export class Environment {
 
     this.pVariables = variables;
     this.pAllocated = allocated;
+    this.pArgumentReference = reference;
     this.pLLVMType = llvmType;
     this.pGenerator = generator;
   }
@@ -66,6 +68,22 @@ export class Environment {
 
   get typed() {
     return this.pGenerator.builder.createBitCast(this.pAllocated, this.pLLVMType);
+  }
+
+  get reference() {
+    if (!this.pArgumentReference) {
+      error("No reference to environment argument provided");
+    }
+
+    return this.pGenerator.builder.createBitCast(this.pArgumentReference, this.pLLVMType);
+  }
+
+  set reference(reference: llvm.Value) {
+    this.pArgumentReference = reference;
+  }
+
+  get untypedReference() {
+    return this.pArgumentReference;
   }
 
   get type() {
@@ -132,6 +150,7 @@ export class Environment {
     return new Environment(
       mergedVariableNames,
       generator.xbuilder.asVoidStar(allocatedMergedEnvironment),
+      undefined,
       allocatedMergedEnvironment.type as llvm.PointerType,
       generator
     );
@@ -266,16 +285,7 @@ export function createEnvironment(
     }
 
     const context = populateContext(generator, scope, environmentVariables);
-
-    context.forEach((value) => {
-      if (value.name === InternalNames.Environment) {
-        return;
-      }
-
-      if (!map.has(value.name)) {
-        map.set(value.name, { type: value.allocated.type, allocated: value.allocated });
-      }
-    });
+    context.forEach((value) => map.set(value.name, { type: value.allocated.type, allocated: value.allocated }));
 
     if (outerEnv) {
       const data = generator.builder.createLoad(outerEnv.typed);
@@ -289,6 +299,7 @@ export function createEnvironment(
           continue;
         }
 
+        // parameters are randomized so how is it ever possible huh?
         if (parameters?.includes(variableName)) {
           continue;
         }
@@ -328,6 +339,7 @@ export function createEnvironment(
     let env = new Environment(
       names,
       generator.xbuilder.asVoidStar(environmentAlloca),
+      undefined,
       environmentAlloca.type as llvm.PointerType,
       generator
     );
@@ -421,7 +433,7 @@ export function populateContext(
       return false;
     });
 
-    if (index === -1 && key !== InternalNames.Environment) {
+    if (index === -1) {
       return;
     }
 

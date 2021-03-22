@@ -415,7 +415,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-      return this.handleCallArguments(expression, constructorDeclaration, signature, localScope, outerEnv);
+      return this.generator.inMain(() => this.handleCallArguments(expression, constructorDeclaration, signature, localScope, outerEnv));
     }, this.generator.symbolTable.currentScope);
     const args = handledArgs.map((value) => value.value);
 
@@ -438,17 +438,28 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator.module
     );
 
+    env.reference = constructor.getArguments()[0];
+
     if (!existing) {
       this.handleConstructorBody(constructorDeclaration, constructor, env);
       setLLVMFunctionScope(constructor, parentScope);
     }
+const envTyped = env.typed
+    this.generator.xbuilder.createSafeCall(constructor, [
+      env.untypedReference!
+    ]);
 
-    this.generator.xbuilder.createSafeCall(constructor, [env.untyped]);
-
-    return this.generator.builder.createBitCast(
-      this.generator.xbuilder.createSafeInBoundsGEP(env.typed, [env.getVariableIndex(InternalNames.This)]),
-      llvmThisType
-    );
+    // return this.generator.inMain(() => {
+      const envValue = this.generator.builder.createLoad(envTyped);
+      const thisUntyped = this.generator.xbuilder.createSafeExtractValue(
+        envValue,
+        [env.getVariableIndex(InternalNames.This)]
+      );
+      return this.generator.builder.createBitCast(
+        thisUntyped,
+        llvmThisType
+      );
+    // });
   }
 
   private handleArrowFunction(expression: ts.ArrowFunction, outerEnv?: Environment): llvm.Value {
@@ -1085,6 +1096,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const generatedEnvironment = new Environment(
         closureEnv.variables,
         this.generator.xbuilder.asVoidStar(generatedEnvironmentAllocated),
+        undefined,
         generatedEnvironmentAllocated.type as llvm.PointerType,
         this.generator
       );
@@ -1158,7 +1170,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       error("No signature found");
     }
     const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-      return this.handleCallArguments(expression, constructorDeclaration, signature, localScope, outerEnv);
+      return this.generator.inMain(() => this.handleCallArguments(expression, constructorDeclaration, signature, localScope, outerEnv));
     }, this.generator.symbolTable.currentScope);
     const args = handledArgs.map((value) => value.value);
 
@@ -1202,12 +1214,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator.module
     );
 
-    if (!existing) {
-      this.handleConstructorBody(constructorDeclaration, constructor, env);
+    env.reference = constructor.getArguments()[0];
 
-      console.log(this.generator.module.print())
-      
-      setLLVMFunctionScope(constructor, parentScope);
+    if (!existing) {
+
+      console.log("new call env:", env.variables)
+
+      this.handleConstructorBody(constructorDeclaration, constructor, env);
+      try {
+        setLLVMFunctionScope(constructor, parentScope);
+      } catch (_) {
+        console.log(this.generator.module.print())
+        // console.log(expression.getText())
+        throw _;
+      }
     }
 
     this.generator.xbuilder.createSafeCall(constructor, [env.untyped]);
@@ -1283,6 +1303,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const llvmReturnType = getLLVMReturnType(tsReturnType, expression, this.generator);
 
     const { fn } = createLLVMFunction(llvmReturnType, [env.voidStar], getRandomString(), this.generator.module);
+
     this.handleFunctionBody(llvmReturnType, expression, fn, env);
     llvm.verifyFunction(fn);
 
@@ -1295,15 +1316,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
     args: llvm.Argument[],
     env?: Environment
   ) {
-    const sourceEnvironmentPtr = env?.untyped;
     if (env && args.length > 0) {
-      env.untyped = args[0];
+      env = new Environment(env.variables, env.untyped, args[0], env.type, this.generator);
     }
-    const result = action(env);
-    if (sourceEnvironmentPtr) {
-      env!.untyped = sourceEnvironmentPtr;
-    }
-    return result;
+    return action(env);
   }
 
   private handleFunctionBody(
@@ -1317,87 +1333,91 @@ export class FunctionHandler extends AbstractExpressionHandler {
         (bodyScope) => {
           // return this.withEnvironmentPointerFromArguments(
           //   (environment) => {
-              const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", fn);
-              this.generator.builder.setInsertionPoint(entryBlock);
+          const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", fn);
+          this.generator.builder.setInsertionPoint(entryBlock);
 
-              if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
-                declaration.body!.forEachChild((node) => {
-                  if (ts.isReturnStatement(node) && node.expression) {
-                    if (ts.isFunctionExpression(node.expression)) {
-                      const closure = this.generator.handleExpression(node.expression, env);
-                      this.generator.xbuilder.createSafeRet(closure);
-                      return;
-                    }
-                  }
-                  this.generator.handleNode(node, bodyScope, env);
-                });
-              } else if (ts.isBlock(declaration.body!)) {
-                // Empty block
-                this.generator.builder.createRetVoid();
-              } else {
-                const blocklessArrowFunctionReturn = this.generator.handleExpression(
-                  declaration.body! as ts.Expression,
-                  env
-                );
+          if (env) {
+            env = new Environment(env.variables, env.untyped, fn.getArguments()[0], env.type, this.generator);
+          }
 
-                const currentFn = this.generator.currentFunction;
-                const currentFnReturnType = (currentFn.type.elementType as llvm.FunctionType).returnType;
-                if (
-                  blocklessArrowFunctionReturn.type.isVoidTy() ||
-                  (currentFnReturnType.isVoidTy() &&
-                    blocklessArrowFunctionReturn.type.isPointerTy() &&
-                    blocklessArrowFunctionReturn.type.elementType.isIntegerTy(8))
-                ) {
-                  this.generator.builder.createRetVoid();
-                } else {
-                  this.generator.xbuilder.createSafeRet(blocklessArrowFunctionReturn);
+          if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
+            declaration.body!.forEachChild((node) => {
+              if (ts.isReturnStatement(node) && node.expression) {
+                if (ts.isFunctionExpression(node.expression)) {
+                  const closure = this.generator.handleExpression(node.expression, env);
+                  this.generator.xbuilder.createSafeRet(closure);
+                  return;
+                }
+              }
+              this.generator.handleNode(node, bodyScope, env);
+            });
+          } else if (ts.isBlock(declaration.body!)) {
+            // Empty block
+            this.generator.builder.createRetVoid();
+          } else {
+            const blocklessArrowFunctionReturn = this.generator.handleExpression(
+              declaration.body! as ts.Expression,
+              env
+            );
+
+            const currentFn = this.generator.currentFunction;
+            const currentFnReturnType = (currentFn.type.elementType as llvm.FunctionType).returnType;
+            if (
+              blocklessArrowFunctionReturn.type.isVoidTy() ||
+              (currentFnReturnType.isVoidTy() &&
+                blocklessArrowFunctionReturn.type.isPointerTy() &&
+                blocklessArrowFunctionReturn.type.elementType.isIntegerTy(8))
+            ) {
+              this.generator.builder.createRetVoid();
+            } else {
+              this.generator.xbuilder.createSafeRet(blocklessArrowFunctionReturn);
+            }
+          }
+
+          if (!this.generator.isCurrentBlockTerminated) {
+            if (llvmReturnType.isVoidTy()) {
+              this.generator.builder.createRetVoid();
+            } else {
+              const currentFn = this.generator.currentFunction;
+              const currentFnReturnType = (currentFn.type.elementType as llvm.FunctionType).returnType;
+
+              // Check if there is switch's default clause terminated by 'return'
+              const currentFunctionBlocks = currentFn.getBasicBlocks();
+              let hasTerminatedSwitchDefaultClause = false;
+              for (const block of currentFunctionBlocks) {
+                if (block.name.startsWith("default")) {
+                  hasTerminatedSwitchDefaultClause = Boolean(block.getTerminator());
                 }
               }
 
               if (!this.generator.isCurrentBlockTerminated) {
-                if (llvmReturnType.isVoidTy()) {
-                  this.generator.builder.createRetVoid();
-                } else {
-                  const currentFn = this.generator.currentFunction;
-                  const currentFnReturnType = (currentFn.type.elementType as llvm.FunctionType).returnType;
+                const defaultReturn = this.generator.gc.allocate(unwrapPointerType(currentFnReturnType));
 
-                  // Check if there is switch's default clause terminated by 'return'
-                  const currentFunctionBlocks = currentFn.getBasicBlocks();
-                  let hasTerminatedSwitchDefaultClause = false;
-                  for (const block of currentFunctionBlocks) {
-                    if (block.name.startsWith("default")) {
-                      hasTerminatedSwitchDefaultClause = Boolean(block.getTerminator());
-                    }
-                  }
+                /*
+                Every function have implicit 'return undefined' if 'return' is not specified.
+                This makes return type of function to be 'undefined | T' automagically in such a case:
 
-                  if (!this.generator.isCurrentBlockTerminated) {
-                    const defaultReturn = this.generator.gc.allocate(unwrapPointerType(currentFnReturnType));
-
-                    /*
-                    Every function have implicit 'return undefined' if 'return' is not specified.
-                    This makes return type of function to be 'undefined | T' automagically in such a case:
-
-                    function f() {
-                      if (smth) {
-                        return smth;
-                      }
-                    }
-                    */
-                    if (isUnionWithUndefinedLLVMType(currentFnReturnType)) {
-                      const marker = this.generator.xbuilder.createSafeInBoundsGEP(defaultReturn, [0, 0]);
-                      this.generator.xbuilder.createSafeStore(
-                        llvm.ConstantInt.get(this.generator.context, -1, 8),
-                        marker
-                      );
-                    } else if (!hasTerminatedSwitchDefaultClause) {
-                      error("No return statement in function returning non-void");
-                    }
-
-                    this.generator.xbuilder.createSafeRet(defaultReturn);
+                function f() {
+                  if (smth) {
+                    return smth;
                   }
                 }
+                */
+                if (isUnionWithUndefinedLLVMType(currentFnReturnType)) {
+                  const marker = this.generator.xbuilder.createSafeInBoundsGEP(defaultReturn, [0, 0]);
+                  this.generator.xbuilder.createSafeStore(
+                    llvm.ConstantInt.get(this.generator.context, -1, 8),
+                    marker
+                  );
+                } else if (!hasTerminatedSwitchDefaultClause) {
+                  error("No return statement in function returning non-void");
+                }
+
+                this.generator.xbuilder.createSafeRet(defaultReturn);
               }
-            // },
+            }
+          }
+          // },
           //   fn.getArguments(),
           //   env
           // );
@@ -1418,19 +1438,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return this.generator.withInsertBlockKeeping(() => {
       return this.generator.symbolTable.withLocalScope((bodyScope) => {
         // return this.withEnvironmentPointerFromArguments(
-        //   (environment) => {
-            const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry" + constructorDeclaration.name!.getText(), constructor);
-            this.generator.builder.setInsertionPoint(entryBlock);
+        //   (environment) => { 
+        const entryBlock = llvm.BasicBlock.create(this.generator.context, "constructor_entry_" + (constructorDeclaration.parent as ts.ClassDeclaration).name!.getText(), constructor);
+        this.generator.builder.setInsertionPoint(entryBlock);
 
-            // const envalloc = this.generator.builder.createLoad(constructor.getArguments()[0]);
+        const env1 = new Environment(env.variables, env.untyped, constructor.getArguments()[0], env.type, this.generator);
 
-            const env1 = new Environment(env.variables, constructor.getArguments()[0], env.type, this.generator);
+        constructorDeclaration.body!.forEachChild((node) =>
+          this.generator.handleNode(node, bodyScope, env1)
+        );
 
-            constructorDeclaration.body!.forEachChild((node) =>
-              this.generator.handleNode(node, bodyScope, env1)
-            );
-
-            this.generator.builder.createRetVoid();
+        this.generator.builder.createRetVoid();
         //   },
         //   constructor.getArguments(),
         //   env

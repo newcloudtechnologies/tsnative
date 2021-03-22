@@ -44,7 +44,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     if (env) {
       const index = env.getVariableIndex(expression.text);
       if (index > -1) {
-        const agg = this.generator.builder.createLoad(env.typed);
+        const agg = this.generator.builder.createLoad(env.reference!);
         return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
       }
     }
@@ -86,7 +86,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     if (env) {
       const index = env.getVariableIndex(InternalNames.This);
       if (index > -1) {
-        const agg = this.generator.builder.createLoad(env.typed);
+        const agg = this.generator.builder.createLoad(env.reference!);
         return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
       }
     }
