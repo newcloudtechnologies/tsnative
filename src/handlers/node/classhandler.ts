@@ -107,12 +107,21 @@ export class ClassHandler extends AbstractNodeHandler {
       staticProperties,
     });
 
+
+    console.log("handle class:", name)
+    
     for (const memberDecl of declaration.members) {
+      if (ts.isConstructorDeclaration(memberDecl) && memberDecl.body) {
+        
+      }
       if (
         ts.isPropertyDeclaration(memberDecl) &&
         memberDecl.initializer &&
         checkIfFunction(this.generator.checker.getTypeAtLocation(memberDecl))
       ) {
+
+        console.log("memberDecl.name.getText():", memberDecl.name.getText())
+
         const initializerValue = this.generator.handleExpression(memberDecl.initializer);
 
         scope.set(memberDecl.name.getText(), initializerValue);
