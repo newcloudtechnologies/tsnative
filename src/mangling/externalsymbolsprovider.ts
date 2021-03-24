@@ -24,7 +24,6 @@ import {
   checkIfIntersection,
   checkIfUnion,
 } from "@utils";
-import { lookpath } from "lookpath";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
 
@@ -39,7 +38,7 @@ export function injectExternalSymbolsTables(mangled: string[], demangled: string
   externalDemangledSymbolsTable = demangled;
 }
 
-export async function prepareExternalSymbols(cppDirs: string[], objectFiles?: string[]) {
+export async function prepareExternalSymbols(demangledTables: string[], mangledTables: string[]) {
   switch (process.platform) {
     case "aix":
     case "darwin":
@@ -48,13 +47,8 @@ export async function prepareExternalSymbols(cppDirs: string[], objectFiles?: st
     case "openbsd":
     case "sunos":
     case "win32":
-      const nm = await lookpath("nm");
-      if (!nm) {
-        error(`nm utility not found`);
-      }
-
       const extractor: NmSymbolExtractor = new NmSymbolExtractor();
-      return extractor.extractSymbols(cppDirs || [], objectFiles);
+      return extractor.readSymbols(demangledTables, mangledTables);
     default:
       error(`Unsupported platform ${process.platform}`);
   }

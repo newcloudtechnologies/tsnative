@@ -329,3 +329,4 @@ const is_equal = function (a: number[], b: number[]): boolean {
 
   console.assert(is_equal(extended, expected), "Array concat test failed");
 }
+

@@ -12,14 +12,15 @@
 import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
-import { ExternalSymbolsProvider, prepareExternalSymbols } from "@mangling";
+import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
 import { checkIfArray, checkIfObject, checkIfString, error, flatten, getTypeNamespace } from "@utils";
 import { getArgumentArrayType } from "@handlers/utils";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
   private readonly checker: ts.TypeChecker;
-  private readonly tsconfig: any;
+  private readonly demangled: string[] = [];
+  private readonly includeDirs: string[] = [];
   private readonly stdIncludes: string[] = [
     "std-typescript-llvm/include/array.h",
     "std-typescript-llvm/include/console.h",
@@ -28,33 +29,28 @@ export class TemplateInstantiator {
   ];
   private generatedContent: string[] = [];
 
-  private readonly mangled: string[] = [];
-  private readonly demangled: string[] = [];
-  private readonly externalDemangled: string[] = [];
-  private readonly dependencies: string[] = [];
+  private readonly INSTANTIATED_FUNCTIONS_FILE: string;
+  private readonly INSTANTIATED_CLASSES_FILE: string;
 
-  static CPP_SOURCE_DIR: string = path.join(process.cwd(), process.pid.toString());
-  static CPP_SOURCE: string = path.join(TemplateInstantiator.CPP_SOURCE_DIR, "instantiated_templates.cpp");
-  static CPP_CLASSES_SOURCE: string = path.join(TemplateInstantiator.CPP_SOURCE_DIR, "instantiated_classes.cpp");
-
-  constructor(program: ts.Program, tsconfig: any, externalDemangled: string[]) {
+  constructor(
+    program: ts.Program,
+    includeDirs: string[],
+    templateInstancesPath: string,
+    demangledTables: string[],
+    mangledTables: string[]
+  ) {
     // filter declarations
     this.sources = program.getSourceFiles().filter((source) => !source.fileName.endsWith("d.ts"));
     this.checker = program.getTypeChecker();
-    this.tsconfig = tsconfig;
-    this.externalDemangled = externalDemangled;
-  }
+    this.includeDirs = includeDirs;
 
-  static cleanup() {
-    if (fs.existsSync(TemplateInstantiator.CPP_SOURCE)) {
-      fs.unlinkSync(TemplateInstantiator.CPP_SOURCE);
-    }
-    if (fs.existsSync(TemplateInstantiator.CPP_CLASSES_SOURCE)) {
-      fs.unlinkSync(TemplateInstantiator.CPP_CLASSES_SOURCE);
-    }
-    if (fs.existsSync(TemplateInstantiator.CPP_SOURCE_DIR)) {
-      fs.rmdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
-    }
+    const extractor: NmSymbolExtractor = new NmSymbolExtractor();
+    const symbols = extractor.readSymbols(demangledTables, mangledTables);
+
+    this.demangled = symbols.demangledSymbols;
+
+    this.INSTANTIATED_FUNCTIONS_FILE = path.join(templateInstancesPath, "instantiated_functions.cpp");
+    this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
   }
 
   private correctQualifiers(tsType: ts.Type, cppType: string) {
@@ -92,7 +88,8 @@ export class TemplateInstantiator {
       );
     });
 
-    const maybeExists = this.externalDemangled.filter((s) => s.includes("console::log"));
+    const maybeExists = this.demangled.filter((s) => s.includes("console::log"));
+
     const exists = maybeExists.some((signature) => {
       return (
         ExternalSymbolsProvider.extractParameterTypes(signature) ===
@@ -203,6 +200,7 @@ export class TemplateInstantiator {
       }) || [];
 
     const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
+
     const exists = maybeExists.some((signature) => {
       return (
         ExternalSymbolsProvider.extractParameterTypes(signature) ===
@@ -282,74 +280,36 @@ export class TemplateInstantiator {
     return flatten(includes).filter((filename) => filename.endsWith(".h"));
   }
 
-  private async handleInstantiated(source: string) {
-    if (this.generatedContent.length > 0) {
-      this.generatedContent = this.generatedContent.filter((s, idx) => this.generatedContent.indexOf(s) === idx);
+  private handleInstantiated(source: string) {
+    this.generatedContent = this.generatedContent.filter((s, idx) => this.generatedContent.indexOf(s) === idx);
 
-      for (const stdInclude of this.stdIncludes) {
-        this.generatedContent.unshift(`#include <${stdInclude}>`);
-      }
-
-      const includes = flatten(this.tsconfig.cppDirs?.map((dir: string) => this.getIncludes(dir)));
-      for (const include of includes) {
-        this.generatedContent.unshift(`#include "../${include}"`);
-      }
-
-      fs.writeFileSync(source, this.generatedContent.join("\n"));
-
-      this.generatedContent = [];
-
-      return prepareExternalSymbols([path.join(process.cwd(), process.pid.toString())]);
+    for (const stdInclude of this.stdIncludes) {
+      this.generatedContent.unshift(`#include <${stdInclude}>`);
     }
 
-    return;
+    const includes = flatten(this.includeDirs.map((dir: string) => this.getIncludes(dir)));
+    for (const include of includes) {
+      this.generatedContent.unshift(`#include "${include}"`);
+    }
+
+    fs.writeFileSync(source, this.generatedContent.join("\n"));
+
+    this.generatedContent = [];
   }
 
-  private async instantiateArrays() {
-    for (const sourceFile of this.sources.filter((source) => source.fileName.includes("generated"))) {
+  instantiateClasses() {
+    for (const sourceFile of this.sources) {
       sourceFile.forEachChild(this.arrayNodeVisitor.bind(this));
     }
 
-    if (this.generatedContent.length > 0) {
-      return this.handleInstantiated(TemplateInstantiator.CPP_CLASSES_SOURCE);
-    }
-
-    return;
+    return this.handleInstantiated(this.INSTANTIATED_CLASSES_FILE);
   }
 
-  private async instantiateFunctions() {
-    for (const sourceFile of this.sources.filter((source) => source.fileName.includes("generated"))) {
+  instantiateFunctions() {
+    for (const sourceFile of this.sources) {
       sourceFile.forEachChild(this.methodsVisitor.bind(this));
     }
 
-    if (this.generatedContent.length > 0) {
-      return this.handleInstantiated(TemplateInstantiator.CPP_SOURCE);
-    }
-
-    return;
-  }
-
-  async instantiate() {
-    fs.mkdirSync(TemplateInstantiator.CPP_SOURCE_DIR);
-
-    const arrays = await this.instantiateArrays();
-    if (arrays) {
-      this.mangled.push(...arrays.mangledSymbols);
-      this.demangled.push(...arrays.demangledSymbols);
-      this.dependencies.push(...arrays.dependencies);
-    }
-
-    const functions = await this.instantiateFunctions();
-    if (functions) {
-      this.mangled.push(...functions.mangledSymbols);
-      this.demangled.push(...functions.demangledSymbols);
-      this.dependencies.push(...functions.dependencies);
-    }
-
-    return {
-      mangledSymbols: this.mangled,
-      demangledSymbols: this.demangled,
-      dependencies: this.dependencies,
-    };
+    return this.handleInstantiated(this.INSTANTIATED_FUNCTIONS_FILE);
   }
 }

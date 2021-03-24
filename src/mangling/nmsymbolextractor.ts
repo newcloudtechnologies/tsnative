@@ -9,72 +9,28 @@
  *
  */
 
-import { flatten, getRandomString, replaceOrAddExtension } from "@utils";
-import { execFileSync } from "child_process";
+import { flatten } from "@utils";
 import * as fs from "fs";
-import * as path from "path";
 
 export class NmSymbolExtractor {
-  extractSymbols(cppDirs: string[], objectFiles?: string[]) {
-    const cppDependencies = cppDirs.map((dir) => {
-      return fs
-        .readdirSync(dir)
-        .filter((file) => path.extname(file) === ".cpp")
-        .map((file) => path.join(dir, file));
-    });
-
-    const dependencies = flatten(cppDependencies);
-
-    const optimizationLevel = "-O3";
-    const outPath = fs.mkdtempSync(process.pid.toString());
-    const dependencyObjects: string[] = [];
-    try {
-      dependencies.forEach((file) => {
-        const outFile = path.join(outPath, getRandomString() + path.basename(replaceOrAddExtension(file, ".o")));
-        execFileSync("g++", [
-          "-I./node_modules",
-          optimizationLevel,
-          file,
-          "-c",
-          "-o",
-          outFile,
-          "-std=c++11",
-          "-Werror",
-        ]);
-        dependencyObjects.push(outFile);
-      });
-    } catch (e) {
-      for (const libObj of dependencyObjects) {
-        fs.unlinkSync(libObj);
-      }
-      fs.rmdirSync(outPath);
-      throw e;
-    }
+  readSymbols(demangledTables: string[], mangledTables: string[]) {
+    const demangledSymbols: string[] = flatten(
+      demangledTables.map((file) => {
+        const contents = fs.readFileSync(file, "utf8");
+        return this.getExportedSymbols(contents);
+      })
+    );
 
     const mangledSymbols: string[] = flatten(
-      dependencyObjects.concat(objectFiles || []).map((libObj) => {
-        const output = execFileSync("nm", [libObj], { maxBuffer: Number.POSITIVE_INFINITY }).toString();
-        return this.getExportedSymbols(output);
-      })
-    );
-    const demangledSymbols: string[] = flatten(
-      dependencyObjects.concat(objectFiles || []).map((libObj) => {
-        const output = execFileSync("nm", ["-C", libObj], { maxBuffer: Number.POSITIVE_INFINITY }).toString();
-        return this.getExportedSymbols(output);
+      mangledTables.map((file) => {
+        const contents = fs.readFileSync(file, "utf8");
+        return this.getExportedSymbols(contents);
       })
     );
 
-    for (const libObj of dependencyObjects) {
-      fs.unlinkSync(libObj);
-    }
-    fs.rmdirSync(outPath);
-
-    if (objectFiles) {
-      dependencies.push(...objectFiles);
-    }
-
-    return { mangledSymbols, demangledSymbols, dependencies };
+    return { mangledSymbols, demangledSymbols };
   }
+
   private getExportedSymbols(rawOutput: string): string[] {
     const lines = rawOutput.split("\n");
     const symbols: (string | null)[] = lines.map((line) => {

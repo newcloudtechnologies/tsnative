@@ -9,6 +9,8 @@
  *
  */
 
+// @ts-nocheck
+
 {
   class B {
     cnt: number = 0;

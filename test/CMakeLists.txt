@@ -1,0 +1,106 @@
+#
+# Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2021
+#
+# You can not use the contents of the file in any way without
+# Laboratory of Cloud Technologies, Ltd. written permission.
+#
+# To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+# at http://cloudtechlab.ru/#contacts
+#
+
+cmake_minimum_required(VERSION 3.10)
+
+project(tests LANGUAGES CXX)
+
+enable_testing()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../node_modules/std-typescript-llvm/cmake")
+
+find_package(StdLib REQUIRED)
+find_package(Tsvmc REQUIRED)
+
+# utils.cmake from tsvmc compiler
+include(${Tsvmc_CMAKE_UTILS})
+
+if (NOT DEFINED SOURCES)
+    # looking for all test cases
+    file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.ts")
+    list(FILTER SOURCES EXCLUDE REGEX ".*[.]d.ts$")
+endif()
+
+if (NOT DEFINED TS_CONFIG)
+    set(TS_CONFIG
+        tsconfig.json)
+endif()
+
+if (NOT DEFINED SRCDIR)
+    set(SRCDIR
+        ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+set(OPTIMIZATION_LEVEL "-O3")
+set(EXTRA_DEPENDENCIES "")
+
+add_custom_target(build_anyway ALL)
+
+list(LENGTH SOURCES count)
+set(index 0)
+while(index LESS ${count})
+    list (GET SOURCES ${index} SOURCE)
+
+    if (SOURCE STREQUAL "src/cpp_closures.ts")
+        if (NOT TARGET cpp_exts)
+            add_subdirectory(src/cpp EXCLUDE_FROM_ALL)
+        endif()
+
+        get_target_property(cpp_exts_INCLUDES cpp_exts INCLUDES)
+        get_target_property(cpp_exts_DEPENDENCIES cpp_exts DEPENDENCIES)
+        get_target_property(cpp_exts_LIBRARY cpp_exts OUTPUT)
+
+        set(INCLUDES "${cpp_exts_INCLUDES}")
+        set(DEPENDENCIES
+            ${StdLib_LIBRARY}
+            ${cpp_exts_LIBRARY}
+            ${cpp_exts_DEPENDENCIES})
+
+        build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE)
+        add_dependencies(build_anyway "${binary_target${index}}")
+
+    elseif(SOURCE MATCHES "^src/cpp_integration/")
+        if (NOT TARGET cpp_integration_exts)
+            add_subdirectory(src/cpp_integration/cpp EXCLUDE_FROM_ALL)
+        endif()
+
+        get_target_property(cpp_exts_INCLUDES cpp_integration_exts INCLUDES)
+        get_target_property(cpp_exts_DEPENDENCIES cpp_integration_exts DEPENDENCIES)
+        get_target_property(cpp_exts_LIBRARY cpp_integration_exts OUTPUT)
+
+        set(INCLUDES "${cpp_exts_INCLUDES}")
+        set(DEPENDENCIES
+            ${StdLib_LIBRARY}
+            ${cpp_exts_LIBRARY}
+            ${cpp_exts_DEPENDENCIES})
+
+        build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE)
+        add_dependencies(build_anyway "${binary_target${index}}")
+
+    else()
+        if (NOT TARGET init_target)
+            add_custom_target(init_target)
+        endif()
+
+        set(INCLUDES )
+        set(DEPENDENCIES
+            ${StdLib_LIBRARY})
+
+        build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE)
+        add_dependencies(build_anyway "${binary_target${index}}")
+    endif()
+
+    math(EXPR index "${index}+1")
+endwhile()
+
+
+
+

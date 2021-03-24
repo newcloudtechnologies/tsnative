@@ -1,0 +1,292 @@
+#
+# Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2021
+#
+# You can not use the contents of the file in any way without
+# Laboratory of Cloud Technologies, Ltd. written permission.
+#
+# To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+# at http://cloudtechlab.ru/#contacts
+#
+
+cmake_minimum_required(VERSION 3.10)
+
+if (NOT Tsvmc_FOUND)
+    message(FATAL_ERROR "utils.cmake isn't included")
+endif()
+
+function(makeOutputDir target dep_target source output_dir)
+    getBinaryName(${source} binary_name)
+
+    set(dir "${CMAKE_CURRENT_BINARY_DIR}/${binary_name}.dir")
+
+    add_custom_command(
+        OUTPUT ${dir}
+        DEPENDS ${source}
+        COMMAND echo "Creating output dir..."
+        COMMAND mkdir -p "${dir}"
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${dir}
+    )
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${output_dir} ${dir} PARENT_SCOPE)
+endfunction()
+
+function(getBinaryName source binaryName)
+    get_filename_component(source_fn "${source}" NAME)
+    string(REPLACE ".ts" "" binary_fn "${source_fn}")
+    set(${binaryName} ${binary_fn} PARENT_SCOPE)
+endfunction()
+
+function(extractSymbols target dep_target dependencies output_dir demangledList mangledList)
+    set(output_demangledList )
+    set(output_mangledList )
+
+    foreach(dep_full_fn ${dependencies})
+        get_filename_component(dep_fn "${dep_full_fn}" NAME)
+
+        set(demangled_nm_fn "${output_dir}/${dep_fn}.dm.nm")
+        set(mangled_nm_fn "${output_dir}/${dep_fn}.m.nm")
+
+        list(APPEND output_demangledList ${demangled_nm_fn})
+        list(APPEND output_mangledList ${mangled_nm_fn})
+
+        add_custom_command(
+            OUTPUT ${demangled_nm_fn}
+            COMMAND ${CMAKE_NM} -C ${dep_full_fn} > ${demangled_nm_fn}
+            DEPENDS ${dep_full_fn}
+        )
+
+        add_custom_command(
+            OUTPUT ${mangled_nm_fn}
+            COMMAND ${CMAKE_NM} ${dep_full_fn} > ${mangled_nm_fn}
+            DEPENDS ${dep_full_fn}
+        )
+    endforeach()
+
+    add_custom_target(${target}
+        DEPENDS ${output_demangledList} ${output_mangledList})
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${demangledList} ${output_demangledList} PARENT_SCOPE)
+    set(${mangledList} ${output_mangledList} PARENT_SCOPE)
+endfunction()
+
+function(generateSeed target dep_target output_dir seed_src)
+    set(output "${output_dir}/seed.cpp")
+
+    add_custom_command(
+        OUTPUT ${output}
+        COMMAND echo "Generating seed..."
+        COMMAND echo "int seed(){return 0;}" > ${output} VERBATIM
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output}
+    )
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${seed_src} ${output} PARENT_SCOPE)
+endfunction()
+
+function(instantiate_classes target dep_target includes source output_dir classes_src)
+    set(output
+        "${output_dir}/instantiated_classes.cpp")
+
+    string(REPLACE ";" ", " INCLUDES "${includes}")
+
+    set(INCLUDE_DIRS )
+    if (INCLUDES)
+        set(INCLUDE_DIRS --includeDirs ${INCLUDES})
+    endif()
+
+    add_custom_command(
+        OUTPUT ${output}
+        DEPENDS ${source}
+        WORKING_DIRECTORY ${SRCDIR}
+        COMMAND echo "Instantiate classes..."
+        COMMAND ${Tsvmc_COMPILER}
+        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateClasses ${INCLUDE_DIRS} --templatesOutputDir ${output_dir}
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output})
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${classes_src} ${output} PARENT_SCOPE)
+endfunction()
+
+function(instantiate_functions target dep_target includes source output_dir demangledList mangledList functions_src)
+    set(output
+        "${output_dir}/instantiated_functions.cpp")
+
+    string(REPLACE ";" ", " DEMANGLED "${demangledList}")
+    string(REPLACE ";" ", " MANGLED "${mangledList}")
+    string(REPLACE ";" ", " INCLUDES "${includes}")
+
+set(INCLUDE_DIRS )
+if (INCLUDES)
+    set(INCLUDE_DIRS --includeDirs ${INCLUDES})
+endif()
+
+    add_custom_command(
+        OUTPUT ${output}
+        DEPENDS ${source}
+        WORKING_DIRECTORY ${SRCDIR}
+        COMMAND echo "Instantiate functions..."
+        COMMAND ${Tsvmc_COMPILER}
+        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateFunctions ${INCLUDE_DIRS} --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --templatesOutputDir ${output_dir}
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output})
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${functions_src} ${output} PARENT_SCOPE)
+endfunction()
+
+function(compile_cpp target dep_target includes source output_dir compiled)
+    string(REPLACE ".cpp" ".o" output "${source}")
+
+    set(INCLUDES )
+    list(APPEND INCLUDES "${SRCDIR}/node_modules")
+    list(APPEND INCLUDES "${SRCDIR}/../node_modules")
+
+    if (NOT "${includes}" STREQUAL "")
+        list(APPEND INCLUDES "${includes}")
+    endif()
+
+    list(TRANSFORM INCLUDES PREPEND "-I")
+
+    add_custom_command(
+        OUTPUT ${output}
+        WORKING_DIRECTORY ${output_dir}
+        COMMAND echo "Compile cpp..."
+        COMMAND ${CMAKE_CXX_COMPILER}
+        ARGS -c ${INCLUDES} ${source}
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output}
+    )
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${compiled} ${output} PARENT_SCOPE)
+endfunction()
+
+function(compile_ts target dep_target source demangledList mangledList output_dir ll_bytecode)
+    get_filename_component(source_fn "${source}" NAME)
+    string(REPLACE ".ts" ".ll" OUTPUT_FN "${source_fn}")
+
+    string(REPLACE ";" ", " DEMANGLED "${demangledList}")
+    string(REPLACE ";" ", " MANGLED "${mangledList}")
+
+    set(output "${output_dir}/${OUTPUT_FN}")
+
+    add_custom_command(
+        OUTPUT ${output}
+        DEPENDS ${source} "${demangledList}" "${mangledList}"
+        COMMAND echo "Run tsvmc..."
+        COMMAND cd ${SRCDIR} && ${Tsvmc_COMPILER} ${source} --tsconfig ${TS_CONFIG} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --output ${output}
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output}
+    )
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${ll_bytecode} ${output} PARENT_SCOPE)
+endfunction()
+
+function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir compiled_source)
+    find_package(LLVM REQUIRED CONFIG)
+    string(REPLACE ".ll" ".o" output "${ll_bytecode}")
+
+    add_custom_command(
+        OUTPUT ${output}
+        DEPENDS ${ll_bytecode}
+        COMMAND echo "Run llc..."
+        COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc ${optimizationLevel} -relocation-model=pic -filetype=obj ${ll_bytecode} -o ${output}
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output})
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${compiled_source} ${output} PARENT_SCOPE)
+endfunction()
+
+function(link target dep_target seed_src compiled_source dependencies extra_dependencies)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${STAGE_DIR}")
+
+    add_executable(${${target}} WIN32
+        ${seed_src})
+
+    if (NOT "extra_dependencies" STREQUAL "")
+        target_link_libraries(${${target}}
+            PRIVATE
+                ${compiled_source}
+                ${dependencies}
+                ${extra_dependencies})
+    else()
+        target_link_libraries(${${target}}
+            PRIVATE
+                ${compiled_source}
+                ${dependencies})
+    endif()
+
+    add_dependencies(${${target}} ${dep_target})
+endfunction()
+
+function(build target dep_target source includes dependencies extra_dependencies optimization_level is_test)
+    getBinaryName("${source}" binary_name)
+
+    makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${source}" output_dir)
+
+    instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${includes}" "${source}" "${output_dir}" CLASSES_SRC)
+
+    compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
+
+    extractSymbols(extract_classes_symbols_${binary_name} compile_classes_${binary_name} "${COMPILED_CLASSES}" "${output_dir}" COMPILED_CLASSES_DEMANGLED_NAMES COMPILED_CLASSES_MANGLED_NAMES)
+
+    instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${includes}" "${source}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} FUNCTIONS_SRC)
+
+    compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
+
+    set(DEPENDENCIES )
+    list(APPEND DEPENDENCIES ${dependencies} ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
+
+    extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
+
+    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${source}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" LL_BYTECODE)
+
+    compile_ll(compile_ll_${binary_name} compile_ts_${binary_name} "${LL_BYTECODE}" "${optimization_level}" "${output_dir}" COMPILED_SOURCE)
+
+    generateSeed(generate_seed_${binary_name} compile_ll_${binary_name} "${output_dir}" SEED_SRC)
+
+    link(binary_name generate_seed_${binary_name} "${SEED_SRC}" "${COMPILED_SOURCE}" "${DEPENDENCIES}" "${extra_dependencies}")
+
+    if(is_test)
+        add_test(
+            NAME ${binary_name} 
+            COMMAND ${binary_name}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    set(${target} ${binary_name} PARENT_SCOPE)
+endfunction()
+
+
+
+
+

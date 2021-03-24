@@ -8,10 +8,10 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { STDLIB, DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
+import { DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
-import { error, writeBitcodeToFile, writeExecutableToFile, writeIRToFile } from "@utils";
+import { error, writeBitcodeToFile, writeIRToFile } from "@utils";
 import { TemplateInstantiator } from "@cpp";
 import { Preprocessor } from "@preprocessing";
 
@@ -21,14 +21,26 @@ argv
   .option("--printIR", "print LLVM assembly to stdout")
   .option("--emitIR", "write LLVM assembly to file")
   .option("--emitBitcode", "write LLVM bitcode to file")
+  .option("--processTemplateClasses", "instantiate template classes")
+  .option("--processTemplateFunctions", "instantiate template functions")
+  .option("--templatesOutputDir [value]", "specify path to instantiated templates", "")
   .option("--target [value]", "generate code for the given target")
   .option("--output [value]", "specify output file for final executable")
   .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
-  .option("--compiler [value]", "specify C++ compiler", "g++")
   .option("--cbackend", "use CBackend instead of llc")
-  .option("-L, --libs <items>", "specify external libraries (comma separated list)", (value: string) => {
+  .option("--demangledTables <items>", "specify demangled symbol files (comma separated list)", (value: string) => {
     return value.split(",");
   })
+  .option("--mangledTables <items>", "specify mangled symbol files (comma separated list)", (value: string) => {
+    return value.split(",");
+  })
+  .option(
+    "--includeDirs <items>",
+    "specify dirs with c++ headers for templates instantiation (comma separated list)",
+    (value: string) => {
+      return value.split(",");
+    }
+  )
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -45,7 +57,6 @@ function parseTSConfig(): any {
 // entry point
 main().catch((e) => {
   console.log(e.stack);
-  TemplateInstantiator.cleanup();
   process.exit(1);
 });
 
@@ -54,7 +65,9 @@ async function main() {
 
   const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
-  const libs: string[] = [];
+  const demangledTables: string[] = [];
+  const mangledTables: string[] = [];
+  const includeDirs: string[] = [];
   options.lib = [DEFINITIONS, UTILITY_DEFINITIONS];
   options.types = [];
 
@@ -70,21 +83,29 @@ async function main() {
 
   const diagnostics = ts.getPreEmitDiagnostics(program);
 
-  if (tsconfig.libs) {
-    for (const it of tsconfig.libs) {
-      libs.push(path.resolve(path.dirname(argv.tsconfig), it));
-    }
-  }
-
-  if (argv.libs) {
-    const list = argv.libs as string[];
+  if (argv.demangledTables) {
+    const list = argv.demangledTables as string[];
     list.forEach((v: string, i: number, a: string[]) => {
       a[i] = v.trim();
     });
-    libs.push(...list);
+    demangledTables.push(...list);
   }
 
-  libs.push(STDLIB);
+  if (argv.mangledTables) {
+    const list = argv.mangledTables as string[];
+    list.forEach((v: string, i: number, a: string[]) => {
+      a[i] = v.trim();
+    });
+    mangledTables.push(...list);
+  }
+
+  if (argv.includeDirs) {
+    const list = argv.includeDirs as string[];
+    list.forEach((v: string, i: number, a: string[]) => {
+      a[i] = v.trim();
+    });
+    includeDirs.push(...list);
+  }
 
   if (diagnostics.length > 0) {
     process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
@@ -97,15 +118,33 @@ async function main() {
   llvm.initializeAllAsmParsers();
   llvm.initializeAllAsmPrinters();
 
-  const { mangledSymbols, demangledSymbols, dependencies } = await prepareExternalSymbols(tsconfig.cppDirs, libs);
-
-  const templateInstantiator = new TemplateInstantiator(program, tsconfig, demangledSymbols);
-  const instantiationResult = await templateInstantiator.instantiate();
-  if (instantiationResult) {
-    mangledSymbols.push(...instantiationResult.mangledSymbols);
-    demangledSymbols.push(...instantiationResult.demangledSymbols);
-    dependencies.push(...instantiationResult.dependencies);
+  // generate template classes
+  if (argv.processTemplateClasses) {
+    const templateInstantiator = new TemplateInstantiator(
+      program,
+      includeDirs,
+      argv.templatesOutputDir,
+      demangledTables,
+      mangledTables
+    );
+    templateInstantiator.instantiateClasses();
+    return;
   }
+
+  // generate template functions
+  if (argv.processTemplateFunctions) {
+    const templateInstantiator = new TemplateInstantiator(
+      program,
+      includeDirs,
+      argv.templatesOutputDir,
+      demangledTables,
+      mangledTables
+    );
+    templateInstantiator.instantiateFunctions();
+    return;
+  }
+
+  const { demangledSymbols, mangledSymbols } = await prepareExternalSymbols(demangledTables, mangledTables);
 
   injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
 
@@ -115,7 +154,6 @@ async function main() {
   } catch (e) {
     console.log(files);
     console.log(e);
-    TemplateInstantiator.cleanup();
     process.exit(1);
   }
 
@@ -132,16 +170,10 @@ async function main() {
   }
 
   if (argv.emitIR) {
-    writeIRToFile(llvmModule, program);
+    writeIRToFile(llvmModule, program, argv);
   }
 
   if (argv.emitBitcode) {
     writeBitcodeToFile(llvmModule, program);
   }
-
-  if (!argv.printIR && !argv.emitIR && !argv.emitBitcode) {
-    writeExecutableToFile(llvmModule, program, argv, dependencies);
-  }
-
-  TemplateInstantiator.cleanup();
 }
