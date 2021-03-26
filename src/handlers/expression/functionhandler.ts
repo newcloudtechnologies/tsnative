@@ -52,7 +52,6 @@ import {
   getAccessorType,
   getRandomString,
   adjustLLVMValueToType,
-  checkIfProperty,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -904,25 +903,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return this.handleCallArguments(expression, valueDeclaration, signature, localScope, outerEnv);
     }, this.generator.symbolTable.currentScope);
     const args = handledArgs.map((value) => value.value);
-
-    if (ts.isPropertyAccessExpression(expression.expression)) {
-      let propertySymbol = this.generator.checker.getSymbolAtLocation(expression.expression.name)!;
-      propertySymbol = getAliasedSymbolIfNecessary(propertySymbol, this.generator.checker);
-
-      const isProperty = checkIfProperty(propertySymbol);
-      if (isProperty) {
-        const callable = this.generator.handleExpression(expression.expression, outerEnv);
-        if (!(callable instanceof llvm.Value)) {
-          error("Expected llvm.Value");
-        }
-
-        if (isTSClosure(callable)) {
-          return this.handleTSClosureCall(expression, signature, args, callable, undefined, outerEnv);
-        }
-
-        error(`Unhandled call '${expression.getText()}'`);
-      }
-    }
 
     if (!valueDeclaration.body) {
       error(`Function body required for '${qualifiedName}'`);

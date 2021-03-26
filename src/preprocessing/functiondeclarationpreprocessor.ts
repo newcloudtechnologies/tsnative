@@ -11,13 +11,55 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error } from "@utils";
+import { checkIfFunction, error } from "@utils";
 
 export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
       const visitor = (node: ts.Node): ts.Node | ts.Node[] => {
         if (ts.isFunctionDeclaration(node) && node.body) {
+          // @todo: ONLY FOR edit_world
+          // ALL THIS STUFF IS A WORKAROUND! IT CLOSELY RELATED TO ts-utils.ts:canCreateLazyClosure WHICH IS A WORKAROUND TOO.
+          // FOR PROPER IMPLEMENTATION Environment CREATION AND STORING SHOULD BE REVISED
+          if (node.type) {
+            const type = this.generator.checker.getTypeFromTypeNode(node.type);
+            const symbol = type.getSymbol();
+            if (symbol) {
+              const declaration = symbol.declarations[0];
+              if (ts.isInterfaceDeclaration(declaration)) {
+                for (const member of declaration.members) {
+                  const memberType = this.generator.checker.getTypeAtLocation(member);
+                  if (checkIfFunction(memberType)) {
+                    const memberSymbol = memberType.getSymbol();
+                    if (!memberSymbol) {
+                      error("Symbol not found");
+                    }
+                    const memberDeclaration = memberSymbol.declarations[0];
+                    if (!memberDeclaration) {
+                      error("Declaration not found");
+                    }
+
+                    const signature = this.generator.checker.getSignatureFromDeclaration(
+                      memberDeclaration as ts.SignatureDeclaration
+                    );
+                    if (!signature) {
+                      error("Signature not found");
+                    }
+
+                    const withFunargs = signature.parameters.some((parameter) => {
+                      const symbolType = this.generator.checker.getTypeOfSymbolAtLocation(parameter, declaration);
+                      return checkIfFunction(symbolType);
+                    });
+
+                    if (withFunargs) {
+                      node.type = undefined;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
           const functionExpression = ts.createFunctionExpression(
             undefined,
             node.asteriskToken,

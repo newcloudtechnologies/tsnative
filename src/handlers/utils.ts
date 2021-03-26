@@ -365,7 +365,7 @@ export function createArrayConcat(expression: ts.ArrayLiteralExpression, generat
   const llvmArrayType = getLLVMType(arrayType, expression, generator);
 
   const { fn: concat } = createLLVMFunction(
-    llvmArrayType,
+    llvm.Type.getVoidTy(generator.context),
     [llvmArrayType, llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getInt8PtrTy(generator.context)],
     qualifiedName,
     generator.module

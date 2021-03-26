@@ -94,10 +94,10 @@ export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
 }
 
 export function callerShouldAllocateSpace(llvmType: llvm.Type, tsType: ts.Type, generator: LLVMGenerator) {
-  const EIGHT_EIGHTBYTES = 64;
+  const FOUR_EIGHTBYTES = 32; // @todo: write platform-specific logic if this fails on win (use EIGHT_EIGHTBYTES = 64)
   const typeValueDeclaration = tsType.symbol?.valueDeclaration as ts.ClassDeclaration;
   return (
-    getTypeSize(unwrapPointerType(llvmType), generator.module) > EIGHT_EIGHTBYTES ||
+    getTypeSize(unwrapPointerType(llvmType), generator.module) >= FOUR_EIGHTBYTES ||
     (typeValueDeclaration &&
       (checkIfUnaligned(typeValueDeclaration) ||
         checkIfHasVTable(typeValueDeclaration) ||
@@ -921,6 +921,7 @@ export function createHeapAllocatedFromValue(value: llvm.Value, generator: LLVMG
   if (value.type.isPointerTy()) {
     error("Expected value to be not of PointerType");
   }
+
   const allocated = generator.gc.allocate(value.type);
   generator.xbuilder.createSafeStore(value, allocated);
   return allocated;
