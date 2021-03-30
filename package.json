@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "scripts": {
     "build": "tsc",
-    "start": "ts-node src/main.ts",
+    "start": "playground/start.sh",
     "test": "tsc && mkdir -p test/build && cd test/build && cmake -DCMAKE_BUILD_TYPE=release .. && make \"-j$(expr 2 \\* $(cat /proc/cpuinfo | grep \"processor\" | wc -l))\" && make test",
     "clean_test": "rm -rf test/build",
+    "clean_playground": "rm -rf playground/build playground/extension",
     "lint": "tslint --project tsconfig.json",
     "format": "tslint --project tsconfig.json --fix",
     "prepare": "tsc",

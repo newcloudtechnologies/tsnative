@@ -167,6 +167,7 @@ function(compile_cpp target dep_target includes source output_dir compiled)
 
     add_custom_command(
         OUTPUT ${output}
+        DEPENDS ${source}
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compile cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
@@ -182,7 +183,7 @@ function(compile_cpp target dep_target includes source output_dir compiled)
     set(${compiled} ${output} PARENT_SCOPE)
 endfunction()
 
-function(compile_ts target dep_target source demangledList mangledList output_dir ll_bytecode)
+function(compile_ts target dep_target source demangledList mangledList output_dir is_printIr ll_bytecode)
     get_filename_component(source_fn "${source}" NAME)
     string(REPLACE ".ts" ".ll" OUTPUT_FN "${source_fn}")
 
@@ -191,11 +192,16 @@ function(compile_ts target dep_target source demangledList mangledList output_di
 
     set(output "${output_dir}/${OUTPUT_FN}")
 
+    set(PRINT_IR )
+    if (is_printIr)
+        set(PRINT_IR --printIR)
+    endif()
+
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${source} "${demangledList}" "${mangledList}"
         COMMAND echo "Run tsvmc..."
-        COMMAND cd ${SRCDIR} && ${Tsvmc_COMPILER} ${source} --tsconfig ${TS_CONFIG} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --output ${output}
+        COMMAND cd ${SRCDIR} && ${Tsvmc_COMPILER} ${source} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --output ${output}
     )
 
     add_custom_target(${target}
@@ -248,7 +254,8 @@ function(link target dep_target seed_src compiled_source dependencies extra_depe
     add_dependencies(${${target}} ${dep_target})
 endfunction()
 
-function(build target dep_target source includes dependencies extra_dependencies optimization_level is_test)
+function(build target dep_target source includes dependencies extra_dependencies optimization_level is_test is_printIr)
+
     getBinaryName("${source}" binary_name)
 
     makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${source}" output_dir)
@@ -268,7 +275,7 @@ function(build target dep_target source includes dependencies extra_dependencies
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 
-    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${source}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" LL_BYTECODE)
+    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${source}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" LL_BYTECODE)
 
     compile_ll(compile_ll_${binary_name} compile_ts_${binary_name} "${LL_BYTECODE}" "${optimization_level}" "${output_dir}" COMPILED_SOURCE)
 

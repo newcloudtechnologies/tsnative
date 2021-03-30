@@ -11,7 +11,7 @@ import * as ts from "typescript";
 import { DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
-import { error, writeBitcodeToFile, writeIRToFile } from "@utils";
+import { error, writeIRToFile } from "@utils";
 import { TemplateInstantiator } from "@cpp";
 import { Preprocessor } from "@preprocessing";
 
@@ -20,14 +20,12 @@ SegfaultHandler.registerHandler("ts-llvm-crash.log");
 argv
   .option("--printIR", "print LLVM assembly to stdout")
   .option("--emitIR", "write LLVM assembly to file")
-  .option("--emitBitcode", "write LLVM bitcode to file")
   .option("--processTemplateClasses", "instantiate template classes")
   .option("--processTemplateFunctions", "instantiate template functions")
   .option("--templatesOutputDir [value]", "specify path to instantiated templates", "")
   .option("--target [value]", "generate code for the given target")
   .option("--output [value]", "specify output file for final executable")
   .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
-  .option("--cbackend", "use CBackend instead of llc")
   .option("--demangledTables <items>", "specify demangled symbol files (comma separated list)", (value: string) => {
     return value.split(",");
   })
@@ -171,9 +169,5 @@ async function main() {
 
   if (argv.emitIR) {
     writeIRToFile(llvmModule, program, argv);
-  }
-
-  if (argv.emitBitcode) {
-    writeBitcodeToFile(llvmModule, program);
   }
 }

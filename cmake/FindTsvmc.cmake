@@ -13,11 +13,11 @@ cmake_minimum_required(VERSION 3.10)
 include(FindPackageHandleStandardArgs)
 
 get_filename_component(Tsvmc_DIR
-                       "${CMAKE_CURRENT_SOURCE_DIR}/../bin"
+                       "${CMAKE_CURRENT_LIST_DIR}/../bin"
                        ABSOLUTE)
 
 get_filename_component(Tsvmc_CMAKE_DIR
-                       "${CMAKE_CURRENT_SOURCE_DIR}/../cmake"
+                       "${CMAKE_CURRENT_LIST_DIR}/../cmake"
                        ABSOLUTE)
 
 set(Tsvmc_COMPILER "${Tsvmc_DIR}/tsvmc")

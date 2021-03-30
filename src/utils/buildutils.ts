@@ -23,9 +23,3 @@ export function writeIRToFile(module: llvm.Module, program: ts.Program, argv: Co
   console.log(`${outputFile} written`);
   return outputFile;
 }
-
-export function writeBitcodeToFile(module: llvm.Module, program: ts.Program): string {
-  const fileName = replaceOrAddExtension(getOutputBaseName(program), ".bc");
-  llvm.writeBitcodeToFile(module, fileName);
-  return fileName;
-}

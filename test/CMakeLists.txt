@@ -14,7 +14,7 @@ project(tests LANGUAGES CXX)
 
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../node_modules/std-typescript-llvm/cmake")
 
 find_package(StdLib REQUIRED)
@@ -64,7 +64,7 @@ while(index LESS ${count})
             ${cpp_exts_LIBRARY}
             ${cpp_exts_DEPENDENCIES})
 
-        build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE)
+        build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
     elseif(SOURCE MATCHES "^src/cpp_integration/")
@@ -82,7 +82,7 @@ while(index LESS ${count})
             ${cpp_exts_LIBRARY}
             ${cpp_exts_DEPENDENCIES})
 
-        build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE)
+        build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
     else()
@@ -94,7 +94,7 @@ while(index LESS ${count})
         set(DEPENDENCIES
             ${StdLib_LIBRARY})
 
-        build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE)
+        build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
     endif()
 
