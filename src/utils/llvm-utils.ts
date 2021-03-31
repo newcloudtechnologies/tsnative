@@ -897,10 +897,15 @@ export function extractFromUnion(
   ) as llvm.Constant;
 }
 
-export function storeActualArguments(args: llvm.Value[], closureFunctionData: llvm.Value, generator: LLVMGenerator) {
+export function storeActualArguments(
+  args: llvm.Value[],
+  closureFunctionData: llvm.Value,
+  generator: LLVMGenerator,
+  fixedArgsCount?: number
+) {
   // Closure data consists of null-valued arguments. Replace dummy arguments with actual ones.
   for (let i = 0; i < args.length; ++i) {
-    const elementPtrPtr = generator.xbuilder.createSafeInBoundsGEP(closureFunctionData, [0, i]);
+    const elementPtrPtr = generator.xbuilder.createSafeInBoundsGEP(closureFunctionData, [0, i + (fixedArgsCount || 0)]);
 
     const elementPtrType = (elementPtrPtr.type as llvm.PointerType).elementType as llvm.PointerType;
     let argument = args[i];

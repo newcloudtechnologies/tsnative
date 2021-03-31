@@ -73,6 +73,10 @@ class FunctionExpressionEnvStorage {
   readonly storage = new Map<string, Environment>();
 }
 
+class ClosureEnvironmentStorage {
+  readonly storage = new Map<llvm.Value, Environment>();
+}
+
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
   readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
@@ -80,6 +84,7 @@ export class MetaInfoStorage {
   readonly objectMetaInfoStorage: ObjectMeta[] = [];
   readonly closureParametersMeta = new ClosureParametersMetaStorage();
   readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
+  readonly closureEnvironment = new ClosureEnvironmentStorage();
 
   registerUnionMeta(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -174,6 +179,18 @@ export class MetaInfoStorage {
     }
 
     return stored;
+  }
+
+  registerClosureEnvironment(closure: llvm.Value, environment: Environment) {
+    this.closureEnvironment.storage.set(closure, environment);
+  }
+
+  getClosureEnvironment(closure: llvm.Value) {
+    const environment = this.closureEnvironment.storage.get(closure);
+    if (!environment) {
+      error("No environment registered");
+    }
+    return environment;
   }
 
   try<A, T>(getter: (_: A) => T, arg: A) {

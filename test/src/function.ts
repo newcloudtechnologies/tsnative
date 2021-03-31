@@ -53,6 +53,35 @@ console.assert(isInvoked === true, "function: isInvoked failed");
     function scopedDeclaration() { }
 
     scopedAndTakesFunctionDeclaration(scopedDeclaration);
+  }
+
 }
 
+{
+  class Getter {
+    i = 43;
+
+    get() {
+      return this.i;
+    }
+  }
+
+  class Storage {
+    i = 1;
+  }
+
+  const getter = new Getter();
+  const storage = new Storage();
+
+  const getterI = getter.get.bind(getter);
+  console.assert(getterI() === 43, "Function bind test failed (1)")
+
+  const storageI = getter.get.bind(storage);
+  console.assert(storageI() === 1, "Function bind test failed (2)")
+
+  const f = (f: (n: number) => number, m: number) => f(m);
+  const functionToBind = (n: number) => n;
+  const bounded = f.bind(null, functionToBind);
+
+  console.assert(bounded(9) === 9, "Function bind test failed (3)");
 }

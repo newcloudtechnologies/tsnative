@@ -23,6 +23,7 @@ export { IdentifierHandler } from "./identifierhandler";
 export { LiteralHandler } from "./literalhandler";
 export { LogicHandler } from "./logichandler";
 export { NoopHandler } from "./noophandler";
+export { NullKeywordHandler } from "./nullkeywordhandler";
 export { ParenthesizedHandler } from "./parenthesizedhandler";
 export { TemplateExpressionHandler } from "./templateexpressionhandler";
 export { UnaryHandler } from "./unaryhandler";

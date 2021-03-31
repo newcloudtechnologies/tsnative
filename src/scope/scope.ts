@@ -32,6 +32,7 @@ export class Environment {
   private pAllocated: llvm.Value;
   private readonly pLLVMType: llvm.PointerType;
   private readonly pGenerator: LLVMGenerator;
+  private pFixedArgsCount: number = 0;
 
   constructor(variables: string[], allocated: llvm.Value, llvmType: llvm.PointerType, generator: LLVMGenerator) {
     if (!allocated.type.isPointerTy() || !allocated.type.elementType.isIntegerTy(8)) {
@@ -78,6 +79,14 @@ export class Environment {
 
   getVariableIndex(variable: string) {
     return this.pVariables.indexOf(variable);
+  }
+
+  get fixedArgsCount() {
+    return this.pFixedArgsCount;
+  }
+
+  set fixedArgsCount(count: number) {
+    this.pFixedArgsCount = count;
   }
 
   static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
