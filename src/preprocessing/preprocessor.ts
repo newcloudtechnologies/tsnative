@@ -47,8 +47,6 @@ export class Preprocessor {
       fs.mkdirSync(outputDir);
     }
 
-    options.baseUrl = path.join(outputDir, process.cwd());
-
     const generatedSources = program.getSourceFiles().map((file) => {
       let filePath = file.fileName;
       if (!path.isAbsolute(filePath)) {
@@ -86,6 +84,8 @@ export class Preprocessor {
     });
 
     const generatedSourcesWithoutDeclarations = generatedSources.filter((file) => !file.endsWith(".d.ts"));
+
+    options.baseUrl = path.join(outputDir, options.baseUrl!);
     this.generatedProgram = ts.createProgram(generatedSourcesWithoutDeclarations, options, host);
 
     generatedSources.forEach(fs.unlinkSync);

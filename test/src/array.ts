@@ -330,3 +330,12 @@ const is_equal = function (a: number[], b: number[]): boolean {
   console.assert(is_equal(extended, expected), "Array concat test failed");
 }
 
+{
+  const array = [21];
+  const extender = [0, 0];
+  array.push(...extender, 22, ...extender, 23, ...extender);
+  const expected = [21, 0, 0, 22, 0, 0, 23, 0, 0];
+
+  console.assert(is_equal(array, expected), "Array.push with spread elements test failed");
+}
+

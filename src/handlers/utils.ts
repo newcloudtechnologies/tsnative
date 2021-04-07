@@ -23,7 +23,6 @@ import {
   checkIfObject,
   isTSClosure,
   getAccessorType,
-  isSimilarStructs,
   getDeclarationNamespace,
 } from "@utils";
 import * as llvm from "llvm-node";
@@ -74,18 +73,7 @@ export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: L
     return left;
   }
 
-  if (!left.type.elementType.equals(right.type)) {
-    // @todo: narrow coercion if rhs type is inherited from lhs
-    if (isSimilarStructs(left.type, right.type)) {
-      if (!right.type.isPointerTy()) {
-        error("Expected pointer");
-      }
-
-      right = generator.builder.createBitCast(right, left.type);
-    }
-
-    right = adjustLLVMValueToType(right, left.type.elementType, generator);
-  }
+  right = adjustLLVMValueToType(right, left.type.elementType, generator);
 
   generator.xbuilder.createSafeStore(right, left);
   return left;
@@ -372,6 +360,43 @@ export function createArrayConcat(expression: ts.ArrayLiteralExpression, generat
   );
 
   return concat;
+}
+
+export function createArrayToString(
+  arrayType: ts.Type,
+  expression: ts.Expression,
+  generator: LLVMGenerator
+): llvm.Value {
+  let elementType = getTypeGenericArguments(arrayType)[0];
+  if (checkIfFunction(elementType)) {
+    elementType = generator.builtinTSClosure.getTSType();
+  }
+
+  const toStringSymbol = generator.checker.getPropertyOfType(arrayType, "toString");
+  if (!toStringSymbol) {
+    error("No symbol found");
+  }
+  const toStringDeclaration = toStringSymbol.valueDeclaration;
+
+  const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+    toStringDeclaration,
+    expression,
+    arrayType,
+    [elementType],
+    generator
+  );
+
+  if (!isExternalSymbol) {
+    error(`Array 'toString' for type '${generator.checker.typeToString(arrayType)}' not found`);
+  }
+
+  const { fn: toString } = createLLVMFunction(
+    llvm.Type.getVoidTy(generator.context),
+    [generator.builtinString.getLLVMType(), llvm.Type.getInt8PtrTy(generator.context)],
+    qualifiedName,
+    generator.module
+  );
+  return toString;
 }
 
 export function getLLVMReturnType(tsReturnType: ts.Type, expression: ts.Expression, generator: LLVMGenerator) {

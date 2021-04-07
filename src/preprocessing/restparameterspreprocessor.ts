@@ -11,15 +11,91 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error, getAliasedSymbolIfNecessary, getParentFromOriginal, isSyntheticNode } from "@utils";
+import { checkIfArray, error, getAliasedSymbolIfNecessary, getParentFromOriginal, isSyntheticNode } from "@utils";
 import { last } from "lodash";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
-      const visitor = (node: ts.Node): ts.Node => {
+      const visitor = (node: ts.Node): ts.Node | ts.Node[] => {
+        if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
+          if (ts.isPropertyAccessExpression(node.expression.expression)) {
+            const objectType = this.generator.checker.getTypeAtLocation(node.expression.expression.expression);
+            const property = node.expression.expression.name.getText(sourceFile);
+
+            if (checkIfArray(objectType) && property === "push" && node.expression.arguments.some(ts.isSpreadElement)) {
+              // NB: Even this implementation only considers Array.push, it may be used for any pure function with minor modifications
+              // @todo: @pure decorator?
+              const arrayToExtend = ts.createIdentifier(node.expression.expression.expression.getText(sourceFile));
+              const arrayToExtendPush = ts.createPropertyAccess(arrayToExtend, property);
+
+              const spreadUnrolled: ts.Node[] = [];
+              let callArguments: ts.Expression[] = [];
+
+              const commitPart = () => {
+                if (callArguments.length === 0) {
+                  return;
+                }
+
+                const pushPart = ts.createCall(arrayToExtendPush, undefined, callArguments);
+                spreadUnrolled.push(pushPart);
+                callArguments = [];
+              };
+
+              for (let i = 0; i < node.expression.arguments.length; ++i) {
+                const argument = node.expression.arguments[i];
+
+                if (!ts.isSpreadElement(argument)) {
+                  callArguments.push(argument);
+
+                  if (i === node.expression.arguments.length - 1) {
+                    commitPart();
+                  }
+                } else {
+                  commitPart();
+
+                  const counterIdentifier = ts.createIdentifier("i");
+
+                  if (!ts.isIdentifier(argument.expression)) {
+                    console.log(ts.SyntaxKind[argument.expression.kind]);
+                    error("Non-identifier spread elements are not supported");
+                  }
+
+                  const spreadArrayIdentifier = argument.expression;
+
+                  if (node.expression.expression.expression.getText(sourceFile) === argument.expression.escapedText) {
+                    error(
+                      "Using same array with spread operator in 'push' is not supported (will cause endless recursion)"
+                    );
+                  }
+
+                  const spreadArrayLength = ts.createPropertyAccess(spreadArrayIdentifier, "length");
+
+                  const counter = ts.createVariableDeclarationList(
+                    [ts.createVariableDeclaration(counterIdentifier, undefined, ts.createNumericLiteral("0"))],
+                    ts.NodeFlags.Let
+                  );
+
+                  const condition = ts.createLessThan(counterIdentifier, spreadArrayLength);
+                  const incrementor = ts.createPrefix(ts.SyntaxKind.PlusPlusToken, counterIdentifier);
+
+                  const spreadArrayElementAccess = ts.createElementAccess(spreadArrayIdentifier, counterIdentifier);
+                  const pushCall = ts.createCall(arrayToExtendPush, undefined, [spreadArrayElementAccess]);
+                  const loopBody = ts.createBlock([ts.createExpressionStatement(pushCall)], true);
+
+                  const forLoop = ts.createFor(counter, condition, incrementor, loopBody);
+                  spreadUnrolled.push(forLoop);
+                }
+              }
+
+              return spreadUnrolled;
+            }
+          }
+        }
+
         if (!isSyntheticNode(node) && ts.isCallExpression(node)) {
-          let symbol = this.generator.checker.getSymbolAtLocation(node.expression);
+          const type = this.generator.checker.getTypeAtLocation(node.expression);
+          let symbol = type.getSymbol();
           if (symbol) {
             symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
             let declaration = symbol.declarations[0];

@@ -9,8 +9,7 @@
  *
  */
 
-import { checkIfFunction, error, isSyntheticNode, isTSObjectType } from "@utils";
-import { flatten } from "lodash";
+import { checkIfFunction, checkIfProperty, checkIfString, error, isSyntheticNode, isTSObjectType } from "@utils";
 import * as ts from "typescript";
 import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
 
@@ -32,7 +31,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
 
           const argumentTypes = call.arguments.map(this.generator.checker.getTypeAtLocation);
           if (argumentTypes.some((type) => isTSObjectType(type, this.generator.checker))) {
-            const logArguments: ts.Expression[] = argumentTypes.reduce((args, type, index) => {
+            const logArguments = argumentTypes.reduce((args, type, index) => {
               const callArgument = call.arguments[index];
 
               if (!isTSObjectType(type, this.generator.checker)) {
@@ -40,7 +39,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
                 return args;
               }
 
-              args.push(...this.handleTSObject(type, callArgument));
+              args.push(this.objectToString(type, callArgument));
               return args;
             }, new Array<ts.Expression>());
 
@@ -61,49 +60,152 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
     };
   };
 
-  private handleTSObject(type: ts.Type, callArgument: ts.Expression, nestedProperty?: string) {
-    const nestedLevel = nestedProperty ? nestedProperty.split(".").length + 1 : 1;
+  private getNestedLevel(property?: string) {
+    return property ? property.split(".").length + 1 : 1;
+  }
 
-    const props = this.generator.checker.getPropertiesOfType(type);
-
-    const objectLog: ts.Expression[] = flatten(
-      props.map((prop) => {
-        const propType = this.generator.checker.getTypeOfSymbolAtLocation(prop, callArgument);
-        let propName = prop.escapedName.toString();
-        const propertyStringLiteral = StringLiteralHelper.createPropertyStringLiteral(propName, nestedLevel);
-
-        propName = nestedProperty ? nestedProperty + "." + propName : propName;
-
-        if (isTSObjectType(propType, this.generator.checker)) {
-          return [
-            propertyStringLiteral,
-            ...this.handleTSObject(propType, callArgument, propName),
-            StringLiteralHelper.createNewLine(),
-          ];
-        }
-
-        if (checkIfFunction(propType)) {
-          return [
-            propertyStringLiteral,
-            StringLiteralHelper.createStringLiteral("[Function]"),
-            StringLiteralHelper.createNewLine(),
-          ];
-        }
-
-        const propertyAccess = ts.createPropertyAccess(callArgument, propName);
-        return [propertyStringLiteral, propertyAccess, StringLiteralHelper.createNewLine()];
-      })
-    );
-
-    const classPrelude = [StringLiteralHelper.getOpenCurlyBracket(), StringLiteralHelper.createNewLine()];
-    const typename = type.symbol?.escapedName.toString();
-    if (typename && typename !== ts.InternalSymbolName.Object) {
-      classPrelude.unshift(StringLiteralHelper.createStringLiteral(typename));
+  private isOneliner(type: ts.Type, node: ts.Node): boolean {
+    const props = this.generator.checker.getPropertiesOfType(type).filter(checkIfProperty);
+    if (props.length === 0) {
+      return true;
     }
 
-    objectLog.unshift(...classPrelude);
-    objectLog.push(StringLiteralHelper.getCloseCurlyBracket(nestedLevel - 1));
+    const firstFieldType = this.generator.checker.getTypeOfSymbolAtLocation(props[0], node);
 
-    return [...objectLog];
+    return props.length <= 2 && !isTSObjectType(firstFieldType, this.generator.checker);
+  }
+
+  private getPropertyName(property: string, parent?: string) {
+    return parent ? parent + "." + property : property;
+  }
+
+  private getSpaceCount(isOneliner: boolean, level: number) {
+    return !isOneliner ? level * 2 : 0;
+  }
+
+  private objectToString(
+    type: ts.Type,
+    callArgument: ts.Expression,
+    nestedProperty?: string
+  ): ts.TemplateExpression | ts.StringLiteral {
+    const objectSpans: ts.TemplateSpan[] = [];
+
+    const properties = this.generator.checker.getPropertiesOfType(type).filter(checkIfProperty);
+
+    const isOneliner = this.isOneliner(type, callArgument);
+    const isEmpty = properties.length === 0;
+
+    let classPrelude = StringLiteralHelper.openCurlyBracket;
+    classPrelude += isEmpty
+      ? StringLiteralHelper.empty
+      : isOneliner
+      ? StringLiteralHelper.space
+      : StringLiteralHelper.newLine;
+
+    const buildMiddleLiteral = (propertyType: ts.Type, nextProperty: ts.Symbol) => {
+      const nextPropertyName = nextProperty.escapedName.toString();
+      let nextPropertyDescriptor = StringLiteralHelper.createPropertyStringLiteral(
+        nextPropertyName,
+        this.getSpaceCount(isOneliner, nestedLevel)
+      );
+
+      const nextPropertyType = this.generator.checker.getTypeOfSymbolAtLocation(nextProperty, callArgument);
+      if (checkIfString(nextPropertyType, this.generator.checker)) {
+        nextPropertyDescriptor += "'";
+      }
+
+      const possibleQuote = checkIfString(propertyType, this.generator.checker) ? "'" : "";
+      const fieldSeparator = isOneliner ? StringLiteralHelper.space : StringLiteralHelper.newLine;
+      const literal = `${possibleQuote},${fieldSeparator}${nextPropertyDescriptor}`;
+      return literal;
+    };
+    const buildEpilogue = (propertyType: ts.Type, expression?: ts.Expression) => {
+      const possibleQuote = checkIfString(propertyType, this.generator.checker) ? "'" : "";
+      const newLineOrSpace = isEmpty
+        ? StringLiteralHelper.empty
+        : isOneliner
+        ? StringLiteralHelper.space
+        : StringLiteralHelper.newLine;
+      const closingBracket = StringLiteralHelper.getCloseCurlyBracket(this.getSpaceCount(isOneliner, nestedLevel - 1));
+      const classEpilogue = `${possibleQuote}${newLineOrSpace}${closingBracket}`;
+      if (expression) {
+        const classEpilogueTemplate = ts.createTemplateTail(classEpilogue);
+        const span = ts.createTemplateSpan(expression, classEpilogueTemplate);
+        objectSpans.push(span);
+      } else {
+        classPrelude += classEpilogue;
+      }
+    };
+
+    const typename = type.getSymbol()?.escapedName.toString();
+    if (typename && typename !== ts.InternalSymbolName.Object && typename !== ts.InternalSymbolName.Type) {
+      classPrelude = typename + " " + classPrelude;
+    }
+
+    const nestedLevel = this.getNestedLevel(nestedProperty);
+
+    for (let i = 0; i < properties.length; ++i) {
+      const property = properties[i];
+      const propertyType = this.generator.checker.getTypeOfSymbolAtLocation(property, callArgument);
+
+      const propertyName = property.escapedName.toString();
+
+      if (i === 0) {
+        let propertyDescriptor = StringLiteralHelper.createPropertyStringLiteral(
+          propertyName,
+          this.getSpaceCount(isOneliner, nestedLevel)
+        );
+        if (checkIfString(propertyType, this.generator.checker)) {
+          propertyDescriptor += "'";
+        }
+
+        classPrelude += propertyDescriptor;
+      }
+
+      const propertyAccessString = this.getPropertyName(propertyName, nestedProperty);
+      const propertyAccess = ts.createPropertyAccess(callArgument, propertyAccessString);
+      const nextProperty = i !== properties.length - 1 ? properties[i + 1] : undefined;
+
+      if (isTSObjectType(propertyType, this.generator.checker)) {
+        const nestedObjectTemplateExpression = this.objectToString(propertyType, callArgument, propertyAccessString);
+        if (!nextProperty) {
+          buildEpilogue(propertyType, nestedObjectTemplateExpression);
+        } else {
+          const spanLiteral = buildMiddleLiteral(propertyType, nextProperty);
+          const nestedObjectSpan = ts.createTemplateSpan(
+            nestedObjectTemplateExpression,
+            ts.createTemplateMiddle(spanLiteral)
+          );
+          objectSpans.push(nestedObjectSpan);
+        }
+
+        continue;
+      }
+
+      // @todo: remove function-related stuff once .toString() implemented
+      const spanExpression = checkIfFunction(propertyType) ? ts.createStringLiteral(`[Function]`) : propertyAccess;
+      ts.addSyntheticLeadingComment(
+        spanExpression,
+        ts.SyntaxKind.SingleLineCommentTrivia,
+        "@ts-ignore (Ignore possible access to protected/private fields)"
+      );
+      if (nextProperty) {
+        const spanLiteral = buildMiddleLiteral(propertyType, nextProperty);
+        const span = ts.createTemplateSpan(spanExpression, ts.createTemplateMiddle(spanLiteral));
+        objectSpans.push(span);
+      } else {
+        buildEpilogue(propertyType, spanExpression);
+      }
+    }
+
+    if (!properties.length) {
+      const closingBracket = StringLiteralHelper.getCloseCurlyBracket(this.getSpaceCount(isOneliner, nestedLevel - 1));
+      const classEpilogue = `${closingBracket}`;
+      classPrelude += classEpilogue;
+      return ts.createStringLiteral(classPrelude);
+    }
+
+    const classPreludeHead = ts.createTemplateHead(classPrelude);
+    return ts.createTemplateExpression(classPreludeHead, objectSpans);
   }
 }

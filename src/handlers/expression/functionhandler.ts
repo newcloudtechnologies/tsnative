@@ -52,6 +52,7 @@ import {
   getAccessorType,
   getRandomString,
   adjustLLVMValueToType,
+  checkIfProperty,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -914,6 +915,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       bindableValueDeclaration as ts.SignatureDeclaration
     )!;
 
+    const thisArg = this.generator.handleExpression(expression.arguments[0], outerEnv);
     const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
       return this.handleCallArguments(
         expression,
@@ -925,7 +927,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }, this.generator.symbolTable.currentScope);
     const args = handledArgs.map((value) => value.value);
-    const thisArg = this.generator.handleExpression(expression.arguments[0], outerEnv);
 
     const environmentVariables = getEnvironmentVariables(
       bindableValueDeclaration.body,
@@ -1042,10 +1043,29 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const parentScope = getDeclarationScope(valueDeclaration, thisType, this.generator);
     const llvmThisType = thisType && parentScope.thisData ? parentScope.thisData!.llvmType : undefined;
 
-    const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-      return this.handleCallArguments(expression, valueDeclaration, signature, localScope, outerEnv);
-    }, this.generator.symbolTable.currentScope);
-    const args = handledArgs.map((value) => value.value);
+    if (ts.isPropertyAccessExpression(expression.expression)) {
+      let propertySymbol = this.generator.checker.getSymbolAtLocation(expression.expression.name)!;
+      propertySymbol = getAliasedSymbolIfNecessary(propertySymbol, this.generator.checker);
+
+      const isProperty = checkIfProperty(propertySymbol);
+      if (isProperty) {
+        const callable = this.generator.handleExpression(expression.expression, outerEnv);
+        if (!(callable instanceof llvm.Value)) {
+          error("Expected llvm.Value");
+        }
+
+        if (isTSClosure(callable)) {
+          const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
+            return this.handleCallArguments(expression, valueDeclaration, signature, localScope, outerEnv);
+          }, this.generator.symbolTable.currentScope);
+          const args = handledArgs.map((value) => value.value);
+
+          return this.handleTSClosureCall(expression, signature, args, callable, undefined, outerEnv);
+        }
+
+        error(`Unhandled call '${expression.getText()}'`);
+      }
+    }
 
     if (!valueDeclaration.body) {
       error(`Function body required for '${qualifiedName}'`);
@@ -1053,15 +1073,23 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const environmentVariables = getEnvironmentVariables(valueDeclaration.body, signature, this.generator, outerEnv);
 
+    let thisVal;
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-      let val = this.generator.handleExpression(propertyAccess.expression, outerEnv);
-      val = adjustLLVMValueToType(val, llvmThisType!, this.generator);
+      thisVal = this.generator.handleExpression(propertyAccess.expression, outerEnv);
+      thisVal = adjustLLVMValueToType(thisVal, llvmThisType!, this.generator);
+    }
 
+    const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
+      return this.handleCallArguments(expression, valueDeclaration, signature, localScope, outerEnv);
+    }, this.generator.symbolTable.currentScope);
+    const args = handledArgs.map((value) => value.value);
+
+    if (thisVal) {
       if (!parentScope.get(InternalNames.This)) {
-        parentScope.set(InternalNames.This, val);
+        parentScope.set(InternalNames.This, thisVal);
       } else {
-        parentScope.overwrite(InternalNames.This, val);
+        parentScope.overwrite(InternalNames.This, thisVal);
       }
 
       environmentVariables.push(InternalNames.This);
@@ -1125,12 +1153,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     // All the actual arguments are passing by typeless environment.
     const callArgs = [env.untyped];
-    if (isMethod) {
-      const thisVal = parentScope.get(InternalNames.This);
-      if (!(thisVal instanceof llvm.Value)) {
-        error("'this' is not an llvm.Value");
-      }
-
+    if (thisVal) {
       callArgs.push(thisVal);
     }
 

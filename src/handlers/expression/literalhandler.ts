@@ -197,10 +197,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
     for (const element of expression.elements) {
       if (ts.isSpreadElement(element)) {
         const concat = createArrayConcat(expression, this.generator);
-        const elementValue = this.generator.symbolTable.get(element.expression.getText());
+        let elementValue = this.generator.handleExpression(element.expression, outerEnv);
 
-        if (!(elementValue instanceof HeapVariableDeclaration)) {
-          error(`Expected '${element.expression.getText()}' to be HeapVariableDeclaration`);
+        if (elementValue instanceof HeapVariableDeclaration) {
+          elementValue = elementValue.allocated;
         }
 
         const newmem = this.generator.gc.allocate(unwrapPointerType(allocated.type));
@@ -208,7 +208,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
         this.generator.xbuilder.createSafeCall(concat, [
           newmem,
           this.generator.xbuilder.asVoidStar(allocated),
-          this.generator.xbuilder.asVoidStar(elementValue.allocated),
+          this.generator.xbuilder.asVoidStar(elementValue),
         ]);
         allocated = newmem;
       } else {

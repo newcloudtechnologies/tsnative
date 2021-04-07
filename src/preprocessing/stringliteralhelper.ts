@@ -9,26 +9,28 @@
  *
  */
 
-import * as ts from "typescript";
-
 export class StringLiteralHelper {
-  static getOpenCurlyBracket() {
-    return ts.createStringLiteral("{");
+  static get openCurlyBracket() {
+    return "{";
   }
 
-  static getCloseCurlyBracket(nestedLevel: number = 0) {
-    return ts.createStringLiteral(" ".repeat(nestedLevel * 2) + "}");
+  static getCloseCurlyBracket(spaces: number = 0) {
+    return " ".repeat(spaces) + "}";
   }
 
-  static createStringLiteral(text: string) {
-    return ts.createStringLiteral(text);
+  static get newLine() {
+    return "\n";
   }
 
-  static createNewLine() {
-    return StringLiteralHelper.createStringLiteral("\n");
+  static get space() {
+    return " ";
   }
 
-  static createPropertyStringLiteral(property: string, nestedLevel: number = 0) {
-    return ts.createStringLiteral(" ".repeat(nestedLevel * 2) + property.concat(":"));
+  static get empty() {
+    return "";
+  }
+
+  static createPropertyStringLiteral(property: string, spaces: number = 0) {
+    return " ".repeat(spaces) + property.concat(": ");
   }
 }

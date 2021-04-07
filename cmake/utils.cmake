@@ -14,6 +14,10 @@ if (NOT Tsvmc_FOUND)
     message(FATAL_ERROR "utils.cmake isn't included")
 endif()
 
+if (NOT StdLib_FOUND)
+    message(FATAL_ERROR "stdlib not included")
+endif()
+
 function(makeOutputDir target dep_target source output_dir)
     getBinaryName(${source} binary_name)
 
@@ -271,7 +275,7 @@ function(build target dep_target source includes dependencies extra_dependencies
     compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
 
     set(DEPENDENCIES )
-    list(APPEND DEPENDENCIES ${dependencies} ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
+    list(APPEND DEPENDENCIES ${dependencies} ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS} ${StdLib_LIBRARY})
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 

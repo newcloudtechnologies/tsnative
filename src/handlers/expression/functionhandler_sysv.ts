@@ -138,7 +138,22 @@ export class SysVFunctionHandler {
       return correctCppPrimitiveType(llvmType);
     });
 
+    let thisValue;
+    if (isMethod) {
+      const propertyAccess = expression.expression as ts.PropertyAccessExpression;
+      thisValue = this.generator.handleExpression(propertyAccess.expression, env);
+      if (!thisValue.type.isPointerTy()) {
+        const allocated = this.generator.gc.allocate(thisValue.type);
+        this.generator.xbuilder.createSafeStore(thisValue, allocated);
+        thisValue = allocated;
+      }
+    }
+
     let args = expression.arguments.map((argument) => {
+      if (ts.isSpreadElement(argument)) {
+        error("Spread element in arguments is not supported");
+      }
+
       const arg = this.generator.handleExpression(argument, env);
       const tsType = this.generator.checker.getTypeAtLocation(argument);
       if (checkIfObject(tsType) || checkIfFunction(tsType) || isTSClosure(arg)) {
@@ -188,14 +203,7 @@ export class SysVFunctionHandler {
       error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
-    if (isMethod) {
-      const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-      let thisValue = this.generator.handleExpression(propertyAccess.expression, env);
-      if (!thisValue.type.isPointerTy()) {
-        const allocated = this.generator.gc.allocate(thisValue.type);
-        this.generator.xbuilder.createSafeStore(thisValue, allocated);
-        thisValue = allocated;
-      }
+    if (thisValue) {
       const thisValueUntyped = this.generator.xbuilder.asVoidStar(thisValue);
       args.unshift(thisValueUntyped);
     }

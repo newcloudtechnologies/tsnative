@@ -13,7 +13,15 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { checkIfLLVMString, error, getLLVMValue, isCppPrimitiveType } from "@utils";
+import {
+  checkIfLLVMArray,
+  checkIfLLVMString,
+  error,
+  getLLVMValue,
+  isCppPrimitiveType,
+  unwrapPointerType,
+} from "@utils";
+import { createArrayToString } from "@handlers";
 
 export class TemplateExpressionHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -38,23 +46,8 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     this.generator.xbuilder.createSafeCall(stringConstructor, [allocated, head]);
 
     for (const span of expression.templateSpans) {
-      const value = getLLVMValue(this.generator.handleExpression(span.expression, env), this.generator);
-
-      if (!isCppPrimitiveType(value.type) && !checkIfLLVMString(value.type)) {
-        error("Only primitives and strings supported");
-      }
-
-      let allocatedSpanExpression;
-      if (isCppPrimitiveType(value.type)) {
-        const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(
-          expression,
-          span.expression
-        );
-        allocatedSpanExpression = this.generator.gc.allocate(stringType.elementType);
-        this.generator.xbuilder.createSafeCall(stringFromPrimitiveConstructor, [allocatedSpanExpression, value]);
-      } else {
-        allocatedSpanExpression = value;
-      }
+      const value = this.generator.handleExpression(span.expression, env);
+      const allocatedSpanExpression = this.llvmValueToString(expression, span.expression, value);
 
       this.generator.xbuilder.createSafeCall(stringConcat, [
         allocated,
@@ -73,6 +66,38 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
           allocatedLiteral,
         ]);
       }
+    }
+
+    return allocated;
+  }
+
+  private llvmValueToString(contextExpression: ts.Expression, expression: ts.Expression, value: llvm.Value) {
+    const nakedType = unwrapPointerType(value.type);
+    if (!isCppPrimitiveType(nakedType) && !checkIfLLVMString(nakedType) && !checkIfLLVMArray(nakedType)) {
+      error("Only primitives, strings and arrays are supported");
+    }
+
+    const stringType = this.generator.builtinString.getLLVMType();
+
+    let allocated;
+    if (isCppPrimitiveType(nakedType)) {
+      const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(
+        contextExpression,
+        expression
+      );
+      allocated = this.generator.gc.allocate(stringType.elementType);
+      this.generator.xbuilder.createSafeCall(stringFromPrimitiveConstructor, [
+        allocated,
+        getLLVMValue(value, this.generator),
+      ]);
+    } else if (checkIfLLVMArray(nakedType)) {
+      const arrayType = this.generator.checker.getTypeAtLocation(expression);
+      const toString = createArrayToString(arrayType, expression, this.generator);
+
+      allocated = this.generator.gc.allocate(stringType.elementType);
+      this.generator.xbuilder.createSafeCall(toString, [allocated, this.generator.xbuilder.asVoidStar(value)]);
+    } else {
+      allocated = value;
     }
 
     return allocated;

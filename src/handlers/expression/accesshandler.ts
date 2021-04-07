@@ -246,9 +246,11 @@ export class AccessHandler extends AbstractExpressionHandler {
 
       const elementPtr = xbuilder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
 
-      // In ts class constructor we cannot dereference this pointer since the memory was just allocated and was not initialized.
+      // In ts class constructor we cannot dereference 'this' pointer since the memory was just allocated and was not initialized.
       // Dereferencing will lead to segfault.
-      return inTSClassConstructor(this.generator) ? elementPtr : builder.createLoad(elementPtr);
+      return inTSClassConstructor(this.generator) && expression.getText() === InternalNames.This
+        ? elementPtr
+        : builder.createLoad(elementPtr);
     }
   }
 }

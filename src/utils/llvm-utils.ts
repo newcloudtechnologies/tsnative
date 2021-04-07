@@ -575,8 +575,18 @@ export function adjustLLVMValueToType(value: llvm.Value, type: llvm.Type, genera
       return adjustLLVMValueToType(value, type, generator);
     } else if (isSamePointerLevel(value.type, type)) {
       if (!value.type.equals(type)) {
-        if (isSimilarStructs(value.type, type) || (value.type.isPointerTy() && value.type.elementType.isIntegerTy(8))) {
+        if (value.type.isPointerTy() && value.type.elementType.isIntegerTy(8)) {
           value = generator.builder.createBitCast(value, type);
+        } else if (isSimilarStructs(value.type, type)) {
+          if (!value.type.isPointerTy() && !type.isPointerTy()) {
+            // allocate -> cast -> load
+            const allocated = generator.gc.allocate(value.type);
+            generator.xbuilder.createSafeStore(value, allocated);
+            value = generator.builder.createBitCast(allocated, type.getPointerTo());
+            value = generator.builder.createLoad(value);
+          } else {
+            value = generator.builder.createBitCast(value, type);
+          }
         } else if (isUnionLLVMType(type)) {
           value = initializeUnion(type as llvm.PointerType, value, generator);
         } else if (isIntersectionLLVMType(type)) {

@@ -76,6 +76,8 @@ async function main() {
     options.strict = true;
   }
 
+  options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
+
   const host = ts.createCompilerHost(options);
   const program = new Preprocessor(files, options, host).program;
 

@@ -22,7 +22,7 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
         if (ts.isConstructorDeclaration(node) && node.body && parent) {
           // @ts-ignore
           const hasSuperCall = Boolean(parent.heritageClauses);
-          const constructorStatements = [...node.body.statements];
+          const defaultPropertiesInitializers = [];
 
           // @ts-ignore
           for (const member of parent.members.filter(ts.isPropertyDeclaration)) {
@@ -43,11 +43,18 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
             const assignment = ts.createAssignment(propertyAccess, member.initializer);
             const assigmentStatement = ts.createStatement(assignment);
 
-            if (hasSuperCall) {
-              constructorStatements.splice(1, 0, assigmentStatement);
-            } else {
-              constructorStatements.unshift(assigmentStatement);
-            }
+            defaultPropertiesInitializers.push(assigmentStatement);
+          }
+
+          let constructorStatements = [];
+          if (hasSuperCall) {
+            constructorStatements = [
+              node.body.statements[0],
+              ...defaultPropertiesInitializers,
+              ...node.body.statements.slice(1),
+            ];
+          } else {
+            constructorStatements = [...defaultPropertiesInitializers, ...node.body.statements];
           }
 
           const updated = ts.updateConstructor(
@@ -55,7 +62,7 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
             node.decorators,
             node.modifiers,
             node.parameters,
-            ts.createBlock(constructorStatements)
+            ts.createBlock(constructorStatements, true)
           );
           node = updated;
         }
