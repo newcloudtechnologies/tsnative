@@ -477,7 +477,7 @@ export class Scope {
   readonly mangledName: string | undefined;
   readonly thisData: ThisData | undefined;
   readonly parent: Scope | undefined;
-  readonly typeMapper: GenericTypeMapper | undefined;
+  readonly typeMapper: GenericTypeMapper;
 
   constructor(name: string | undefined, mangledName: string | undefined, parent?: Scope, data?: ThisData) {
     this.map = new Map<string, ScopeValue>();
@@ -486,12 +486,9 @@ export class Scope {
     this.parent = parent;
     this.thisData = data;
 
-    if (name === InternalNames.FunctionScope) {
-      this.typeMapper = new GenericTypeMapper();
-    }
-
+    this.typeMapper = new GenericTypeMapper();
     if (parent && parent.typeMapper) {
-      this.typeMapper = parent.typeMapper;
+      this.typeMapper.setParent(parent.typeMapper);
     }
   }
 

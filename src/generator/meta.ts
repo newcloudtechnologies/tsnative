@@ -204,16 +204,28 @@ export class MetaInfoStorage {
 }
 
 export class GenericTypeMapper {
-  readonly genericTypenameTypeMap = new Map<string, ts.Type>();
+  private readonly genericTypenameTypeMap = new Map<string, ts.Type>();
+  private parent: GenericTypeMapper | undefined;
+
+  setParent(parent: GenericTypeMapper) {
+    this.parent = parent;
+  }
 
   register(name: string, type: ts.Type) {
+    if (this.genericTypenameTypeMap.has(name)) {
+      error(`Generic type '${name}' already registered`);
+    }
     this.genericTypenameTypeMap.set(name, type);
   }
 
-  get(name: string) {
-    const type = this.genericTypenameTypeMap.get(name);
+  get(name: string): ts.Type {
+    let type = this.genericTypenameTypeMap.get(name);
     if (!type) {
-      error(`Generic typename '${name} is not registered'`);
+      if (!this.parent) {
+        error(`Generic typename '${name}' is not registered`);
+      }
+
+      type = this.parent.get(name);
     }
 
     return type;
