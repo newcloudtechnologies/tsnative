@@ -23,6 +23,7 @@ import {
   getAliasedSymbolIfNecessary,
   checkIfIntersection,
   checkIfUnion,
+  isTypeSupported,
 } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
@@ -153,8 +154,16 @@ export class ExternalSymbolsProvider {
     this.namespace = namespace ? namespace + "::" : "";
     if (thisType) {
       this.thisTypeName = getTypename(thisType, generator.checker);
+
+      const typeArguments = getTypeGenericArguments(thisType);
       this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
-        getTypeGenericArguments(thisType).map((type) => ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker))
+        typeArguments.map((type) => {
+          if (type.isTypeParameter() && !isTypeSupported(type, this.generator.checker)) {
+            type = this.generator.symbolTable.currentScope.typeMapper.get(this.generator.checker.typeToString(type))!;
+          }
+
+          return ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
+        })
       );
     }
 
@@ -267,7 +276,11 @@ export class ExternalSymbolsProvider {
       return functionTemplateParametersPattern;
     }
 
-    const typenameTypeMap = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, generator);
+    const typenameTypeMap = getGenericsToActualMapFromSignature(
+      signature,
+      expression as ts.CallExpression,
+      generator.checker
+    );
     const templateTypes: string[] = [];
     typenameTypeMap.forEach((value) => {
       templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(value, checker));

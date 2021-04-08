@@ -28,6 +28,7 @@ import { LLVMGenerator } from "@generator";
 export class Preprocessor {
   private readonly generatedProgram: ts.Program;
   private readonly parts: AbstractPreprocessor[] = [];
+  private readonly cleanupFunction: () => void;
 
   constructor(files: string[], options: ts.CompilerOptions, host: ts.CompilerHost) {
     const program = ts.createProgram(files, options, host);
@@ -88,8 +89,10 @@ export class Preprocessor {
     options.baseUrl = path.join(outputDir, options.baseUrl!);
     this.generatedProgram = ts.createProgram(generatedSourcesWithoutDeclarations, options, host);
 
-    generatedSources.forEach(fs.unlinkSync);
-    fs.rmdirSync(outputDir, { recursive: true });
+    this.cleanupFunction = () => {
+      generatedSources.forEach(fs.unlinkSync);
+      fs.rmdirSync(outputDir, { recursive: true });
+    };
   }
 
   private readonly transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -102,5 +105,9 @@ export class Preprocessor {
 
   get program() {
     return this.generatedProgram;
+  }
+
+  cleanup() {
+    this.cleanupFunction();
   }
 }

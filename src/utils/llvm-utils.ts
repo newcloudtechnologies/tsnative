@@ -36,6 +36,7 @@ import {
   checkIfHasConstructor,
   checkIfHasInheritance,
   canCreateLazyClosure,
+  checkIfIntersection,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -123,7 +124,9 @@ export function isTypeSupported(type: ts.Type, checker: ts.TypeChecker): boolean
     checkIfVoid(type) ||
     checkIfUndefined(type, checker) ||
     checkIfNull(type, checker) ||
-    isCppIntegralType(checker.typeToString(type))
+    isCppIntegralType(checker.typeToString(type)) ||
+    checkIfUnion(type) ||
+    checkIfIntersection(type)
   );
 }
 

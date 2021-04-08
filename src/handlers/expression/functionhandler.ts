@@ -1017,7 +1017,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
 
     if (valueDeclaration.typeParameters?.length) {
-      const typenameTypeMap = getGenericsToActualMapFromSignature(signature, expression, this.generator);
+      const typenameTypeMap = getGenericsToActualMapFromSignature(signature, expression, this.generator.checker);
 
       typenameTypeMap.forEach((value, key) => {
         this.generator.symbolTable.currentScope.typeMapper!.register(key, value);

@@ -13,7 +13,18 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
-import { checkIfArray, checkIfObject, checkIfString, error, flatten, getTypeNamespace } from "@utils";
+import {
+  checkIfArray,
+  checkIfObject,
+  checkIfString,
+  error,
+  flatten,
+  getAliasedSymbolIfNecessary,
+  getGenericsToActualMapFromSignature,
+  getTypeGenericArguments,
+  getTypeNamespace,
+  isTypeSupported,
+} from "@utils";
 import { getArgumentArrayType } from "@handlers/utils";
 
 export class TemplateInstantiator {
@@ -40,7 +51,7 @@ export class TemplateInstantiator {
     mangledTables: string[]
   ) {
     // filter declarations
-    this.sources = program.getSourceFiles().filter((source) => !source.fileName.endsWith("d.ts"));
+    this.sources = program.getSourceFiles().filter((source) => !source.isDeclarationFile);
     this.checker = program.getTypeChecker();
     this.includeDirs = includeDirs;
 
@@ -64,8 +75,50 @@ export class TemplateInstantiator {
     return cppType;
   }
 
+  private handleGenericConsoleLog(call: ts.CallExpression) {
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, ts.Type>) => {
+      const argumentTypes = call.arguments.map((arg) => {
+        let tsType = this.checker.getTypeAtLocation(arg);
+
+        if (tsType.isTypeParameter()) {
+          const typename = this.checker.typeToString(tsType);
+          tsType = typeMap.get(typename)!;
+
+          if (checkIfObject(tsType)) {
+            error("console.log with object is not supported for generic types");
+          }
+        }
+
+        const typeNamespace = getTypeNamespace(tsType);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        return this.correctQualifiers(
+          tsType,
+          typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
+        );
+      });
+
+      const maybeExists = this.demangled.filter((s) => s.includes("console::log"));
+
+      const exists = maybeExists.some((s) => {
+        return (
+          ExternalSymbolsProvider.extractParameterTypes(s) ===
+          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
+        );
+      });
+
+      if (!exists) {
+        const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
+        this.generatedContent.push(templateSignature);
+      }
+    });
+
+    this.sources.forEach((source) => {
+      source.forEachChild(visitor);
+    });
+  }
+
   private handleConsoleLog(node: ts.Node) {
-    let call;
+    let call: ts.CallExpression;
     if (ts.isExpressionStatement(node)) {
       call = node.expression as ts.CallExpression;
     } else if (ts.isCallExpression(node)) {
@@ -78,28 +131,34 @@ export class TemplateInstantiator {
       );
     }
 
-    const argumentTypes = call.arguments.map((arg) => {
-      const tsType = this.checker.getTypeAtLocation(arg);
-      const typeNamespace = getTypeNamespace(tsType);
-      const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
-      return this.correctQualifiers(
-        tsType,
-        typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
-      );
-    });
+    const hasGenericArguments = call.arguments.some((arg) => this.checker.getTypeAtLocation(arg).isTypeParameter());
+    if (hasGenericArguments) {
+      this.handleGenericConsoleLog(call);
+    } else {
+      const argumentTypes = call.arguments.map((arg) => {
+        const tsType = this.checker.getTypeAtLocation(arg);
 
-    const maybeExists = this.demangled.filter((s) => s.includes("console::log"));
+        const typeNamespace = getTypeNamespace(tsType);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        return this.correctQualifiers(
+          tsType,
+          typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
+        );
+      });
 
-    const exists = maybeExists.some((signature) => {
-      return (
-        ExternalSymbolsProvider.extractParameterTypes(signature) ===
-        ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-      );
-    });
+      const maybeExists = this.demangled.filter((s) => s.includes("console::log"));
 
-    if (!exists) {
-      const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
-      this.generatedContent.push(templateSignature);
+      const exists = maybeExists.some((signature) => {
+        return (
+          ExternalSymbolsProvider.extractParameterTypes(signature) ===
+          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
+        );
+      });
+
+      if (!exists) {
+        const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
+        this.generatedContent.push(templateSignature);
+      }
     }
   }
 
@@ -167,6 +226,30 @@ export class TemplateInstantiator {
         this.generatedContent.push(templateInstance);
       } else {
         let tsType = this.checker.getTypeAtLocation(node);
+        let elementType: ts.Type = getTypeGenericArguments(tsType)[0];
+
+        if (elementType.isTypeParameter() && !isTypeSupported(elementType, this.checker)) {
+          const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, ts.Type>) => {
+            const typename = this.checker.typeToString(elementType);
+            elementType = typesMap.get(typename)!;
+
+            const typeNamespace = getTypeNamespace(elementType);
+            const elementTypename = ExternalSymbolsProvider.jsTypeToCpp(elementType, this.checker);
+
+            const templateInstance = `template class Array<${this.correctQualifiers(
+              elementType,
+              typeNamespace.length > 0 ? typeNamespace + "::" + elementTypename : elementTypename
+            )}>;`;
+
+            this.generatedContent.push(templateInstance);
+          });
+
+          this.sources.forEach((source) => {
+            source.forEachChild(visitor);
+          });
+
+          return;
+        }
 
         if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
           tsType = this.checker.getTypeAtLocation(node.left);
@@ -178,6 +261,87 @@ export class TemplateInstantiator {
     }
   }
 
+  private handleGenericArrayMethods(call: ts.CallExpression) {
+    if (!ts.isPropertyAccessExpression(call.expression)) {
+      error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[call.expression.kind]}'`);
+    }
+
+    const tsArrayType = this.checker.getTypeAtLocation(call.expression.expression);
+    let cppArrayType = ExternalSymbolsProvider.jsTypeToCpp(tsArrayType, this.checker);
+    const methodName = call.expression.name.getText();
+
+    const resolvedSignature = this.checker.getResolvedSignature(call);
+    const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature!);
+    let cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker);
+
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, ts.Type>) => {
+      const argumentTypes = call.arguments.map((arg) => {
+        let tsType = this.checker.getTypeAtLocation(arg);
+
+        if (tsType.isTypeParameter()) {
+          const typename = this.checker.typeToString(tsType);
+          tsType = typesMap.get(typename)!;
+        }
+
+        const typeNamespace = getTypeNamespace(tsType);
+        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        return this.correctQualifiers(
+          tsType,
+          typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
+        );
+      });
+
+      const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
+
+      const exists = maybeExists.some((signature) => {
+        return (
+          ExternalSymbolsProvider.extractParameterTypes(signature) ===
+          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
+        );
+      });
+
+      if (exists) {
+        return;
+      }
+
+      const resolveArrayElementType = (arrayType: ts.Type) => {
+        const arrayTypename = this.checker.typeToString(arrayType);
+        arrayType = typesMap.get(arrayTypename)!;
+
+        const typeNamespace = getTypeNamespace(arrayType);
+
+        let cppType = ExternalSymbolsProvider.jsTypeToCpp(arrayType, this.checker);
+        cppType = this.correctQualifiers(
+          arrayType,
+          typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType
+        );
+
+        return cppType;
+      };
+
+      const thisArrayElementType = getTypeGenericArguments(tsArrayType)[0];
+      if (!isTypeSupported(thisArrayElementType, this.checker)) {
+        cppArrayType = `Array<${resolveArrayElementType(thisArrayElementType)}>`;
+      }
+
+      if (checkIfArray(tsReturnType)) {
+        const returnArrayElementType = getTypeGenericArguments(tsReturnType)[0];
+
+        if (!isTypeSupported(returnArrayElementType, this.checker)) {
+          cppReturnType = `Array<${resolveArrayElementType(returnArrayElementType)}>`;
+        }
+      }
+
+      const templateSignature =
+        "template " + cppReturnType + " " + cppArrayType + "::" + methodName + "(" + argumentTypes.join(", ") + ");"; // @todo: constness handling
+      this.generatedContent.push(templateSignature);
+    });
+
+    this.sources.forEach((source) => {
+      source.forEachChild(visitor);
+    });
+  }
+
   private handleArrayMethods(node: ts.CallExpression) {
     if (!ts.isPropertyAccessExpression(node.expression)) {
       error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[node.expression.kind]}'`);
@@ -187,12 +351,19 @@ export class TemplateInstantiator {
     const cppArrayType = ExternalSymbolsProvider.jsTypeToCpp(tsArrayType, this.checker);
     const methodName = node.expression.name.getText();
 
-    const resolvedSignature = this.checker.getResolvedSignature(node);
-    const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature!);
+    const resolvedSignature = this.checker.getResolvedSignature(node)!;
+    const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature);
     const cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker);
 
+    const elementType = getTypeGenericArguments(tsArrayType)[0];
+
+    if (!isTypeSupported(elementType, this.checker) || !isTypeSupported(tsReturnType, this.checker)) {
+      this.handleGenericArrayMethods(node);
+      return;
+    }
+
     const argumentTypes =
-      node.arguments?.map((a) => {
+      node.arguments.map((a) => {
         const tsType = this.checker.getTypeAtLocation(a);
         const typeNamespace = getTypeNamespace(tsType);
         const cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
@@ -264,6 +435,65 @@ export class TemplateInstantiator {
     } else {
       ts.forEachChild(node, this.arrayNodeVisitor.bind(this));
     }
+  }
+
+  private withTypesMapFromTypesProviderForNode(node: ts.Node, action: (map: Map<string, ts.Type>) => void) {
+    let genericTypesProvider = node.parent;
+    while (!ts.isFunctionLike(genericTypesProvider)) {
+      genericTypesProvider = genericTypesProvider.parent;
+    }
+
+    const typesProviderType = this.checker.getTypeAtLocation(genericTypesProvider);
+    let typesProviderSymbol = typesProviderType.getSymbol();
+    if (!typesProviderSymbol) {
+      error("No symbol found");
+    }
+
+    typesProviderSymbol = getAliasedSymbolIfNecessary(typesProviderSymbol, this.checker);
+
+    const typesProviderDeclaration = typesProviderSymbol.declarations[0] as ts.FunctionLikeDeclaration;
+    const typesProviderSignature = this.checker.getSignatureFromDeclaration(
+      typesProviderDeclaration as ts.SignatureDeclaration
+    );
+    if (!typesProviderSignature) {
+      error("No signature found");
+    }
+
+    const visitor = (n: ts.Node) => {
+      n.forEachChild(visitor);
+
+      if (ts.isExpressionStatement(n) || ts.isCallExpression(n)) {
+        let referenceCall: ts.CallExpression;
+
+        if (ts.isCallExpression(n)) {
+          referenceCall = n;
+        } else if (ts.isCallExpression(n.expression)) {
+          referenceCall = n.expression;
+        } else {
+          return;
+        }
+
+        const type = this.checker.getTypeAtLocation(referenceCall.expression);
+        let symbol = type.getSymbol();
+        if (!symbol) {
+          error("No symbol found");
+        }
+        symbol = getAliasedSymbolIfNecessary(symbol, this.checker);
+        if (symbol !== typesProviderSymbol) {
+          return;
+        }
+
+        const genericTypesMap = getGenericsToActualMapFromSignature(
+          typesProviderSignature,
+          referenceCall,
+          this.checker
+        );
+
+        action(genericTypesMap);
+      }
+    };
+
+    return visitor;
   }
 
   private getIncludes(directory: string | undefined): string[] {

@@ -79,7 +79,8 @@ async function main() {
   options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
 
   const host = ts.createCompilerHost(options);
-  const program = new Preprocessor(files, options, host).program;
+  const preprocessor = new Preprocessor(files, options, host);
+  const program = preprocessor.program;
 
   const diagnostics = ts.getPreEmitDiagnostics(program);
 
@@ -108,6 +109,7 @@ async function main() {
   }
 
   if (diagnostics.length > 0) {
+    preprocessor.cleanup();
     process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
     process.exit(1);
   }
@@ -128,6 +130,7 @@ async function main() {
       mangledTables
     );
     templateInstantiator.instantiateClasses();
+    preprocessor.cleanup();
     return;
   }
 
@@ -141,8 +144,11 @@ async function main() {
       mangledTables
     );
     templateInstantiator.instantiateFunctions();
+    preprocessor.cleanup();
     return;
   }
+
+  preprocessor.cleanup();
 
   const { demangledSymbols, mangledSymbols } = await prepareExternalSymbols(demangledTables, mangledTables);
 

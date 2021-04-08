@@ -133,9 +133,8 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
 export function getGenericsToActualMapFromSignature(
   signature: ts.Signature,
   expression: ts.CallLikeExpression,
-  generator: LLVMGenerator
+  checker: ts.TypeChecker
 ): Map<string, ts.Type> {
-  const { checker } = generator;
   const resolvedSignature = checker.getResolvedSignature(expression);
   if (!resolvedSignature) {
     error(`Failed to get resolved signature for '${expression.getText()}'`);
@@ -152,17 +151,27 @@ export function getGenericsToActualMapFromSignature(
     }
 
     if (checkIfFunction(actualType)) {
-      const parameterFormalParameters = type.getCallSignatures()[0].parameters;
+      const callSignature = type.getCallSignatures()[0];
+      const actualCall = actualType.getCallSignatures()[0];
+      const parameterFormalParameters = callSignature.parameters;
+
       for (let k = 0; k < parameterFormalParameters.length; ++k) {
         const formalParameter = parameterFormalParameters[k];
         const formalParameterType = checker.getTypeOfSymbolAtLocation(formalParameter, expression);
         const formalParameterTypename = checker.typeToString(formalParameterType);
 
-        const actualParameter = actualType.getCallSignatures()[0].parameters[k];
+        const actualParameter = actualCall.parameters[k];
         const actualParameterType = checker.getTypeOfSymbolAtLocation(actualParameter, expression);
 
         typenameTypeMap.set(formalParameterTypename, actualParameterType);
       }
+
+      const formalReturnType = callSignature.getReturnType();
+      const formalReturnTypename = checker.typeToString(formalReturnType);
+
+      const actualReturnType = actualCall.getReturnType();
+
+      typenameTypeMap.set(formalReturnTypename, actualReturnType);
     } else {
       typenameTypeMap.set(typename, actualType);
     }
