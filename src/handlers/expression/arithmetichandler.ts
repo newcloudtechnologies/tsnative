@@ -11,14 +11,7 @@
 
 import { isSigned } from "@cpp";
 import { Conversion, handleBinaryWithConversion, isConvertible, promoteIntegralToFP } from "@handlers";
-import {
-  error,
-  checkIfLLVMString,
-  adjustLLVMValueToType,
-  getLLVMValue,
-  createHeapAllocatedFromValue,
-  unwrapPointerType,
-} from "@utils";
+import { error, checkIfLLVMString, adjustLLVMValueToType, getLLVMValue, createHeapAllocatedFromValue } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -85,10 +78,8 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     if (checkIfLLVMString(left.type) && checkIfLLVMString(right.type)) {
       const concat = this.generator.builtinString.getLLVMConcat(lhs);
       const untypedThis = this.generator.xbuilder.asVoidStar(left);
-      const allocated = this.generator.gc.allocate(unwrapPointerType(left.type));
 
-      this.generator.xbuilder.createSafeCall(concat, [allocated, untypedThis, right]);
-      return allocated;
+      return this.generator.xbuilder.createSafeCall(concat, [untypedThis, right]);
     }
 
     error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);

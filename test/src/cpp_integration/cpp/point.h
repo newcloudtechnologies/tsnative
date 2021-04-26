@@ -12,7 +12,7 @@ public:
   void setX(double x);
   void setY(double y);
 
-  Point clone() const;
+  Point* clone() const;
 
 private:
   double _x;

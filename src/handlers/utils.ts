@@ -24,6 +24,7 @@ import {
   isTSClosure,
   getAccessorType,
   getDeclarationNamespace,
+  InternalNames,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -353,8 +354,8 @@ export function createArrayConcat(expression: ts.ArrayLiteralExpression, generat
   const llvmArrayType = getLLVMType(arrayType, expression, generator);
 
   const { fn: concat } = createLLVMFunction(
-    llvm.Type.getVoidTy(generator.context),
-    [llvmArrayType, llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getInt8PtrTy(generator.context)],
+    llvmArrayType,
+    [llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getInt8PtrTy(generator.context)],
     qualifiedName,
     generator.module
   );
@@ -413,9 +414,10 @@ export function getEnvironmentVariables(
   body: ts.ConciseBody,
   signature: ts.Signature,
   generator: LLVMGenerator,
+  extendScope: Scope,
   outerEnv?: Environment
 ) {
-  const environmentVariables = getEnvironmentVariablesFromBody(body, signature, generator);
+  const environmentVariables = getEnvironmentVariablesFromBody(body, signature, generator, extendScope);
   if (outerEnv) {
     environmentVariables.push(...outerEnv.variables);
   }
@@ -423,8 +425,13 @@ export function getEnvironmentVariables(
   return environmentVariables;
 }
 
-function getEnvironmentVariablesFromBody(body: ts.ConciseBody, signature: ts.Signature, generator: LLVMGenerator) {
-  const vars = getFunctionEnvironmentVariables(body, signature, generator);
+function getEnvironmentVariablesFromBody(
+  body: ts.ConciseBody,
+  signature: ts.Signature,
+  generator: LLVMGenerator,
+  extendScope: Scope
+) {
+  const vars = getFunctionEnvironmentVariables(body, signature, generator, extendScope);
   const varsStatic = getStaticFunctionEnvironmentVariables(body, generator);
   // Do not take 'undefined' since it is injected for every source file and available globally
   // as variable of 'i8' type that breaks further logic (all the variables expected to be pointers). @todo: turn 'undefined' into pointer?
@@ -435,6 +442,7 @@ function getFunctionEnvironmentVariables(
   body: ts.ConciseBody,
   signature: ts.Signature,
   generator: LLVMGenerator,
+  extendScope: Scope,
   externalVariables: string[] = []
 ) {
   return generator.withInsertBlockKeeping(() => {
@@ -460,9 +468,24 @@ function getFunctionEnvironmentVariables(
           return result;
         };
 
+        const isCall = (expression: ts.PropertyAccessExpression) => {
+          let parent = expression.parent;
+          while (parent && !ts.isExpressionStatement(parent)) {
+            if (ts.isCallExpression(parent)) {
+              return !parent.arguments.includes(expression) || !ts.isPropertyAccessExpression(parent.parent);
+            }
+
+            parent = parent.parent;
+          }
+
+          return false;
+        };
+
         if (
-          ts.isIdentifier(node) &&
+          ((ts.isPropertyAccessExpression(node) && !isCall(node) && !node.getText().startsWith(InternalNames.This)) ||
+            ts.isIdentifier(node)) &&
           !bodyScope.get(nodeText) &&
+          nodeText !== InternalNames.This &&
           !externalVariables.includes(nodeText) &&
           !ts.isPropertyAssignment(node.parent) &&
           !isStaticProperty(node)
@@ -475,7 +498,7 @@ function getFunctionEnvironmentVariables(
             node as ts.SignatureDeclaration
           )!;
 
-          getFunctionEnvironmentVariables(node.body, innerFunctionSignature, generator, externalVariables);
+          getFunctionEnvironmentVariables(node.body, innerFunctionSignature, generator, extendScope, externalVariables);
         } else if (ts.isPropertyAccessExpression(node)) {
           const accessorType = getAccessorType(node, generator);
           if (accessorType) {
@@ -499,7 +522,13 @@ function getFunctionEnvironmentVariables(
                 declaration as ts.SignatureDeclaration
               )!;
 
-              getFunctionEnvironmentVariables(declarationBody, innerFunctionSignature, generator, externalVariables);
+              getFunctionEnvironmentVariables(
+                declarationBody,
+                innerFunctionSignature,
+                generator,
+                extendScope,
+                externalVariables
+              );
             }
           }
         } else if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
@@ -514,27 +543,22 @@ function getFunctionEnvironmentVariables(
           // @todo: what about setters/getters?
           let declaration = symbol.declarations[0];
           if (ts.isNewExpression(node)) {
+            const classFileName = declaration.getSourceFile().fileName;
+            const classRootScope = generator.symbolTable.getScope(classFileName);
+            if (!classRootScope) {
+              error(`No scope '${classFileName}' found`);
+            }
+
+            if (!extendScope.get(classFileName)) {
+              extendScope.set(classFileName, classRootScope);
+            }
+
             const constructorDeclaration = (declaration as ts.ClassDeclaration).members.find(
               ts.isConstructorDeclaration
             );
             if (!constructorDeclaration) {
               // unreachable if source is preprocessed correctly
               error(`No constructor provided: ${declaration.getText()}`);
-            }
-
-            const thisType = generator.checker.getTypeAtLocation(node);
-            const declarationScope = getDeclarationScope(constructorDeclaration, thisType, generator);
-            if (!declarationScope.mangledName) {
-              error("No scope name provided");
-            }
-
-            let destinationScope = bodyScope.parent!;
-            while (destinationScope && destinationScope.parent) {
-              destinationScope = destinationScope.parent;
-            }
-
-            if (!destinationScope.get(declarationScope.mangledName)) {
-              destinationScope.set(declarationScope.mangledName, declarationScope);
             }
 
             declaration = constructorDeclaration;
@@ -547,13 +571,17 @@ function getFunctionEnvironmentVariables(
               declaration as ts.SignatureDeclaration
             )!;
 
-            getFunctionEnvironmentVariables(declarationBody, innerFunctionSignature, generator, externalVariables);
+            getFunctionEnvironmentVariables(
+              declarationBody,
+              innerFunctionSignature,
+              generator,
+              extendScope,
+              externalVariables
+            );
           }
         }
 
-        if (node.getChildCount()) {
-          node.forEachChild(visitor);
-        }
+        node.forEachChild(visitor);
       };
 
       body.forEachChild((node) => {
@@ -658,9 +686,7 @@ export function getEffectiveArguments(closure: string, body: ts.ConciseBody, gen
       });
     }
 
-    if (node.getChildCount() > 0) {
-      node.forEachChild(searchForEffectiveArgumentsNames);
-    }
+    node.forEachChild(searchForEffectiveArgumentsNames);
   };
 
   ts.forEachChild(body, searchForEffectiveArgumentsNames);

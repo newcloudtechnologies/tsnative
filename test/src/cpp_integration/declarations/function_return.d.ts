@@ -56,15 +56,10 @@ export class Large {
 export class ValueReturner {
     constructor();
 
-    @ReturnsValueType
     getSmallPod16(): SmallPod16;
-    @ReturnsValueType
     getSmallPod32(): SmallPod32;
 
-    @ReturnsValueType
     getSmallWithVirtualDestructor(): SmallWithVirtualDestructor;
-    @ReturnsValueType
     getSmallUnaligned(): SmallUnaligned;
-    @ReturnsValueType
     getLarge(): Large;
 }

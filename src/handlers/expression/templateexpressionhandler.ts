@@ -40,7 +40,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     const stringType = this.generator.builtinString.getLLVMType();
     const stringConstructor = this.generator.builtinString.getLLVMConstructor(expression);
     const stringConcat = this.generator.builtinString.getLLVMConcat(expression);
-    const allocated = this.generator.gc.allocate(stringType.elementType);
+    let allocated: llvm.Value = this.generator.gc.allocate(stringType.elementType);
 
     const head = this.generator.builder.createGlobalStringPtr(expression.head.rawText || "");
     this.generator.xbuilder.createSafeCall(stringConstructor, [allocated, head]);
@@ -49,8 +49,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
       const value = this.generator.handleExpression(span.expression, env);
       const allocatedSpanExpression = this.llvmValueToString(expression, span.expression, value);
 
-      this.generator.xbuilder.createSafeCall(stringConcat, [
-        allocated,
+      allocated = this.generator.xbuilder.createSafeCall(stringConcat, [
         this.generator.xbuilder.asVoidStar(allocated),
         allocatedSpanExpression,
       ]);
@@ -60,8 +59,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
         const literal = this.generator.builder.createGlobalStringPtr(span.literal.rawText);
         this.generator.xbuilder.createSafeCall(stringConstructor, [allocatedLiteral, literal]);
 
-        this.generator.xbuilder.createSafeCall(stringConcat, [
-          allocated,
+        allocated = this.generator.xbuilder.createSafeCall(stringConcat, [
           this.generator.xbuilder.asVoidStar(allocated),
           allocatedLiteral,
         ]);

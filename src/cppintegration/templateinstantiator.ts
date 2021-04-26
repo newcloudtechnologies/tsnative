@@ -65,10 +65,7 @@ export class TemplateInstantiator {
   }
 
   private correctQualifiers(tsType: ts.Type, cppType: string) {
-    if (checkIfArray(tsType)) {
-      // @todo: unify behavior
-      cppType += " const&";
-    } else if (checkIfString(tsType, this.checker) || checkIfObject(tsType)) {
+    if (checkIfArray(tsType) || checkIfString(tsType, this.checker) || checkIfObject(tsType)) {
       cppType += "*";
     }
 
@@ -272,7 +269,10 @@ export class TemplateInstantiator {
 
     const resolvedSignature = this.checker.getResolvedSignature(call);
     const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature!);
-    let cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker);
+    let cppReturnType = this.correctQualifiers(
+      tsReturnType,
+      ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker)
+    );
 
     const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, ts.Type>) => {
       const argumentTypes = call.arguments.map((arg) => {
@@ -328,7 +328,7 @@ export class TemplateInstantiator {
         const returnArrayElementType = getTypeGenericArguments(tsReturnType)[0];
 
         if (!isTypeSupported(returnArrayElementType, this.checker)) {
-          cppReturnType = `Array<${resolveArrayElementType(returnArrayElementType)}>`;
+          cppReturnType = `Array<${resolveArrayElementType(returnArrayElementType)}>*`;
         }
       }
 
@@ -353,7 +353,10 @@ export class TemplateInstantiator {
 
     const resolvedSignature = this.checker.getResolvedSignature(node)!;
     const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature);
-    const cppReturnType = ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker);
+    const cppReturnType = this.correctQualifiers(
+      tsReturnType,
+      ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker)
+    );
 
     const elementType = getTypeGenericArguments(tsArrayType)[0];
 

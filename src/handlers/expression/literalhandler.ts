@@ -9,7 +9,6 @@ import {
   getTypeGenericArguments,
   isIntersectionLLVMType,
   tryResolveGenericTypeIfNecessary,
-  unwrapPointerType,
   withObjectProperties,
 } from "@utils";
 import * as llvm from "llvm-node";
@@ -203,14 +202,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
           elementValue = elementValue.allocated;
         }
 
-        const newmem = this.generator.gc.allocate(unwrapPointerType(allocated.type));
-
-        this.generator.xbuilder.createSafeCall(concat, [
-          newmem,
+        allocated = this.generator.xbuilder.createSafeCall(concat, [
           this.generator.xbuilder.asVoidStar(allocated),
           this.generator.xbuilder.asVoidStar(elementValue),
         ]);
-        allocated = newmem;
       } else {
         let elementValue = this.generator.handleExpression(element, outerEnv);
 

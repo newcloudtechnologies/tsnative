@@ -404,18 +404,18 @@ function populateStaticContext(scope: Scope, environmentVariables: string[]) {
 
 export function populateContext(
   generator: LLVMGenerator,
-  scope: Scope,
+  root: Scope,
   environmentVariables: string[],
   seenScopes: Scope[] = []
 ) {
   const context: HeapVariableDeclaration[] = [];
 
-  const addToContextRecursively = (value: ScopeValue, key: string) => {
+  const addToContextRecursively = (value: ScopeValue, key: string, variables: string[]) => {
     if (key === "undefined") {
       return;
     }
 
-    const index = environmentVariables.findIndex((variable) => {
+    const index = variables.findIndex((variable) => {
       if (variable === key || variable + "__class" === key) {
         return true;
       }
@@ -435,13 +435,13 @@ export function populateContext(
     if (value instanceof Scope && !seenScopes.includes(value)) {
       seenScopes.push(value);
       value.map.forEach((v, k) => {
-        addToContextRecursively(v, k);
+        addToContextRecursively(v, k, variables);
       });
 
-      context.push(...populateStaticContext(value, environmentVariables));
+      context.push(...populateStaticContext(value, variables));
 
       if (value.parent && !seenScopes.includes(value.parent)) {
-        context.push(...populateContext(generator, value.parent, environmentVariables, seenScopes));
+        context.push(...populateContext(generator, value.parent, variables, seenScopes));
       }
     } else if (value instanceof HeapVariableDeclaration) {
       context.push(value);
@@ -450,12 +450,69 @@ export function populateContext(
     }
   };
 
-  context.push(...populateStaticContext(scope, environmentVariables));
-  scope.map.forEach(addToContextRecursively);
+  context.push(...populateStaticContext(root, environmentVariables));
+  root.map.forEach((value, key) => addToContextRecursively(value, key, environmentVariables));
 
-  if (scope.parent && !seenScopes.includes(scope.parent)) {
-    seenScopes.push(scope.parent);
-    context.push(...populateContext(generator, scope.parent, environmentVariables, seenScopes));
+  const isPropertyAccess = (value: string) => value.includes(".");
+  const propertyAccesses = environmentVariables.filter(isPropertyAccess).reduce((acc, value) => {
+    const parts = value.split(".");
+    acc.push(parts);
+    return acc;
+  }, new Array<string[]>());
+
+  const findPropertyAccess = (
+    scope: Scope,
+    values: string[],
+    seen: Scope[] = []
+  ): llvm.Value | HeapVariableDeclaration | Scope | undefined => {
+    if (values.length === 0) {
+      return;
+    }
+
+    if (values.length === 1) {
+      return scope.get(values[0]);
+    }
+
+    if (values.length > 1) {
+      if (scope.name === values[0]) {
+        seen.push(scope);
+        values.shift();
+        return findPropertyAccess(scope, values, seen);
+      }
+
+      for (const [name, value] of scope.map) {
+        if (value instanceof Scope && !seen.includes(value)) {
+          seen.push(value);
+
+          if (name === values[0]) {
+            values.shift();
+          }
+          const maybeFound = findPropertyAccess(value, values, seen);
+          if (maybeFound) {
+            return maybeFound;
+          }
+        }
+      }
+    }
+
+    return undefined;
+  };
+
+  propertyAccesses.forEach((values) => {
+    const key = values.join(".");
+    const value = findPropertyAccess(root, values);
+
+    if (value instanceof HeapVariableDeclaration) {
+      value.name = key;
+      context.push(value);
+    } else if (value instanceof llvm.Value) {
+      context.push(new HeapVariableDeclaration(value, value, key));
+    }
+  });
+
+  if (root.parent && !seenScopes.includes(root.parent)) {
+    seenScopes.push(root.parent);
+    context.push(...populateContext(generator, root.parent, environmentVariables, seenScopes));
   }
 
   return context;

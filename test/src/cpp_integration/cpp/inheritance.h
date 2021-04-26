@@ -14,10 +14,10 @@ class PointPair {
 public:
   PointPair(double x1, double y1, double x2, double y2);
 
-  Point getTopLeft() const;
-  Point getBottomRight() const;
+  Point *getTopLeft() const;
+  Point *getBottomRight() const;
 
-private:
+protected:
   Point topLeft;
   Point bottomRight;
 };
@@ -26,7 +26,7 @@ class RectHolder {
 public:
   RectHolder(const Rect &rect);
 
-  Rect getRect() const;
+  Rect *getRect() const;
 
 private:
   Rect rect;
@@ -36,7 +36,7 @@ class Mixin : public PointPair, public RectHolder {
 public:
   Mixin(double x1, double y1, double x2, double y2);
 
-  Mixin getScaled(double factor) const;
+  Mixin *getScaled(double factor) const;
 };
 
 class VirtualBase {
@@ -44,7 +44,7 @@ public:
   VirtualBase();
   virtual ~VirtualBase() = default;
 
-  virtual string virtualMethod() const;
+  virtual string* virtualMethod() const;
   virtual int32_t pureVirtualMethodToOverride() const = 0;
 
 private:

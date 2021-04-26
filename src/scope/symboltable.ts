@@ -35,6 +35,10 @@ export class SymbolTable {
     return;
   }
 
+  getScope(name: string) {
+    return this.scopes.find((s) => s.name === name || s.mangledName === name);
+  }
+
   get(identifier: string): ScopeValue {
     for (const scope of reverse(this.scopes)) {
       const value = scope.get(identifier);
@@ -45,11 +49,18 @@ export class SymbolTable {
 
     const parts = identifier.split(".");
     if (parts.length > 1) {
-      const outerScope = this.get(parts[0]);
-      if (!(outerScope instanceof Scope)) {
-        error(`No namespace '${parts[0]}' found`);
+      const candidates = this.scopes.filter((scope) => scope.map.has(parts[0]));
+
+      if (candidates.length === 0) {
+        error(`No '${parts[0]}' in symbol table`);
       }
-      return this.getNested(parts, outerScope);
+
+      for (const candidate of candidates) {
+        const value = this.getNested(parts, candidate);
+        if (value) {
+          return value;
+        }
+      }
     }
 
     error(`Identifier '${identifier}' not found`);
@@ -76,9 +87,9 @@ export class SymbolTable {
     return result;
   }
 
-  private getNested(parts: string[], scope: Scope): ScopeValue {
+  private getNested(parts: string[], scope: Scope): ScopeValue | undefined {
     if (!scope) {
-      error(`No scope provided for '${parts}'`);
+      return undefined;
     }
     if (parts.length === 1) {
       if (scope.name === parts[0] || scope.mangledName === parts[0]) {
@@ -90,7 +101,7 @@ export class SymbolTable {
         error(`Identifier '${parts[0]}' not found`);
       }
     }
-    return this.getNested(parts.slice(1), scope.get(parts[1]) as Scope);
+    return this.getNested(parts.slice(1), scope.get(parts[0]) as Scope);
   }
 
   dump() {

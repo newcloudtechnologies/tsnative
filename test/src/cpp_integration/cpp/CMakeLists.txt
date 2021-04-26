@@ -31,7 +31,6 @@ include_directories(
 
 set(INCLUDES
     aggregate.h
-    function_return.h
     rect.h
     acceptor.h
     point.h
@@ -42,7 +41,6 @@ set(INCLUDES
 
 set(SOURCES
     aggregate.cpp
-    function_return.cpp
     nested_namespaces.cpp
     point.cpp
     rect.cpp

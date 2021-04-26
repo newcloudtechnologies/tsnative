@@ -1,6 +1,5 @@
 import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "@scope";
 import {
-  checkIfStaticProperty,
   error,
   getAliasedSymbolIfNecessary,
   getLLVMValue,
@@ -49,29 +48,6 @@ export class AccessHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private findInHeritageClasses(node: ts.Node, visitor: (classDeclaration: ts.ClassDeclaration) => boolean): boolean {
-    const symbol = this.generator.checker.getSymbolAtLocation(node);
-
-    if (symbol && symbol.valueDeclaration && ts.isClassDeclaration(symbol.valueDeclaration)) {
-      const classDeclaration = symbol.valueDeclaration;
-      if (visitor(classDeclaration)) {
-        return true; // found
-      } else {
-        if (classDeclaration.heritageClauses) {
-          for (const clause of classDeclaration.heritageClauses) {
-            for (const type of clause.types) {
-              if (this.findInHeritageClasses(type.expression, visitor)) {
-                return true;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return false;
-  }
-
   private hasProperty(declaration: ts.ClassDeclaration | ts.InterfaceDeclaration, property: string): boolean {
     const has =
       declaration.members.findIndex(
@@ -107,20 +83,11 @@ export class AccessHandler extends AbstractExpressionHandler {
     const left = expression.expression;
     let propertyName = expression.name.text;
 
-    const isStaticProperty = (node: ts.Node, name: string): boolean => {
-      return this.findInHeritageClasses(node, (classDeclaration: ts.ClassDeclaration) => {
-        const index = classDeclaration.members.findIndex((v: ts.ClassElement) => {
-          return ts.isPropertyDeclaration(v) && checkIfStaticProperty(v) && v.name.getText() === name;
-        });
-
-        return index !== -1;
-      });
-    };
-
     if (env) {
-      const index = isStaticProperty(left, propertyName)
-        ? env.getVariableIndex(left.getText() + "." + propertyName) // Clazz.i
-        : env.getVariableIndex(propertyName);
+      let index = env.getVariableIndex(left.getText() + "." + propertyName);
+      if (index < 0) {
+        index = env.getVariableIndex(propertyName);
+      }
 
       if (index > -1) {
         return this.generator.xbuilder.createSafeExtractValue(getLLVMValue(env.typed, this.generator), [index]);

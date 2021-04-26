@@ -11,7 +11,6 @@
 
 import * as ts from "typescript";
 import {
-  checkIfReturnsValueType,
   getLLVMType,
   createLLVMFunction,
   error,
@@ -22,11 +21,9 @@ import {
   adjustLLVMValueToType,
   checkIfFunction,
   correctCppPrimitiveType,
-  unwrapPointerType,
-  isCppPrimitiveType,
-  callerShouldAllocateSpace,
   checkIfObject,
   isTSClosure,
+  isCppPrimitiveType,
 } from "@utils";
 import { castFPToIntegralType, getDeclarationScope, isConvertible, promoteIntegralToFP } from "@handlers";
 import { LLVMGenerator } from "@generator";
@@ -54,17 +51,7 @@ export class SysVFunctionHandler {
     const llvmThisType = llvm.Type.getInt8PtrTy(this.generator.context);
     const llvmArgumentTypes = [llvmThisType];
 
-    const returnsValue = checkIfReturnsValueType(valueDeclaration);
-    let llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
-    if (returnsValue) {
-      if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
-        if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
-          llvmArgumentTypes.unshift(llvmReturnType.isPointerTy() ? llvmReturnType : llvmReturnType.getPointerTo());
-        } else {
-          llvmReturnType = unwrapPointerType(llvmReturnType);
-        }
-      }
-    }
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
 
     const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
     const body = valueDeclaration.body;
@@ -76,31 +63,13 @@ export class SysVFunctionHandler {
     const thisValueUntyped = this.generator.xbuilder.asVoidStar(thisValue);
     const args = [thisValueUntyped];
 
-    if (returnsValue) {
-      if (!unwrapPointerType(llvmArgumentTypes[0]).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
-        if (callerShouldAllocateSpace(llvmArgumentTypes[0], returnType, this.generator)) {
-          const shadowReturnType = unwrapPointerType(llvmArgumentTypes[0]);
-          const sret = this.generator.gc.allocate(shadowReturnType);
-          args.unshift(sret);
-
-          return this.generator.xbuilder.createSafeCall(fn, args);
-        }
-      }
+    if (!isCppPrimitiveType(llvmReturnType)) {
+      return this.generator.xbuilder.createSafeCall(fn, args);
     }
 
+    const allocated = this.generator.gc.allocate(llvmReturnType);
     const callResult = this.generator.xbuilder.createSafeCall(fn, args);
-
-    if (callResult.type.isVoidTy()) {
-      return callResult;
-    }
-
-    if (!returnsValue && callResult.type.isPointerTy()) {
-      return callResult;
-    }
-
-    const allocated = this.generator.gc.allocate(unwrapPointerType(callResult.type));
     this.generator.xbuilder.createSafeStore(callResult, allocated);
-
     return allocated;
   }
 
@@ -177,28 +146,10 @@ export class SysVFunctionHandler {
     }
 
     const returnType = getReturnType(expression, this.generator);
-    let llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
+    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
 
-    const returnsValue = checkIfReturnsValueType(valueDeclaration);
+    const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
 
-    let voidRet = false;
-    if (returnsValue) {
-      if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
-        if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
-          llvmArgumentTypes.unshift(llvmReturnType);
-          voidRet = true;
-        } else {
-          llvmReturnType = unwrapPointerType(llvmReturnType);
-        }
-      }
-    }
-
-    const { fn } = createLLVMFunction(
-      voidRet ? llvm.Type.getVoidTy(this.generator.context) : llvmReturnType,
-      llvmArgumentTypes,
-      qualifiedName,
-      this.generator.module
-    );
     if (valueDeclaration.body) {
       error(`External symbol '${qualifiedName}' cannot have function body`);
     }
@@ -208,30 +159,17 @@ export class SysVFunctionHandler {
       args.unshift(thisValueUntyped);
     }
 
-    if (returnsValue) {
-      if (!unwrapPointerType(llvmReturnType).isVoidTy() && !isCppPrimitiveType(llvmReturnType)) {
-        if (callerShouldAllocateSpace(llvmReturnType, returnType, this.generator)) {
-          const shadowReturnType = unwrapPointerType(llvmReturnType);
-          const sret = this.generator.gc.allocate(shadowReturnType);
-          args.unshift(sret);
-
-          this.generator.xbuilder.createSafeCall(fn, args);
-          return sret;
-        }
+    if (!isCppPrimitiveType(llvmReturnType)) {
+      if (!llvmReturnType.isPointerTy() && !llvmReturnType.isVoidTy()) {
+        error(
+          `Error at '${expression.getText()}': returning values from C++ in not allowed. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
+        );
       }
+      return this.generator.xbuilder.createSafeCall(fn, args);
     }
 
+    const allocated = this.generator.gc.allocate(llvmReturnType);
     const callResult = this.generator.xbuilder.createSafeCall(fn, args);
-
-    if (callResult.type.isVoidTy()) {
-      return callResult;
-    }
-
-    if (!returnsValue && callResult.type.isPointerTy()) {
-      return callResult;
-    }
-
-    const allocated = this.generator.gc.allocate(unwrapPointerType(callResult.type));
     this.generator.xbuilder.createSafeStore(callResult, allocated);
 
     return allocated;

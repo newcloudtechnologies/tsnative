@@ -18,7 +18,7 @@ template <typename T> T getGenericNumber();
 template <> int8_t getGenericNumber() { return 1; }
 template <> double getGenericNumber() { return 42; }
 template <> string *getGenericNumber() {
-  return GC::createHeapAllocated<const string, string>("forty two");
+  return GC::createHeapAllocated<string>("forty two");
 }
 
 } // namespace innerNS
@@ -37,7 +37,7 @@ public:
   template <typename T>
   typename std::enable_if<std::is_same<T, string *>::value, T>::type
   getWithAdditionOfTwo(T v) const {
-    return GC::createHeapAllocated<const string &, string>(v->concat("_2"));
+    return v->concat("_2");
   }
 };
 
@@ -89,8 +89,7 @@ public:
                               std::is_same<T, double>::value,
                           U>::type
   transform(U value) const {
-    return GC::createHeapAllocated<const string &, string>(
-        value->concat(std::to_string(_transformBase)));
+    return value->concat(std::to_string(_transformBase));
   }
 
 private:

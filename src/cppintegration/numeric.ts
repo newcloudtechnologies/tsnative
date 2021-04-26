@@ -63,9 +63,8 @@ export function isSignedType(type: string) {
     case "uint16_t":
     case "uint32_t":
     case "uint64_t":
-      return false;
     default:
-      error(`Expected integral type, got '${type}'`);
+      return false;
   }
 }
 

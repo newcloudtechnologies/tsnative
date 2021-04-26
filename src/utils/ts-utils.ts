@@ -17,13 +17,6 @@ import { LLVMGenerator } from "@generator";
 import { cloneDeep } from "lodash";
 import { FunctionMangler } from "@mangling";
 
-const returnsValueTypeDecorator: string = "ReturnsValueType";
-export function checkIfReturnsValueType(declaration: ts.FunctionLikeDeclaration): boolean {
-  return Boolean(
-    declaration.decorators?.some((decorator) => decorator.expression.getText() === returnsValueTypeDecorator)
-  );
-}
-
 const valueTypeDecorator: string = "ValueType";
 export function checkIfValueTypeProperty(declaration: ts.Declaration): boolean {
   return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === valueTypeDecorator));
@@ -32,30 +25,6 @@ export function checkIfValueTypeProperty(declaration: ts.Declaration): boolean {
 const withVTableDecorator: string = "VTable";
 export function checkIfHasVTable(declaration: ts.ClassDeclaration) {
   return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator));
-}
-
-const unalignedDecorator: string = "Unaligned";
-export function checkIfUnaligned(declaration: ts.ClassDeclaration) {
-  return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === unalignedDecorator));
-}
-
-const nonPodDecorator = "NonPod";
-export function checkIfNonPod(declaration: ts.ClassDeclaration) {
-  return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === nonPodDecorator));
-}
-
-const hasConstructorDecorator = "HasConstructor";
-export function checkIfHasConstructor(declaration: ts.ClassDeclaration) {
-  return Boolean(
-    declaration.decorators?.some((decorator) => decorator.expression.getText() === hasConstructorDecorator)
-  );
-}
-
-const hasInheritanceDecorator = "HasInheritance";
-export function checkIfHasInheritance(declaration: ts.ClassDeclaration) {
-  return Boolean(
-    declaration.decorators?.some((decorator) => decorator.expression.getText() === hasInheritanceDecorator)
-  );
 }
 
 export function getExpressionTypename(expression: ts.Expression, checker: ts.TypeChecker): string {

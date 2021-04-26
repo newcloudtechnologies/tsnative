@@ -18,9 +18,7 @@ declare module "cpp" {
     export class PointPair {
         constructor(x1: number, y1: number, x2: number, y2: number);
 
-        @ReturnsValueType
         getTopLeft(): Point;
-        @ReturnsValueType
         getBottomRight(): Point;
 
         @ValueType
@@ -32,7 +30,6 @@ declare module "cpp" {
     export class RectHolder {
         constructor(rect: Rect);
 
-        @ReturnsValueType
         getRect(): Rect;
 
         @ValueType
@@ -42,15 +39,11 @@ declare module "cpp" {
     export class Mixin implements PointPair, RectHolder {
         constructor(x1: number, y1: number, x2: number, y2: number);
 
-        @ReturnsValueType
         getTopLeft(): Point;
-        @ReturnsValueType
         getBottomRight(): Point;
 
-        @ReturnsValueType
         getRect(): Rect;
 
-        @ReturnsValueType
         getScaled(factor: number): this;
     }
 
@@ -63,7 +56,6 @@ declare module "cpp" {
     export class VirtualBase {
         constructor();
 
-        @ReturnsValueType
         virtualMethod(): string;
         pureVirtualMethodToOverride(): int32_t;
 
@@ -75,7 +67,6 @@ declare module "cpp" {
     export class DerivedFromVirtualBase implements VirtualBase {
         constructor();
 
-        @ReturnsValueType
         virtualMethod(): string;
         pureVirtualMethodToOverride(): int32_t;
 

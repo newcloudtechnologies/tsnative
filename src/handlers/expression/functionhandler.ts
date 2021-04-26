@@ -446,13 +446,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
           error("No environment provided");
         }
 
+        const closureScope = getDeclarationScope(valueDeclaration, undefined, this.generator);
+
         const environmentVariables = getEnvironmentVariables(
           valueDeclaration.body!,
           signature,
           this.generator,
+          closureScope,
           outerEnv
         );
-        const closureScope = getDeclarationScope(valueDeclaration, undefined, this.generator);
 
         const e = createEnvironment(
           closureScope,
@@ -540,7 +542,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
 
     const signature = this.generator.checker.getSignatureFromDeclaration(constructorDeclaration)!;
-    const environmentVariables = getEnvironmentVariables(constructorDeclaration.body, signature, this.generator);
     const parentScope = getDeclarationScope(valueDeclaration, thisType, this.generator);
     if (!parentScope.thisData) {
       error("This data required");
@@ -550,6 +551,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return this.handleCallArguments(expression, constructorDeclaration, signature, localScope, outerEnv);
     }, this.generator.symbolTable.currentScope);
     const args = handledArgs.map((value) => value.value);
+
+    const environmentVariables = getEnvironmentVariables(
+      constructorDeclaration.body,
+      signature,
+      this.generator,
+      parentScope
+    );
 
     // Memory to initialization is provided by outer environment. Force its usage by mention it in variables list.
     environmentVariables.push(InternalNames.This);
@@ -615,7 +623,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return getLLVMType(argType, expression, this.generator);
     });
 
-    const environmentVariables = getEnvironmentVariables(expression.body, signature, this.generator, outerEnv);
+    const scope = getDeclarationScope(expression, undefined, this.generator);
+    const environmentVariables = getEnvironmentVariables(expression.body, signature, this.generator, scope, outerEnv);
 
     // Arrow functions do not bind their own 'this', instead, they inherit the one from the parent scope
     try {
@@ -631,7 +640,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvm.Constant.getNullValue(t.isPointerTy() ? t : t.getPointerTo())
     );
 
-    const scope = getDeclarationScope(expression, undefined, this.generator);
     const env = createEnvironment(
       scope,
       environmentVariables,
@@ -705,7 +713,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
       error("No signature found");
     }
 
-    const environmentVariables = getEnvironmentVariables(valueDeclaration.body, signature, this.generator, outerEnv);
+    const environmentVariables = getEnvironmentVariables(
+      valueDeclaration.body,
+      signature,
+      this.generator,
+      parentScope,
+      outerEnv
+    );
 
     let llvmThisType;
     if (thisType) {
@@ -798,14 +812,21 @@ export class FunctionHandler extends AbstractExpressionHandler {
       error("Function body required");
     }
 
-    const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
-    const environmentVariables = getEnvironmentVariables(valueDeclaration.body, signature, this.generator, outerEnv);
-
     const parentScope = getDeclarationScope(
       valueDeclaration,
       this.generator.checker.getTypeAtLocation(expression.expression),
       this.generator
     );
+
+    const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration as ts.SignatureDeclaration)!;
+    const environmentVariables = getEnvironmentVariables(
+      valueDeclaration.body,
+      signature,
+      this.generator,
+      parentScope,
+      outerEnv
+    );
+
     let llvmThisType;
     if (thisType) {
       llvmThisType = parentScope.thisData!.llvmType;
@@ -932,6 +953,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       bindableValueDeclaration.body,
       bindableSignature,
       this.generator,
+      this.generator.symbolTable.currentScope,
       outerEnv
     );
 
@@ -1071,7 +1093,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
       error(`Function body required for '${qualifiedName}'`);
     }
 
-    const environmentVariables = getEnvironmentVariables(valueDeclaration.body, signature, this.generator, outerEnv);
+    const environmentVariables = getEnvironmentVariables(
+      valueDeclaration.body,
+      signature,
+      this.generator,
+      parentScope,
+      outerEnv
+    );
 
     let thisVal;
     if (isMethod) {
@@ -1444,16 +1472,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }, this.generator.symbolTable.currentScope);
     const args = handledArgs.map((value) => value.value);
 
-    const environmentVariables = getEnvironmentVariables(
-      constructorDeclaration.body,
-      signature,
-      this.generator,
-      outerEnv
-    );
     const parentScope = getDeclarationScope(classDeclaration, thisType, this.generator);
     if (!parentScope.thisData) {
       error("ThisData required");
     }
+
+    const environmentVariables = getEnvironmentVariables(
+      constructorDeclaration.body,
+      signature,
+      this.generator,
+      parentScope,
+      outerEnv
+    );
 
     const llvmThisType = parentScope.thisData.llvmType;
     const thisValue = this.generator.gc.allocate(llvmThisType.elementType);
@@ -1526,15 +1556,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return getLLVMType(argType, expression, this.generator);
     });
 
+    const scope = getDeclarationScope(declaration, undefined, this.generator);
+
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
-    const environmentVariables = getEnvironmentVariables(expression.body, signature, this.generator, outerEnv);
+    const environmentVariables = getEnvironmentVariables(expression.body, signature, this.generator, scope, outerEnv);
 
     // these dummy arguments will be substituted by actual arguments once called
     const dummyArguments = llvmArgumentTypes.map((t) =>
       llvm.Constant.getNullValue(t.isPointerTy() ? t : t.getPointerTo())
     );
-
-    const scope = getDeclarationScope(declaration, undefined, this.generator);
 
     const env = createEnvironment(
       scope,

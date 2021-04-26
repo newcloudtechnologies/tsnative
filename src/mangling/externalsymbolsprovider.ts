@@ -24,6 +24,7 @@ import {
   checkIfIntersection,
   checkIfUnion,
   isTypeSupported,
+  checkIfArray,
 } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
@@ -68,8 +69,12 @@ export class ExternalSymbolsProvider {
     if (ts.isArrayTypeNode(checker.typeToTypeNode(type)!)) {
       const elementType = getTypeGenericArguments(type)[0]!;
       let cppElementType = this.jsTypeToCpp(elementType, checker);
-      if (checkIfString(elementType, checker) || checkIfObject(elementType)) {
+      if (checkIfArray(elementType) || checkIfString(elementType, checker) || checkIfObject(elementType)) {
         cppElementType += "*";
+      }
+
+      if (elementType.isClassOrInterface()) {
+        cppElementType = "void*";
       }
       return `Array<${cppElementType}>`;
     }

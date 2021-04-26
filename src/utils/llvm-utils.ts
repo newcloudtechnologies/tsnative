@@ -31,12 +31,9 @@ import {
   checkIfArray,
   InternalNames,
   checkIfHasVTable,
-  checkIfUnaligned,
-  checkIfNonPod,
-  checkIfHasConstructor,
-  checkIfHasInheritance,
   canCreateLazyClosure,
   checkIfIntersection,
+  getDeclarationNamespace,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -92,20 +89,6 @@ export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
     return size;
   }
   return module.dataLayout.getTypeStoreSize(type);
-}
-
-export function callerShouldAllocateSpace(llvmType: llvm.Type, tsType: ts.Type, generator: LLVMGenerator) {
-  const FOUR_EIGHTBYTES = 32; // @todo: write platform-specific logic if this fails on win (use EIGHT_EIGHTBYTES = 64)
-  const typeValueDeclaration = tsType.symbol?.valueDeclaration as ts.ClassDeclaration;
-  return (
-    getTypeSize(unwrapPointerType(llvmType), generator.module) >= FOUR_EIGHTBYTES ||
-    (typeValueDeclaration &&
-      (checkIfUnaligned(typeValueDeclaration) ||
-        checkIfHasVTable(typeValueDeclaration) ||
-        checkIfNonPod(typeValueDeclaration) ||
-        (process.platform === "win32" &&
-          (checkIfHasConstructor(typeValueDeclaration) || checkIfHasInheritance(typeValueDeclaration)))))
-  );
 }
 
 export function isTypeDeclared(thisType: ts.Type, declaration: ts.Declaration, generator: LLVMGenerator): boolean {
@@ -485,8 +468,9 @@ export function getStructType(type: ts.Type, node: ts.Node, generator: LLVMGener
     type.getSymbol()?.declarations.find(ts.isInterfaceDeclaration);
 
   if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
+    const namespace = getDeclarationNamespace(declaration);
     const name = ts.isClassDeclaration(declaration)
-      ? TypeMangler.mangle(type, checker, declaration)
+      ? namespace.concat(TypeMangler.mangle(type, checker, declaration)).join("_")
       : checker.typeToString(type);
     structType = module.getTypeByName(name);
     if (!structType) {

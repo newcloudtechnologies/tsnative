@@ -11,16 +11,16 @@ public:
   Aggregate(Point *point, Array<string *> *array, string *s, double d,
             int8_t i);
 
-  Point getPoint() const;
-  Array<string *> getStringArray() const;
-  string getString() const;
+  Point *getPoint() const;
+  Array<string *> *getStringArray() const;
+  string *getString() const;
   double getDouble() const;
   int8_t getInt8() const;
 
 private:
-  Point _point;
-  Array<string *> _array;
-  string _s = "";
+  Point *_point = nullptr;
+  Array<string *> *_array = nullptr;
+  string *_s = nullptr;
   double _d = 0;
   int8_t _i = 0;
 };

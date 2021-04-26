@@ -11,7 +11,6 @@ declare module "cpp" {
         setX(x: number): void;
         setY(y: number): void;
 
-        @ReturnsValueType
         clone(): Point;
 
         @ValueType
