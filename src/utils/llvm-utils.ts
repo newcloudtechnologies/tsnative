@@ -9,7 +9,7 @@
  *
  */
 
-import { getIntegralType, isCppIntegralType } from "@cpp";
+import { getIntegralType, isCppIntegralType, SizeOf } from "@cpp";
 import { LLVMGenerator } from "@generator";
 import { TypeMangler } from "@mangling";
 import {
@@ -83,13 +83,12 @@ export function checkIfLLVMArray(type: llvm.Type) {
   return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("Array__"));
 }
 
-export function getTypeSize(type: llvm.Type, generator: LLVMGenerator): llvm.Value {
-  const size = generator.sizeOf.getByLLVMType(type);
+export function getTypeSize(type: llvm.Type, module: llvm.Module): number {
+  const size = SizeOf.getByLLVMType(type);
   if (size) {
     return size;
   }
-  const typeStoreSize = generator.module.dataLayout.getTypeStoreSize(type);
-  return llvm.ConstantInt.get(generator.context, typeStoreSize > 0 ? typeStoreSize : 1);
+  return module.dataLayout.getTypeStoreSize(type);
 }
 
 export function isTypeDeclared(thisType: ts.Type, declaration: ts.Declaration, generator: LLVMGenerator): boolean {
@@ -326,6 +325,22 @@ export function getUnionStructType(type: ts.UnionType, node: ts.Node, generator:
   return unionType;
 }
 
+export function getSyntheticBody(size: number, context: llvm.LLVMContext): llvm.IntegerType[] {
+  const syntheticBody = [];
+  while (size > 8) {
+    // Consider int64_t is the widest available inttype.
+    syntheticBody.push(llvm.Type.getIntNTy(context, 8 * 8));
+    size -= 8;
+  }
+
+  if (size > 0) {
+    console.assert((size & (size - 1)) === 0, `Expected 'size' reminder to be a power of two, got ${size}`);
+    syntheticBody.push(llvm.Type.getIntNTy(context, size * 8));
+  }
+
+  return syntheticBody;
+}
+
 export function getEnvironmentType(types: llvm.Type[], generator: LLVMGenerator) {
   if (types.some((type) => !type.isPointerTy())) {
     error(
@@ -463,10 +478,10 @@ export function getStructType(type: ts.Type, node: ts.Node, generator: LLVMGener
       const props = getProperties(type, generator.checker).map((symbol) => symbol.name);
       generator.meta.registerObjectMeta(name, structType, props);
 
-      const knownSize = generator.sizeOf.getByName(name);
+      const knownSize = SizeOf.getByName(name);
       if (knownSize) {
-        // If size is known we don't really care about how this struct is represented. Allocator will take known size ignoring struct body.
-        structType.setBody([]);
+        const syntheticBody = getSyntheticBody(knownSize, context);
+        structType.setBody(syntheticBody);
       } else {
         const structElements = elements.map((element) => element.type);
         if (ts.isClassDeclaration(declaration) && checkIfHasVTable(declaration)) {

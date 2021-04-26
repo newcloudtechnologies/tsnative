@@ -9,7 +9,7 @@
  *
  */
 
-export * from "./constants";
-export * from "./numeric";
-export * from "./templateinstantiator";
-export * from "./types";
+// @todo: these values have to be generated using cpp's sizeof operator
+export const SIZEOF_STRING = 32;
+export const SIZEOF_ARRAY = 80;
+export const SIZEOF_TSCLOSURE = 24;

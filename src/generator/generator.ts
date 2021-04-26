@@ -15,7 +15,7 @@ import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
 import { createLLVMFunction, error, isCppPrimitiveType, LazyClosure, XBuilder } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure, SizeOf } from "@builtins";
+import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
 import { MetaInfoStorage } from "@generator";
 
 export class LLVMGenerator {
@@ -42,7 +42,6 @@ export class LLVMGenerator {
   private lazyClosureInstance: LazyClosure | undefined;
 
   private garbageCollector: GC | undefined;
-  private builtinSizeOf: SizeOf | undefined;
 
   constructor(program: ts.Program) {
     this.program = program;
@@ -87,32 +86,23 @@ export class LLVMGenerator {
     return this.module;
   }
 
-  private initBuiltin<T>(
-    filename: string,
-    className: string,
-    C: new (declaration: ts.ClassDeclaration, generator: LLVMGenerator) => T
-  ) {
-    const lib = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName.endsWith(filename));
-    if (!lib) {
-      error(`'${filename}' is not found in program sources`);
+  initGC(): void {
+    const stdlib = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName.endsWith("lib.std.d.ts"));
+    if (!stdlib) {
+      error("Standard library not found");
     }
-
-    let result: T | undefined;
-
-    lib.forEachChild((node) => {
+    stdlib.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
-        const declarationEscapedName = this.checker.getTypeAtLocation(node).getSymbol()!.escapedName;
-        if (declarationEscapedName === className) {
-          result = new C(node, this);
+        const clazz = node as ts.ClassDeclaration;
+        const clazzName = this.checker.getTypeAtLocation(clazz).getSymbol()!.escapedName;
+        if (clazzName === "GC") {
+          this.garbageCollector = new GC(clazz, this);
         }
       }
     });
-
-    if (result) {
-      return result;
+    if (!this.garbageCollector) {
+      error("GC declaration not found");
     }
-
-    error(`Declaration for '${className}' is not found in '${filename}'`);
   }
 
   withLocalBuilder<R>(action: () => R): R {
@@ -186,16 +176,9 @@ export class LLVMGenerator {
 
   get gc(): GC {
     if (!this.garbageCollector) {
-      this.garbageCollector = this.initBuiltin("lib.std.d.ts", "GC", GC);
+      this.initGC();
     }
-    return this.garbageCollector;
-  }
-
-  get sizeOf(): SizeOf {
-    if (!this.builtinSizeOf) {
-      this.builtinSizeOf = this.initBuiltin("lib.std.utils.d.ts", "SizeOf", SizeOf);
-    }
-    return this.builtinSizeOf;
+    return this.garbageCollector!;
   }
 
   get lazyClosure() {

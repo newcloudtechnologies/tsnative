@@ -2,19 +2,18 @@ import { LLVMGenerator } from "@generator";
 import {
   getTypeSize,
   createLLVMFunction,
+  getSyntheticBody,
   error,
   unwrapPointerType,
   getPointerLevel,
   getLLVMType,
   correctCppPrimitiveType,
-  checkIfLLVMArray,
-  checkIfLLVMString,
-  isTSClosureType,
 } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { ThisData, Scope } from "@scope";
 import { FunctionMangler } from "@mangling";
+import { SIZEOF_STRING, SIZEOF_TSCLOSURE } from "@cpp";
 
 export class GC {
   private readonly allocateFn: llvm.Function;
@@ -54,75 +53,12 @@ export class GC {
       error("Expected non-pointer type");
     }
 
-    const size = getTypeSize(type, this.generator);
-    const returnValue = this.generator.xbuilder.createSafeCall(this.allocateFn, [size]);
+    const size = getTypeSize(type, this.generator.module);
+    const returnValue = this.generator.xbuilder.createSafeCall(this.allocateFn, [
+      llvm.ConstantInt.get(this.generator.context, size > 0 ? size : 1, 32),
+    ]);
 
     return this.generator.builder.createBitCast(returnValue, type.getPointerTo());
-  }
-}
-
-export class SizeOf {
-  private readonly arraySizeFn: llvm.Function;
-  private readonly closureSizeFn: llvm.Function;
-  private readonly stringSizeFn: llvm.Function;
-
-  private readonly generator: LLVMGenerator;
-
-  constructor(declaration: ts.ClassDeclaration, generator: LLVMGenerator) {
-    this.generator = generator;
-
-    this.arraySizeFn = this.getSizeFn(declaration, "array");
-    this.closureSizeFn = this.getSizeFn(declaration, "closure");
-    this.stringSizeFn = this.getSizeFn(declaration, "string");
-  }
-
-  private getSizeFn(declaration: ts.ClassDeclaration, functionName: string) {
-    const functionDeclaration = declaration.members.find(
-      (m) => ts.isMethodDeclaration(m) && m.name.getText() === functionName
-    )!;
-
-    const thisType = this.generator.checker.getTypeAtLocation(declaration);
-
-    const { qualifiedName } = FunctionMangler.mangle(functionDeclaration, undefined, thisType, [], this.generator);
-
-    const llvmReturnType = llvm.Type.getInt32Ty(this.generator.context);
-    const { fn } = createLLVMFunction(llvmReturnType, [], qualifiedName, this.generator.module);
-
-    return fn;
-  }
-
-  private array() {
-    return this.generator.xbuilder.createSafeCall(this.arraySizeFn, []);
-  }
-  private closure() {
-    return this.generator.xbuilder.createSafeCall(this.closureSizeFn, []);
-  }
-  private string() {
-    return this.generator.xbuilder.createSafeCall(this.stringSizeFn, []);
-  }
-
-  getByLLVMType(type: llvm.Type): llvm.Value | undefined {
-    if (checkIfLLVMString(type)) {
-      return this.string();
-    } else if (checkIfLLVMArray(type)) {
-      return this.array();
-    } else if (isTSClosureType(type)) {
-      return this.closure();
-    }
-
-    return;
-  }
-
-  getByName(name: string): llvm.Value | undefined {
-    if (name === "string") {
-      return this.string();
-    } else if (name.startsWith("Array__")) {
-      return this.array();
-    } else if (name.startsWith("TSClosure__class")) {
-      return this.closure();
-    }
-
-    return;
   }
 }
 
@@ -189,8 +125,8 @@ export class BuiltinTSClosure extends Builtin {
   constructor(generator: LLVMGenerator) {
     super("TSClosure__class", generator);
     const structType = llvm.StructType.create(generator.context, "TSClosure__class");
-    // Don't really care about how this struct is represented. Allocator will take known size ignoring struct body.
-    structType.setBody([]);
+    const syntheticBody = getSyntheticBody(SIZEOF_TSCLOSURE, generator.context);
+    structType.setBody(syntheticBody);
     this.llvmType = structType.getPointerTo();
   }
 
@@ -329,8 +265,8 @@ export class BuiltinString extends Builtin {
   constructor(generator: LLVMGenerator) {
     super("string", generator);
     const structType = llvm.StructType.create(generator.context, "string");
-    // Don't really care about how this struct is represented. Allocator will take known size ignoring struct body.
-    structType.setBody([]);
+    const syntheticBody = getSyntheticBody(SIZEOF_STRING, generator.context);
+    structType.setBody(syntheticBody);
     this.llvmType = structType.getPointerTo();
   }
 
