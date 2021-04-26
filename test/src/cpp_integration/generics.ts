@@ -1,3 +1,4 @@
+import { int8_t } from "std-typescript-llvm/definitions/lib.std.numeric";
 import { innerNS } from "./declarations/cpp";
 import { sum, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod } from "./declarations/generics";
 

@@ -8,7 +8,7 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
+import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
 import { error, writeIRToFile } from "@utils";
@@ -66,7 +66,7 @@ async function main() {
   const demangledTables: string[] = [];
   const mangledTables: string[] = [];
   const includeDirs: string[] = [];
-  options.lib = [DEFINITIONS, UTILITY_DEFINITIONS];
+  options.lib = [NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS];
   options.types = [];
 
   if (!options.strict) {
@@ -74,6 +74,13 @@ async function main() {
       "It seems like strict mode is not enabled in tsconfig.json. Strict mode will be enforced by compiler and MAY require your code to be changed accordingly."
     );
     options.strict = true;
+  }
+
+  if (!options.experimentalDecorators) {
+    console.warn(
+      "It seems like experimental decorators support is not enabled in tsconfig.json. It will be enforced by compiler."
+    );
+    options.experimentalDecorators = true;
   }
 
   options.baseUrl = path.resolve(path.dirname(argv.tsconfig));

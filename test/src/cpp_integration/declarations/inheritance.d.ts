@@ -1,8 +1,8 @@
-// @ts-nocheck
-
 /// <reference path="dummy_base.d.ts" />
 
 declare module "cpp" {
+    import { ValueType, VTable } from "std-typescript-llvm/decorators/decorators";
+    import { int32_t } from "std-typescript-llvm/definitions/lib.std.numeric";
 
     import { Base } from "test";
 
@@ -15,27 +15,6 @@ declare module "cpp" {
         getRect(): Rect;
     }
 
-    export class PointPair {
-        constructor(x1: number, y1: number, x2: number, y2: number);
-
-        getTopLeft(): Point;
-        getBottomRight(): Point;
-
-        @ValueType
-        private topLeft: Point;
-        @ValueType
-        private bottomRight: Point;
-    }
-
-    export class RectHolder {
-        constructor(rect: Rect);
-
-        getRect(): Rect;
-
-        @ValueType
-        private rect: Rect;
-    }
-
     export class Mixin implements PointPair, RectHolder {
         constructor(x1: number, y1: number, x2: number, y2: number);
 
@@ -45,11 +24,14 @@ declare module "cpp" {
         getRect(): Rect;
 
         getScaled(factor: number): this;
-    }
 
-    export interface VirtualBase {
-        virtualMethod(): string;
-        pureVirtualMethodToOverride(): int32_t;
+        @ValueType
+        private topLeft: Point;
+        @ValueType
+        private bottomRight: Point;
+
+        @ValueType
+        private rect: Rect;
     }
 
     @VTable
@@ -64,10 +46,9 @@ declare module "cpp" {
     }
 
     @VTable
-    export class DerivedFromVirtualBase implements VirtualBase {
+    export class DerivedFromVirtualBase extends VirtualBase {
         constructor();
 
-        virtualMethod(): string;
         pureVirtualMethodToOverride(): int32_t;
 
         private _i: int32_t;

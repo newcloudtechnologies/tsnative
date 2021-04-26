@@ -64,8 +64,17 @@ export class LLVMGenerator {
 
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main);
 
-    this.builder.setInsertionPoint(entryBlock);
+    const sourceFiles: ts.SourceFile[] = [];
     for (const sourceFile of this.program.getSourceFiles()) {
+      sourceFiles.push(sourceFile);
+    }
+
+    // Sources order in not defined, ensure std numeric types will appear in symbol table first as others, like GC, depends on them.
+    const indexOfStdNumeric = sourceFiles.findIndex((file) => file.fileName.endsWith("lib.std.numeric.d.ts"));
+    sourceFiles.unshift(...sourceFiles.splice(indexOfStdNumeric, 1));
+
+    this.builder.setInsertionPoint(entryBlock);
+    for (const sourceFile of sourceFiles) {
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
 

@@ -9,6 +9,8 @@
  *
  */
 
+import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std-typescript-llvm/definitions/lib.std.numeric"
+
 // int8_t tests
 {
   const INT8_MIN: int8_t = -128;

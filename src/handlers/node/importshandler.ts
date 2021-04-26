@@ -26,18 +26,16 @@ export class ImportsHandler extends AbstractNodeHandler {
 
             const type = this.generator.checker.getTypeAtLocation(e);
             let symbol = type.getSymbol();
+
             if (symbol) {
               symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
 
-              const declaration = symbol.declarations[0];
-              const file = declaration.getSourceFile().fileName;
-              const scope = this.generator.symbolTable.getScope(file);
+              for (const declaration of symbol.declarations) {
+                const file = declaration.getSourceFile().fileName;
+                const scope = this.generator.symbolTable.getScope(file);
 
-              if (scope) {
-                const value = scope.get(name) || scope.get(name + "__class");
-                if (value) {
-                  parentScope.set(name, value);
-                  return;
+                if (scope && !parentScope.get(file)) {
+                  parentScope.set(file, scope);
                 }
               }
             }

@@ -205,29 +205,42 @@ export class ExternalSymbolsProvider {
     }
 
     if (ts.isMethodDeclaration(declaration)) {
-      const classDeclaration = declaration.parent as ts.ClassLikeDeclaration;
+      const classDeclaration = declaration.parent as ts.ClassDeclaration;
+      if (!classDeclaration.name) {
+        return;
+      }
 
+      const tryGetFromDeclaration = (otherDeclaration: ts.Declaration, name: string) => {
+        const classNamespace = getDeclarationNamespace(otherDeclaration).join("::");
+
+        const classMethodPattern = new RegExp(
+          `(?=(^| )${classNamespace.length > 0 ? classNamespace + "::" : ""}${name}(<.*>::|::)${
+            this.methodName
+          }(\\(|<.*>\\())`
+        );
+
+        return this.handleDeclarationWithPredicate((cppSignature: string) => {
+          return classMethodPattern.test(cppSignature);
+        });
+      };
+
+      // 1. It may be a method of base class in case of extension (A extends B)
+      mangledName = tryGetFromDeclaration(classDeclaration, classDeclaration.name.getText());
+      if (mangledName) {
+        return mangledName;
+      }
+
+      // 2. It may be a method of some of base classes in case of implementation (A implements B, C)
+      // (this is how C++ multiple inheritance represented in ts-declarations)
       for (const clause of classDeclaration.heritageClauses || []) {
         for (const type of clause.types) {
           let classSymbol = this.generator.checker.getSymbolAtLocation(type.expression);
           if (!classSymbol) {
             error(`No class symbol found at '${type.expression.getText()}'`);
           }
-
           classSymbol = getAliasedSymbolIfNecessary(classSymbol, this.generator.checker);
 
-          const classNamespace = getDeclarationNamespace(classSymbol.declarations[0]).join("::");
-          const className = classSymbol.escapedName;
-
-          const classMethodPattern = new RegExp(
-            `(?=(^| )${classNamespace.length > 0 ? classNamespace + "::" : ""}${className}(<.*>::|::)${
-              this.methodName
-            }(\\(|<.*>\\())`
-          );
-
-          mangledName = this.handleDeclarationWithPredicate((cppSignature: string) => {
-            return classMethodPattern.test(cppSignature);
-          });
+          mangledName = tryGetFromDeclaration(classSymbol.declarations[0], classSymbol.escapedName.toString());
           if (mangledName) {
             return mangledName;
           }
@@ -442,7 +455,7 @@ export class ExternalSymbolsProvider {
       /*
       @todo
       This case is necessary to make distinguish between Clazz<T>::do<U> and Clazz<U>::do<T>
-
+  
       if (this.classTemplateParametersPattern.length > 0 && this.functionTemplateParametersPattern.length > 0) {
         matching =
           classTemplateParameters === this.classTemplateParametersPattern &&

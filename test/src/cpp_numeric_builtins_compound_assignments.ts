@@ -9,6 +9,8 @@
  *
  */
 
+import { int8_t } from "std-typescript-llvm/definitions/lib.std.numeric"
+
 {
   {
     let i: int8_t = 0;

@@ -96,9 +96,9 @@ export class SymbolTable {
         return scope;
       } else {
         const value = scope.get(parts[0]);
-        if (value) return value;
-
-        error(`Identifier '${parts[0]}' not found`);
+        if (value) {
+          return value;
+        }
       }
     }
     return this.getNested(parts.slice(1), scope.get(parts[0]) as Scope);

@@ -1,7 +1,6 @@
-// @ts-nocheck
-
 declare module "cpp" {
-    @HasConstructor
+    import { ValueType } from "std-typescript-llvm/decorators/decorators"
+
     export class Point {
         constructor(x: number, y: number);
 

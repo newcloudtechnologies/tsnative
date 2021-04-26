@@ -1,6 +1,7 @@
-// @ts-nocheck
-
 declare module "cpp" {
+    import { ValueType } from "std-typescript-llvm/decorators/decorators";
+    import { int64_t } from "std-typescript-llvm/definitions/lib.std.numeric";
+
     export class Printable {
         constructor(point: Point, s: string, i: int64_t);
 

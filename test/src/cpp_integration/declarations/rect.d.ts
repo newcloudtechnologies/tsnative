@@ -1,7 +1,6 @@
-// @ts-nocheck
-
 declare module "cpp" {
-    @NonPod
+    import { ValueType } from "std-typescript-llvm/decorators/decorators";
+
     export class Rect {
         constructor(topLeft: Point, bottomRight: Point);
 
