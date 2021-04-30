@@ -219,8 +219,12 @@ export class ExternalSymbolsProvider {
           }(\\(|<.*>\\())`
         );
 
+        const mixinPattern = new RegExp(
+          `(^[a-zA-Z\ \:]*)<${classNamespace.length > 0 ? classNamespace + "::" : ""}${name}>(::)${this.methodName}`
+        );
+
         return this.handleDeclarationWithPredicate((cppSignature: string) => {
-          return classMethodPattern.test(cppSignature);
+          return classMethodPattern.test(cppSignature) || mixinPattern.test(cppSignature);
         });
       };
 
@@ -340,8 +344,11 @@ export class ExternalSymbolsProvider {
       const classMethodPattern = new RegExp(
         `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
       );
+
+      const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${this.namespace}${this.thisTypeName}>(::)${this.methodName}`);
+
       return this.handleDeclarationWithPredicate((cppSignature: string) => {
-        return classMethodPattern.test(cppSignature);
+        return classMethodPattern.test(cppSignature) || mixinPattern.test(cppSignature);
       });
     }
 
