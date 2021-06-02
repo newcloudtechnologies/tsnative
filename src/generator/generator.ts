@@ -17,6 +17,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
 import { MetaInfoStorage } from "@generator";
+import { GC_DEFINITION } from "std-typescript-llvm/constants";
 
 export class LLVMGenerator {
   readonly checker: ts.TypeChecker;
@@ -96,11 +97,11 @@ export class LLVMGenerator {
   }
 
   initGC(): void {
-    const stdlib = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName.endsWith("lib.std.d.ts"));
-    if (!stdlib) {
-      error("Standard library not found");
+    const gc = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === GC_DEFINITION);
+    if (!gc) {
+      error("No GC definition found");
     }
-    stdlib.forEachChild((node) => {
+    gc.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
         const clazz = node as ts.ClassDeclaration;
         const clazzName = this.checker.getTypeAtLocation(clazz).getSymbol()!.escapedName;
