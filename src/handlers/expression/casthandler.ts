@@ -11,17 +11,7 @@
 
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import {
-  checkIfObject,
-  checkIfUnion,
-  error,
-  getLLVMType,
-  getStructType,
-  getUnionStructType,
-  isUnionLLVMValue,
-  tryResolveGenericTypeIfNecessary,
-  unwrapPointerType,
-} from "@utils";
+import { error, unwrapPointerType } from "@utils";
 import * as ts from "typescript";
 import llvm = require("llvm-node");
 
@@ -32,19 +22,16 @@ export class CastHandler extends AbstractExpressionHandler {
         const asExpression = expression as ts.AsExpression;
         const value = this.generator.handleExpression(asExpression.expression, env);
 
-        const destinationType = tryResolveGenericTypeIfNecessary(
-          this.generator.checker.getTypeFromTypeNode(asExpression.type),
-          this.generator
-        );
+        const destinationType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
 
-        if (!isUnionLLVMValue(value)) {
-          return this.generator.builder.createBitCast(value, getLLVMType(destinationType, expression, this.generator));
+        if (!this.generator.types.union.isLLVMUnion(value.type)) {
+          return this.generator.builder.createBitCast(value, destinationType.getLLVMType());
         }
 
-        if (!checkIfObject(destinationType) && !checkIfUnion(destinationType)) {
+        if (!destinationType.isObject() && !destinationType.isUnion()) {
           error(`Cast to non-object/union not supported; trying to cast
-          '${this.generator.checker.typeToString(this.generator.checker.getTypeAtLocation(asExpression.expression))}'
-          to '${this.generator.checker.typeToString(destinationType)}'`);
+          '${this.generator.ts.checker.getTypeAtLocation(asExpression.expression).toString()}'
+          to '${destinationType.toString()}'`);
         }
 
         const unionName = (unwrapPointerType(value.type) as llvm.StructType).name;
@@ -53,11 +40,11 @@ export class CastHandler extends AbstractExpressionHandler {
         }
 
         const unionMeta = this.generator.meta.getUnionMeta(unionName);
-        if (checkIfObject(destinationType)) {
-          const typeProps = this.generator.checker.getPropertiesOfType(destinationType);
+        if (destinationType.isObject()) {
+          const typeProps = destinationType.getProperties();
           const propNames = typeProps.map((symbol) => symbol.name);
-          const objectType = getStructType(destinationType, expression, this.generator);
-          const allocated = this.generator.gc.allocate(objectType);
+          const objectType = destinationType.getLLVMType();
+          const allocated = this.generator.gc.allocate(unwrapPointerType(objectType));
 
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
@@ -72,7 +59,7 @@ export class CastHandler extends AbstractExpressionHandler {
           }
           return allocated;
         } else {
-          const destinationStructType = getUnionStructType(destinationType as ts.UnionType, expression, this.generator);
+          const destinationStructType = unwrapPointerType(destinationType.getLLVMType()) as llvm.StructType;
           const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
 
           const allocated = this.generator.gc.allocate(destinationStructType);

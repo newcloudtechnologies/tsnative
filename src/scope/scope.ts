@@ -9,23 +9,13 @@
  *
  */
 
-import {
-  error,
-  flatten,
-  getAliasedSymbolIfNecessary,
-  getDeclarationNamespace,
-  getEnvironmentType,
-  getLLVMType,
-  InternalNames,
-  tryResolveGenericTypeIfNecessary,
-  unwrapPointerType,
-} from "@utils";
+import { error, flatten, getDeclarationNamespace, getEnvironmentType, InternalNames, unwrapPointerType } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "@generator";
-import { TypeMangler } from "@mangling";
 
 import { getArrayType } from "@handlers";
+import { Type } from "../ts/type";
 
 export class Environment {
   private readonly pVariables: string[];
@@ -168,7 +158,7 @@ export function addClassScope(
   parentScope: Scope,
   generator: LLVMGenerator
 ): void {
-  let thisType;
+  let thisType: Type;
   if (ts.isArrayLiteralExpression(expression)) {
     thisType = getArrayType(expression, generator);
   } else if (
@@ -178,25 +168,20 @@ export function addClassScope(
   ) {
     thisType = getArrayType(expression.initializer, generator);
   } else {
-    thisType = tryResolveGenericTypeIfNecessary(
-      generator.checker.getApparentType(generator.checker.getTypeAtLocation(expression)),
-      generator
-    );
+    thisType = generator.ts.checker.getTypeAtLocation(expression).getApparentType();
   }
 
-  if (!thisType.symbol) {
+  if (thisType.isSymbolless()) {
     return;
   }
 
-  const declaration = getAliasedSymbolIfNecessary(thisType.symbol, generator.checker).declarations.find(
-    ts.isClassDeclaration
-  );
+  const declaration = thisType.getSymbol().declarations.find(ts.isClassDeclaration);
 
   if (!declaration) {
     return;
   }
 
-  let mangledTypename: string = TypeMangler.mangle(thisType, generator.checker, declaration);
+  let mangledTypename = thisType.mangle();
   const namespace: string[] = getDeclarationNamespace(declaration);
   mangledTypename = namespace.concat(mangledTypename).join(".");
 
@@ -205,12 +190,26 @@ export function addClassScope(
     return;
   }
 
-  const llvmType = getLLVMType(thisType, expression, generator);
+  const llvmType = generator.symbolTable.withLocalScope((scope) => {
+    if (declaration.typeParameters) {
+      const declaredTypes = declaration.typeParameters.map((parameter) =>
+        generator.ts.checker.getTypeAtLocation(parameter).toString()
+      );
+      const actualTypes = thisType.getTypeGenericArguments();
+
+      declaredTypes.forEach((typename, index) => {
+        scope.typeMapper.register(typename, actualTypes[index]);
+      });
+    }
+
+    return thisType.getLLVMType();
+  }, generator.symbolTable.currentScope);
+
   if (!llvmType.isPointerTy()) {
     error("Expected pointer");
   }
 
-  const tsType = generator.checker.getTypeAtLocation(declaration as ts.Node);
+  const tsType = generator.ts.checker.getTypeAtLocation(declaration as ts.Node);
   const scope = new Scope(name, mangledTypename, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
@@ -231,11 +230,8 @@ export class HeapVariableDeclaration {
 }
 
 function getInnerEnvironmentFromExpression(expression: ts.CallExpression, generator: LLVMGenerator) {
-  const type = generator.checker.getTypeAtLocation(expression.expression);
+  const type = generator.ts.checker.getTypeAtLocation(expression.expression);
   const symbol = type.getSymbol();
-  if (!symbol) {
-    error("No symbol found");
-  }
 
   const declaration = symbol.declarations[0];
   return generator.meta.try(MetaInfoStorage.prototype.getFunctionEnvironment, declaration);
@@ -523,7 +519,7 @@ export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope;
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
   readonly llvmType: llvm.PointerType;
-  readonly tsType: ts.Type;
+  readonly tsType: Type;
   readonly staticProperties?: Map<string, llvm.Value>;
 }
 

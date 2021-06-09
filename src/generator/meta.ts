@@ -13,6 +13,7 @@ import { Environment } from "@scope";
 import { error } from "@utils";
 import * as ts from "typescript";
 import * as crypto from "crypto";
+import { Type } from "../ts/type";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -204,21 +205,21 @@ export class MetaInfoStorage {
 }
 
 export class GenericTypeMapper {
-  private readonly genericTypenameTypeMap = new Map<string, ts.Type>();
+  private readonly genericTypenameTypeMap = new Map<string, Type>();
   private parent: GenericTypeMapper | undefined;
 
   setParent(parent: GenericTypeMapper) {
     this.parent = parent;
   }
 
-  register(name: string, type: ts.Type) {
+  register(name: string, type: Type) {
     if (this.genericTypenameTypeMap.has(name)) {
       error(`Generic type '${name}' already registered`);
     }
     this.genericTypenameTypeMap.set(name, type);
   }
 
-  get(name: string): ts.Type {
+  get(name: string): Type {
     let type = this.genericTypenameTypeMap.get(name);
     if (!type) {
       if (!this.parent) {

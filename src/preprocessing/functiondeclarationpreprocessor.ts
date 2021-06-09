@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { checkIfFunction, error } from "@utils";
+import { error } from "@utils";
 
 export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -22,33 +22,27 @@ export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
           // ALL THIS STUFF IS A WORKAROUND! IT CLOSELY RELATED TO ts-utils.ts:canCreateLazyClosure WHICH IS A WORKAROUND TOO.
           // FOR PROPER IMPLEMENTATION Environment CREATION AND STORING SHOULD BE REVISED
           if (node.type) {
-            const type = this.generator.checker.getTypeFromTypeNode(node.type);
-            const symbol = type.getSymbol();
-            if (symbol) {
+            const type = this.generator.ts.checker.getTypeFromTypeNode(node.type);
+            if (!type.isSymbolless()) {
+              const symbol = type.getSymbol();
               const declaration = symbol.declarations[0];
               if (ts.isInterfaceDeclaration(declaration)) {
                 for (const member of declaration.members) {
-                  const memberType = this.generator.checker.getTypeAtLocation(member);
-                  if (checkIfFunction(memberType)) {
+                  const memberType = this.generator.ts.checker.getTypeAtLocation(member);
+                  if (memberType.isFunction()) {
                     const memberSymbol = memberType.getSymbol();
-                    if (!memberSymbol) {
-                      error("Symbol not found");
-                    }
                     const memberDeclaration = memberSymbol.declarations[0];
                     if (!memberDeclaration) {
                       error("Declaration not found");
                     }
 
-                    const signature = this.generator.checker.getSignatureFromDeclaration(
+                    const signature = this.generator.ts.checker.getSignatureFromDeclaration(
                       memberDeclaration as ts.SignatureDeclaration
                     );
-                    if (!signature) {
-                      error("Signature not found");
-                    }
 
                     const withFunargs = signature.parameters.some((parameter) => {
-                      const symbolType = this.generator.checker.getTypeOfSymbolAtLocation(parameter, declaration);
-                      return checkIfFunction(symbolType);
+                      const symbolType = this.generator.ts.checker.getTypeOfSymbolAtLocation(parameter, declaration);
+                      return symbolType.isFunction();
                     });
 
                     if (withFunargs) {

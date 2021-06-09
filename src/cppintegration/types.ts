@@ -9,22 +9,29 @@
  *
  */
 
-import { checkIfLLVMString, checkIfLLVMArray, isTSClosureType } from "@utils";
+import { checkIfLLVMString, checkIfLLVMArray } from "@utils";
 import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE } from "@cpp";
+import { LLVMGenerator } from "@generator";
 
 export class SizeOf {
-  static getByLLVMType(type: llvm.Type): number | undefined {
+  private readonly generator: LLVMGenerator;
+
+  constructor(generator: LLVMGenerator) {
+    this.generator = generator;
+  }
+
+  getByLLVMType(type: llvm.Type): number | undefined {
     if (checkIfLLVMString(type)) {
       return SIZEOF_STRING;
     } else if (checkIfLLVMArray(type)) {
       return SIZEOF_ARRAY;
-    } else if (isTSClosureType(type)) {
+    } else if (this.generator.types.closure.isTSClosure(type)) {
       return SIZEOF_TSCLOSURE;
     }
     return;
   }
 
-  static getByName(name: string): number | undefined {
+  getByName(name: string): number | undefined {
     if (name === "string") {
       return SIZEOF_STRING;
     } else if (name.startsWith("Array__")) {

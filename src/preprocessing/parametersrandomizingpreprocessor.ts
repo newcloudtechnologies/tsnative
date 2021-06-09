@@ -9,7 +9,6 @@
  *
  */
 
-import { getAliasedSymbolIfNecessary } from "@utils";
 import * as ts from "typescript";
 import * as crypto from "crypto";
 import { AbstractPreprocessor } from "@preprocessing";
@@ -38,35 +37,31 @@ export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
           node = parameterRandomized;
         }
 
-        // Check if identifier is a parameter and requires update;
-        // `undefined` is declared as 'type undefined = any', so it has no declaration
-        if (ts.isIdentifier(node) && node.getText(sourceFile) !== "undefined") {
+        // Check if identifier is a parameter and requires update
+        if (ts.isIdentifier(node)) {
           if (node.parent && ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) {
             return ts.visitEachChild(node, visitor, context);
           }
+
           const location = node.parent && ts.isPropertyAccessExpression(node.parent) ? node.parent.expression : node;
+          if (this.generator.ts.checker.nodeHasSymbol(location)) {
+            const symbol = this.generator.ts.checker.getSymbolAtLocation(location);
 
-          let symbol = this.generator.checker.getSymbolAtLocation(location);
+            if (symbol.declarations) {
+              const declaration = symbol.declarations[0];
 
-          if (!symbol) {
-            const type = this.generator.checker.getTypeAtLocation(location);
-            symbol = type.getSymbol();
-          }
-
-          if (symbol) {
-            symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
-            const declaration = symbol.declarations[0];
-
-            if (declaration && ts.isParameter(declaration)) {
-              // Use parent function declaration to generate parameter's name unique suffix
-              const suffix = crypto.createHash("sha256").update(declaration.parent.getText()).digest("hex");
-              const randomizedName = `${node.getText()}_${suffix}`;
-              const updated = ts.createIdentifier(randomizedName);
-              updated.parent = node.parent;
-              node = updated;
+              if (declaration && ts.isParameter(declaration)) {
+                // Use parent function declaration to generate parameter's name unique suffix
+                const suffix = crypto.createHash("sha256").update(declaration.parent.getText()).digest("hex");
+                const randomizedName = `${node.getText()}_${suffix}`;
+                const updated = ts.createIdentifier(randomizedName);
+                updated.parent = node.parent;
+                node = updated;
+              }
             }
           }
         }
+
         return ts.visitEachChild(node, visitor, context);
       };
 

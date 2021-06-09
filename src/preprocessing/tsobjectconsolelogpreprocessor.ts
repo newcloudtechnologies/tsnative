@@ -9,9 +9,10 @@
  *
  */
 
-import { checkIfFunction, checkIfProperty, checkIfString, error, isSyntheticNode, isTSObjectType } from "@utils";
+import { checkIfProperty, error, isSyntheticNode } from "@utils";
 import * as ts from "typescript";
 import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
+import { Type } from "../ts/type";
 
 export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -29,12 +30,12 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
             error(`Expected 'console.log' call to be of 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]}`);
           }
 
-          const argumentTypes = call.arguments.map(this.generator.checker.getTypeAtLocation);
-          if (argumentTypes.some((type) => isTSObjectType(type, this.generator.checker))) {
+          const argumentTypes = call.arguments.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg));
+          if (argumentTypes.some((type) => type.isTSObjectType())) {
             const logArguments = argumentTypes.reduce((args, type, index) => {
               const callArgument = call.arguments[index];
 
-              if (!isTSObjectType(type, this.generator.checker)) {
+              if (!type.isTSObjectType()) {
                 args.push(callArgument);
                 return args;
               }
@@ -64,15 +65,15 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
     return property ? property.split(".").length + 1 : 1;
   }
 
-  private isOneliner(type: ts.Type, node: ts.Node): boolean {
-    const props = this.generator.checker.getPropertiesOfType(type).filter(checkIfProperty);
+  private isOneliner(type: Type, node: ts.Node): boolean {
+    const props = type.getProperties().filter(checkIfProperty);
     if (props.length === 0) {
       return true;
     }
 
-    const firstFieldType = this.generator.checker.getTypeOfSymbolAtLocation(props[0], node);
+    const firstFieldType = this.generator.ts.checker.getTypeOfSymbolAtLocation(props[0], node);
 
-    return props.length <= 2 && !isTSObjectType(firstFieldType, this.generator.checker);
+    return props.length <= 2 && !firstFieldType.isTSObjectType();
   }
 
   private getPropertyName(property: string, parent?: string) {
@@ -84,13 +85,13 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   }
 
   private objectToString(
-    type: ts.Type,
+    type: Type,
     callArgument: ts.Expression,
     nestedProperty?: string
   ): ts.TemplateExpression | ts.StringLiteral {
     const objectSpans: ts.TemplateSpan[] = [];
 
-    const properties = this.generator.checker.getPropertiesOfType(type).filter(checkIfProperty);
+    const properties = type.getProperties().filter(checkIfProperty);
 
     const isOneliner = this.isOneliner(type, callArgument);
     const isEmpty = properties.length === 0;
@@ -102,25 +103,25 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       ? StringLiteralHelper.space
       : StringLiteralHelper.newLine;
 
-    const buildMiddleLiteral = (propertyType: ts.Type, nextProperty: ts.Symbol) => {
+    const buildMiddleLiteral = (propertyType: Type, nextProperty: ts.Symbol) => {
       const nextPropertyName = nextProperty.escapedName.toString();
       let nextPropertyDescriptor = StringLiteralHelper.createPropertyStringLiteral(
         nextPropertyName,
         this.getSpaceCount(isOneliner, nestedLevel)
       );
 
-      const nextPropertyType = this.generator.checker.getTypeOfSymbolAtLocation(nextProperty, callArgument);
-      if (checkIfString(nextPropertyType, this.generator.checker)) {
+      const nextPropertyType = this.generator.ts.checker.getTypeOfSymbolAtLocation(nextProperty, callArgument);
+      if (nextPropertyType.isString()) {
         nextPropertyDescriptor += "'";
       }
 
-      const possibleQuote = checkIfString(propertyType, this.generator.checker) ? "'" : "";
+      const possibleQuote = propertyType.isString() ? "'" : "";
       const fieldSeparator = isOneliner ? StringLiteralHelper.space : StringLiteralHelper.newLine;
       const literal = `${possibleQuote},${fieldSeparator}${nextPropertyDescriptor}`;
       return literal;
     };
-    const buildEpilogue = (propertyType: ts.Type, expression?: ts.Expression) => {
-      const possibleQuote = checkIfString(propertyType, this.generator.checker) ? "'" : "";
+    const buildEpilogue = (propertyType: Type, expression?: ts.Expression) => {
+      const possibleQuote = propertyType.isString() ? "'" : "";
       const newLineOrSpace = isEmpty
         ? StringLiteralHelper.empty
         : isOneliner
@@ -137,16 +138,18 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       }
     };
 
-    const typename = type.getSymbol()?.escapedName.toString();
-    if (typename && typename !== ts.InternalSymbolName.Object && typename !== ts.InternalSymbolName.Type) {
-      classPrelude = typename + " " + classPrelude;
+    if (!type.isSymbolless()) {
+      const typename = type.getSymbol().escapedName.toString();
+      if (typename !== ts.InternalSymbolName.Object && typename !== ts.InternalSymbolName.Type) {
+        classPrelude = typename + " " + classPrelude;
+      }
     }
 
     const nestedLevel = this.getNestedLevel(nestedProperty);
 
     for (let i = 0; i < properties.length; ++i) {
       const property = properties[i];
-      const propertyType = this.generator.checker.getTypeOfSymbolAtLocation(property, callArgument);
+      const propertyType = this.generator.ts.checker.getTypeOfSymbolAtLocation(property, callArgument);
 
       const propertyName = property.escapedName.toString();
 
@@ -155,7 +158,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
           propertyName,
           this.getSpaceCount(isOneliner, nestedLevel)
         );
-        if (checkIfString(propertyType, this.generator.checker)) {
+        if (propertyType.isString()) {
           propertyDescriptor += "'";
         }
 
@@ -166,7 +169,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       const propertyAccess = ts.createPropertyAccess(callArgument, propertyAccessString);
       const nextProperty = i !== properties.length - 1 ? properties[i + 1] : undefined;
 
-      if (isTSObjectType(propertyType, this.generator.checker)) {
+      if (propertyType.isTSObjectType()) {
         const nestedObjectTemplateExpression = this.objectToString(propertyType, callArgument, propertyAccessString);
         if (!nextProperty) {
           buildEpilogue(propertyType, nestedObjectTemplateExpression);
@@ -183,7 +186,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       }
 
       // @todo: remove function-related stuff once .toString() implemented
-      const spanExpression = checkIfFunction(propertyType) ? ts.createStringLiteral(`[Function]`) : propertyAccess;
+      const spanExpression = propertyType.isFunction() ? ts.createStringLiteral(`[Function]`) : propertyAccess;
       ts.addSyntheticLeadingComment(
         spanExpression,
         ts.SyntaxKind.SingleLineCommentTrivia,

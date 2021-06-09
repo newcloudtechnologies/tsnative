@@ -18,16 +18,7 @@ import {
   promoteIntegralToFP,
 } from "@handlers";
 
-import {
-  error,
-  checkIfLLVMString,
-  isUnionLLVMType,
-  extractFromUnion,
-  extractFromIntersection,
-  createHeapAllocatedFromValue,
-  isIntersectionLLVMType,
-  isPointerToStruct,
-} from "@utils";
+import { error, checkIfLLVMString, createHeapAllocatedFromValue, isPointerToStruct } from "@utils";
 
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -106,26 +97,31 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       );
     }
 
-    if (isUnionLLVMType(lhsLLVM.type)) {
-      const extracted = extractFromUnion(
+    if (this.generator.types.union.isLLVMUnion(lhsLLVM.type)) {
+      const extracted = this.generator.types.union.extract(
         lhsLLVM,
-        rhsLLVM.type.isPointerTy() ? rhsLLVM.type : rhsLLVM.type.getPointerTo(),
-        this.generator
+        rhsLLVM.type.isPointerTy() ? rhsLLVM.type : rhsLLVM.type.getPointerTo()
       );
 
       return this.handleStrictEquals(lhs, rhs, extracted, rhsLLVM, env);
     }
 
-    if (!isIntersectionLLVMType(lhsLLVM.type) && isIntersectionLLVMType(rhsLLVM.type)) {
+    if (
+      !this.generator.types.intersection.isLLVMIntersection(lhsLLVM.type) &&
+      this.generator.types.intersection.isLLVMIntersection(rhsLLVM.type)
+    ) {
       if (!lhsLLVM.type.isPointerTy()) {
         error(`Expected left hand side operand to be of PointerType, got ${lhsLLVM.type.toString()}`);
       }
 
-      const extracted = extractFromIntersection(rhsLLVM, lhsLLVM.type, this.generator);
+      const extracted = this.generator.types.intersection.extract(rhsLLVM, lhsLLVM.type);
       return this.handleStrictEquals(lhs, rhs, lhsLLVM, extracted, env);
     }
 
-    if (isIntersectionLLVMType(lhsLLVM.type) && isIntersectionLLVMType(rhsLLVM.type)) {
+    if (
+      this.generator.types.intersection.isLLVMIntersection(lhsLLVM.type) &&
+      this.generator.types.intersection.isLLVMIntersection(rhsLLVM.type)
+    ) {
       if (!lhsLLVM.type.isPointerTy()) {
         error(`Expected left hand side operand to be of PointerType, got ${lhsLLVM.type.toString()}`);
       }

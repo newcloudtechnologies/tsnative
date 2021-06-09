@@ -29,8 +29,6 @@
         n4: number = 2
         n5: number = 2
         n6: number = 2
-
-        constructor() { }
     }
 
     class Clazz {

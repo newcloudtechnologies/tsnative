@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { getAliasedSymbolIfNecessary } from "@utils";
 
 export class ImportsHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -24,11 +23,10 @@ export class ImportsHandler extends AbstractNodeHandler {
           namedBindings.elements.forEach((e) => {
             const name = e.getText();
 
-            const type = this.generator.checker.getTypeAtLocation(e);
-            let symbol = type.getSymbol();
+            const type = this.generator.ts.checker.getTypeAtLocation(e);
 
-            if (symbol) {
-              symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+            if (!type.isSymbolless()) {
+              const symbol = type.getSymbol();
 
               for (const declaration of symbol.declarations) {
                 const file = declaration.getSourceFile().fileName;

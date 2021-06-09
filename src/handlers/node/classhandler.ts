@@ -12,16 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import {
-  getStructType,
-  isTypeDeclared,
-  checkIfStaticProperty,
-  getDeclarationNamespace,
-  error,
-  getAliasedSymbolIfNecessary,
-  checkIfFunction,
-} from "@utils";
-import { TypeMangler } from "@mangling";
+import { checkIfStaticProperty, getDeclarationNamespace, error } from "@utils";
 import { LLVMGenerator } from "@generator";
 
 export class ClassHandler extends AbstractNodeHandler {
@@ -44,25 +35,16 @@ export class ClassHandler extends AbstractNodeHandler {
     if (declaration.heritageClauses) {
       for (const clause of declaration.heritageClauses) {
         for (const type of clause.types) {
-          let symbol = this.generator.checker.getSymbolAtLocation(type.expression);
-          if (!symbol) {
-            error(`No symbol found ${declaration.getText()}`);
-          }
-          symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
-
+          const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
           const baseClassDeclaration = symbol.declarations[0] as ts.ClassDeclaration;
           if (!baseClassDeclaration) {
             error("Base class declaration not found");
           }
 
-          const baseClassThisType = this.generator.checker.getTypeAtLocation(baseClassDeclaration);
-          const mangledBaseClassTypename: string = TypeMangler.mangle(
-            baseClassThisType,
-            this.generator.checker,
-            baseClassDeclaration
-          );
+          const baseClassThisType = this.generator.ts.checker.getTypeAtLocation(baseClassDeclaration);
+          const mangledBaseClassTypename = baseClassThisType.mangle();
 
-          const namespace: string[] = getDeclarationNamespace(baseClassDeclaration);
+          const namespace = getDeclarationNamespace(baseClassDeclaration);
           const qualifiedName = namespace.concat(mangledBaseClassTypename).join(".");
           const baseClassScope = parentScope.get(qualifiedName) as Scope;
 
@@ -90,19 +72,19 @@ export class ClassHandler extends AbstractNodeHandler {
     }
 
     const name = declaration.name!.getText();
-    const thisType = generator.checker.getTypeAtLocation(declaration);
-    if (isTypeDeclared(thisType, declaration, generator) && parentScope.get(name)) {
+    const thisType = generator.ts.checker.getTypeAtLocation(declaration);
+    if (thisType.isDeclared() && parentScope.get(name)) {
       return;
     }
 
-    const llvmType = getStructType(thisType, declaration, generator).getPointerTo();
+    const llvmType = thisType.getLLVMType();
 
     const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
 
-    const mangledTypename = TypeMangler.mangle(thisType, generator.checker, declaration);
+    const mangledTypename = thisType.mangle();
     const scope = new Scope(name, mangledTypename, parentScope, {
       declaration,
-      llvmType,
+      llvmType: llvmType as llvm.PointerType,
       tsType: thisType,
       staticProperties,
     });
@@ -111,11 +93,10 @@ export class ClassHandler extends AbstractNodeHandler {
       if (
         ts.isPropertyDeclaration(memberDecl) &&
         memberDecl.initializer &&
-        checkIfFunction(this.generator.checker.getTypeAtLocation(memberDecl))
+        this.generator.ts.checker.getTypeAtLocation(memberDecl).isFunction()
       ) {
-        const initializerValue = this.generator.handleExpression(memberDecl.initializer);
-
-        scope.set(memberDecl.name.getText(), initializerValue);
+        const method = this.generator.handleExpression(memberDecl.initializer);
+        scope.set(memberDecl.name.getText(), method);
       }
     }
 

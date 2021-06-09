@@ -10,24 +10,10 @@
  */
 
 import { NmSymbolExtractor } from "@mangling";
-import {
-  error,
-  getDeclarationNamespace,
-  getTypeGenericArguments,
-  getTypename,
-  checkIfFunction,
-  getGenericsToActualMapFromSignature,
-  checkIfString,
-  checkIfObject,
-  getTypeNamespace,
-  getAliasedSymbolIfNecessary,
-  checkIfIntersection,
-  checkIfUnion,
-  isTypeSupported,
-  checkIfArray,
-} from "@utils";
+import { error, getDeclarationNamespace, getGenericsToActualMapFromSignature } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
+import { Type } from "../ts/type";
 
 export let externalMangledSymbolsTable: string[] = [];
 export let externalDemangledSymbolsTable: string[] = [];
@@ -62,81 +48,6 @@ class Itanium {
 
 type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
 export class ExternalSymbolsProvider {
-  static jsTypeToCpp(type: ts.Type, checker: ts.TypeChecker): string {
-    if (checkIfFunction(type)) {
-      return "TSClosure*";
-    }
-    if (ts.isArrayTypeNode(checker.typeToTypeNode(type)!)) {
-      const elementType = getTypeGenericArguments(type)[0]!;
-      let cppElementType = this.jsTypeToCpp(elementType, checker);
-      if (checkIfArray(elementType) || checkIfString(elementType, checker) || checkIfObject(elementType)) {
-        cppElementType += "*";
-      }
-
-      if (elementType.isClassOrInterface()) {
-        cppElementType = "void*";
-      }
-      return `Array<${cppElementType}>`;
-    }
-
-    let typename: string = "";
-
-    if (type.isNumberLiteral()) {
-      typename = "number";
-    } else if (type.isStringLiteral()) {
-      typename = "string";
-    } else {
-      typename = checker.typeToString(type);
-      if (checkIfUnion(type) || checkIfIntersection(type)) {
-        typename = "void*";
-      } else {
-        let symbol = type.getSymbol();
-        if (symbol) {
-          symbol = getAliasedSymbolIfNecessary(symbol, checker);
-          const declaration = symbol.declarations[0];
-
-          if (ts.isClassDeclaration(declaration)) {
-            const ambientDeclaration = !declaration.members.find(ts.isConstructorDeclaration)?.body;
-            if (!ambientDeclaration) {
-              typename = "void";
-            }
-          }
-        }
-      }
-    }
-
-    switch (typename) {
-      case "String": // @todo
-        return "string";
-      case "Number":
-      case "number":
-        return "double";
-      case "Boolean":
-      case "boolean":
-      case "true":
-      case "false":
-        return "bool";
-      case "int8_t":
-        return "signed char";
-      case "int16_t":
-        return "short";
-      case "int32_t":
-        return "int";
-      case "int64_t":
-        return getInt64Type();
-      case "uint8_t":
-        return "unsigned char";
-      case "uint16_t":
-        return "unsigned short";
-      case "uint32_t":
-        return "unsigned int";
-      case "uint64_t":
-        return getUInt64Type();
-      default:
-        return typename;
-    }
-  }
-
   private readonly namespace: string;
   private readonly thisTypeName: string = "";
   private readonly classTemplateParametersPattern: string = "";
@@ -149,8 +60,8 @@ export class ExternalSymbolsProvider {
   constructor(
     declaration: ts.Declaration,
     expression: ts.NewExpression | ts.CallExpression | undefined,
-    argumentTypes: ts.Type[],
-    thisType: ts.Type | undefined,
+    argumentTypes: Type[],
+    thisType: Type | undefined,
     generator: LLVMGenerator,
     knownMethodName?: string
   ) {
@@ -158,30 +69,32 @@ export class ExternalSymbolsProvider {
     const namespace = getDeclarationNamespace(declaration).join("::");
     this.namespace = namespace ? namespace + "::" : "";
     if (thisType) {
-      this.thisTypeName = getTypename(thisType, generator.checker);
+      this.thisTypeName = thisType.getTypename();
 
-      const typeArguments = getTypeGenericArguments(thisType);
+      const typeArguments = thisType.getTypeGenericArguments();
       this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
         typeArguments.map((type) => {
-          if (type.isTypeParameter() && !isTypeSupported(type, this.generator.checker)) {
-            type = this.generator.symbolTable.currentScope.typeMapper.get(this.generator.checker.typeToString(type))!;
+          if (type.isTypeParameter() && !type.isSupported()) {
+            type = this.generator.symbolTable.currentScope.typeMapper.get(type.toString())!;
           }
 
-          return ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
+          return type.toCppType();
         })
       );
     }
 
     const functionLikeDeclaration = declaration as ts.FunctionLikeDeclaration;
-    const parameterTypes = functionLikeDeclaration.parameters.map(generator.checker.getTypeAtLocation) || [];
+    const parameterTypes = functionLikeDeclaration.parameters.map((parameter) =>
+      generator.ts.checker.getTypeAtLocation(parameter)
+    );
 
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
 
     // defined in declaration
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
       parameterTypes.map((type) => {
-        const typeNamespace = getTypeNamespace(type);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
+        const typeNamespace = type.getNamespace();
+        const cppTypename = type.toCppType();
         return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
       })
     );
@@ -189,8 +102,8 @@ export class ExternalSymbolsProvider {
     // passed in fact
     this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
       argumentTypes.map((type) => {
-        const typeNamespace = getTypeNamespace(type);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(type, generator.checker);
+        const typeNamespace = type.getNamespace();
+        const cppTypename = type.toCppType();
         return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
       })
     );
@@ -238,12 +151,7 @@ export class ExternalSymbolsProvider {
       // (this is how C++ multiple inheritance represented in ts-declarations)
       for (const clause of classDeclaration.heritageClauses || []) {
         for (const type of clause.types) {
-          let classSymbol = this.generator.checker.getSymbolAtLocation(type.expression);
-          if (!classSymbol) {
-            error(`No class symbol found at '${type.expression.getText()}'`);
-          }
-          classSymbol = getAliasedSymbolIfNecessary(classSymbol, this.generator.checker);
-
+          const classSymbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
           mangledName = tryGetFromDeclaration(classSymbol.declarations[0], classSymbol.escapedName.toString());
           if (mangledName) {
             return mangledName;
@@ -268,7 +176,6 @@ export class ExternalSymbolsProvider {
     expression: ts.CallExpression | ts.NewExpression | undefined,
     generator: LLVMGenerator
   ): string {
-    const { checker } = generator;
     let functionTemplateParametersPattern: string = "";
 
     if (!expression) {
@@ -280,7 +187,7 @@ export class ExternalSymbolsProvider {
       return functionTemplateParametersPattern;
     }
 
-    const signature = checker.getSignatureFromDeclaration(declaration as ts.SignatureDeclaration)!;
+    const signature = generator.ts.checker.getSignatureFromDeclaration(declaration as ts.SignatureDeclaration)!;
     const formalTypeParameters = signature.getTypeParameters();
 
     if (!formalTypeParameters) {
@@ -288,24 +195,16 @@ export class ExternalSymbolsProvider {
     }
 
     const formalParameters = signature.getParameters();
-    const resolvedSignature = checker.getResolvedSignature(expression)!;
+    const resolvedSignature = generator.ts.checker.getResolvedSignature(expression)!;
     if (formalParameters.length === 0) {
-      functionTemplateParametersPattern = ExternalSymbolsProvider.jsTypeToCpp(
-        resolvedSignature.getReturnType(),
-        checker
-      );
-
+      functionTemplateParametersPattern = generator.ts.checker.getReturnTypeOfSignature(resolvedSignature).toCppType();
       return functionTemplateParametersPattern;
     }
 
-    const typenameTypeMap = getGenericsToActualMapFromSignature(
-      signature,
-      expression as ts.CallExpression,
-      generator.checker
-    );
+    const typenameTypeMap = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, generator);
     const templateTypes: string[] = [];
     typenameTypeMap.forEach((value) => {
-      templateTypes.push(ExternalSymbolsProvider.jsTypeToCpp(value, checker));
+      templateTypes.push(value.toCppType());
     });
 
     functionTemplateParametersPattern = templateTypes.join(",");
@@ -318,6 +217,7 @@ export class ExternalSymbolsProvider {
         `(?=^${this.namespace}${this.thisTypeName}(<.*>::|::)${this.thisTypeName}\\()`,
         "i" // @todo: potential pitfall, but handy for String-string case
       );
+
       return this.handleDeclarationWithPredicate((cppSignature: string, mangledIndex: number) => {
         return (
           constructorPattern.test(cppSignature) &&
@@ -448,10 +348,10 @@ export class ExternalSymbolsProvider {
   private isMatching(cppSignature: string): boolean {
     const parameters = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
 
-    // check with parameters pattern first
-    let matching: boolean = parameters === this.parametersPattern;
+    // check parameters pattern first
+    let matching = parameters === this.parametersPattern;
 
-    // check with arguments pattern if is not matched
+    // check arguments pattern if not matched with parameters
     if (!matching) {
       matching = parameters === this.argumentsPattern;
     }
@@ -477,23 +377,5 @@ export class ExternalSymbolsProvider {
       }
     }
     return matching;
-  }
-}
-
-function getInt64Type() {
-  switch (process.platform) {
-    case "win32":
-      return "long long";
-    default:
-      return "long";
-  }
-}
-
-function getUInt64Type() {
-  switch (process.platform) {
-    case "win32":
-      return "unsigned long long";
-    default:
-      return "unsigned long";
   }
 }

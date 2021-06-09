@@ -14,7 +14,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error, isUnionWithNullLLVMType, unwrapPointerType } from "@utils";
+import { error, unwrapPointerType } from "@utils";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -24,10 +24,11 @@ export class AssignmentHandler extends AbstractExpressionHandler {
           return false;
         }
 
-        const symbol = this.generator.checker.getSymbolAtLocation(expr);
-        if (!symbol) {
+        if (!this.generator.ts.checker.nodeHasSymbol(expr)) {
           return false;
         }
+
+        const symbol = this.generator.ts.checker.getSymbolAtLocation(expr);
 
         if (symbol.declarations.length === 1) {
           return symbol.declarations[0].kind === ts.SyntaxKind.SetAccessor;
@@ -59,7 +60,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
           }
 
           if (right.kind === ts.SyntaxKind.NullKeyword) {
-            if (!isUnionWithNullLLVMType(lhs.type)) {
+            if (!this.generator.types.union.isUnionWithNull(lhs.type)) {
               error(
                 `Expected left hand side operand to be union with null type, got '${unwrapPointerType(
                   lhs.type

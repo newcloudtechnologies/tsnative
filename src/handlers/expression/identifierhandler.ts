@@ -13,14 +13,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment } from "@scope";
-import {
-  error,
-  getAliasedSymbolIfNecessary,
-  getDeclarationNamespace,
-  InternalNames,
-  tryResolveGenericTypeIfNecessary,
-} from "@utils";
-import { TypeMangler } from "@mangling";
+import { error, getDeclarationNamespace, InternalNames } from "@utils";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
@@ -49,21 +42,14 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       }
     }
 
-    let symbol = this.generator.checker.getSymbolAtLocation(expression);
-    if (!symbol) {
-      error("No symbol found");
-    }
-
-    symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+    const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
     const declaration = symbol.valueDeclaration;
 
     let identifier = expression.getText();
     if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
-      let type = this.generator.checker.getTypeOfSymbolAtLocation(symbol, expression);
-      type = tryResolveGenericTypeIfNecessary(type, this.generator);
-
+      const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
       const namespace = getDeclarationNamespace(declaration);
-      identifier = namespace.concat(TypeMangler.mangle(type, this.generator.checker, declaration)).join(".");
+      identifier = namespace.concat(type.mangle()).join(".");
     }
 
     const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier, false);

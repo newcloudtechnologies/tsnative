@@ -1,34 +1,16 @@
 import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "@scope";
-import {
-  error,
-  getAliasedSymbolIfNecessary,
-  getLLVMValue,
-  getTSObjectPropsFromName,
-  indexOfProperty,
-  InternalNames,
-  inTSClassConstructor,
-  isIntersectionLLVMType,
-  isUnionLLVMType,
-  tryResolveGenericTypeIfNecessary,
-  unwrapPointerType,
-} from "@utils";
+import { error, getLLVMValue, getTSObjectPropsFromName, InternalNames, unwrapPointerType } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { createArraySubscription } from "@handlers";
-import { TypeMangler } from "@mangling";
 
 export class AccessHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
-        let symbol = this.generator.checker.getSymbolAtLocation(expression);
-        if (!symbol) {
-          error("No symbol found");
-        }
-
-        symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+        const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
         if (symbol.declarations.some((declaration) => ts.isGetAccessor(declaration) || ts.isSetAccessor(declaration))) {
           // Handle accessors in FunctionHandler.
           break;
@@ -60,12 +42,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     if (declaration.heritageClauses) {
       for (const clause of declaration.heritageClauses) {
         for (const type of clause.types) {
-          let symbol = this.generator.checker.getSymbolAtLocation(type.expression);
-          if (!symbol) {
-            error(`No symbol found at '${type.expression.getText()}'`);
-          }
-
-          symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+          const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
           const baseDeclaration = symbol.valueDeclaration;
           const baseHas = this.hasProperty(baseDeclaration as ts.ClassDeclaration | ts.InterfaceDeclaration, property);
 
@@ -96,13 +73,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
     let scope;
     try {
-      let symbol = this.generator.checker.getSymbolAtLocation(left);
-      if (!symbol) {
-        error("No symbol found");
-      }
-
-      symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
-
+      const symbol = this.generator.ts.checker.getSymbolAtLocation(left);
       const declaration = symbol.valueDeclaration;
 
       let identifier = left.getText();
@@ -111,9 +82,8 @@ export class AccessHandler extends AbstractExpressionHandler {
         (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration)) &&
         this.hasProperty(declaration, propertyName)
       ) {
-        let type = this.generator.checker.getTypeOfSymbolAtLocation(symbol, expression);
-        type = tryResolveGenericTypeIfNecessary(type, this.generator);
-        identifier = TypeMangler.mangle(type, this.generator.checker, declaration);
+        const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
+        identifier = type.mangle();
       }
 
       scope = this.generator.symbolTable.get(identifier);
@@ -163,44 +133,42 @@ export class AccessHandler extends AbstractExpressionHandler {
       error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
-    const { checker, builder, xbuilder, meta } = this.generator;
-
     while ((llvmValue.type as llvm.PointerType).elementType.isPointerTy()) {
-      llvmValue = builder.createLoad(llvmValue);
+      llvmValue = this.generator.builder.createLoad(llvmValue);
     }
 
-    if (isUnionLLVMType(llvmValue.type)) {
+    if (this.generator.types.union.isLLVMUnion(llvmValue.type)) {
       const unionName = (unwrapPointerType(llvmValue.type) as llvm.StructType).name;
       if (!unionName) {
         error("Name required for UnionStruct");
       }
 
-      const unionMeta = meta.getUnionMeta(unionName);
+      const unionMeta = this.generator.meta.getUnionMeta(unionName);
       const index = unionMeta.propsMap.get(propertyName);
       if (typeof index === "undefined") {
         error(`Mapping not found for ${propertyName}`);
       }
 
-      return builder.createLoad(xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
-    } else if (isIntersectionLLVMType(llvmValue.type)) {
+      return this.generator.builder.createLoad(this.generator.xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
+    } else if (this.generator.types.intersection.isLLVMIntersection(llvmValue.type)) {
       const intersectionName = (unwrapPointerType(llvmValue.type) as llvm.StructType).name;
       if (!intersectionName) {
         error("Name required for IntersectionStruct");
       }
 
-      const intersectionMeta = meta.getIntersectionMeta(intersectionName);
+      const intersectionMeta = this.generator.meta.getIntersectionMeta(intersectionName);
       const index = intersectionMeta.props.indexOf(propertyName);
       if (index === -1) {
         error(`Mapping not found for ${propertyName}`);
       }
 
-      return builder.createLoad(xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
+      return this.generator.builder.createLoad(this.generator.xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
     } else {
       let propertyIndex = -1;
 
       if (!llvmValue.name || llvmValue.name === InternalNames.This) {
-        const type = checker.getTypeAtLocation(expression);
-        propertyIndex = indexOfProperty(propertyName, checker.getApparentType(type), checker);
+        const type = this.generator.ts.checker.getTypeAtLocation(expression);
+        propertyIndex = type.indexOfProperty(propertyName);
       } else {
         // Object name is its properties names reduced to string, delimited with the dot ('.').
         const propertyNames = getTSObjectPropsFromName(llvmValue.name);
@@ -211,13 +179,15 @@ export class AccessHandler extends AbstractExpressionHandler {
         error(`Property '${propertyName}' not found in '${expression.getText()}'`);
       }
 
-      const elementPtr = xbuilder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
+      const elementPtr = this.generator.xbuilder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
+
+      const inTSClassConstructor = () => Boolean(this.generator.currentFunction.name?.endsWith("__constructor"));
 
       // In ts class constructor we cannot dereference 'this' pointer since the memory was just allocated and was not initialized.
       // Dereferencing will lead to segfault.
-      return inTSClassConstructor(this.generator) && expression.getText() === InternalNames.This
+      return inTSClassConstructor() && expression.getText() === InternalNames.This
         ? elementPtr
-        : builder.createLoad(elementPtr);
+        : this.generator.builder.createLoad(elementPtr);
     }
   }
 }

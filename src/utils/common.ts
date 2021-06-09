@@ -31,15 +31,3 @@ export function zip<T, U>(lhs: T[], rhs: U[]): [T, U][] {
 export function last<T>(array: T[]): T | undefined {
   return array[array.length - 1];
 }
-
-export function findIndexOfSubarray<T>(arr: T[], subarr: T[], equalityChecker: (lhs: T, rhs: T) => boolean): number {
-  position_loop: for (let i = 0; i <= arr.length - subarr.length; ++i) {
-    for (let j = 0; j < subarr.length; ++j) {
-      if (!equalityChecker(arr[i + j], subarr[j])) {
-        continue position_loop;
-      }
-    }
-    return i;
-  }
-  return -1;
-}

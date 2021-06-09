@@ -11,25 +11,20 @@
 
 import * as ts from "typescript";
 import {
-  getLLVMType,
-  createLLVMFunction,
   error,
-  getAliasedSymbolIfNecessary,
   checkIfMethod,
   getArgumentTypes,
   getReturnType,
   adjustLLVMValueToType,
-  checkIfFunction,
   correctCppPrimitiveType,
-  checkIfObject,
-  isTSClosure,
   isCppPrimitiveType,
 } from "@utils";
 import { castFPToIntegralType, getDeclarationScope, isConvertible, promoteIntegralToFP } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import * as llvm from "llvm-node";
 import { Environment } from "@scope";
-import { getIntegralType, isCppIntegralType, isSignedType } from "@cpp";
+import { isSignedType } from "@cpp";
+import { Type } from "../../ts/type";
 
 export class SysVFunctionHandler {
   private readonly generator: LLVMGenerator;
@@ -43,17 +38,16 @@ export class SysVFunctionHandler {
     qualifiedName: string,
     env?: Environment
   ): llvm.Value {
-    const symbol = this.generator.checker.getSymbolAtLocation(expression);
-    const valueDeclaration = symbol!.valueDeclaration as ts.GetAccessorDeclaration;
-
-    const returnType: ts.Type = this.generator.checker.getTypeAtLocation(expression);
+    const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
+    const valueDeclaration = symbol.valueDeclaration as ts.GetAccessorDeclaration;
 
     const llvmThisType = llvm.Type.getInt8PtrTy(this.generator.context);
     const llvmArgumentTypes = [llvmThisType];
 
-    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
+    const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
+    const llvmReturnType = correctCppPrimitiveType(tsReturnType.getLLVMType());
 
-    const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
     const body = valueDeclaration.body;
     if (body) {
       error(`External symbol '${qualifiedName}' cannot have function body`);
@@ -67,6 +61,7 @@ export class SysVFunctionHandler {
       return this.generator.xbuilder.createSafeCall(fn, args);
     }
 
+    // WTF?
     const allocated = this.generator.gc.allocate(llvmReturnType);
     const callResult = this.generator.xbuilder.createSafeCall(fn, args);
     this.generator.xbuilder.createSafeStore(callResult, allocated);
@@ -75,35 +70,31 @@ export class SysVFunctionHandler {
 
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): llvm.Value {
     const argumentTypes = getArgumentTypes(expression, this.generator);
-    const isMethod = checkIfMethod(expression.expression, this.generator.checker);
+    const isMethod = checkIfMethod(expression.expression, this.generator.ts.checker);
 
-    const symbol = this.generator.checker.getTypeAtLocation(expression.expression).symbol;
-    const valueDeclaration = getAliasedSymbolIfNecessary(symbol, this.generator.checker)
-      .valueDeclaration as ts.FunctionLikeDeclaration;
+    const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    const symbol = type.getSymbol();
+    const valueDeclaration = symbol.valueDeclaration as ts.FunctionLikeDeclaration;
 
-    const signature = this.generator.checker.getSignatureFromDeclaration(valueDeclaration);
-    if (!signature) {
-      error(`No signature found for '${expression.getText()}'`);
-    }
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
 
     const parameters = signature.getParameters();
     const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
-      if (checkIfObject(argumentType)) {
-        return llvm.Type.getInt8PtrTy(this.generator.context);
-      }
-
-      if (checkIfFunction(argumentType)) {
+      if (argumentType.isObject() || argumentType.isFunction()) {
         return llvm.Type.getInt8PtrTy(this.generator.context);
       }
 
       if (parameters[index]) {
-        const tsParameterType = this.generator.checker.getTypeOfSymbolAtLocation(parameters[index], valueDeclaration);
-        if (isCppIntegralType(this.generator.checker.typeToString(tsParameterType))) {
-          return getIntegralType(tsParameterType, this.generator)!;
+        const tsParameterType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
+          parameters[index],
+          valueDeclaration
+        );
+        if (tsParameterType.isCppIntegralType()) {
+          return tsParameterType.getIntegralType();
         }
       }
 
-      const llvmType = getLLVMType(argumentType, expression, this.generator);
+      const llvmType = argumentType.getLLVMType();
       return correctCppPrimitiveType(llvmType);
     });
 
@@ -124,8 +115,8 @@ export class SysVFunctionHandler {
       }
 
       const arg = this.generator.handleExpression(argument, env);
-      const tsType = this.generator.checker.getTypeAtLocation(argument);
-      if (checkIfObject(tsType) || checkIfFunction(tsType) || isTSClosure(arg)) {
+      const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
+      if (tsType.isObject() || tsType.isFunction() || this.generator.types.closure.isTSClosure(arg.type)) {
         return this.generator.xbuilder.asVoidStar(arg);
       }
 
@@ -133,7 +124,7 @@ export class SysVFunctionHandler {
     });
 
     const parametersTypes = parameters.map((p) =>
-      this.generator.checker.getTypeOfSymbolAtLocation(p, valueDeclaration)
+      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, valueDeclaration)
     );
     args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 
@@ -146,9 +137,9 @@ export class SysVFunctionHandler {
     }
 
     const returnType = getReturnType(expression, this.generator);
-    const llvmReturnType = correctCppPrimitiveType(getLLVMType(returnType, expression, this.generator));
+    const llvmReturnType = correctCppPrimitiveType(returnType.getLLVMType());
 
-    const { fn } = createLLVMFunction(llvmReturnType, llvmArgumentTypes, qualifiedName, this.generator.module);
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     if (valueDeclaration.body) {
       error(`External symbol '${qualifiedName}' cannot have function body`);
@@ -176,9 +167,9 @@ export class SysVFunctionHandler {
   }
 
   handleNewExpression(expression: ts.NewExpression, qualifiedName: string, env?: Environment): llvm.Value {
-    const thisType = this.generator.checker.getTypeAtLocation(expression);
-    const classDeclaration = getAliasedSymbolIfNecessary(thisType.symbol, this.generator.checker)
-      .valueDeclaration as ts.ClassLikeDeclaration;
+    const thisType = this.generator.ts.checker.getTypeAtLocation(expression);
+    const symbol = thisType.getSymbol();
+    const classDeclaration = symbol.valueDeclaration as ts.ClassLikeDeclaration;
     const constructorDeclaration = classDeclaration.members.find(ts.isConstructorDeclaration)!;
 
     if (!constructorDeclaration) {
@@ -189,31 +180,27 @@ export class SysVFunctionHandler {
       error(`External symbol '${qualifiedName}' cannot have constructor body`);
     }
 
-    const argumentTypes = expression.arguments?.map(this.generator.checker.getTypeAtLocation) || [];
+    const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
 
     const parentScope = getDeclarationScope(classDeclaration, thisType, this.generator);
     const llvmThisType: llvm.PointerType = parentScope.thisData!.llvmType as llvm.PointerType;
 
-    const signature = this.generator.checker.getSignatureFromDeclaration(constructorDeclaration);
-    if (!signature) {
-      error(`No signature found for '${expression.getText()}'`);
-    }
-
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(constructorDeclaration);
     const parameters = signature.getParameters();
     const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
-      const llvmType = getLLVMType(argumentType, expression, this.generator);
+      const llvmType = argumentType.getLLVMType();
 
-      if (checkIfObject(argumentType) || checkIfFunction(argumentType)) {
+      if (argumentType.isObject() || argumentType.isFunction()) {
         return llvm.Type.getInt8PtrTy(this.generator.context);
       }
 
       if (parameters[index]) {
-        const tsParameterType = this.generator.checker.getTypeOfSymbolAtLocation(
+        const tsParameterType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
           parameters[index],
           constructorDeclaration
         );
-        if (isCppIntegralType(this.generator.checker.typeToString(tsParameterType))) {
-          return getIntegralType(tsParameterType, this.generator)!;
+        if (tsParameterType.isCppIntegralType()) {
+          return tsParameterType.getIntegralType();
         }
       }
 
@@ -223,8 +210,8 @@ export class SysVFunctionHandler {
     let args =
       expression.arguments?.map((argument) => {
         const arg = this.generator.handleExpression(argument, env);
-        const tsType = this.generator.checker.getTypeAtLocation(argument);
-        if (checkIfObject(tsType) || checkIfFunction(tsType)) {
+        const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
+        if (tsType.isObject() || tsType.isFunction()) {
           return this.generator.xbuilder.asVoidStar(arg);
         }
 
@@ -232,17 +219,16 @@ export class SysVFunctionHandler {
       }) || [];
 
     const parametersTypes = parameters.map((p) =>
-      this.generator.checker.getTypeOfSymbolAtLocation(p, constructorDeclaration)
+      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, constructorDeclaration)
     );
     args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 
     llvmArgumentTypes.unshift(llvm.Type.getInt8PtrTy(this.generator.context));
 
-    const { fn: constructor } = createLLVMFunction(
+    const { fn: constructor } = this.generator.llvm.function.create(
       llvm.Type.getVoidTy(this.generator.context),
       llvmArgumentTypes,
-      qualifiedName,
-      this.generator.module
+      qualifiedName
     );
 
     const thisValue = this.generator.gc.allocate(llvmThisType.elementType);
@@ -253,7 +239,7 @@ export class SysVFunctionHandler {
     return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
   }
 
-  private adjustParameters(parameters: llvm.Value[], tsTypes: ts.Type[], llvmTypes: llvm.Type[]) {
+  private adjustParameters(parameters: llvm.Value[], tsTypes: Type[], llvmTypes: llvm.Type[]) {
     if (parameters.length !== llvmTypes.length) {
       error("Expected arrays of same length");
     }
@@ -264,12 +250,7 @@ export class SysVFunctionHandler {
 
       if (isConvertible(adjusted.type, destinationType)) {
         const converter = destinationType.isIntegerTy() ? castFPToIntegralType : promoteIntegralToFP;
-        return converter(
-          adjusted,
-          destinationType,
-          isSignedType(this.generator.checker.typeToString(tsTypes[index])),
-          this.generator
-        );
+        return converter(adjusted, destinationType, isSignedType(tsTypes[index].toString()), this.generator);
       }
 
       return adjusted;

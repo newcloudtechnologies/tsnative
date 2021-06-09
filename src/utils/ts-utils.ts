@@ -10,12 +10,9 @@
  */
 
 import * as ts from "typescript";
-import { checkIfProperty, checkIfFunction, checkIfStaticMethod, checkIfMethod } from "./tsc-utils";
-import { isTypeSupported, error, flatten } from "@utils";
+import { error } from "@utils";
 import { LLVMGenerator } from "@generator";
-
-import { cloneDeep } from "lodash";
-import { FunctionMangler } from "@mangling";
+import { Type } from "../ts/type";
 
 const valueTypeDecorator: string = "ValueType";
 export function checkIfValueTypeProperty(declaration: ts.Declaration): boolean {
@@ -29,52 +26,6 @@ export function checkIfHasVTable(declaration: ts.ClassDeclaration) {
 
 export function getExpressionTypename(expression: ts.Expression, checker: ts.TypeChecker): string {
   return checker.typeToString(checker.getTypeAtLocation(expression));
-}
-
-export function getProperties(type: ts.Type, checker: ts.TypeChecker): ts.Symbol[] {
-  if (!type.symbol) {
-    error("No symbol found");
-  }
-
-  const symbol = getAliasedSymbolIfNecessary(type.symbol, checker);
-  const properties: ts.Symbol[] = [];
-  if (
-    symbol.valueDeclaration &&
-    ts.isClassDeclaration(symbol.valueDeclaration) &&
-    symbol.valueDeclaration.heritageClauses
-  ) {
-    const inheritedProps = flatten(
-      symbol.valueDeclaration.heritageClauses.map((clause) => {
-        const clauseProps = clause.types.map((expressionWithTypeArgs) => {
-          return getProperties(checker.getTypeAtLocation(expressionWithTypeArgs), checker);
-        });
-
-        return clauseProps;
-      })
-    );
-
-    properties.push(...flatten(inheritedProps));
-  }
-
-  properties.push(...checker.getPropertiesOfType(type).filter(checkIfProperty));
-  return properties;
-}
-
-export function getAliasedSymbolIfNecessary(symbol: ts.Symbol, checker: ts.TypeChecker) {
-  if ((symbol?.flags & ts.SymbolFlags.Alias) !== 0) {
-    return checker.getAliasedSymbol(symbol);
-  }
-  return symbol;
-}
-
-export function getTypeNamespace(type: ts.Type) {
-  const symbol = type.symbol;
-
-  if (!symbol || (!symbol.valueDeclaration && !symbol.declarations[0])) {
-    return "";
-  }
-
-  return getDeclarationNamespace(symbol.valueDeclaration || symbol.declarations[0]).join("::");
 }
 
 export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
@@ -102,80 +53,75 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
 export function getGenericsToActualMapFromSignature(
   signature: ts.Signature,
   expression: ts.CallLikeExpression,
-  checker: ts.TypeChecker
-): Map<string, ts.Type> {
-  const resolvedSignature = checker.getResolvedSignature(expression);
-  if (!resolvedSignature) {
-    error(`Failed to get resolved signature for '${expression.getText()}'`);
-  }
+  generator: LLVMGenerator
+) {
+  const typenameTypeMap = new Map<string, Type>();
 
-  const typenameTypeMap = new Map<string, ts.Type>();
-
+  const resolvedSignature = generator.ts.checker.getResolvedSignature(expression);
   const actualParameters = resolvedSignature.getParameters();
   const formalParameters = signature.getParameters();
 
-  function handleType(type: ts.Type, typename: string, actualType: ts.Type) {
-    if ((isTypeSupported(type, checker) && !checkIfFunction(type)) || typenameTypeMap.get(typename)) {
+  function handleType(type: Type, actualType: Type) {
+    if ((type.isSupported() && !type.isFunction()) || typenameTypeMap.has(type.toString())) {
       return;
     }
 
-    if (checkIfFunction(actualType)) {
+    if (actualType.isFunction()) {
       const callSignature = type.getCallSignatures()[0];
       const actualCall = actualType.getCallSignatures()[0];
       const parameterFormalParameters = callSignature.parameters;
 
       for (let k = 0; k < parameterFormalParameters.length; ++k) {
         const formalParameter = parameterFormalParameters[k];
-        const formalParameterType = checker.getTypeOfSymbolAtLocation(formalParameter, expression);
-        const formalParameterTypename = checker.typeToString(formalParameterType);
+        const formalParameterType = generator.ts.checker.getTypeOfSymbolAtLocation(formalParameter, expression);
+        const formalParameterTypename = formalParameterType.originTypename();
 
         const actualParameter = actualCall.parameters[k];
-        const actualParameterType = checker.getTypeOfSymbolAtLocation(actualParameter, expression);
+        const actualParameterType = generator.ts.checker.getTypeOfSymbolAtLocation(actualParameter, expression);
 
         typenameTypeMap.set(formalParameterTypename, actualParameterType);
       }
 
-      const formalReturnType = callSignature.getReturnType();
-      const formalReturnTypename = checker.typeToString(formalReturnType);
+      const formalReturnType = generator.ts.checker.getReturnTypeOfSignature(callSignature);
+      const formalReturnTypename = formalReturnType.originTypename();
 
-      const actualReturnType = actualCall.getReturnType();
+      const actualReturnType = generator.ts.checker.getReturnTypeOfSignature(actualCall);
 
       typenameTypeMap.set(formalReturnTypename, actualReturnType);
     } else {
-      typenameTypeMap.set(typename, actualType);
+      typenameTypeMap.set(type.originTypename(), actualType);
     }
   }
 
   for (let i = 0; i < formalParameters.length; ++i) {
     const parameter = formalParameters[i];
-    const type = checker.getTypeOfSymbolAtLocation(parameter, expression);
+    const type = generator.ts.checker.getTypeOfSymbolAtLocation(parameter, expression);
 
     if (type.isUnionOrIntersection()) {
-      const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
+      const actualType = generator.ts.checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
       if (!actualType.isUnionOrIntersection()) {
-        error(`Expected actual type to be of UnionOrIntersection, got '${checker.typeToString(actualType)}'`);
+        error(`Expected actual type to be of UnionOrIntersection, got '${actualType.toString()}'`);
       }
 
       type.types.forEach((subtype, index) => {
-        const typename = checker.typeToString(subtype);
-        handleType(subtype, typename, actualType.types[index]);
+        handleType(subtype, actualType.types[index]);
       });
 
       continue;
     }
 
-    const typename = checker.typeToString(type);
-    const actualType = checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
-    handleType(type, typename, actualType);
+    const actualType = generator.ts.checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
+    handleType(type, actualType);
   }
 
   const formalTypeParameters = signature.getTypeParameters();
-  const formalTypeParametersNames = formalTypeParameters?.map((parameter) => checker.typeToString(parameter)) || [];
+  const formalTypeParametersNames =
+    formalTypeParameters?.map((parameter) => new Type(parameter, generator.ts.checker).toString()) || [];
 
   const readyTypenames = Object.keys(typenameTypeMap);
   const difference = formalTypeParametersNames.filter((type) => !readyTypenames.includes(type));
   if (difference.length === 1 && !typenameTypeMap.get(difference[0])) {
-    typenameTypeMap.set(difference[0], resolvedSignature.getReturnType());
+    typenameTypeMap.set(difference[0], new Type(resolvedSignature.getReturnType(), generator.ts.checker));
   } else if (difference.length > 1) {
     console.log("Cannot map generic type arguments to template arguments.\nNot an external symbol?");
   }
@@ -183,53 +129,22 @@ export function getGenericsToActualMapFromSignature(
   return typenameTypeMap;
 }
 
-export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type[] {
+export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMGenerator): Type[] {
   return expression.arguments.map((arg) => {
-    const type = generator.checker.getTypeAtLocation(arg);
-    if (Boolean(type.flags & ts.TypeFlags.TypeParameter)) {
-      const typenameAlias = generator.checker.typeToString(type);
-      return generator.symbolTable.currentScope.typeMapper!.get(typenameAlias) as ts.Type;
+    const type = generator.ts.checker.getTypeAtLocation(arg);
+    if (type.isTypeParameter()) {
+      const typenameAlias = type.toString();
+      return generator.symbolTable.currentScope.typeMapper.get(typenameAlias);
     } else {
       return type;
     }
   });
 }
 
-export function getReturnType(expression: ts.CallExpression, generator: LLVMGenerator): ts.Type {
-  const resolvedSignature = generator.checker.getResolvedSignature(expression)!;
-  const returnType = generator.checker.getReturnTypeOfSignature(resolvedSignature);
-  return tryResolveGenericTypeIfNecessary(returnType, generator);
-}
-
-export function tryResolveGenericTypeIfNecessary(tsType: ts.Type, generator: LLVMGenerator): ts.Type {
-  let result = tsType;
-
-  if (!isTypeSupported(tsType, generator.checker)) {
-    if (tsType.isUnionOrIntersection()) {
-      const typeClone = cloneDeep(tsType);
-      typeClone.types = typeClone.types.map((type) => {
-        if (type.isUnionOrIntersection()) {
-          return tryResolveGenericTypeIfNecessary(type, generator);
-        }
-        if (!isTypeSupported(type, generator.checker)) {
-          const typename = generator.checker.typeToString(type);
-          return generator.symbolTable.currentScope.typeMapper!.get(typename) as ts.Type;
-        } else {
-          return type;
-        }
-      });
-
-      result = typeClone;
-    } else {
-      const typename = generator.checker.typeToString(tsType);
-      result = generator.symbolTable.currentScope.typeMapper!.get(typename) as ts.Type;
-    }
-    if (!result) {
-      error(`Unsupported type: '${generator.checker.typeToString(tsType)}'`);
-    }
-  }
-
-  return result;
+export function getReturnType(expression: ts.CallExpression, generator: LLVMGenerator) {
+  const resolvedSignature = generator.ts.checker.getResolvedSignature(expression)!;
+  const returnType = generator.ts.checker.getReturnTypeOfSignature(resolvedSignature);
+  return returnType;
 }
 
 export function withObjectProperties<R>(
@@ -280,69 +195,13 @@ export function isSyntheticNode(node: ts.Node) {
   return node.pos === -1 && node.end === -1;
 }
 
-// @todo: temporary hack in fact!
-//        there is potential problem with function expression declared in body of another function in case if this function expression is a returned value
-//        its environment cannot be used on call (illformed IR will be generated)
-//        workaround this issue by this hack
-export function canCreateLazyClosure(declaration: ts.Declaration, generator: LLVMGenerator) {
-  if (ts.isPropertyAssignment(declaration.parent)) {
-    return false;
-  }
-
-  if (ts.isReturnStatement(declaration.parent)) {
-    return false;
-  }
-
-  if (ts.isCallExpression(declaration.parent)) {
-    const callExpression = declaration.parent;
-
-    const argumentTypes = getArgumentTypes(callExpression, generator);
-    const isMethod = checkIfMethod(callExpression.expression, generator.checker);
-    let thisType: ts.Type | undefined;
-    if (isMethod) {
-      const methodReference = callExpression.expression as ts.PropertyAccessExpression;
-      thisType = generator.checker.getTypeAtLocation(methodReference.expression);
-    }
-
-    let symbol = generator.checker.getTypeAtLocation(callExpression.expression).symbol;
-    symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
-
-    const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
-
-    const thisTypeForMangling = checkIfStaticMethod(valueDeclaration)
-      ? generator.checker.getTypeAtLocation((callExpression.expression as ts.PropertyAccessExpression).expression)
-      : thisType;
-
-    const { isExternalSymbol } = FunctionMangler.mangle(
-      valueDeclaration,
-      callExpression,
-      thisTypeForMangling,
-      argumentTypes,
-      generator
-    );
-
-    if (isExternalSymbol) {
-      // C++ backend knows nothing about `lazy` closures
-      return false;
-    }
-  }
-
-  return true;
-}
-
 export function getAccessorType(
   expression: ts.Expression,
   generator: LLVMGenerator
 ): ts.SyntaxKind.GetAccessor | ts.SyntaxKind.SetAccessor | undefined {
   let result: ts.SyntaxKind.GetAccessor | ts.SyntaxKind.SetAccessor | undefined;
 
-  let symbol = generator.checker.getSymbolAtLocation(expression);
-  if (!symbol) {
-    error("No symbol found");
-  }
-
-  symbol = getAliasedSymbolIfNecessary(symbol, generator.checker);
-
+  const symbol = generator.ts.checker.getSymbolAtLocation(expression);
   if (symbol.declarations.length === 1) {
     if (ts.isGetAccessorDeclaration(symbol.declarations[0])) {
       result = ts.SyntaxKind.GetAccessor;

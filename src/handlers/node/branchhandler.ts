@@ -13,7 +13,6 @@ import { BasicBlock, ConstantInt } from "llvm-node";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { isUnionWithNullLLVMValue, isUnionWithUndefinedLLVMValue } from "@utils";
 import { makeBoolean } from "@handlers/utils";
 
 export class BranchHandler extends AbstractNodeHandler {
@@ -22,7 +21,10 @@ export class BranchHandler extends AbstractNodeHandler {
       const statement = node as ts.IfStatement;
       let condition = this.generator.createLoadIfNecessary(this.generator.handleExpression(statement.expression, env));
 
-      if (isUnionWithUndefinedLLVMValue(condition) || isUnionWithNullLLVMValue(condition)) {
+      if (
+        this.generator.types.union.isUnionWithUndefined(condition.type) ||
+        this.generator.types.union.isUnionWithNull(condition.type)
+      ) {
         condition = makeBoolean(condition, statement.expression, this.generator);
       } else if (condition.type.isPointerTy()) {
         // All the nullable and optional types are represented as unions, so there is a guarantee for pointer to have actual value

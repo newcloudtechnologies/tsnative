@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error, getAliasedSymbolIfNecessary } from "@utils";
+import { error } from "@utils";
 
 export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -29,17 +29,14 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
               );
               if (extendsClause) {
                 const expessionWithTypeArgs = extendsClause.types[0];
-                const type = this.generator.checker.getTypeAtLocation(expessionWithTypeArgs);
-                if (!type.symbol) {
-                  error("Symbol not found");
-                }
+                const type = this.generator.ts.checker.getTypeAtLocation(expessionWithTypeArgs);
 
-                const symbol = getAliasedSymbolIfNecessary(type.symbol, this.generator.checker);
+                const symbol = type.getSymbol();
                 const declaration = symbol.declarations[0] as ts.ClassDeclaration;
 
                 const baseConstructor = declaration.members.find(ts.isConstructorDeclaration);
                 if (!baseConstructor) {
-                  error(`No constructor provided for '${this.generator.checker.typeToString(type)}'`);
+                  error(`No constructor provided for '${type.toString()}'`);
                 }
 
                 parameters.push(...baseConstructor.parameters);
@@ -65,8 +62,8 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
               updatedMembers
             );
 
-            const type = this.generator.checker.getTypeAtLocation(node);
-            const symbol = getAliasedSymbolIfNecessary(type.symbol, this.generator.checker);
+            const type = this.generator.ts.checker.getTypeAtLocation(node);
+            const symbol = type.getSymbol();
 
             defaultConstructor.parent = updated;
             updated.parent = node.parent || sourceFile;

@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { checkIfArray, error, getAliasedSymbolIfNecessary, getParentFromOriginal, isSyntheticNode } from "@utils";
+import { error, getParentFromOriginal, isSyntheticNode } from "@utils";
 import { last } from "lodash";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
@@ -20,10 +20,10 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
       const visitor = (node: ts.Node): ts.Node | ts.Node[] => {
         if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
           if (ts.isPropertyAccessExpression(node.expression.expression)) {
-            const objectType = this.generator.checker.getTypeAtLocation(node.expression.expression.expression);
+            const objectType = this.generator.ts.checker.getTypeAtLocation(node.expression.expression.expression);
             const property = node.expression.expression.name.getText(sourceFile);
 
-            if (checkIfArray(objectType) && property === "push" && node.expression.arguments.some(ts.isSpreadElement)) {
+            if (objectType.isArray() && property === "push" && node.expression.arguments.some(ts.isSpreadElement)) {
               // NB: Even this implementation only considers Array.push, it may be used for any pure function with minor modifications
               // @todo: @pure decorator?
               const arrayToExtend = ts.createIdentifier(node.expression.expression.expression.getText(sourceFile));
@@ -94,10 +94,10 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
         }
 
         if (!isSyntheticNode(node) && ts.isCallExpression(node)) {
-          const type = this.generator.checker.getTypeAtLocation(node.expression);
-          let symbol = type.getSymbol();
-          if (symbol) {
-            symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+          const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
+
+          if (!type.isSymbolless()) {
+            let symbol = type.getSymbol();
             let declaration = symbol.declarations[0];
 
             if (ts.isVariableDeclaration(declaration)) {
@@ -105,13 +105,8 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
                 error(`Initializer required for '${declaration.getText()}'`);
               }
 
-              const initializerType = this.generator.checker.getTypeAtLocation(declaration.initializer);
+              const initializerType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
               symbol = initializerType.getSymbol();
-              if (!symbol) {
-                error("No symbol found");
-              }
-
-              symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
               declaration = symbol.declarations[0];
             }
 
@@ -119,7 +114,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
               // Skip declarations since they are used for C++ integration
               // @todo: is there a better way to check if declaration is declared in ambient context?
 
-              const signature = this.generator.checker.getSignatureFromDeclaration(
+              const signature = this.generator.ts.checker.getSignatureFromDeclaration(
                 declaration as ts.SignatureDeclaration
               )!;
               const lastParameter = last(signature.getParameters());

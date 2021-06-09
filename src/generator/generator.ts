@@ -12,15 +12,18 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { createLLVMFunction, error, isCppPrimitiveType, LazyClosure, XBuilder } from "@utils";
+import { error, isCppPrimitiveType, XBuilder } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
 import { MetaInfoStorage } from "@generator";
 import { GC_DEFINITION } from "std-typescript-llvm/constants";
+import { Types } from "../types/types";
+import { SizeOf } from "@cpp";
+import { LLVM } from "../llvm/llvm";
+import { TS } from "../ts/ts";
 
 export class LLVMGenerator {
-  readonly checker: ts.TypeChecker;
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
   readonly symbolTable: SymbolTable;
@@ -40,13 +43,15 @@ export class LLVMGenerator {
   readonly builtinString: BuiltinString;
   readonly builtinTSClosure: BuiltinTSClosure;
 
-  private lazyClosureInstance: LazyClosure | undefined;
-
   private garbageCollector: GC | undefined;
+
+  readonly types: Types;
+  readonly sizeOf: SizeOf;
+  readonly llvm: LLVM;
+  readonly ts: TS;
 
   constructor(program: ts.Program) {
     this.program = program;
-    this.checker = program.getTypeChecker();
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
     this.irBuilder = new llvm.IRBuilder(this.context);
@@ -57,11 +62,17 @@ export class LLVMGenerator {
     this.builtinUInt32 = new BuiltinUInt32(this);
     this.builtinString = new BuiltinString(this);
     this.builtinTSClosure = new BuiltinTSClosure(this);
+
+    this.types = new Types(this);
+    this.sizeOf = new SizeOf(this);
+
+    this.llvm = new LLVM(this);
+    this.ts = new TS(program.getTypeChecker(), this);
   }
 
   createModule(): llvm.Module {
     const mainReturnType = llvm.Type.getInt32Ty(this.context);
-    const { fn: main } = createLLVMFunction(mainReturnType, [], "main", this.module);
+    const { fn: main } = this.llvm.function.create(mainReturnType, [], "main");
 
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main);
 
@@ -104,7 +115,7 @@ export class LLVMGenerator {
     gc.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
         const clazz = node as ts.ClassDeclaration;
-        const clazzName = this.checker.getTypeAtLocation(clazz).getSymbol()!.escapedName;
+        const clazzName = this.ts.checker.getTypeAtLocation(clazz).getSymbol().escapedName;
         if (clazzName === "GC") {
           this.garbageCollector = new GC(clazz, this);
         }
@@ -189,12 +200,5 @@ export class LLVMGenerator {
       this.initGC();
     }
     return this.garbageCollector!;
-  }
-
-  get lazyClosure() {
-    if (!this.lazyClosureInstance) {
-      this.lazyClosureInstance = new LazyClosure(this);
-    }
-    return this.lazyClosureInstance;
   }
 }

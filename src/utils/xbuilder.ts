@@ -14,12 +14,10 @@ import { error } from "@utils";
 import * as llvm from "llvm-node";
 
 export class XBuilder {
-  private readonly builder: llvm.IRBuilder;
   private readonly generator: LLVMGenerator;
 
-  constructor(generator: LLVMGenerator, builder?: llvm.IRBuilder) {
+  constructor(generator: LLVMGenerator) {
     this.generator = generator;
-    this.builder = builder || generator.builder;
   }
 
   checkInsert(aggregate: llvm.Value, value: llvm.Value, idxList: number[]) {
@@ -37,7 +35,7 @@ export class XBuilder {
 
   createSafeInsert(aggregate: llvm.Value, value: llvm.Value, idxList: number[]) {
     this.checkInsert(aggregate, value, idxList);
-    return this.builder.createInsertValue(aggregate, value, idxList);
+    return this.generator.builder.createInsertValue(aggregate, value, idxList);
   }
 
   checkStore(value: llvm.Value, ptr: llvm.Value) {
@@ -50,7 +48,7 @@ export class XBuilder {
 
   createSafeStore(value: llvm.Value, ptr: llvm.Value, isVolatile?: boolean) {
     this.checkStore(value, ptr);
-    return this.builder.createStore(value, ptr, isVolatile);
+    return this.generator.builder.createStore(value, ptr, isVolatile);
   }
 
   checkExtractValue(aggregate: llvm.Value, idxList: number[]) {
@@ -65,7 +63,7 @@ export class XBuilder {
 
   createSafeExtractValue(aggregate: llvm.Value, idxList: number[], name?: string) {
     this.checkExtractValue(aggregate, idxList);
-    return this.builder.createExtractValue(aggregate, idxList, name);
+    return this.generator.builder.createExtractValue(aggregate, idxList, name);
   }
 
   checkInBoundsGEP(ptr: llvm.Value, idxList: number[]) {
@@ -94,7 +92,7 @@ export class XBuilder {
   createSafeInBoundsGEP(ptr: llvm.Value, idxList: number[], name?: string): llvm.Value {
     this.checkInBoundsGEP(ptr, idxList);
     const idxValues = idxList.map((idx) => llvm.ConstantInt.get(this.generator.context, idx));
-    return this.builder.createInBoundsGEP(ptr, idxValues, name);
+    return this.generator.builder.createInBoundsGEP(ptr, idxValues, name);
   }
 
   checkCall(callee: llvm.Value, args: llvm.Value[]) {
@@ -119,12 +117,11 @@ export class XBuilder {
 
   createSafeCall(callee: llvm.Value, args: llvm.Value[], name?: string) {
     this.checkCall(callee, args);
-    return this.builder.createCall(callee, args, name);
+    return this.generator.builder.createCall(callee, args, name);
   }
 
   checkRet(value: llvm.Value) {
-    const currentFn = this.generator.currentFunction;
-    const currentFnReturnType = (currentFn.type.elementType as llvm.FunctionType).returnType;
+    const currentFnReturnType = this.generator.currentFunction.type.elementType.returnType;
     if (!currentFnReturnType.equals(value.type)) {
       error(`Expected return value to be of '${currentFnReturnType.toString()}', got '${value.type.toString()}'`);
     }

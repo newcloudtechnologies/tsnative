@@ -1,16 +1,4 @@
-import {
-  checkIfFunction,
-  checkIfObject,
-  createTSObjectName,
-  error,
-  getAliasedSymbolIfNecessary,
-  getLLVMTypename,
-  getTSObjectPropsFromName,
-  getTypeGenericArguments,
-  isIntersectionLLVMType,
-  tryResolveGenericTypeIfNecessary,
-  withObjectProperties,
-} from "@utils";
+import { createTSObjectName, error, getLLVMTypename, getTSObjectPropsFromName, withObjectProperties } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -79,9 +67,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
           llvmValues.set(property.name.getText(), this.generator.handleExpression(property.name, env));
           break;
         case ts.SyntaxKind.SpreadAssignment:
-          let propertyType = this.generator.checker.getTypeAtLocation(property.expression);
-          propertyType = tryResolveGenericTypeIfNecessary(propertyType, this.generator);
-
           const propertyValue = this.generator.handleExpression(property.expression, env);
           if (!propertyValue.type.isPointerTy()) {
             error(`Expected spread initializer to be of PointerType, got ${propertyValue.type.toString()}`);
@@ -93,7 +78,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           }
 
           const names = [];
-          if (isIntersectionLLVMType(propertyValue.type)) {
+          if (this.generator.types.intersection.isLLVMIntersection(propertyValue.type)) {
             const name = getLLVMTypename(propertyValue.type);
             const intersectionMeta = this.generator.meta.getIntersectionMeta(name);
             names.push(...intersectionMeta.props);
@@ -140,36 +125,31 @@ export class LiteralHandler extends AbstractExpressionHandler {
         return;
       }
 
-      let propertyType = this.generator.checker.getTypeAtLocation(property);
+      const propertyType = this.generator.ts.checker.getTypeAtLocation(property);
       let propertyTypename = "";
-      if (checkIfFunction(propertyType)) {
+      if (propertyType.isFunction()) {
         // @todo: There should be a better way to get actual signature for generic functions.
-        let symbol = propertyType.symbol;
-        symbol = getAliasedSymbolIfNecessary(symbol, this.generator.checker);
+        const symbol = propertyType.getSymbol();
         const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
 
-        const signature = this.generator.checker.getSignatureFromDeclaration(
+        const signature = this.generator.ts.checker.getSignatureFromDeclaration(
           valueDeclaration as ts.SignatureDeclaration
         )!;
-        let returnType = this.generator.checker.getReturnTypeOfSignature(signature);
-        returnType = tryResolveGenericTypeIfNecessary(returnType, this.generator);
+        const returnType = this.generator.ts.checker.getReturnTypeOfSignature(signature);
         const parameters = signature.getParameters();
         const resolvedParameterTypes = parameters.map((parameter) => {
           const parameterDeclaration = parameter.declarations[0];
-          const unresolved = this.generator.checker.getTypeAtLocation(parameterDeclaration);
-          const resolved = tryResolveGenericTypeIfNecessary(unresolved, this.generator);
-          return resolved;
+          return this.generator.ts.checker.getTypeAtLocation(parameterDeclaration);
         });
 
         propertyTypename += "(";
         resolvedParameterTypes.forEach((type, index) => {
-          propertyTypename += parameters[index].getName() + ": " + this.generator.checker.typeToString(type);
+          propertyTypename += parameters[index].getName() + ": " + type.toString();
         });
         propertyTypename += ") => ";
-        propertyTypename += this.generator.checker.typeToString(returnType);
+        propertyTypename += returnType.toString();
       } else {
-        propertyType = tryResolveGenericTypeIfNecessary(propertyType, this.generator);
-        propertyTypename = this.generator.checker.typeToString(propertyType);
+        propertyTypename = propertyType.toString();
       }
 
       return property.name!.getText() + "__" + propertyTypename;
@@ -184,7 +164,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
   private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): llvm.Value {
     const arrayType = getArrayType(expression, this.generator);
-    const elementType = getTypeGenericArguments(arrayType)[0];
+    const elementType = arrayType.getTypeGenericArguments()[0];
 
     const constructorAndMemory = createArrayConstructor(expression, this.generator);
     const { constructor } = constructorAndMemory;
@@ -209,9 +189,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
       } else {
         let elementValue = this.generator.handleExpression(element, outerEnv);
 
-        const tsType = this.generator.checker.getTypeAtLocation(element);
+        const tsType = this.generator.ts.checker.getTypeAtLocation(element);
         elementValue =
-          checkIfObject(tsType) || checkIfFunction(tsType)
+          tsType.isObject() || tsType.isFunction()
             ? this.generator.xbuilder.asVoidStar(elementValue)
             : this.generator.createLoadIfNecessary(elementValue);
 

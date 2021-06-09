@@ -13,23 +13,14 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
-import {
-  checkIfArray,
-  checkIfObject,
-  checkIfString,
-  error,
-  flatten,
-  getAliasedSymbolIfNecessary,
-  getGenericsToActualMapFromSignature,
-  getTypeGenericArguments,
-  getTypeNamespace,
-  isTypeSupported,
-} from "@utils";
+import { error, flatten, getGenericsToActualMapFromSignature } from "@utils";
 import { getArgumentArrayType } from "@handlers/utils";
+import { LLVMGenerator } from "@generator";
+import { Type } from "../ts/type";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
-  private readonly checker: ts.TypeChecker;
+  private readonly generator: LLVMGenerator;
   private readonly demangled: string[] = [];
   private readonly includeDirs: string[] = [];
   private readonly stdIncludes: string[] = [
@@ -52,7 +43,7 @@ export class TemplateInstantiator {
   ) {
     // filter declarations
     this.sources = program.getSourceFiles().filter((source) => !source.isDeclarationFile);
-    this.checker = program.getTypeChecker();
+    this.generator = new LLVMGenerator(program);
     this.includeDirs = includeDirs;
 
     const extractor: NmSymbolExtractor = new NmSymbolExtractor();
@@ -64,8 +55,8 @@ export class TemplateInstantiator {
     this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
   }
 
-  private correctQualifiers(tsType: ts.Type, cppType: string) {
-    if (checkIfArray(tsType) || checkIfString(tsType, this.checker) || checkIfObject(tsType)) {
+  private correctQualifiers(tsType: Type, cppType: string) {
+    if (tsType.isArray() || tsType.isString() || tsType.isObject()) {
       cppType += "*";
     }
 
@@ -73,21 +64,21 @@ export class TemplateInstantiator {
   }
 
   private handleGenericConsoleLog(call: ts.CallExpression) {
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, ts.Type>) => {
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, Type>) => {
       const argumentTypes = call.arguments.map((arg) => {
-        let tsType = this.checker.getTypeAtLocation(arg);
+        let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
         if (tsType.isTypeParameter()) {
-          const typename = this.checker.typeToString(tsType);
+          const typename = tsType.toString();
           tsType = typeMap.get(typename)!;
 
-          if (checkIfObject(tsType)) {
+          if (tsType.isObject()) {
             error("console.log with object is not supported for generic types");
           }
         }
 
-        const typeNamespace = getTypeNamespace(tsType);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        const typeNamespace = tsType.getNamespace();
+        const cppTypename = tsType.toCppType();
         return this.correctQualifiers(
           tsType,
           typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
@@ -128,15 +119,17 @@ export class TemplateInstantiator {
       );
     }
 
-    const hasGenericArguments = call.arguments.some((arg) => this.checker.getTypeAtLocation(arg).isTypeParameter());
+    const hasGenericArguments = call.arguments.some((arg) =>
+      this.generator.ts.checker.getTypeAtLocation(arg).isTypeParameter()
+    );
     if (hasGenericArguments) {
       this.handleGenericConsoleLog(call);
     } else {
       const argumentTypes = call.arguments.map((arg) => {
-        const tsType = this.checker.getTypeAtLocation(arg);
+        const tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
-        const typeNamespace = getTypeNamespace(tsType);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        const typeNamespace = tsType.getNamespace();
+        const cppTypename = tsType.toCppType();
         return this.correctQualifiers(
           tsType,
           typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
@@ -169,43 +162,42 @@ export class TemplateInstantiator {
       if (node.initializer.elements.length > 0) {
         // const arr = [1, 2, 3];
         // Use elements to figure out array type.
-        const tsType = this.checker.getTypeAtLocation(node.initializer.elements[0]);
-        const tsTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        const tsType = this.generator.ts.checker.getTypeAtLocation(node.initializer.elements[0]);
+        const tsTypename = tsType.toCppType();
 
         // Arrays with values of different types not supported. Make a check.
         // @todo: Move this check to special correctness-check pass.
         if (
           node.initializer.elements.some((element) => {
-            const elementType = this.checker.getTypeAtLocation(element);
-            const elementTypename = ExternalSymbolsProvider.jsTypeToCpp(elementType, this.checker);
+            const elementType = this.generator.ts.checker.getTypeAtLocation(element);
+            const elementTypename = elementType.toCppType();
             return elementTypename !== tsTypename;
           })
         ) {
           error(`All array's elements have to be of same type: error at '${node.getText()}'`);
         }
 
-        const typeNamespace = getTypeNamespace(tsType);
-        let cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        const typeNamespace = tsType.getNamespace();
+        let cppType = tsType.toCppType();
         cppType = this.correctQualifiers(tsType, typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType);
 
-        templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(
-          this.checker.getTypeAtLocation(node.initializer),
-          this.checker
-        )};`;
+        templateInstance = `template class ${this.generator.ts.checker
+          .getTypeAtLocation(node.initializer)
+          .toCppType()};`;
       } else {
         // const arr: number[] = [];
         // Use declared type as array type.
-        const tsType = this.checker.getTypeAtLocation(node);
-        templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
+        const tsType = this.generator.ts.checker.getTypeAtLocation(node);
+        templateInstance = `template class ${tsType.toCppType()};`;
       }
 
       this.generatedContent.push(templateInstance);
     } else if (ts.isCallExpression(node.initializer)) {
-      const tsType = this.checker.getTypeAtLocation(node);
-      if (!checkIfArray(tsType)) {
-        error(`Array type expected, got '${this.checker.typeToString(tsType)}'`); // unreachable
+      const tsType = this.generator.ts.checker.getTypeAtLocation(node);
+      if (!tsType.isArray()) {
+        error(`Array type expected, got '${tsType.toString()}'`); // unreachable
       }
-      const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
+      const templateInstance = `template class ${tsType.toCppType()};`;
       this.generatedContent.push(templateInstance);
     }
   }
@@ -215,44 +207,42 @@ export class TemplateInstantiator {
       this.handleArrayFromVariableDeclaration(node);
     } else {
       if (ts.isCallExpression(node.parent) && ts.isArrayLiteralExpression(node) && node.elements.length === 0) {
-        const typeFromParameterDeclaration = getArgumentArrayType(node, this.checker);
-        const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(
-          typeFromParameterDeclaration,
-          this.checker
-        )};`;
+        const typeFromParameterDeclaration = getArgumentArrayType(node, this.generator.ts.checker);
+        const templateInstance = `template class ${typeFromParameterDeclaration.toCppType()};`;
         this.generatedContent.push(templateInstance);
       } else {
-        let tsType = this.checker.getTypeAtLocation(node);
-        let elementType: ts.Type = getTypeGenericArguments(tsType)[0];
-
-        if (elementType.isTypeParameter() && !isTypeSupported(elementType, this.checker)) {
-          const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, ts.Type>) => {
-            const typename = this.checker.typeToString(elementType);
-            elementType = typesMap.get(typename)!;
-
-            const typeNamespace = getTypeNamespace(elementType);
-            const elementTypename = ExternalSymbolsProvider.jsTypeToCpp(elementType, this.checker);
-
-            const templateInstance = `template class Array<${this.correctQualifiers(
-              elementType,
-              typeNamespace.length > 0 ? typeNamespace + "::" + elementTypename : elementTypename
-            )}>;`;
-
-            this.generatedContent.push(templateInstance);
-          });
-
-          this.sources.forEach((source) => {
-            source.forEachChild(visitor);
-          });
-
-          return;
-        }
+        let tsType;
 
         if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-          tsType = this.checker.getTypeAtLocation(node.left);
+          tsType = this.generator.ts.checker.getTypeAtLocation(node.left);
+        } else {
+          tsType = this.generator.ts.checker.getTypeAtLocation(node);
+          let elementType = tsType.getTypeGenericArguments()[0];
+
+          if (elementType.isTypeParameter() && !elementType.isSupported()) {
+            const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, Type>) => {
+              elementType = typesMap.get(elementType.toString())!;
+
+              const typeNamespace = elementType.getNamespace();
+              const elementTypename = elementType.toCppType();
+
+              const templateInstance = `template class Array<${this.correctQualifiers(
+                elementType,
+                typeNamespace.length > 0 ? typeNamespace + "::" + elementTypename : elementTypename
+              )}>;`;
+
+              this.generatedContent.push(templateInstance);
+            });
+
+            this.sources.forEach((source) => {
+              source.forEachChild(visitor);
+            });
+
+            return;
+          }
         }
 
-        const templateInstance = `template class ${ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker)};`;
+        const templateInstance = `template class ${tsType.toCppType()};`;
         this.generatedContent.push(templateInstance);
       }
     }
@@ -263,28 +253,24 @@ export class TemplateInstantiator {
       error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[call.expression.kind]}'`);
     }
 
-    const tsArrayType = this.checker.getTypeAtLocation(call.expression.expression);
-    let cppArrayType = ExternalSymbolsProvider.jsTypeToCpp(tsArrayType, this.checker);
+    const tsArrayType = this.generator.ts.checker.getTypeAtLocation(call.expression.expression);
+    let cppArrayType = tsArrayType.toCppType();
     const methodName = call.expression.name.getText();
 
-    const resolvedSignature = this.checker.getResolvedSignature(call);
-    const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature!);
-    let cppReturnType = this.correctQualifiers(
-      tsReturnType,
-      ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker)
-    );
+    const resolvedSignature = this.generator.ts.checker.getResolvedSignature(call);
+    const tsReturnType = this.generator.ts.checker.getReturnTypeOfSignature(resolvedSignature!);
+    let cppReturnType = this.correctQualifiers(tsReturnType, tsReturnType.toCppType());
 
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, ts.Type>) => {
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, Type>) => {
       const argumentTypes = call.arguments.map((arg) => {
-        let tsType = this.checker.getTypeAtLocation(arg);
+        let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
         if (tsType.isTypeParameter()) {
-          const typename = this.checker.typeToString(tsType);
-          tsType = typesMap.get(typename)!;
+          tsType = typesMap.get(tsType.toString())!;
         }
 
-        const typeNamespace = getTypeNamespace(tsType);
-        const cppTypename = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        const typeNamespace = tsType.getNamespace();
+        const cppTypename = tsType.toCppType();
         return this.correctQualifiers(
           tsType,
           typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename
@@ -304,13 +290,13 @@ export class TemplateInstantiator {
         return;
       }
 
-      const resolveArrayElementType = (arrayType: ts.Type) => {
-        const arrayTypename = this.checker.typeToString(arrayType);
+      const resolveArrayElementType = (arrayType: Type) => {
+        const arrayTypename = arrayType.toString();
         arrayType = typesMap.get(arrayTypename)!;
 
-        const typeNamespace = getTypeNamespace(arrayType);
+        const typeNamespace = arrayType.getNamespace();
 
-        let cppType = ExternalSymbolsProvider.jsTypeToCpp(arrayType, this.checker);
+        let cppType = arrayType.toCppType();
         cppType = this.correctQualifiers(
           arrayType,
           typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType
@@ -319,15 +305,15 @@ export class TemplateInstantiator {
         return cppType;
       };
 
-      const thisArrayElementType = getTypeGenericArguments(tsArrayType)[0];
-      if (!isTypeSupported(thisArrayElementType, this.checker)) {
+      const thisArrayElementType = tsArrayType.getTypeGenericArguments()[0];
+      if (!thisArrayElementType.isSupported()) {
         cppArrayType = `Array<${resolveArrayElementType(thisArrayElementType)}>`;
       }
 
-      if (checkIfArray(tsReturnType)) {
-        const returnArrayElementType = getTypeGenericArguments(tsReturnType)[0];
+      if (tsReturnType.isArray()) {
+        const returnArrayElementType = tsReturnType.getTypeGenericArguments()[0];
 
-        if (!isTypeSupported(returnArrayElementType, this.checker)) {
+        if (!returnArrayElementType.isSupported()) {
           cppReturnType = `Array<${resolveArrayElementType(returnArrayElementType)}>*`;
         }
       }
@@ -347,29 +333,27 @@ export class TemplateInstantiator {
       error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[node.expression.kind]}'`);
     }
 
-    const tsArrayType = this.checker.getTypeAtLocation(node.expression.expression);
-    const cppArrayType = ExternalSymbolsProvider.jsTypeToCpp(tsArrayType, this.checker);
+    const tsArrayType = this.generator.ts.checker.getTypeAtLocation(node.expression.expression);
+    const cppArrayType = tsArrayType.toCppType();
     const methodName = node.expression.name.getText();
 
-    const resolvedSignature = this.checker.getResolvedSignature(node)!;
-    const tsReturnType = this.checker.getReturnTypeOfSignature(resolvedSignature);
-    const cppReturnType = this.correctQualifiers(
-      tsReturnType,
-      ExternalSymbolsProvider.jsTypeToCpp(tsReturnType, this.checker)
-    );
+    const resolvedSignature = this.generator.ts.checker.getResolvedSignature(node);
+    const tsReturnType = this.generator.ts.checker.getReturnTypeOfSignature(resolvedSignature);
+    const cppReturnType = this.correctQualifiers(tsReturnType, tsReturnType.toCppType());
 
-    const elementType = getTypeGenericArguments(tsArrayType)[0];
+    const elementType = tsArrayType.getTypeGenericArguments()[0];
 
-    if (!isTypeSupported(elementType, this.checker) || !isTypeSupported(tsReturnType, this.checker)) {
+    if (!elementType.isSupported() || !tsReturnType.isSupported()) {
       this.handleGenericArrayMethods(node);
       return;
     }
 
     const argumentTypes =
       node.arguments.map((a) => {
-        const tsType = this.checker.getTypeAtLocation(a);
-        const typeNamespace = getTypeNamespace(tsType);
-        const cppType = ExternalSymbolsProvider.jsTypeToCpp(tsType, this.checker);
+        const tsType = this.generator.ts.checker.getTypeAtLocation(a);
+        const typeNamespace = tsType.getNamespace();
+        const cppType = tsType.toCppType();
+
         return this.correctQualifiers(tsType, typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType);
       }) || [];
 
@@ -406,14 +390,14 @@ export class TemplateInstantiator {
     } else if (
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&
-      checkIfArray(this.checker.getTypeAtLocation(node.expression.expression))
+      this.generator.ts.checker.getTypeAtLocation(node.expression.expression).isArray()
     ) {
       this.handleArrayMethods(node);
     } else if (
       ts.isExpressionStatement(node) &&
       ts.isCallExpression(node.expression) &&
       ts.isPropertyAccessExpression(node.expression.expression) &&
-      checkIfArray(this.checker.getTypeAtLocation(node.expression.expression.expression))
+      this.generator.ts.checker.getTypeAtLocation(node.expression.expression.expression).isArray()
     ) {
       this.handleArrayMethods(node.expression);
     } else {
@@ -422,45 +406,35 @@ export class TemplateInstantiator {
   }
 
   private arrayNodeVisitor(node: ts.Node) {
-    if (ts.isImportDeclaration(node)) {
+    if (ts.isImportDeclaration(node) || node.kind === ts.SyntaxKind.EndOfFileToken) {
       return;
     }
 
     if (ts.isCallExpression(node)) {
       node.arguments.forEach((arg) => ts.forEachChild(arg, this.arrayNodeVisitor.bind(this)));
-    }
-    if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
+    } else if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
       node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.arrayNodeVisitor.bind(this)));
-    }
-
-    if (checkIfArray(this.checker.getTypeAtLocation(node))) {
-      this.handleArray(node);
     } else {
-      ts.forEachChild(node, this.arrayNodeVisitor.bind(this));
+      if (this.generator.ts.checker.getTypeAtLocation(node).isArray()) {
+        this.handleArray(node);
+      } else {
+        ts.forEachChild(node, this.arrayNodeVisitor.bind(this));
+      }
     }
   }
 
-  private withTypesMapFromTypesProviderForNode(node: ts.Node, action: (map: Map<string, ts.Type>) => void) {
+  private withTypesMapFromTypesProviderForNode(node: ts.Node, action: (map: Map<string, Type>) => void) {
     let genericTypesProvider = node.parent;
     while (!ts.isFunctionLike(genericTypesProvider)) {
       genericTypesProvider = genericTypesProvider.parent;
     }
 
-    const typesProviderType = this.checker.getTypeAtLocation(genericTypesProvider);
-    let typesProviderSymbol = typesProviderType.getSymbol();
-    if (!typesProviderSymbol) {
-      error("No symbol found");
-    }
-
-    typesProviderSymbol = getAliasedSymbolIfNecessary(typesProviderSymbol, this.checker);
-
+    const typesProviderType = this.generator.ts.checker.getTypeAtLocation(genericTypesProvider);
+    const typesProviderSymbol = typesProviderType.getSymbol();
     const typesProviderDeclaration = typesProviderSymbol.declarations[0] as ts.FunctionLikeDeclaration;
-    const typesProviderSignature = this.checker.getSignatureFromDeclaration(
+    const typesProviderSignature = this.generator.ts.checker.getSignatureFromDeclaration(
       typesProviderDeclaration as ts.SignatureDeclaration
     );
-    if (!typesProviderSignature) {
-      error("No signature found");
-    }
 
     const visitor = (n: ts.Node) => {
       n.forEachChild(visitor);
@@ -476,12 +450,13 @@ export class TemplateInstantiator {
           return;
         }
 
-        const type = this.checker.getTypeAtLocation(referenceCall.expression);
-        let symbol = type.getSymbol();
-        if (!symbol) {
-          error("No symbol found");
+        const type = this.generator.ts.checker.getTypeAtLocation(referenceCall.expression);
+
+        if (type.isSymbolless()) {
+          return;
         }
-        symbol = getAliasedSymbolIfNecessary(symbol, this.checker);
+
+        const symbol = type.getSymbol();
         if (symbol !== typesProviderSymbol) {
           return;
         }
@@ -489,7 +464,7 @@ export class TemplateInstantiator {
         const genericTypesMap = getGenericsToActualMapFromSignature(
           typesProviderSignature,
           referenceCall,
-          this.checker
+          this.generator
         );
 
         action(genericTypesMap);

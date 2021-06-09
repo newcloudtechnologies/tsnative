@@ -48,6 +48,14 @@ export class Preprocessor {
       fs.mkdirSync(outputDir);
     }
 
+    const transformer = (context: ts.TransformationContext) => {
+      return (sourceFile: ts.SourceFile) => {
+        return this.parts.reduce((source, processor) => {
+          return processor.transformer(context)(source);
+        }, sourceFile);
+      };
+    };
+
     const generatedSources = program.getSourceFiles().map((file) => {
       let filePath = file.fileName;
       if (!path.isAbsolute(filePath)) {
@@ -76,7 +84,7 @@ export class Preprocessor {
       if (file.isDeclarationFile) {
         resultFile = file;
       } else {
-        const result = ts.transform(file, [this.transformer]);
+        const result = ts.transform(file, [transformer]);
         resultFile = first(result.transformed)!;
       }
 
@@ -94,14 +102,6 @@ export class Preprocessor {
       fs.rmdirSync(outputDir, { recursive: true });
     };
   }
-
-  private readonly transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
-    return (sourceFile: ts.SourceFile) => {
-      return this.parts.reduce((source, processor) => {
-        return processor.transformer(context)(source);
-      }, sourceFile);
-    };
-  };
 
   get program() {
     return this.generatedProgram;

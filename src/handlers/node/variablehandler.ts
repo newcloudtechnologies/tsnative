@@ -9,23 +9,9 @@
  *
  */
 
-import { adjustValue, isCppIntegralType } from "@cpp";
+import { adjustValue } from "@cpp";
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
-import {
-  checkIfUnion,
-  initializeUnion,
-  tryResolveGenericTypeIfNecessary,
-  getUnionStructType,
-  getLLVMType,
-  isUnionWithUndefinedLLVMType,
-  isUnionWithNullLLVMType,
-  checkIfIntersection,
-  initializeIntersection,
-  getIntersectionStructType,
-  unwrapPointerType,
-  error,
-  getStructType,
-} from "@utils";
+import { unwrapPointerType, error } from "@utils";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import * as llvm from "llvm-node";
@@ -52,35 +38,31 @@ export class VariableHandler extends AbstractNodeHandler {
 
   private handleVariableDeclaration(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment): void {
     const name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
+
     let initializer = this.getInitializer(declaration, name, parentScope, env);
     if (!initializer) {
       return;
     }
 
-    let type = this.generator.checker.getTypeAtLocation(declaration);
-    type = tryResolveGenericTypeIfNecessary(type, this.generator);
-    const typename = this.generator.checker.typeToString(type);
-    if (isCppIntegralType(typename)) {
+    const type = this.generator.ts.checker.getTypeAtLocation(declaration);
+    const typename = type.toString();
+    if (type.isCppIntegralType()) {
       initializer = adjustValue(initializer, typename, this.generator);
     }
 
-    if (checkIfUnion(type)) {
-      const llvmUnionType = getUnionStructType(type as ts.UnionType, declaration, this.generator).getPointerTo();
-      initializer = initializeUnion(llvmUnionType, initializer, this.generator);
-    } else if (checkIfIntersection(type)) {
-      const llvmIntersectionType = getIntersectionStructType(
-        type as ts.IntersectionType,
-        declaration,
-        this.generator
-      ).getPointerTo();
-      initializer = initializeIntersection(llvmIntersectionType, initializer, this.generator);
+    if (type.isUnion()) {
+      const llvmUnionType = type.getLLVMType() as llvm.PointerType;
+      initializer = this.generator.types.union.initialize(llvmUnionType, initializer);
+    } else if (type.isIntersection()) {
+      const llvmIntersectionType = type.getLLVMType() as llvm.PointerType;
+      initializer = this.generator.types.intersection.initialize(llvmIntersectionType, initializer);
     } else if (type.isClassOrInterface()) {
       const initializerNakedType = unwrapPointerType(initializer.type);
       if (!initializerNakedType.isStructTy()) {
         error(`Expected initializer to be of StructType`);
       }
 
-      const declarationLLVMType = getStructType(type, declaration, this.generator);
+      const declarationLLVMType = unwrapPointerType(type.getLLVMType()) as llvm.StructType;
 
       if (!initializerNakedType.equals(declarationLLVMType)) {
         if (initializerNakedType.numElements === declarationLLVMType.numElements) {
@@ -127,12 +109,15 @@ export class VariableHandler extends AbstractNodeHandler {
       }
 
       if (!declarationLLVMType) {
-        const declarationType = this.generator.checker.getTypeAtLocation(declaration);
-        declarationLLVMType = getLLVMType(declarationType, declaration, this.generator);
+        const declarationType = this.generator.ts.checker.getTypeAtLocation(declaration);
+        declarationLLVMType = declarationType.getLLVMType();
       }
       initializer = llvm.Constant.getNullValue(unwrapPointerType(declarationLLVMType));
 
-      if (isUnionWithUndefinedLLVMType(declarationLLVMType) || isUnionWithNullLLVMType(declarationLLVMType)) {
+      if (
+        this.generator.types.union.isUnionWithUndefined(declarationLLVMType) ||
+        this.generator.types.union.isUnionWithNull(declarationLLVMType)
+      ) {
         initializer = this.generator.xbuilder.createSafeInsert(
           initializer,
           llvm.ConstantInt.get(this.generator.context, -1, 8),
