@@ -12,7 +12,7 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { error, isCppPrimitiveType, XBuilder } from "@utils";
+import { error } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
@@ -22,6 +22,9 @@ import { Types } from "../types/types";
 import { SizeOf } from "@cpp";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
+import { LLVMConstantInt, LLVMValue } from "../llvm/value";
+import { Builder } from "../builder/builder";
+import { LLVMType } from "../llvm/type";
 
 export class LLVMGenerator {
   readonly module: llvm.Module;
@@ -32,8 +35,7 @@ export class LLVMGenerator {
   readonly program: ts.Program;
   private currentSource: ts.SourceFile | undefined;
 
-  private irBuilder: llvm.IRBuilder;
-  private readonly xBuilder: XBuilder;
+  private irBuilder: Builder;
 
   readonly expressionHandlerChain = new ExpressionHandlerChain(this);
   readonly nodeHandlerChain = new NodeHandlerChain(this);
@@ -54,8 +56,7 @@ export class LLVMGenerator {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
-    this.irBuilder = new llvm.IRBuilder(this.context);
-    this.xBuilder = new XBuilder(this);
+    this.irBuilder = new Builder(this, null);
     this.symbolTable = new SymbolTable();
 
     this.builtinInt8 = new BuiltinInt8(this);
@@ -71,17 +72,17 @@ export class LLVMGenerator {
   }
 
   createModule(): llvm.Module {
-    const mainReturnType = llvm.Type.getInt32Ty(this.context);
+    const mainReturnType = LLVMType.getInt32Type(this);
     const { fn: main } = this.llvm.function.create(mainReturnType, [], "main");
 
-    const entryBlock = llvm.BasicBlock.create(this.context, "entry", main);
+    const entryBlock = llvm.BasicBlock.create(this.context, "entry", main.unwrapped as llvm.Function);
 
     const sourceFiles: ts.SourceFile[] = [];
     for (const sourceFile of this.program.getSourceFiles()) {
       sourceFiles.push(sourceFile);
     }
 
-    // Sources order in not defined, ensure std numeric types will appear in symbol table first as others, like GC, depends on them.
+    // Sources order is not defined, ensure std numeric types will appear in symbol table first as others, like GC, depends on them.
     const indexOfStdNumeric = sourceFiles.findIndex((file) => file.fileName.endsWith("lib.std.numeric.d.ts"));
     sourceFiles.unshift(...sourceFiles.splice(indexOfStdNumeric, 1));
 
@@ -90,12 +91,12 @@ export class LLVMGenerator {
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
 
-      injectUndefined(this.symbolTable.currentScope, this.context);
+      injectUndefined(this.symbolTable.currentScope, this);
 
       sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
 
-    this.xbuilder.createSafeRet(llvm.ConstantInt.get(this.context, 0));
+    this.builder.createSafeRet(LLVMConstantInt.get(this, 0));
 
     try {
       llvm.verifyModule(this.module);
@@ -128,7 +129,7 @@ export class LLVMGenerator {
 
   withLocalBuilder<R>(action: () => R): R {
     const builder = this.builder;
-    this.irBuilder = new llvm.IRBuilder(this.currentFunction.getEntryBlock()!);
+    this.irBuilder = new Builder(this, this.currentFunction.getEntryBlock());
     const result: R = action();
     this.irBuilder = builder;
     return result;
@@ -146,7 +147,7 @@ export class LLVMGenerator {
       error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
   }
 
-  handleExpression(expression: ts.Expression, env?: Environment): llvm.Value {
+  handleExpression(expression: ts.Expression, env?: Environment): LLVMValue {
     const value = this.expressionHandlerChain.handle(expression, env);
     if (value) {
       return value;
@@ -157,8 +158,8 @@ export class LLVMGenerator {
     );
   }
 
-  createLoadIfNecessary(value: llvm.Value) {
-    if (value.type.isPointerTy() && isCppPrimitiveType(value.type.elementType)) {
+  createLoadIfNecessary(value: LLVMValue) {
+    if (value.type.isPointer() && value.type.getPointerElementType().isCppPrimitiveType()) {
       return this.builder.createLoad(value);
     }
     return value;
@@ -175,12 +176,8 @@ export class LLVMGenerator {
     return this.currentSource;
   }
 
-  get builder(): llvm.IRBuilder {
+  get builder() {
     return this.irBuilder;
-  }
-
-  get xbuilder(): XBuilder {
-    return this.xBuilder;
   }
 
   get isCurrentBlockTerminated(): boolean {

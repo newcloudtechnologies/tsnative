@@ -10,14 +10,14 @@
  */
 
 import { makeAssignment } from "@handlers";
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error, unwrapPointerType } from "@utils";
+import { error } from "@utils";
+import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isBinaryExpression(expression)) {
       const isSetAccessor = (expr: ts.Expression): boolean => {
         if (!expr.parent) {
@@ -62,15 +62,15 @@ export class AssignmentHandler extends AbstractExpressionHandler {
           if (right.kind === ts.SyntaxKind.NullKeyword) {
             if (!this.generator.types.union.isUnionWithNull(lhs.type)) {
               error(
-                `Expected left hand side operand to be union with null type, got '${unwrapPointerType(
-                  lhs.type
-                ).toString()}'`
+                `Expected left hand side operand to be union with null type, got '${lhs.type
+                  .unwrapPointer()
+                  .toString()}'`
               );
             }
 
-            rhs = this.generator.gc.allocate(unwrapPointerType(lhs.type));
-            const marker = this.generator.xbuilder.createSafeInBoundsGEP(rhs, [0, 0]);
-            this.generator.xbuilder.createSafeStore(llvm.ConstantInt.get(this.generator.context, -1, 8), marker);
+            rhs = this.generator.gc.allocate(lhs.type.unwrapPointer());
+            const marker = this.generator.builder.createSafeInBoundsGEP(rhs, [0, 0]);
+            this.generator.builder.createSafeStore(LLVMConstantInt.get(this.generator, -1, 8), marker);
           } else {
             rhs = this.generator.handleExpression(right, env);
           }

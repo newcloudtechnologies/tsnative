@@ -9,8 +9,6 @@
  *
  */
 
-export * from "./build";
-export * from "./error";
-export * from "./ts-utils";
-export * from "./tsc-utils";
-export * from "./llvm-utils";
+export function error(message: string): never {
+  throw new Error(message);
+}

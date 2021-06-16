@@ -12,8 +12,9 @@
 import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
+import { flatten } from "lodash";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
-import { error, flatten, getGenericsToActualMapFromSignature } from "@utils";
+import { error, getGenericsToActualMapFromSignature } from "@utils";
 import { getArgumentArrayType } from "@handlers/utils";
 import { LLVMGenerator } from "@generator";
 import { Type } from "../ts/type";

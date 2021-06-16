@@ -9,11 +9,12 @@
  *
  */
 
-import { BasicBlock, ConstantInt } from "llvm-node";
+import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
 import { makeBoolean } from "@handlers/utils";
+import { LLVMConstantInt } from "../../llvm/value";
 
 export class BranchHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -26,9 +27,9 @@ export class BranchHandler extends AbstractNodeHandler {
         this.generator.types.union.isUnionWithNull(condition.type)
       ) {
         condition = makeBoolean(condition, statement.expression, this.generator);
-      } else if (condition.type.isPointerTy()) {
+      } else if (condition.type.isPointer()) {
         // All the nullable and optional types are represented as unions, so there is a guarantee for pointer to have actual value
-        condition = ConstantInt.getTrue(this.generator.context);
+        condition = LLVMConstantInt.getTrue(this.generator);
       }
 
       const thenBlock = BasicBlock.create(this.generator.context, "then", this.generator.currentFunction);

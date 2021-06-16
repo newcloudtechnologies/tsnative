@@ -9,12 +9,14 @@
  *
  */
 
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
 import { LLVMGenerator } from "@generator";
-import { checkIfLLVMString, error, flatten, getLLVMValue, unwrapPointerType } from "@utils";
+import { error } from "@utils";
 import { Type } from "../ts/type";
+import { flatten } from "lodash";
+import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMConstant, LLVMValue } from "../llvm/value";
 
 export class Intersection {
   private readonly generator: LLVMGenerator;
@@ -23,7 +25,7 @@ export class Intersection {
     this.generator = generator;
   }
 
-  private getLLVMTypename(type: llvm.Type) {
+  private getLLVMTypename(type: LLVMType) {
     return type.toString().replace(/%|\*/g, "");
   }
 
@@ -43,12 +45,12 @@ export class Intersection {
     return type.isIntersection();
   }
 
-  isLLVMIntersection(type: llvm.Type): boolean {
-    const nakedType = unwrapPointerType(type);
-    return Boolean(nakedType.isStructTy() && nakedType.name?.endsWith(".intersection"));
+  isLLVMIntersection(type: LLVMType): boolean {
+    const nakedType = type.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.getName()?.endsWith(".intersection"));
   }
 
-  getSubtypesNames(type: llvm.Type) {
+  getSubtypesNames(type: LLVMType) {
     return type
       .toString()
       .split(".")
@@ -56,7 +58,7 @@ export class Intersection {
       .map((typeName) => typeName.replace(/%|\*/g, ""));
   }
 
-  private getTypeProperties(type: Type): { type: llvm.Type; name: string }[] {
+  private getTypeProperties(type: Type): { type: LLVMType; name: string }[] {
     return flatten(
       type.types.map((t) => {
         if (t.isIntersection()) {
@@ -68,19 +70,17 @@ export class Intersection {
           const tsType = this.generator.ts.checker.getTypeAtLocation(declaration);
           const llvmType = tsType.getLLVMType();
           const valueType = declaration.decorators?.some((decorator) => decorator.getText() === "@ValueType");
-          return { type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name };
+          return { type: valueType ? llvmType.unwrapPointer() : llvmType, name: property.name };
         });
       })
     );
   }
 
   getStructType(type: Type) {
-    const { context, module } = this.generator;
-
     const intersectionName = type.toString();
-    let intersection = module.getTypeByName(intersectionName);
-    if (intersection) {
-      return intersection;
+    const existing = this.generator.module.getTypeByName(intersectionName);
+    if (existing) {
+      return LLVMType.make(existing, this.generator);
     }
 
     const elements = this.getTypeProperties(type);
@@ -90,7 +90,7 @@ export class Intersection {
       error(`Intersection '${intersectionName}' has no elements.`);
     }
 
-    intersection = llvm.StructType.create(context, intersectionName);
+    const intersection = LLVMStructType.create(this.generator, intersectionName);
     intersection.setBody(elements.map((element) => element.type));
 
     this.generator.meta.registerIntersectionMeta(
@@ -102,21 +102,21 @@ export class Intersection {
     return intersection;
   }
 
-  initialize(destinationType: llvm.PointerType, initializer: llvm.Value) {
+  initialize(destinationType: LLVMType, initializer: LLVMValue) {
+    if (!destinationType.isPointer()) {
+      error(`Expected pointer type, got '${destinationType.toString()}'`);
+    }
+
     if (destinationType.equals(initializer.type)) {
       return initializer;
     }
 
-    if (!destinationType.elementType.isStructTy()) {
-      error(`Expected destination to be of StructType, got ${destinationType.elementType.toString()}`);
+    if (!destinationType.getPointerElementType().isStructType()) {
+      error(`Expected destination to be of StructType, got ${destinationType.getPointerElementType().toString()}`);
     }
 
-    if (!initializer.type.isPointerTy()) {
-      error(`Expected initializer to be of PointerType, got ${initializer.type.toString()}`);
-    }
-
-    if (!initializer.type.elementType.isStructTy()) {
-      error(`Expected initializer value to be of StructType, got ${initializer.type.elementType.toString()}`);
+    if (!initializer.type.isPointerToStruct()) {
+      error(`Expected initializer to be a pointer to struct, got ${initializer.type.toString()}`);
     }
 
     if (this.isLLVMIntersection(initializer.type)) {
@@ -124,36 +124,42 @@ export class Intersection {
     }
 
     initializer = this.generator.builder.createLoad(initializer);
-    const initializerStructType = initializer.type as llvm.StructType;
+    const initializerStructType = initializer.type as LLVMStructType;
 
-    if (initializerStructType.numElements !== destinationType.elementType.numElements) {
+    if (initializerStructType.numElements !== (destinationType.getPointerElementType() as LLVMStructType).numElements) {
       error(
-        `Types mismatch: destination type: '${destinationType.elementType.toString()}', initializer: '${initializer.type.toString()}'`
+        `Types mismatch: destination type: '${destinationType
+          .getPointerElementType()
+          .toString()}', initializer: '${initializer.type.toString()}'`
       );
     }
 
-    let intersection = llvm.Constant.getNullValue(destinationType.elementType);
+    let intersection = LLVMConstant.createNullValue(destinationType.getPointerElementType(), this.generator);
 
     for (let i = 0; i < initializerStructType.numElements; ++i) {
-      const value = this.generator.xbuilder.createSafeExtractValue(initializer, [i]);
-      intersection = this.generator.xbuilder.createSafeInsert(intersection, value, [i]) as llvm.Constant;
+      const value = this.generator.builder.createSafeExtractValue(initializer, [i]);
+      intersection = this.generator.builder.createSafeInsert(intersection, value, [i]) as LLVMConstant;
     }
 
     const allocated = this.generator.gc.allocate(intersection.type);
-    this.generator.xbuilder.createSafeStore(intersection, allocated);
+    this.generator.builder.createSafeStore(intersection, allocated);
     return allocated;
   }
 
-  extract(intersection: llvm.Value, destinationType: llvm.PointerType): llvm.Constant {
-    if (!intersection.type.isPointerTy()) {
+  extract(intersection: LLVMValue, destinationType: LLVMType) {
+    if (!intersection.type.isPointer()) {
       error(`Expected intersection to be of PointerType, got '${intersection.type.toString()}'`);
     }
 
-    if (!intersection.type.elementType.isStructTy()) {
-      error(`Expected intersection element to be of StructType, got '${intersection.type.elementType.toString()}'`);
+    if (!intersection.type.getPointerElementType().isStructType()) {
+      error(
+        `Expected intersection element to be of StructType, got '${intersection.type
+          .getPointerElementType()
+          .toString()}'`
+      );
     }
 
-    const intersectionStructType = unwrapPointerType(intersection.type) as llvm.StructType;
+    const intersectionStructType = intersection.type.unwrapPointer() as LLVMStructType;
     const intersectionElementTypes = [];
 
     for (let i = 0; i < intersectionStructType.numElements; ++i) {
@@ -161,17 +167,18 @@ export class Intersection {
     }
 
     const destinationElementTypes = [];
-    const destinationStructType = destinationType.elementType as llvm.StructType;
+    const destinationStructType = destinationType.getPointerElementType() as LLVMStructType;
 
     for (let i = 0; i < destinationStructType.numElements; ++i) {
       let type = destinationStructType.getElementType(i);
-      if (!checkIfLLVMString(type)) {
-        if (type.isPointerTy() && type.elementType.isStructTy()) {
+      if (!type.isString()) {
+        if (type.isPointerToStruct()) {
           const elementTypes = [];
-          for (let k = 0; k < type.elementType.numElements; ++k) {
-            elementTypes.push(type.elementType.getElementType(k));
+          const structType = type.getPointerElementType() as LLVMStructType;
+          for (let k = 0; k < structType.numElements; ++k) {
+            elementTypes.push(structType.getElementType(k));
           }
-          type = llvm.StructType.get(this.generator.context, elementTypes).getPointerTo();
+          type = LLVMStructType.get(this.generator, elementTypes).getPointer();
         }
       }
       destinationElementTypes.push(type);
@@ -180,7 +187,7 @@ export class Intersection {
     let startIndex = this.findIndexOfSubarray(
       intersectionElementTypes,
       destinationElementTypes,
-      (lhs: llvm.Type, rhs: llvm.Type) => lhs.equals(rhs)
+      (lhs: LLVMType, rhs: LLVMType) => lhs.equals(rhs)
     );
 
     if (startIndex === -1) {
@@ -193,17 +200,17 @@ export class Intersection {
       }
     }
 
-    let result = llvm.Constant.getNullValue(destinationStructType);
+    let result = LLVMConstant.createNullValue(destinationStructType, this.generator);
 
-    const intersectionValue = getLLVMValue(intersection, this.generator);
+    const intersectionValue = intersection.getValue();
     for (let i = startIndex, k = 0; i < startIndex + destinationStructType.numElements; ++i, ++k) {
-      const value = this.generator.xbuilder.createSafeExtractValue(intersectionValue, [i]);
-      result = this.generator.xbuilder.createSafeInsert(result, value, [k]) as llvm.Constant;
+      const value = this.generator.builder.createSafeExtractValue(intersectionValue, [i]);
+      result = this.generator.builder.createSafeInsert(result, value, [k]) as LLVMConstant;
     }
 
     const allocation = this.generator.gc.allocate(destinationStructType);
-    this.generator.xbuilder.createSafeStore(result, allocation);
+    this.generator.builder.createSafeStore(result, allocation);
 
-    return allocation as llvm.Constant;
+    return allocation;
   }
 }

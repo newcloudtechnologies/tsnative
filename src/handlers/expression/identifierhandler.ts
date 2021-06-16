@@ -9,14 +9,14 @@
  *
  */
 
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment } from "@scope";
 import { error, getDeclarationNamespace, InternalNames } from "@utils";
+import { LLVMValue } from "../../llvm/value";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.Identifier:
         return this.handleIdentifier(expression as ts.Identifier, env);
@@ -33,12 +33,12 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleIdentifier(expression: ts.Identifier, env?: Environment): llvm.Value {
+  private handleIdentifier(expression: ts.Identifier, env?: Environment): LLVMValue {
     if (env) {
       const index = env.getVariableIndex(expression.text);
       if (index > -1) {
         const agg = this.generator.builder.createLoad(env.typed);
-        return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
+        return this.generator.builder.createSafeExtractValue(agg, [index]);
       }
     }
 
@@ -58,25 +58,25 @@ export class IdentifierHandler extends AbstractExpressionHandler {
         return value.allocated;
       }
 
-      if (!(value instanceof llvm.Value)) {
-        error(`Identifier handler: llvm.Value for '${expression.text}' not found`);
+      if (!value) {
+        error(`Identifier handler: LLVMValue for '${expression.text}' not found`);
       }
 
-      return value as llvm.Value;
+      return value as LLVMValue;
     }
 
     error(`Identifier '${expression.text}' not found in local scope nor environment`);
   }
 
-  private handleThis(env?: Environment): llvm.Value {
+  private handleThis(env?: Environment): LLVMValue {
     if (env) {
       const index = env.getVariableIndex(InternalNames.This);
       if (index > -1) {
         const agg = this.generator.builder.createLoad(env.typed);
-        return this.generator.xbuilder.createSafeExtractValue(agg, [index]);
+        return this.generator.builder.createSafeExtractValue(agg, [index]);
       }
     }
 
-    return this.generator.symbolTable.get(InternalNames.This) as llvm.Value;
+    return this.generator.symbolTable.get(InternalNames.This) as LLVMValue;
   }
 }

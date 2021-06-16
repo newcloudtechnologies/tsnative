@@ -9,19 +9,11 @@
  *
  */
 
-import {
-  flatten,
-  checkIfProperty,
-  error,
-  getDeclarationNamespace,
-  getSyntheticBody,
-  unwrapPointerType,
-  checkIfHasVTable,
-} from "@utils";
-import { cloneDeep } from "lodash";
+import { checkIfProperty, error, getDeclarationNamespace, getSyntheticBody, checkIfHasVTable } from "@utils";
+import { cloneDeep, flatten } from "lodash";
 import { TypeChecker } from "./typechecker";
 import * as ts from "typescript";
-import * as llvm from "llvm-node";
+import { LLVMStructType, LLVMType } from "../llvm/type";
 
 export class Type {
   private type: ts.Type;
@@ -376,7 +368,7 @@ export class Type {
     return [this.getTypename(), ...typeArguments].concat(suffix || []).join("__");
   }
 
-  getObjectPropsLLVMTypesNames(): { type: llvm.Type; name: string }[] {
+  getObjectPropsLLVMTypesNames(): { type: LLVMType; name: string }[] {
     if (this.isUnionOrIntersection()) {
       return flatten(
         this.types.map((subtype) => {
@@ -385,7 +377,7 @@ export class Type {
       ).filter((value, index, array) => array.findIndex((v) => v.name === value.name) === index);
     }
 
-    const getTypeAndNameFromProperty = (property: ts.Symbol): { type: llvm.Type; name: string } => {
+    const getTypeAndNameFromProperty = (property: ts.Symbol): { type: LLVMType; name: string } => {
       const declaration = property.declarations[0];
       const tsType = this.checker.getTypeAtLocation(declaration);
       const llvmType = tsType.getLLVMType();
@@ -393,12 +385,12 @@ export class Type {
         (decorator) => decorator.getText() === "@ValueType"
       );
 
-      return { type: valueType ? unwrapPointerType(llvmType) : llvmType, name: property.name };
+      return { type: valueType ? llvmType.unwrapPointer() : llvmType, name: property.name };
     };
 
     const symbol = this.getSymbol();
 
-    const properties: { type: llvm.Type; name: string }[] = [];
+    const properties: { type: LLVMType; name: string }[] = [];
     if (
       symbol.valueDeclaration &&
       ts.isClassDeclaration(symbol.valueDeclaration) &&
@@ -432,16 +424,16 @@ export class Type {
     switch (this.toString()) {
       case "int8_t":
       case "uint8_t":
-        return llvm.Type.getInt8Ty(this.checker.generator.context);
+        return LLVMType.getInt8Type(this.checker.generator);
       case "int16_t":
       case "uint16_t":
-        return llvm.Type.getInt16Ty(this.checker.generator.context);
+        return LLVMType.getInt16Type(this.checker.generator);
       case "int32_t":
       case "uint32_t":
-        return llvm.Type.getInt32Ty(this.checker.generator.context);
+        return LLVMType.getInt32Type(this.checker.generator);
       case "int64_t":
       case "uint64_t":
-        return llvm.Type.getInt64Ty(this.checker.generator.context);
+        return LLVMType.getInt64Type(this.checker.generator);
       default:
         error("Expected integral type");
     }
@@ -449,10 +441,9 @@ export class Type {
 
   // @todo: tslint will warn 'no-unused-variables' if this method is marked as private
   protected getStructType() {
-    const { context, module } = this.checker.generator;
     const elements = this.getObjectPropsLLVMTypesNames();
 
-    let structType: llvm.StructType | null;
+    let structType: LLVMStructType;
     const declaration =
       this.getSymbol()?.declarations.find(ts.isClassDeclaration) ||
       this.getSymbol()?.declarations.find(ts.isInterfaceDeclaration);
@@ -460,21 +451,21 @@ export class Type {
     if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
       const namespace = getDeclarationNamespace(declaration);
       const name = ts.isClassDeclaration(declaration) ? namespace.concat(this.mangle()).join("_") : this.toString();
-      structType = module.getTypeByName(name);
-      if (!structType) {
-        structType = llvm.StructType.create(context, name);
+      const knownStructType = this.checker.generator.module.getTypeByName(name);
+      if (!knownStructType) {
+        structType = LLVMStructType.create(this.checker.generator, name);
         const props = this.getProperties().map((symbol) => symbol.name);
         this.checker.generator.meta.registerObjectMeta(name, structType, props);
 
         const knownSize = this.checker.generator.sizeOf.getByName(name);
         if (knownSize) {
-          const syntheticBody = getSyntheticBody(knownSize, context);
+          const syntheticBody = getSyntheticBody(knownSize, this.checker.generator);
           structType.setBody(syntheticBody);
         } else {
           const structElements = elements.map((element) => element.type);
           if (ts.isClassDeclaration(declaration) && checkIfHasVTable(declaration)) {
             // vptr
-            structElements.unshift(llvm.Type.getInt32Ty(this.checker.generator.context).getPointerTo());
+            structElements.unshift(LLVMType.getInt32Type(this.checker.generator).getPointer());
           }
           structType.setBody(structElements);
         }
@@ -484,10 +475,12 @@ export class Type {
           structType,
           elements.map((element) => element.name)
         );
+      } else {
+        structType = LLVMType.make(knownStructType, this.checker.generator) as LLVMStructType;
       }
     } else {
-      structType = llvm.StructType.get(
-        context,
+      structType = LLVMStructType.get(
+        this.checker.generator,
         elements.map((element) => element.type)
       );
     }
@@ -495,13 +488,13 @@ export class Type {
     return structType;
   }
 
-  getLLVMType(): llvm.Type {
+  getLLVMType(): LLVMType {
     if (this.isIntersection()) {
-      return this.checker.generator.types.intersection.getStructType(this).getPointerTo();
+      return this.checker.generator.types.intersection.getStructType(this).getPointer();
     }
 
     if (this.isUnion()) {
-      return this.checker.generator.types.union.getStructType(this).getPointerTo();
+      return this.checker.generator.types.union.getStructType(this).getPointer();
     }
 
     if (this.isCppIntegralType()) {
@@ -509,15 +502,15 @@ export class Type {
     }
 
     if (this.isEnum()) {
-      return llvm.Type.getInt32PtrTy(this.checker.generator.context);
+      return LLVMType.getInt32Type(this.checker.generator).getPointer();
     }
 
     if (this.isBoolean()) {
-      return llvm.Type.getInt1PtrTy(this.checker.generator.context);
+      return LLVMType.getIntNType(1, this.checker.generator).getPointer();
     }
 
     if (this.isNumber()) {
-      return llvm.Type.getDoublePtrTy(this.checker.generator.context);
+      return LLVMType.getDoubleType(this.checker.generator).getPointer();
     }
 
     if (this.isString()) {
@@ -525,7 +518,7 @@ export class Type {
     }
 
     if (this.isVoid()) {
-      return llvm.Type.getVoidTy(this.checker.generator.context);
+      return LLVMType.getVoidType(this.checker.generator);
     }
 
     if (this.isFunction()) {
@@ -555,15 +548,15 @@ export class Type {
     }
 
     if (this.isUndefined()) {
-      return llvm.Type.getInt8Ty(this.checker.generator.context);
+      return LLVMType.getInt8Type(this.checker.generator);
     }
 
     if (this.isObject()) {
-      return this.getStructType().getPointerTo();
+      return this.getStructType()!.getPointer();
     }
 
     if (this.isNull()) {
-      return llvm.Type.getInt8Ty(this.checker.generator.context);
+      return LLVMType.getInt8Type(this.checker.generator);
     }
 
     error(`Unhandled type: '${this.toString()}'`);

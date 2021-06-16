@@ -11,10 +11,11 @@
 
 import { adjustValue } from "@cpp";
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
-import { unwrapPointerType, error } from "@utils";
+import { error } from "@utils";
+import { LLVMStructType } from "../../llvm/type";
+import { LLVMConstant, LLVMConstantInt } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import * as llvm from "llvm-node";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -51,28 +52,28 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     if (type.isUnion()) {
-      const llvmUnionType = type.getLLVMType() as llvm.PointerType;
+      const llvmUnionType = type.getLLVMType();
       initializer = this.generator.types.union.initialize(llvmUnionType, initializer);
     } else if (type.isIntersection()) {
-      const llvmIntersectionType = type.getLLVMType() as llvm.PointerType;
+      const llvmIntersectionType = type.getLLVMType();
       initializer = this.generator.types.intersection.initialize(llvmIntersectionType, initializer);
     } else if (type.isClassOrInterface()) {
-      const initializerNakedType = unwrapPointerType(initializer.type);
-      if (!initializerNakedType.isStructTy()) {
+      const initializerNakedType = initializer.type.unwrapPointer();
+      if (!initializerNakedType.isStructType()) {
         error(`Expected initializer to be of StructType`);
       }
 
-      const declarationLLVMType = unwrapPointerType(type.getLLVMType()) as llvm.StructType;
+      const declarationLLVMType = type.getLLVMType().unwrapPointer() as LLVMStructType;
 
       if (!initializerNakedType.equals(declarationLLVMType)) {
         if (initializerNakedType.numElements === declarationLLVMType.numElements) {
           const allocated = this.generator.gc.allocate(declarationLLVMType);
           for (let i = 0; i < initializerNakedType.numElements; ++i) {
-            const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
+            const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
             const sourceValue = this.generator.builder.createLoad(
-              this.generator.xbuilder.createSafeInBoundsGEP(initializer, [0, i])
+              this.generator.builder.createSafeInBoundsGEP(initializer, [0, i])
             );
-            this.generator.xbuilder.createSafeStore(sourceValue, destinationPtr);
+            this.generator.builder.createSafeStore(sourceValue, destinationPtr);
           }
 
           initializer = allocated;
@@ -112,20 +113,18 @@ export class VariableHandler extends AbstractNodeHandler {
         const declarationType = this.generator.ts.checker.getTypeAtLocation(declaration);
         declarationLLVMType = declarationType.getLLVMType();
       }
-      initializer = llvm.Constant.getNullValue(unwrapPointerType(declarationLLVMType));
+      initializer = LLVMConstant.createNullValue(declarationLLVMType.unwrapPointer(), this.generator);
 
       if (
         this.generator.types.union.isUnionWithUndefined(declarationLLVMType) ||
         this.generator.types.union.isUnionWithNull(declarationLLVMType)
       ) {
-        initializer = this.generator.xbuilder.createSafeInsert(
-          initializer,
-          llvm.ConstantInt.get(this.generator.context, -1, 8),
-          [0]
-        );
+        initializer = this.generator.builder.createSafeInsert(initializer, LLVMConstantInt.get(this.generator, -1, 8), [
+          0,
+        ]);
       }
-      const alloca = this.generator.gc.allocate(unwrapPointerType(declarationLLVMType));
-      this.generator.xbuilder.createSafeStore(initializer, alloca);
+      const alloca = this.generator.gc.allocate(declarationLLVMType.unwrapPointer());
+      this.generator.builder.createSafeStore(initializer, alloca);
       parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
       initializer = undefined;
     } else {

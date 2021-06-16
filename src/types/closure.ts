@@ -10,11 +10,12 @@
  */
 
 import * as ts from "typescript";
-import * as llvm from "llvm-node";
 
 import { LLVMGenerator } from "@generator";
-import { checkIfMethod, checkIfStaticMethod, error, getArgumentTypes, unwrapPointerType } from "@utils";
+import { checkIfMethod, checkIfStaticMethod, error, getArgumentTypes } from "@utils";
 import { FunctionMangler } from "@mangling";
+import { LLVMValue } from "../llvm/value";
+import { LLVMStructType, LLVMType } from "../llvm/type";
 
 export class Closure {
   private readonly generator: LLVMGenerator;
@@ -73,7 +74,7 @@ export class Closure {
     return true;
   }
 
-  isOptionalTSClosure(value: llvm.Value) {
+  isOptionalTSClosure(value: LLVMValue) {
     const isOptionalUnion =
       this.generator.types.union.isUnionWithNull(value.type) ||
       this.generator.types.union.isUnionWithUndefined(value.type);
@@ -81,10 +82,10 @@ export class Closure {
       return false;
     }
 
-    let structType: llvm.StructType;
-    if (value.type.isPointerTy()) {
-      structType = value.type.elementType as llvm.StructType;
-    } else if (value.type.isStructTy()) {
+    let structType: LLVMStructType;
+    if (value.type.isPointer()) {
+      structType = value.type.getPointerElementType() as LLVMStructType;
+    } else if (value.type.isStructType()) {
       structType = value.type;
     } else {
       error("Unreachable");
@@ -92,15 +93,15 @@ export class Closure {
 
     // Optional functions expected to be unions of exactly two elements: marker and one closure pointer
     const isPair = structType.numElements === 2;
-    const secondPairPtr = value.type.isPointerTy()
-      ? this.generator.xbuilder.createSafeInBoundsGEP(value, [0, 1])
-      : this.generator.xbuilder.createSafeExtractValue(value, [1]);
+    const secondPairPtr = value.type.isPointer()
+      ? this.generator.builder.createSafeInBoundsGEP(value, [0, 1])
+      : this.generator.builder.createSafeExtractValue(value, [1]);
     return isPair && this.isTSClosure(secondPairPtr.type);
   }
 
-  isTSClosure(type: llvm.Type) {
-    const nakedType = unwrapPointerType(type);
-    return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("TSClosure__class"));
+  isTSClosure(type: LLVMType) {
+    const nakedType = type.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.getName()?.startsWith("TSClosure__class"));
   }
 }
 
@@ -108,13 +109,13 @@ export class LazyClosure {
   private readonly tag = "__lazy_closure";
 
   private readonly generator: LLVMGenerator;
-  private readonly llvmType: llvm.PointerType;
+  private readonly llvmType: LLVMType;
 
   constructor(generator: LLVMGenerator) {
-    const structType = llvm.StructType.create(generator.context, this.tag);
+    const structType = LLVMStructType.create(generator, this.tag);
     structType.setBody([]);
     this.generator = generator;
-    this.llvmType = structType.getPointerTo();
+    this.llvmType = structType.getPointer();
   }
 
   get type() {
@@ -122,11 +123,11 @@ export class LazyClosure {
   }
 
   get create() {
-    return this.generator.gc.allocate(this.llvmType.elementType);
+    return this.generator.gc.allocate(this.llvmType.getPointerElementType());
   }
 
-  isLazyClosure(value: llvm.Value) {
-    const nakedType = unwrapPointerType(value.type);
-    return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith(this.tag));
+  isLazyClosure(value: LLVMValue) {
+    const nakedType = value.type.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.getName()?.startsWith(this.tag));
   }
 }

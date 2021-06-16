@@ -1,0 +1,414 @@
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2020
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+import { LLVMGenerator } from "@generator";
+import { error } from "@utils";
+import * as llvm from "llvm-node";
+import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMValue } from "../llvm/value";
+
+export class Builder {
+  private readonly generator: LLVMGenerator;
+  private readonly builder: llvm.IRBuilder;
+
+  constructor(generator: LLVMGenerator, basicBlock: llvm.BasicBlock | null) {
+    this.generator = generator;
+    this.builder = basicBlock ? new llvm.IRBuilder(basicBlock) : new llvm.IRBuilder(generator.context);
+  }
+
+  checkInsert(aggregate: LLVMValue, value: LLVMValue, idxList: number[]) {
+    if (!aggregate.type.isStructType()) {
+      error(`Expected aggregate to be of StructType, got ${aggregate.type.toString()}`);
+    }
+
+    if (!aggregate.type.getElementType(idxList[0]).equals(value.type)) {
+      error(
+        `Types mismatch, trying to insert '${value.type.toString()}'
+                 into '${aggregate.type.getElementType(idxList[0]).toString()}'`
+      );
+    }
+  }
+
+  createSafeInsert(aggregate: LLVMValue, value: LLVMValue, idxList: number[]) {
+    this.checkInsert(aggregate, value, idxList);
+    const updatedAggregate = this.builder.createInsertValue(aggregate.unwrapped, value.unwrapped, idxList);
+    return LLVMValue.create(updatedAggregate, this.generator);
+  }
+
+  checkStore(value: LLVMValue, ptr: LLVMValue) {
+    if (!value.type.equals(ptr.type.getPointerElementType())) {
+      error(
+        `Types mismatch: value '${value.type.toString()}', pointer element type '${ptr.type
+          .getPointerElementType()
+          .toString()}'`
+      );
+    }
+  }
+
+  createSafeStore(value: LLVMValue, ptr: LLVMValue, isVolatile?: boolean) {
+    this.checkStore(value, ptr);
+    return this.builder.createStore(value.unwrapped, ptr.unwrapped, isVolatile);
+  }
+
+  checkExtractValue(aggregate: LLVMValue, idxList: number[]) {
+    if (!aggregate.type.isStructType()) {
+      error(`Expected aggregate to be of StructType, got ${aggregate.type.toString()}`);
+    }
+    const aggregateStructType = aggregate.type;
+    if (idxList.some((idx) => idx >= aggregateStructType.numElements || idx < 0)) {
+      error(`Index out of bounds for ${aggregateStructType.toString()}, ${idxList}`);
+    }
+  }
+
+  createSafeExtractValue(aggregate: LLVMValue, idxList: number[], name?: string) {
+    this.checkExtractValue(aggregate, idxList);
+    const value = this.builder.createExtractValue(aggregate.unwrapped, idxList, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  checkInBoundsGEP(ptr: LLVMValue, idxList: number[]) {
+    if (!ptr.type.isPointer()) {
+      error(`Expected ptr to be of PointerType, got '${ptr.type.toString()}'`);
+    }
+    if (!ptr.type.isPointerToStruct()) {
+      error(`Expected ptr element to be of StructType, got '${ptr.type.toString()}'`);
+    }
+
+    if ((ptr.type.getPointerElementType() as LLVMStructType).numElements === 0) {
+      error(`Invalid GEP from empty struct`);
+    }
+
+    for (const idx of idxList) {
+      if (idx > (ptr.type.getPointerElementType() as LLVMStructType).numElements - 1) {
+        error(
+          `GEP index out of bounds: ${idx}, upper bound: ${
+            (ptr.type.getPointerElementType() as LLVMStructType).numElements - 1
+          }`
+        );
+      }
+
+      if (idx < 0) {
+        error(`Invalid GEP index: -1`);
+      }
+    }
+  }
+
+  createSafeInBoundsGEP(ptr: LLVMValue, idxList: number[], name?: string) {
+    this.checkInBoundsGEP(ptr, idxList);
+    const idxValues = idxList.map((idx) => llvm.ConstantInt.get(this.generator.context, idx));
+    const value = this.builder.createInBoundsGEP(ptr.unwrapped, idxValues, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  checkCall(callee: LLVMValue, args: LLVMValue[]) {
+    const calleeUnwrapped = callee.unwrapped;
+    if (!(calleeUnwrapped instanceof llvm.Function)) {
+      // Giving up.
+      return;
+    }
+
+    const calleeArgs = calleeUnwrapped.getArguments();
+    if (calleeArgs.length !== args.length) {
+      error(`Arguments length mismatch, expected ${calleeArgs.length}, got ${args.length}`);
+    }
+
+    for (let i = 0; i < calleeArgs.length; ++i) {
+      const calleeArg = calleeArgs[i];
+      const arg = args[i];
+      if (!calleeArg.type.equals(arg.type.unwrapped)) {
+        error(`Types mismatch: '${calleeArg.type.toString()}' - '${arg.type.unwrapped.toString()}' at index: ${i}`);
+      }
+    }
+  }
+
+  createSafeCall(callee: LLVMValue, args: LLVMValue[], name?: string) {
+    this.checkCall(callee, args);
+    const value = this.builder.createCall(
+      callee.unwrapped,
+      args.map((arg) => arg.unwrapped),
+      name
+    );
+    return LLVMValue.create(value, this.generator);
+  }
+
+  checkRet(value: LLVMValue) {
+    const currentFnReturnType = this.generator.currentFunction.type.elementType.returnType;
+    if (!currentFnReturnType.equals(value.type.unwrapped)) {
+      error(
+        `Expected return value to be of '${currentFnReturnType.toString()}', got '${value.type.unwrapped.toString()}'`
+      );
+    }
+  }
+
+  createSafeRet(value: LLVMValue) {
+    this.checkRet(value);
+    return this.builder.createRet(value.unwrapped);
+  }
+
+  asVoidStar(value: LLVMValue) {
+    // It might looks strange, but void* in LLVM is i8*.
+    const casted = this.builder.createBitCast(
+      value.unwrapped,
+      LLVMType.getInt8Type(this.generator).getPointer().unwrapped
+    );
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  asVoidStarStar(value: LLVMValue) {
+    // It might looks strange, but void* in LLVM is i8*.
+    const casted = this.builder.createBitCast(
+      value.unwrapped,
+      LLVMType.getInt8Type(this.generator).getPointer().getPointer().unwrapped
+    );
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  getInsertBlock() {
+    return this.builder.getInsertBlock();
+  }
+
+  setInsertionPoint(basicBlock?: llvm.BasicBlock) {
+    if (!basicBlock) {
+      error("No basic block provided to `Builder.setInsertionPoint`");
+    }
+
+    this.builder.setInsertionPoint(basicBlock);
+  }
+
+  createGlobalStringPtr(value: string, name?: string, addressSpace?: number) {
+    const ptr = this.builder.createGlobalStringPtr(value, name, addressSpace);
+    return LLVMValue.create(ptr, this.generator);
+  }
+
+  createSelect(condition: LLVMValue, trueValue: LLVMValue, falseValue: LLVMValue, name?: string) {
+    const select = this.builder.createSelect(condition.unwrapped, trueValue.unwrapped, falseValue.unwrapped, name);
+    return LLVMValue.create(select, this.generator);
+  }
+
+  createBr(basicBlock: llvm.BasicBlock) {
+    const br = this.builder.createBr(basicBlock);
+    return LLVMValue.create(br, this.generator);
+  }
+
+  createCondBr(condition: LLVMValue, then: llvm.BasicBlock, elseBlock: llvm.BasicBlock) {
+    const condBr = this.builder.createCondBr(condition.unwrapped, then, elseBlock);
+    return LLVMValue.create(condBr, this.generator);
+  }
+
+  createRetVoid() {
+    this.builder.createRetVoid();
+  }
+
+  createLoad(value: LLVMValue) {
+    const loaded = this.builder.createLoad(value.unwrapped);
+    return LLVMValue.create(loaded, this.generator);
+  }
+
+  createBitCast(value: LLVMValue, destType: LLVMType, name?: string) {
+    const casted = this.builder.createBitCast(value.unwrapped, destType.unwrapped, name);
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  createFPToSI(value: LLVMValue, type: LLVMType, name?: string) {
+    const casted = this.builder.createFPToSI(value.unwrapped, type.unwrapped, name);
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  createFPToUI(value: LLVMValue, type: LLVMType, name?: string) {
+    const casted = this.builder.createFPToUI(value.unwrapped, type.unwrapped, name);
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  createSIToFP(value: LLVMValue, type: LLVMType, name?: string) {
+    const casted = this.builder.createSIToFP(value.unwrapped, type.unwrapped, name);
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  createUIToFP(value: LLVMValue, type: LLVMType, name?: string) {
+    const casted = this.builder.createUIToFP(value.unwrapped, type.unwrapped, name);
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  createFCmpONE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFCmpONE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createICmpNE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createICmpNE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createAdd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createAdd(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createFAdd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFAdd(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createSub(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createSub(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createFSub(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFSub(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createMul(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createMul(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createFMul(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFMul(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createSDiv(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createSDiv(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createFDiv(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFDiv(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createSRem(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createSRem(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createFRem(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFRem(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createAnd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createAnd(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createOr(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createOr(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createXor(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createXor(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createShl(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createShl(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createLShr(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createLShr(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createAShr(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createAShr(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createFCmpOEQ(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createFCmpOEQ(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createICmpEQ(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const value = this.builder.createICmpEQ(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
+  createPtrToInt(value: LLVMValue, destType: LLVMType, name?: string) {
+    const casted = this.builder.createPtrToInt(value.unwrapped, destType.unwrapped, name);
+    return LLVMValue.create(casted, this.generator);
+  }
+
+  createNot(value: LLVMValue, name?: string) {
+    const negated = this.builder.createNot(value.unwrapped, name);
+    return LLVMValue.create(negated, this.generator);
+  }
+
+  createFNeg(value: LLVMValue, name?: string) {
+    const negated = this.builder.createFNeg(value.unwrapped, name);
+    return LLVMValue.create(negated, this.generator);
+  }
+
+  createFCmpOLT(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createFCmpOLT(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpSLT(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpSLT(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpULT(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpULT(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createFCmpOGT(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createFCmpOGT(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpSGT(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpSGT(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpUGT(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpULT(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createFCmpOLE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createFCmpOLE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpSLE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpSLE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpULE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpULE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createFCmpOGE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createFCmpOGE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpSGE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpSGE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+
+  createICmpUGE(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    const result = this.builder.createICmpUGE(lhs.unwrapped, rhs.unwrapped, name);
+    return LLVMValue.create(result, this.generator);
+  }
+}

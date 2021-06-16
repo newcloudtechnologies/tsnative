@@ -1,12 +1,12 @@
 import { castToInt32AndBack, makeBoolean, makeAssignment } from "@handlers";
-import { createHeapAllocatedFromValue, error, getLLVMValue } from "@utils";
-import * as llvm from "llvm-node";
+import { createHeapAllocatedFromValue, error } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 
 export class UnaryHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.PrefixUnaryExpression:
         return this.handlePrefixUnaryExpression(expression as ts.PrefixUnaryExpression, env);
@@ -23,7 +23,7 @@ export class UnaryHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handlePrefixUnaryExpression(expression: ts.PrefixUnaryExpression, env?: Environment): llvm.Value {
+  private handlePrefixUnaryExpression(expression: ts.PrefixUnaryExpression, env?: Environment): LLVMValue {
     const { operand } = expression;
 
     switch (expression.operator) {
@@ -36,21 +36,21 @@ export class UnaryHandler extends AbstractExpressionHandler {
       }
       case ts.SyntaxKind.PlusPlusToken: {
         const value = this.generator.handleExpression(operand, env);
-        const oldValue = getLLVMValue(value, this.generator);
-        const newValue = this.generator.builder.createFAdd(oldValue, llvm.ConstantFP.get(this.generator.context, 1));
+        const oldValue = value.getValue();
+        const newValue = this.generator.builder.createFAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
         makeAssignment(value, newValue, this.generator);
         return value;
       }
       case ts.SyntaxKind.MinusMinusToken: {
         const value = this.generator.handleExpression(operand, env);
-        const oldValue = getLLVMValue(value, this.generator);
-        const newValue = this.generator.builder.createFSub(oldValue, llvm.ConstantFP.get(this.generator.context, 1));
+        const oldValue = value.getValue();
+        const newValue = this.generator.builder.createFSub(oldValue, LLVMConstantFP.get(this.generator, 1));
         makeAssignment(value, newValue, this.generator);
         return value;
       }
       case ts.SyntaxKind.TildeToken:
         return castToInt32AndBack(
-          [getLLVMValue(this.generator.handleExpression(operand, env), this.generator)],
+          [this.generator.handleExpression(operand, env).getValue()],
           this.generator,
           ([value]) => this.generator.builder.createNot(value)
         );
@@ -63,21 +63,21 @@ export class UnaryHandler extends AbstractExpressionHandler {
     }
   }
 
-  private handlePostfixUnaryExpression(expression: ts.PostfixUnaryExpression, env?: Environment): llvm.Value {
+  private handlePostfixUnaryExpression(expression: ts.PostfixUnaryExpression, env?: Environment): LLVMValue {
     const { operand } = expression;
 
     switch (expression.operator) {
       case ts.SyntaxKind.PlusPlusToken: {
         const value = this.generator.handleExpression(operand, env);
-        const oldValue = getLLVMValue(value, this.generator);
-        const newValue = this.generator.builder.createFAdd(oldValue, llvm.ConstantFP.get(this.generator.context, 1));
+        const oldValue = value.getValue();
+        const newValue = this.generator.builder.createFAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
         makeAssignment(value, newValue, this.generator);
         return createHeapAllocatedFromValue(oldValue, this.generator);
       }
       case ts.SyntaxKind.MinusMinusToken: {
         const value = this.generator.handleExpression(operand, env);
-        const oldValue = getLLVMValue(value, this.generator);
-        const newValue = this.generator.builder.createFSub(oldValue, llvm.ConstantFP.get(this.generator.context, 1));
+        const oldValue = value.getValue();
+        const newValue = this.generator.builder.createFSub(oldValue, LLVMConstantFP.get(this.generator, 1));
         makeAssignment(value, newValue, this.generator);
         return createHeapAllocatedFromValue(oldValue, this.generator);
       }

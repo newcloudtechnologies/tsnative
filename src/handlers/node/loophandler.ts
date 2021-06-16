@@ -9,12 +9,13 @@
  *
  */
 
-import { last, error } from "@utils";
+import { error } from "@utils";
 import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
+import { last } from "lodash";
 
 export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {

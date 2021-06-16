@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error, getParentFromOriginal, isSyntheticNode } from "@utils";
+import { error } from "@utils";
 import { last } from "lodash";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
@@ -93,7 +93,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
           }
         }
 
-        if (!isSyntheticNode(node) && ts.isCallExpression(node)) {
+        if (!this.utils.isSyntheticNode(node) && ts.isCallExpression(node)) {
           const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
 
           if (!type.isSymbolless()) {
@@ -134,7 +134,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
                   "@ts-ignore (Skip check for rest parameters)"
                 );
 
-                const parent = node.parent || getParentFromOriginal(node);
+                const parent = node.parent || this.utils.getParentFromOriginal(node);
                 if (!parent) {
                   error("No parent found");
                 }

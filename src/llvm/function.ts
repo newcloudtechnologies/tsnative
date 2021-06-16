@@ -13,6 +13,8 @@ import * as llvm from "llvm-node";
 
 import { LLVMGenerator } from "@generator";
 import { error } from "@utils";
+import { LLVMType } from "../llvm/type";
+import { LLVMValue } from "../llvm/value";
 
 export class LLVMFunction {
   private readonly generator: LLVMGenerator;
@@ -21,10 +23,10 @@ export class LLVMFunction {
     this.generator = generator;
   }
 
-  create(returnType: llvm.Type, parameterTypes: llvm.Type[], name: string): { fn: llvm.Function; existing: boolean } {
+  create(returnType: LLVMType, parameterTypes: LLVMType[], name: string): { fn: LLVMValue; existing: boolean } {
     const fn = this.generator.module.getFunction(name);
     if (fn) {
-      if (!fn.type.elementType.returnType.equals(returnType)) {
+      if (!fn.type.elementType.returnType.equals(returnType.unwrapped)) {
         error(
           `Function '${name}' already exists with different return type: existing - '${fn.type.elementType.returnType.toString()}, requested - '${returnType.toString()}'`
         );
@@ -32,7 +34,7 @@ export class LLVMFunction {
 
       if (
         fn.getArguments().length !== parameterTypes.length ||
-        fn.getArguments().some((arg, index) => !arg.type.equals(parameterTypes[index]))
+        fn.getArguments().some((arg, index) => !arg.type.equals(parameterTypes[index].unwrapped))
       ) {
         error(
           `Function '${name}' already exists with different parameter types: existing - '${fn
@@ -42,12 +44,19 @@ export class LLVMFunction {
         );
       }
 
-      return { fn, existing: true };
+      return { fn: LLVMValue.create(fn, this.generator), existing: true };
     }
 
-    const type = llvm.FunctionType.get(returnType, parameterTypes, false);
+    const type = llvm.FunctionType.get(
+      returnType.unwrapped,
+      parameterTypes.map((t) => t.unwrapped),
+      false
+    );
     return {
-      fn: llvm.Function.create(type, llvm.LinkageTypes.ExternalLinkage, name, this.generator.module),
+      fn: LLVMValue.create(
+        llvm.Function.create(type, llvm.LinkageTypes.ExternalLinkage, name, this.generator.module),
+        this.generator
+      ),
       existing: false,
     };
   }

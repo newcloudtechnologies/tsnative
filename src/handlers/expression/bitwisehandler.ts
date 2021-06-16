@@ -9,15 +9,16 @@
  *
  */
 
-import { castToInt32AndBack, Conversion, handleBinaryWithConversion, isConvertible } from "@handlers";
+import { castToInt32AndBack, Conversion, handleBinaryWithConversion } from "@handlers";
 import { error } from "@utils";
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { LLVMValue } from "../../llvm/value";
+import { Builder } from "../../builder/builder";
 
 export class BitwiseHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
@@ -46,28 +47,28 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
         this.generator.builder.createAnd(leftInt, rightInt)
       );
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return this.generator.builder.createAnd(left, right);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return handleBinaryWithConversion(
         lhs,
         rhs,
         left,
         right,
         Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createAnd,
+        Builder.prototype.createAnd,
         this.generator
       );
     }
@@ -75,28 +76,28 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     error("Invalid operand types to bitwise AND");
   }
 
-  private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
         this.generator.builder.createOr(leftInt, rightInt)
       );
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return this.generator.builder.createOr(left, right);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return handleBinaryWithConversion(
         lhs,
         rhs,
         left,
         right,
         Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createOr,
+        Builder.prototype.createOr,
         this.generator
       );
     }
@@ -104,28 +105,28 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     error("Invalid operand types to bitwise OR");
   }
 
-  private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const left: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
         this.generator.builder.createXor(leftInt, rightInt)
       );
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return this.generator.builder.createXor(left, right);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return handleBinaryWithConversion(
         lhs,
         rhs,
         left,
         right,
         Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createXor,
+        Builder.prototype.createXor,
         this.generator
       );
     }
@@ -133,28 +134,28 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     error("Invalid operand types to bitwise XOR");
   }
 
-  private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const left: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
         this.generator.builder.createShl(leftInt, rightInt)
       );
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return this.generator.builder.createShl(left, right);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return handleBinaryWithConversion(
         lhs,
         rhs,
         left,
         right,
         Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createShl,
+        Builder.prototype.createShl,
         this.generator
       );
     }
@@ -162,28 +163,28 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     error("Invalid operand types to left shift");
   }
 
-  private handleRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
         this.generator.builder.createAShr(leftInt, rightInt)
       );
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return this.generator.builder.createAShr(left, right);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return handleBinaryWithConversion(
         lhs,
         rhs,
         left,
         right,
         Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createAShr,
+        Builder.prototype.createAShr,
         this.generator
       );
     }
@@ -191,28 +192,28 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     error("Invalid operand types to right shift");
   }
 
-  private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    const left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return castToInt32AndBack([left, right], this.generator, ([leftInt, rightInt]) =>
         this.generator.builder.createLShr(leftInt, rightInt)
       );
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return this.generator.builder.createLShr(left, right);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return handleBinaryWithConversion(
         lhs,
         rhs,
         left,
         right,
         Conversion.Narrowing,
-        llvm.IRBuilder.prototype.createLShr,
+        Builder.prototype.createLShr,
         this.generator
       );
     }

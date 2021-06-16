@@ -13,16 +13,16 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
 import { error } from "@utils";
-import * as llvm from "llvm-node";
 import { getLLVMReturnType } from "@handlers";
 import { LLVMGenerator } from "@generator";
+import { LLVMType } from "../../llvm/type";
 
 const utilityReturnType = "ReturnType";
 const utilityTypeNames = [utilityReturnType];
 
 function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator: LLVMGenerator) {
   // Handling something like `type DocStoreType = ReturnType<typeof createInitialStore>` where `createInitialStore` (e.g.) is a function that returns a closure
-  let llvmType: llvm.Type | undefined;
+  let llvmType: LLVMType | undefined;
   const typeArgument = typeReference.typeArguments![0];
   // typeof <name>
   if (ts.isTypeQueryNode(typeArgument)) {
@@ -85,11 +85,11 @@ export class TypeAliasHandler extends AbstractNodeHandler {
           declaration = symbol.declarations[0] as ts.ClassDeclaration | ts.InterfaceDeclaration;
         }
 
-        let llvmType: llvm.Type | undefined;
+        let llvmType: LLVMType | undefined;
         const typeReference = typeAlias.type as ts.TypeReferenceNode;
         const typeReferenceName = typeReference.typeName;
         if (typeReferenceName?.getText() === utilityReturnType) {
-          // Modify ReturnType's behavior since ts.Type may not match actual llvm.Type (e.g. in case of closures)
+          // Modify ReturnType's behavior since ts.Type may not match actual LLVMType (e.g. in case of closures)
           llvmType = adjustDeducedReturnType(typeReference, this.generator);
         }
         if (!llvmType) {
@@ -98,7 +98,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
 
         const scope: Scope = new Scope(name, name, parentScope, {
           declaration,
-          llvmType: llvmType.isPointerTy() ? llvmType : llvmType.getPointerTo(),
+          llvmType: llvmType.isPointer() ? llvmType : llvmType.getPointer(),
           tsType: type,
         });
 

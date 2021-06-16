@@ -14,6 +14,7 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
 import { checkIfStaticProperty, getDeclarationNamespace, error } from "@utils";
 import { LLVMGenerator } from "@generator";
+import { LLVMValue } from "../../llvm/value";
 
 export class ClassHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -30,7 +31,7 @@ export class ClassHandler extends AbstractNodeHandler {
   }
 
   private getStaticPropertiesFromDeclaration(declaration: ts.ClassDeclaration, parentScope: Scope) {
-    const staticProperties = new Map<string, llvm.Value>();
+    const staticProperties = new Map<string, LLVMValue>();
 
     if (declaration.heritageClauses) {
       for (const clause of declaration.heritageClauses) {
@@ -84,7 +85,7 @@ export class ClassHandler extends AbstractNodeHandler {
     const mangledTypename = thisType.mangle();
     const scope = new Scope(name, mangledTypename, parentScope, {
       declaration,
-      llvmType: llvmType as llvm.PointerType,
+      llvmType,
       tsType: thisType,
       staticProperties,
     });

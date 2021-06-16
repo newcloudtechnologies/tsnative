@@ -11,7 +11,7 @@ import * as ts from "typescript";
 import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
-import { error, writeIRToFile } from "@utils";
+import { Build, error } from "@utils";
 import { TemplateInstantiator } from "@cpp";
 import { Preprocessor } from "@preprocessing";
 
@@ -183,6 +183,6 @@ async function main() {
   }
 
   if (argv.emitIR) {
-    writeIRToFile(llvmModule, program, argv);
+    new Build().writeIRToFile(llvmModule, program, argv);
   }
 }

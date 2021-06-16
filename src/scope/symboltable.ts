@@ -10,7 +10,7 @@
  */
 
 import { Scope, ScopeValue } from "@scope";
-import { error, reverse } from "@utils";
+import { error } from "@utils";
 
 export class SymbolTable {
   private readonly scopes: Scope[];
@@ -40,7 +40,8 @@ export class SymbolTable {
   }
 
   get(identifier: string): ScopeValue {
-    for (const scope of reverse(this.scopes)) {
+    const reversedScopes = this.scopes.slice().reverse();
+    for (const scope of reversedScopes) {
       const value = scope.get(identifier);
       if (value) {
         return value;

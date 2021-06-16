@@ -12,13 +12,14 @@
 import { isSigned } from "@cpp";
 import { makeBoolean, promoteIntegralToFP } from "@handlers";
 import { error } from "@utils";
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { LLVMValue } from "../../llvm/value";
+import { LLVMType } from "../../llvm/type";
 
 export class LogicHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
@@ -43,8 +44,8 @@ export class LogicHandler extends AbstractExpressionHandler {
 
       return this.generator.builder.createSelect(
         condition,
-        this.generator.xbuilder.asVoidStar(left),
-        this.generator.xbuilder.asVoidStar(right)
+        this.generator.builder.asVoidStar(left),
+        this.generator.builder.asVoidStar(right)
       );
     }
 
@@ -55,9 +56,9 @@ export class LogicHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    let right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    let left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const lhsBoolean = makeBoolean(left, lhs, this.generator);
 
@@ -65,14 +66,14 @@ export class LogicHandler extends AbstractExpressionHandler {
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
-    if (left.type.isIntegerTy() && right.type.isDoubleTy()) {
-      const doubleType = llvm.Type.getDoubleTy(this.generator.context);
+    if (left.type.isIntegerType() && right.type.isDoubleType()) {
+      const doubleType = LLVMType.getDoubleType(this.generator);
       left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
-    if (left.type.isDoubleTy() && right.type.isIntegerTy()) {
-      const doubleType = llvm.Type.getDoubleTy(this.generator.context);
+    if (left.type.isDoubleType() && right.type.isIntegerType()) {
+      const doubleType = LLVMType.getDoubleType(this.generator);
       right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
@@ -80,9 +81,9 @@ export class LogicHandler extends AbstractExpressionHandler {
     error("Invalid operand types to logical AND");
   }
 
-  private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
-    let left: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    let right: llvm.Value = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+  private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    let left: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    let right: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const lhsBoolean = makeBoolean(left, lhs, this.generator);
 
@@ -90,14 +91,14 @@ export class LogicHandler extends AbstractExpressionHandler {
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }
 
-    if (left.type.isIntegerTy() && right.type.isDoubleTy()) {
-      const doubleType = llvm.Type.getDoubleTy(this.generator.context);
+    if (left.type.isIntegerType() && right.type.isDoubleType()) {
+      const doubleType = LLVMType.getDoubleType(this.generator);
       left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }
 
-    if (left.type.isDoubleTy() && right.type.isIntegerTy()) {
-      const doubleType = llvm.Type.getDoubleTy(this.generator.context);
+    if (left.type.isDoubleType() && right.type.isIntegerType()) {
+      const doubleType = LLVMType.getDoubleType(this.generator);
       right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }

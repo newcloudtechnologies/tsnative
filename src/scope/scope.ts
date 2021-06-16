@@ -9,28 +9,31 @@
  *
  */
 
-import { error, flatten, getDeclarationNamespace, getEnvironmentType, InternalNames, unwrapPointerType } from "@utils";
+import { error, getDeclarationNamespace, InternalNames } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "@generator";
 
 import { getArrayType } from "@handlers";
 import { Type } from "../ts/type";
+import { flatten } from "lodash";
+import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMConstant, LLVMValue } from "../llvm/value";
 
 export class Environment {
   private readonly pVariables: string[];
-  private pAllocated: llvm.Value;
-  private readonly pLLVMType: llvm.PointerType;
+  private pAllocated: LLVMValue;
+  private readonly pLLVMType: LLVMType;
   private readonly pGenerator: LLVMGenerator;
   private pFixedArgsCount: number = 0;
 
-  constructor(variables: string[], allocated: llvm.Value, llvmType: llvm.PointerType, generator: LLVMGenerator) {
-    if (!allocated.type.isPointerTy() || !allocated.type.elementType.isIntegerTy(8)) {
+  constructor(variables: string[], allocated: LLVMValue, llvmType: LLVMType, generator: LLVMGenerator) {
+    if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
       error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
 
-    if (!llvmType.elementType.isStructTy()) {
-      error(`Expected llvmType to be of llvm.StructType*, got '${llvmType.toString()}'`);
+    if (!llvmType.getPointerElementType().isStructType()) {
+      error(`Expected llvmType to be of LLCMStructType*, got '${llvmType.toString()}'`);
     }
 
     this.pVariables = variables;
@@ -43,8 +46,8 @@ export class Environment {
     return this.pAllocated;
   }
 
-  set untyped(allocated: llvm.Value) {
-    if (!allocated.type.isPointerTy() || !allocated.type.elementType.isIntegerTy(8)) {
+  set untyped(allocated: LLVMValue) {
+    if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
       error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
 
@@ -52,7 +55,7 @@ export class Environment {
   }
 
   get voidStar() {
-    return llvm.Type.getInt8PtrTy(this.pGenerator.context);
+    return LLVMType.getInt8Type(this.pGenerator).getPointer();
   }
 
   get typed() {
@@ -81,20 +84,28 @@ export class Environment {
 
   static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
     const baseValues = [];
-    const envStructType = unwrapPointerType(base.type) as llvm.StructType;
+    const envStructType = base.type.unwrapPointer();
+    if (!envStructType.isStructType()) {
+      error("Expected struct");
+    }
+
     const envValue = generator.builder.createLoad(base.typed);
     for (let i = 0; i < envStructType.numElements; ++i) {
-      const value = generator.xbuilder.createSafeExtractValue(envValue, [i]);
+      const value = generator.builder.createSafeExtractValue(envValue, [i]);
       baseValues.push(value);
     }
 
     const values = flatten(
       envs.map((e) => {
         const envValues = [];
-        const structType = unwrapPointerType(e.type) as llvm.StructType;
+        const structType = e.type.unwrapPointer();
+        if (!structType.isStructType()) {
+          error("Expected struct type");
+        }
+
         const structValue = generator.builder.createLoad(e.typed);
         for (let i = 0; i < structType.numElements; ++i) {
-          const value = generator.xbuilder.createSafeExtractValue(structValue, [i]);
+          const value = generator.builder.createSafeExtractValue(structValue, [i]);
           envValues.push(value);
         }
 
@@ -117,39 +128,65 @@ export class Environment {
     }, new Array<string>());
 
     const mergedValues = baseValues.concat(values).filter((_, index) => uniqueIndexes.includes(index));
-    const mergedEnvironmentType = llvm.StructType.get(
-      generator.context,
+    const mergedEnvironmentType = LLVMStructType.get(
+      generator,
       mergedValues.map((v) => v.type)
     );
     const allocatedMergedEnvironment = generator.gc.allocate(mergedEnvironmentType);
 
     for (let i = 0; i < mergedValues.length; ++i) {
-      const elementPtr = generator.xbuilder.createSafeInBoundsGEP(allocatedMergedEnvironment, [0, i]);
-      generator.xbuilder.createSafeStore(mergedValues[i], elementPtr);
+      const elementPtr = generator.builder.createSafeInBoundsGEP(allocatedMergedEnvironment, [0, i]);
+      generator.builder.createSafeStore(mergedValues[i], elementPtr);
     }
 
     return new Environment(
       mergedVariableNames,
-      generator.xbuilder.asVoidStar(allocatedMergedEnvironment),
-      allocatedMergedEnvironment.type as llvm.PointerType,
+      generator.builder.asVoidStar(allocatedMergedEnvironment),
+      allocatedMergedEnvironment.type as LLVMStructType,
       generator
     );
   }
+
+  static getEnvironmentType(types: LLVMType[], generator: LLVMGenerator) {
+    if (types.some((type) => !type.isPointer())) {
+      error(
+        `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}`
+      );
+    }
+
+    const environmentName =
+      "env__(" +
+      types.reduce((acc, curr) => {
+        return acc + "_" + curr.toString().replace(/\"/g, "");
+      }, "") +
+      ")";
+
+    const existingType = generator.module.getTypeByName(environmentName);
+
+    if (existingType) {
+      return LLVMStructType.make(existingType, generator);
+    }
+
+    const envType = LLVMStructType.create(generator, environmentName);
+    envType.setBody(types);
+
+    return envType;
+  }
 }
 
-export function injectUndefined(scope: Scope, context: llvm.LLVMContext) {
-  const declarationLLVMType = llvm.Type.getInt8Ty(context);
-  const undef = llvm.UndefValue.get(declarationLLVMType);
-  scope.set("undefined", undef as llvm.Value);
+export function injectUndefined(scope: Scope, generator: LLVMGenerator) {
+  const declarationLLVMType = LLVMType.getInt8Type(generator);
+  const undef = llvm.Constant.getNullValue(declarationLLVMType.unwrapped);
+  scope.set("undefined", LLVMValue.create(undef, generator));
 }
 
-export function setLLVMFunctionScope(fn: llvm.Function, scope: Scope) {
-  llvm.verifyFunction(fn);
+export function setLLVMFunctionScope(fn: LLVMValue, scope: Scope, generator: LLVMGenerator) {
+  llvm.verifyFunction(fn.unwrapped as llvm.Function);
 
   // Function declaration may be in scope with same name.
   // @todo: overwrite?
-  if (!scope.get(fn.name)) {
-    scope.set(fn.name, fn);
+  if (!scope.get(fn.unwrapped.name)) {
+    scope.set(fn.unwrapped.name, LLVMValue.create(fn.unwrapped, generator));
   }
 }
 
@@ -205,7 +242,7 @@ export function addClassScope(
     return thisType.getLLVMType();
   }, generator.symbolTable.currentScope);
 
-  if (!llvmType.isPointerTy()) {
+  if (!llvmType.isPointer()) {
     error("Expected pointer");
   }
 
@@ -216,12 +253,12 @@ export function addClassScope(
 }
 
 export class HeapVariableDeclaration {
-  allocated: llvm.Value;
-  initializer: llvm.Value;
+  allocated: LLVMValue;
+  initializer: LLVMValue;
   name: string;
   declaration: ts.VariableDeclaration | undefined;
 
-  constructor(allocated: llvm.Value, initializer: llvm.Value, name: string, declaration?: ts.VariableDeclaration) {
+  constructor(allocated: LLVMValue, initializer: LLVMValue, name: string, declaration?: ts.VariableDeclaration) {
     this.allocated = allocated;
     this.initializer = initializer;
     this.name = name;
@@ -241,16 +278,16 @@ export function createEnvironment(
   scope: Scope,
   environmentVariables: string[],
   generator: LLVMGenerator,
-  functionData?: { args: llvm.Value[]; signature: ts.Signature },
+  functionData?: { args: LLVMValue[]; signature: ts.Signature },
   outerEnv?: Environment,
   functionBody?: ts.ConciseBody,
   preferLocalThis?: boolean
 ) {
-  const map = new Map<string, { type: llvm.Type; allocated: llvm.Value }>();
+  const map = new Map<string, { type: LLVMType; allocated: LLVMValue }>();
 
   if (functionData) {
     const argsTypes = functionData.args.map((arg) => {
-      if (!arg.type.isPointerTy()) {
+      if (!arg.type.isPointer()) {
         error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
       }
       return arg.type;
@@ -304,9 +341,9 @@ export function createEnvironment(
       outerEnvValuesIndexes.push(i);
     }
 
-    const outerValues: llvm.Value[] = [];
+    const outerValues: LLVMValue[] = [];
     for (const index of outerEnvValuesIndexes) {
-      const extracted = generator.xbuilder.createSafeExtractValue(data, [index]);
+      const extracted = generator.builder.createSafeExtractValue(data, [index]);
       outerValues.push(extracted);
     }
 
@@ -320,19 +357,19 @@ export function createEnvironment(
   const types = Array.from(map.values()).map((value) => value.type);
   const allocations = Array.from(map.values()).map((value) => value.allocated);
 
-  const environmentDataType = getEnvironmentType(types, generator);
+  const environmentDataType = Environment.getEnvironmentType(types, generator);
   const environmentData = allocations.reduce(
-    (acc, allocation, idx) => generator.xbuilder.createSafeInsert(acc, allocation, [idx]),
-    llvm.Constant.getNullValue(environmentDataType)
-  ) as llvm.Constant;
+    (acc, allocation, idx) => generator.builder.createSafeInsert(acc, allocation, [idx]),
+    LLVMConstant.createNullValue(environmentDataType, generator)
+  );
 
   const environmentAlloca = generator.gc.allocate(environmentDataType);
-  generator.xbuilder.createSafeStore(environmentData, environmentAlloca);
+  generator.builder.createSafeStore(environmentData, environmentAlloca);
 
   let env = new Environment(
     names,
-    generator.xbuilder.asVoidStar(environmentAlloca),
-    environmentAlloca.type as llvm.PointerType,
+    generator.builder.asVoidStar(environmentAlloca),
+    environmentAlloca.type as LLVMStructType,
     generator
   );
 
@@ -390,7 +427,7 @@ function populateStaticContext(scope: Scope, environmentVariables: string[]) {
     if (value instanceof HeapVariableDeclaration) {
       value.name = environmentVariables[idx];
       staticContext.push(value);
-    } else if (value instanceof llvm.Value) {
+    } else if (value instanceof LLVMValue) {
       staticContext.push(new HeapVariableDeclaration(value, value, environmentVariables[idx]));
     }
   });
@@ -441,7 +478,7 @@ export function populateContext(
       }
     } else if (value instanceof HeapVariableDeclaration) {
       context.push(value);
-    } else if (value instanceof llvm.Value) {
+    } else if (value instanceof LLVMValue) {
       context.push(new HeapVariableDeclaration(value, value, key));
     }
   };
@@ -460,7 +497,7 @@ export function populateContext(
     scope: Scope,
     values: string[],
     seen: Scope[] = []
-  ): llvm.Value | HeapVariableDeclaration | Scope | undefined => {
+  ): LLVMValue | HeapVariableDeclaration | Scope | undefined => {
     if (values.length === 0) {
       return;
     }
@@ -501,7 +538,7 @@ export function populateContext(
     if (value instanceof HeapVariableDeclaration) {
       value.name = key;
       context.push(value);
-    } else if (value instanceof llvm.Value) {
+    } else if (value instanceof LLVMValue) {
       context.push(new HeapVariableDeclaration(value, value, key));
     }
   });
@@ -514,13 +551,13 @@ export function populateContext(
   return context;
 }
 
-export type ScopeValue = llvm.Value | HeapVariableDeclaration | Scope;
+export type ScopeValue = LLVMValue | HeapVariableDeclaration | Scope;
 
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
-  readonly llvmType: llvm.PointerType;
+  readonly llvmType: LLVMType;
   readonly tsType: Type;
-  readonly staticProperties?: Map<string, llvm.Value>;
+  readonly staticProperties?: Map<string, LLVMValue>;
 }
 
 export class Scope {
@@ -616,7 +653,7 @@ export class Scope {
 
     for (const [key, value] of this.map) {
       if (!(value instanceof Scope)) {
-        console.log("--".repeat(pad + 1), key, value instanceof llvm.Value ? "(llvm value)" : "(heap variable)");
+        console.log("--".repeat(pad + 1), key, value instanceof LLVMValue ? "(llvm value)" : "(heap variable)");
       } else if (!seen.includes(value)) {
         seen.push(value);
         value.dump(++pad, seen);

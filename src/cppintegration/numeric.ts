@@ -12,7 +12,8 @@
 import { LLVMGenerator } from "@generator";
 import { makeAssignment } from "@handlers";
 
-import * as llvm from "llvm-node";
+import { LLVMType } from "../llvm/type";
+import { LLVMValue } from "../llvm/value";
 import * as ts from "typescript";
 
 export function isSignedType(type: string) {
@@ -52,16 +53,16 @@ export function bothUnsigned(lhs: ts.Expression, rhs: ts.Expression, generator: 
   return !signedOperand(lhs, generator) && !signedOperand(rhs, generator);
 }
 
-export function getIntegralLLVMTypeTypename(type: llvm.Type) {
-  if (type.isIntegerTy(8)) {
+export function getIntegralLLVMTypeTypename(type: LLVMType) {
+  if (type.isIntegerType(8)) {
     return "int8_t";
   }
 
-  if (type.isIntegerTy(16)) {
+  if (type.isIntegerType(16)) {
     return "int16_t";
   }
 
-  if (type.isIntegerTy(32)) {
+  if (type.isIntegerType(32)) {
     return "int32_t";
   }
 
@@ -72,49 +73,49 @@ export function getIntegralLLVMTypeTypename(type: llvm.Type) {
 const integralAdjust: {
   [type: string]: {
     isSigned: boolean;
-    typeGetter: (_: llvm.LLVMContext) => llvm.Type;
+    typeGetter: (_: LLVMGenerator) => LLVMType;
   };
 } = {
   int8_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt8Ty,
+    typeGetter: LLVMType.getInt8Type,
   },
   int16_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt16Ty,
+    typeGetter: LLVMType.getInt16Type,
   },
   int32_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt32Ty,
+    typeGetter: LLVMType.getInt32Type,
   },
   int64_t: {
     isSigned: true,
-    typeGetter: llvm.Type.getInt64Ty,
+    typeGetter: LLVMType.getInt64Type,
   },
   uint8_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt8Ty,
+    typeGetter: LLVMType.getInt8Type,
   },
   uint16_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt16Ty,
+    typeGetter: LLVMType.getInt16Type,
   },
   uint32_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt32Ty,
+    typeGetter: LLVMType.getInt32Type,
   },
   uint64_t: {
     isSigned: false,
-    typeGetter: llvm.Type.getInt64Ty,
+    typeGetter: LLVMType.getInt64Type,
   },
 };
 /* tslint:enable:object-literal-sort-keys */
 
-export function adjustValue(value: llvm.Value, typename: string, generator: LLVMGenerator): llvm.Value {
+export function adjustValue(value: LLVMValue, typename: string, generator: LLVMGenerator): LLVMValue {
   const loaded = generator.createLoadIfNecessary(value);
-  if (!loaded.type.isIntegerTy()) {
+  if (!loaded.type.isIntegerType()) {
     const adjustParameters = integralAdjust[typename];
-    const typeGetter = adjustParameters.typeGetter(generator.context);
+    const typeGetter = adjustParameters.typeGetter(generator);
 
     value = adjustParameters.isSigned
       ? generator.builder.createFPToSI(loaded, typeGetter)

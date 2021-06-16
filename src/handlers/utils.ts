@@ -3,13 +3,8 @@ import { LLVMGenerator } from "@generator";
 import { FunctionMangler } from "@mangling";
 import {
   error,
-  checkIfLLVMString,
-  getLLVMValue,
-  adjustLLVMValueToType,
-  unwrapPointerType,
   getExpressionText,
   checkIfStaticProperty,
-  correctCppPrimitiveType,
   getAccessorType,
   getDeclarationNamespace,
   InternalNames,
@@ -19,100 +14,90 @@ import * as ts from "typescript";
 import { addClassScope, Environment, HeapVariableDeclaration, Scope } from "@scope";
 import { Type } from "../ts/type";
 import { TypeChecker } from "../ts/typechecker";
+import { LLVMConstant, LLVMConstantInt, LLVMValue } from "../llvm/value";
+import { LLVMType } from "../llvm/type";
 
 export function castToInt32AndBack(
-  values: llvm.Value[],
+  values: LLVMValue[],
   generator: LLVMGenerator,
-  handle: (ints: llvm.Value[]) => llvm.Value
-): llvm.Value {
-  const ints = values.map((value) => generator.builder.createFPToSI(value, llvm.Type.getInt32Ty(generator.context)));
-  return generator.builder.createSIToFP(handle(ints), llvm.Type.getDoubleTy(generator.context));
+  handle: (ints: LLVMValue[]) => LLVMValue
+): LLVMValue {
+  const ints = values.map((value) => generator.builder.createFPToSI(value, LLVMType.getInt32Type(generator)));
+  return generator.builder.createSIToFP(handle(ints), LLVMType.getDoubleType(generator));
 }
 
 export function castFPToIntegralType(
-  value: llvm.Value,
-  target: llvm.Type,
+  value: LLVMValue,
+  target: LLVMType,
   signed: boolean,
   generator: LLVMGenerator
-): llvm.Value {
+): LLVMValue {
   return signed ? generator.builder.createFPToSI(value, target) : generator.builder.createFPToUI(value, target);
 }
 
 export function promoteIntegralToFP(
-  value: llvm.Value,
-  target: llvm.Type,
+  value: LLVMValue,
+  target: LLVMType,
   signed: boolean,
   generator: LLVMGenerator
-): llvm.Value {
+): LLVMValue {
   return signed ? generator.builder.createSIToFP(value, target) : generator.builder.createUIToFP(value, target);
 }
 
-export function makeAssignment(left: llvm.Value, right: llvm.Value, generator: LLVMGenerator): llvm.Value {
-  if (!left.type.isPointerTy()) {
+export function makeAssignment(left: LLVMValue, right: LLVMValue, generator: LLVMGenerator): LLVMValue {
+  if (!left.type.isPointer()) {
     error(`Assignment destination expected to be of PointerType, got '${left.type.toString()}'`);
   }
 
-  const typename = getIntegralLLVMTypeTypename(unwrapPointerType(left.type));
+  const typename = getIntegralLLVMTypeTypename(left.type.unwrapPointer());
   if (typename) {
     right = adjustValue(right, typename, generator);
   } else if (generator.types.union.isLLVMUnion(left.type)) {
     let unionValue = generator.types.union.initialize(left.type, right);
-    if (!left.type.elementType.equals(unionValue.type)) {
-      unionValue = adjustLLVMValueToType(unionValue, left.type.elementType, generator);
+    if (!left.type.getPointerElementType().equals(unionValue.type)) {
+      unionValue = unionValue.adjustToType(left.type.getPointerElementType());
     }
-    generator.xbuilder.createSafeStore(unionValue, left);
+    generator.builder.createSafeStore(unionValue, left);
     return left;
   }
 
-  right = adjustLLVMValueToType(right, left.type.elementType, generator);
+  right = right.adjustToType(left.type.getPointerElementType());
 
-  generator.xbuilder.createSafeStore(right, left);
+  generator.builder.createSafeStore(right, left);
   return left;
 }
 
-export function makeBoolean(value: llvm.Value, expression: ts.Expression, generator: LLVMGenerator): llvm.Value {
-  value = getLLVMValue(value, generator);
+export function makeBoolean(value: LLVMValue, expression: ts.Expression, generator: LLVMGenerator): LLVMValue {
+  value = value.getValue();
 
-  if (value.type.isDoubleTy()) {
-    return generator.builder.createFCmpONE(value, llvm.Constant.getNullValue(value.type));
+  if (value.type.isDoubleType()) {
+    return generator.builder.createFCmpONE(value, LLVMConstant.createNullValue(value.type, generator));
   }
 
-  if (value.type.isIntegerTy()) {
-    return generator.builder.createICmpNE(value, llvm.Constant.getNullValue(value.type));
+  if (value.type.isIntegerType()) {
+    return generator.builder.createICmpNE(value, LLVMConstant.createNullValue(value.type, generator));
   }
 
-  if (checkIfLLVMString(value.type)) {
+  if (value.type.isString()) {
     const lengthGetter = generator.builtinString.getLLVMLength(expression);
-    const length = generator.xbuilder.createSafeCall(lengthGetter, [value]);
-    return generator.builder.createICmpNE(length, llvm.Constant.getNullValue(length.type));
+    const length = generator.builder.createSafeCall(lengthGetter, [value]);
+    return generator.builder.createICmpNE(length, LLVMConstant.createNullValue(length.type, generator));
   }
 
   if (generator.types.union.isLLVMUnion(value.type)) {
     if (generator.types.union.isUnionWithNull(value.type) || generator.types.union.isUnionWithUndefined(value.type)) {
-      const marker = generator.xbuilder.createSafeExtractValue(value, [0]);
-      return generator.builder.createICmpNE(marker, llvm.ConstantInt.get(generator.context, -1, 8));
+      const marker = generator.builder.createSafeExtractValue(value, [0]);
+      return generator.builder.createICmpNE(marker, LLVMConstantInt.get(generator, -1, 8));
     }
 
-    return llvm.ConstantInt.getTrue(generator.context);
+    return LLVMConstantInt.getTrue(generator);
   }
 
   if (generator.types.closure.isTSClosure(value.type)) {
-    return llvm.ConstantInt.getTrue(generator.context);
+    return LLVMConstantInt.getTrue(generator);
   }
 
-  error(`Unable to convert operand of type ${value.type} to boolean value`);
-}
-
-export function isConvertible(lhs: llvm.Type, rhs: llvm.Type): boolean {
-  if (lhs.isIntegerTy() && rhs.isDoubleTy()) {
-    return true;
-  }
-
-  if (lhs.isDoubleTy() && rhs.isIntegerTy()) {
-    return true;
-  }
-
-  return false;
+  error(`Unable to convert operand of type ${value.type.toString()} to boolean value`);
 }
 
 export enum Conversion {
@@ -124,32 +109,32 @@ export enum Conversion {
 export function handleBinaryWithConversion(
   lhsExpression: ts.Expression,
   rhsExpression: ts.Expression,
-  lhsValue: llvm.Value,
-  rhsValue: llvm.Value,
+  lhsValue: LLVMValue,
+  rhsValue: LLVMValue,
   conversion: Conversion,
-  handler: (l: llvm.Value, r: llvm.Value) => llvm.Value,
+  handler: (l: LLVMValue, r: LLVMValue) => LLVMValue,
   generator: LLVMGenerator
-): llvm.Value {
+): LLVMValue {
   const convertor = conversion === Conversion.Narrowing ? castFPToIntegralType : promoteIntegralToFP;
 
-  if (lhsValue.type.isIntegerTy() && rhsValue.type.isDoubleTy()) {
+  if (lhsValue.type.isIntegerType() && rhsValue.type.isDoubleType()) {
     const signed = isSigned(lhsExpression, generator);
     const destinationType = conversion === Conversion.Narrowing ? lhsValue.type : rhsValue.type;
     let convertedArg = conversion === Conversion.Narrowing ? rhsValue : lhsValue;
     const untouchedArg = conversion === Conversion.Narrowing ? lhsValue : rhsValue;
     convertedArg = convertor(convertedArg, destinationType, signed, generator);
-    const args: [llvm.Value, llvm.Value] =
+    const args: [LLVMValue, LLVMValue] =
       conversion === Conversion.Narrowing ? [untouchedArg, convertedArg] : [convertedArg, untouchedArg];
     return handler.apply(generator.builder, args);
   }
 
-  if (lhsValue.type.isDoubleTy() && rhsValue.type.isIntegerTy()) {
+  if (lhsValue.type.isDoubleType() && rhsValue.type.isIntegerType()) {
     const signed = isSigned(rhsExpression, generator);
     const destinationType = conversion === Conversion.Narrowing ? rhsValue.type : lhsValue.type;
     let convertedArg = conversion === Conversion.Narrowing ? lhsValue : rhsValue;
     const untouchedArg = conversion === Conversion.Narrowing ? rhsValue : lhsValue;
     convertedArg = convertor(convertedArg, destinationType, signed, generator);
-    const args: [llvm.Value, llvm.Value] =
+    const args: [LLVMValue, LLVMValue] =
       conversion === Conversion.Narrowing ? [convertedArg, untouchedArg] : [untouchedArg, convertedArg];
     return handler.apply(generator.builder, args);
   }
@@ -209,7 +194,7 @@ export function getArrayType(expression: ts.ArrayLiteralExpression, generator: L
 export function createArrayConstructor(
   expression: ts.ArrayLiteralExpression,
   generator: LLVMGenerator
-): { constructor: llvm.Value; allocated: llvm.Value } {
+): { constructor: LLVMValue; allocated: LLVMValue } {
   addClassScope(expression, generator.symbolTable.globalScope, generator);
 
   const arrayType = getArrayType(expression, generator);
@@ -235,12 +220,12 @@ export function createArrayConstructor(
   }
 
   const { fn: constructor } = generator.llvm.function.create(
-    llvm.Type.getVoidTy(generator.context),
-    [llvm.Type.getInt8PtrTy(generator.context)],
+    LLVMType.getVoidType(generator),
+    [LLVMType.getInt8Type(generator).getPointer()],
     qualifiedName
   );
 
-  const allocated = generator.gc.allocate(parentScope.thisData.llvmType.elementType);
+  const allocated = generator.gc.allocate(parentScope.thisData.llvmType.getPointerElementType());
   return { constructor, allocated };
 }
 
@@ -248,7 +233,7 @@ export function createArrayPush(
   elementType: Type,
   expression: ts.ArrayLiteralExpression,
   generator: LLVMGenerator
-): llvm.Value {
+): LLVMValue {
   const arrayType = getArrayType(expression, generator);
   if (elementType.isFunction()) {
     elementType = generator.builtinTSClosure.getTSType();
@@ -271,18 +256,19 @@ export function createArrayPush(
 
   const parameterType =
     elementType.isObject() || elementType.isUnionOrIntersection()
-      ? llvm.Type.getInt8PtrTy(generator.context)
-      : correctCppPrimitiveType(elementType.getLLVMType());
+      ? LLVMType.getInt8Type(generator).getPointer()
+      : elementType.getLLVMType().correctCppPrimitiveType();
 
   const { fn: push } = generator.llvm.function.create(
-    llvm.Type.getDoubleTy(generator.context),
-    [llvm.Type.getInt8PtrTy(generator.context), parameterType],
+    LLVMType.getDoubleType(generator),
+    [LLVMType.getInt8Type(generator).getPointer(), parameterType],
     qualifiedName
   );
+
   return push;
 }
 
-export function createArraySubscription(expression: ts.ElementAccessExpression, generator: LLVMGenerator): llvm.Value {
+export function createArraySubscription(expression: ts.ElementAccessExpression, generator: LLVMGenerator): LLVMValue {
   const arrayType = generator.ts.checker.getTypeAtLocation(expression.expression);
   let elementType = arrayType.getTypeGenericArguments()[0];
   if (elementType.isFunction()) {
@@ -307,13 +293,14 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
 
   const { fn: subscript } = generator.llvm.function.create(
     retType,
-    [llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getDoubleTy(generator.context)],
+    [LLVMType.getInt8Type(generator).getPointer(), LLVMType.getDoubleType(generator)],
     qualifiedName
   );
+
   return subscript;
 }
 
-export function createArrayConcat(expression: ts.ArrayLiteralExpression, generator: LLVMGenerator): llvm.Value {
+export function createArrayConcat(expression: ts.ArrayLiteralExpression, generator: LLVMGenerator): LLVMValue {
   const arrayType = getArrayType(expression, generator);
 
   const symbol = arrayType.getProperty("concat")!;
@@ -335,14 +322,14 @@ export function createArrayConcat(expression: ts.ArrayLiteralExpression, generat
 
   const { fn: concat } = generator.llvm.function.create(
     llvmArrayType,
-    [llvm.Type.getInt8PtrTy(generator.context), llvm.Type.getInt8PtrTy(generator.context)],
+    [LLVMType.getInt8Type(generator).getPointer(), LLVMType.getInt8Type(generator).getPointer()],
     qualifiedName
   );
 
   return concat;
 }
 
-export function createArrayToString(arrayType: Type, expression: ts.Expression, generator: LLVMGenerator): llvm.Value {
+export function createArrayToString(arrayType: Type, expression: ts.Expression, generator: LLVMGenerator): LLVMValue {
   let elementType = arrayType.getTypeGenericArguments()[0];
   if (elementType.isFunction()) {
     elementType = generator.builtinTSClosure.getTSType();
@@ -365,20 +352,21 @@ export function createArrayToString(arrayType: Type, expression: ts.Expression, 
 
   const { fn: toString } = generator.llvm.function.create(
     generator.builtinString.getLLVMType(),
-    [llvm.Type.getInt8PtrTy(generator.context)],
+    [LLVMType.getInt8Type(generator).getPointer()],
     qualifiedName
   );
+
   return toString;
 }
 
 export function getLLVMReturnType(tsReturnType: Type) {
   const llvmReturnType = tsReturnType.getLLVMType();
 
-  if (llvmReturnType.isVoidTy()) {
+  if (llvmReturnType.isVoid()) {
     return llvmReturnType;
   }
 
-  return llvmReturnType.isPointerTy() ? llvmReturnType : llvmReturnType.getPointerTo();
+  return llvmReturnType.isPointer() ? llvmReturnType : llvmReturnType.getPointer();
 }
 
 export function getEnvironmentVariables(
@@ -550,11 +538,7 @@ function getFunctionEnvironmentVariables(
           node.declarationList.declarations.forEach((declaration) => {
             bodyScope.set(
               declaration.name.getText(),
-              new HeapVariableDeclaration(
-                llvm.ConstantInt.getFalse(generator.context),
-                llvm.ConstantInt.getFalse(generator.context),
-                ""
-              )
+              new HeapVariableDeclaration(LLVMConstantInt.getFalse(generator), LLVMConstantInt.getFalse(generator), "")
             );
           });
         }
@@ -608,7 +592,7 @@ export function getStaticFunctionEnvironmentVariables(body: ts.ConciseBody, gene
 }
 
 export function getEffectiveArguments(closure: string, body: ts.ConciseBody, generator: LLVMGenerator) {
-  const effectiveArguments = new Map<string, llvm.Value>();
+  const effectiveArguments = new Map<string, LLVMValue>();
 
   const searchForEffectiveArgumentsNames = (node: ts.Node) => {
     if (effectiveArguments.size > 0) {
@@ -625,13 +609,13 @@ export function getEffectiveArguments(closure: string, body: ts.ConciseBody, gen
 
         declaration.parameters?.forEach((parameter) => {
           const llvmType = generator.ts.checker.getTypeAtLocation(parameter).getLLVMType();
-          effectiveArguments.set(parameter.name.getText(), llvm.Constant.getNullValue(llvmType));
+          effectiveArguments.set(parameter.name.getText(), LLVMConstant.createNullValue(llvmType, generator));
         });
       }
     } else if (ts.isCallExpression(node) && node.expression.getText() === closure) {
       node.arguments.forEach((arg) => {
         const llvmType = generator.ts.checker.getTypeAtLocation(arg).getLLVMType();
-        effectiveArguments.set(getExpressionText(arg), llvm.Constant.getNullValue(llvmType));
+        effectiveArguments.set(getExpressionText(arg), LLVMConstant.createNullValue(llvmType, generator));
       });
     }
 

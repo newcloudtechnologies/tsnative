@@ -14,15 +14,17 @@ import { error } from "@utils";
 import * as ts from "typescript";
 import * as crypto from "crypto";
 import { Type } from "../ts/type";
+import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMValue } from "../llvm/value";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
   name: string;
-  type: llvm.Type;
+  type: LLVMType;
   props: string[];
   propsMap: PropsMap;
 
-  constructor(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
+  constructor(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
     this.name = name;
     this.type = type;
     this.props = props;
@@ -32,10 +34,10 @@ class UnionMeta {
 
 class IntersectionMeta {
   name: string;
-  type: llvm.Type;
+  type: LLVMType;
   props: string[];
 
-  constructor(name: string, type: llvm.Type, props: string[]) {
+  constructor(name: string, type: LLVMType, props: string[]) {
     this.name = name;
     this.type = type;
     this.props = props;
@@ -44,10 +46,10 @@ class IntersectionMeta {
 
 class StructMeta {
   name: string;
-  type: llvm.Type;
+  type: LLVMType;
   props: string[];
 
-  constructor(name: string, type: llvm.Type, props: string[]) {
+  constructor(name: string, type: LLVMType, props: string[]) {
     this.name = name;
     this.type = type;
     this.props = props;
@@ -56,10 +58,10 @@ class StructMeta {
 
 class ObjectMeta {
   name: string;
-  type: llvm.StructType;
+  type: LLVMStructType;
   props: string[];
 
-  constructor(name: string, type: llvm.StructType, props: string[]) {
+  constructor(name: string, type: LLVMStructType, props: string[]) {
     this.name = name;
     this.type = type;
     this.props = props;
@@ -75,7 +77,7 @@ class FunctionExpressionEnvStorage {
 }
 
 class ClosureEnvironmentStorage {
-  readonly storage = new Map<llvm.Value, Environment>();
+  readonly storage = new Map<LLVMValue, Environment>();
 }
 
 export class MetaInfoStorage {
@@ -87,7 +89,7 @@ export class MetaInfoStorage {
   readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
   readonly closureEnvironment = new ClosureEnvironmentStorage();
 
-  registerUnionMeta(name: string, type: llvm.Type, props: string[], propsMap: PropsMap) {
+  registerUnionMeta(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
   }
 
@@ -99,7 +101,7 @@ export class MetaInfoStorage {
     return meta;
   }
 
-  registerIntersectionMeta(name: string, type: llvm.Type, props: string[]) {
+  registerIntersectionMeta(name: string, type: LLVMType, props: string[]) {
     this.intersectionMetaInfoStorage.push(new IntersectionMeta(name, type, props));
   }
 
@@ -111,7 +113,7 @@ export class MetaInfoStorage {
     return meta;
   }
 
-  registerStructMeta(name: string, type: llvm.Type, props: string[]) {
+  registerStructMeta(name: string, type: LLVMType, props: string[]) {
     this.structMetaInfoStorage.push(new StructMeta(name, type, props));
   }
 
@@ -123,7 +125,7 @@ export class MetaInfoStorage {
     return meta;
   }
 
-  registerObjectMeta(name: string, type: llvm.StructType, props: string[]) {
+  registerObjectMeta(name: string, type: LLVMStructType, props: string[]) {
     this.objectMetaInfoStorage.push(new ObjectMeta(name, type, props));
   }
 
@@ -182,11 +184,11 @@ export class MetaInfoStorage {
     return stored;
   }
 
-  registerClosureEnvironment(closure: llvm.Value, environment: Environment) {
+  registerClosureEnvironment(closure: LLVMValue, environment: Environment) {
     this.closureEnvironment.storage.set(closure, environment);
   }
 
-  getClosureEnvironment(closure: llvm.Value) {
+  getClosureEnvironment(closure: LLVMValue) {
     const environment = this.closureEnvironment.storage.get(closure);
     if (!environment) {
       error("No environment registered");

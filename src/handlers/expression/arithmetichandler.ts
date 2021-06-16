@@ -10,15 +10,17 @@
  */
 
 import { isSigned } from "@cpp";
-import { Conversion, handleBinaryWithConversion, isConvertible, promoteIntegralToFP } from "@handlers";
-import { error, checkIfLLVMString, adjustLLVMValueToType, getLLVMValue, createHeapAllocatedFromValue } from "@utils";
-import * as llvm from "llvm-node";
+import { Conversion, handleBinaryWithConversion, promoteIntegralToFP } from "@handlers";
+import { error, createHeapAllocatedFromValue } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { LLVMValue } from "../../llvm/value";
+import { Builder } from "../../builder/builder";
+import { LLVMType } from "../../llvm/type";
 
 export class ArithmeticHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
@@ -45,22 +47,22 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+  private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
 
-    left = getLLVMValue(left, this.generator);
-    right = adjustLLVMValueToType(right, left.type, this.generator);
+    left = left.getValue();
+    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createFAdd(left, right), this.generator);
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createAdd(left, right), this.generator);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return createHeapAllocatedFromValue(
         handleBinaryWithConversion(
           lhs,
@@ -68,38 +70,38 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
           left,
           right,
           Conversion.Narrowing,
-          llvm.IRBuilder.prototype.createAdd,
+          Builder.prototype.createAdd,
           this.generator
         ),
         this.generator
       );
     }
 
-    if (checkIfLLVMString(left.type) && checkIfLLVMString(right.type)) {
+    if (left.type.isString() && right.type.isString()) {
       const concat = this.generator.builtinString.getLLVMConcat(lhs);
-      const untypedThis = this.generator.xbuilder.asVoidStar(left);
+      const untypedThis = this.generator.builder.asVoidStar(left);
 
-      return this.generator.xbuilder.createSafeCall(concat, [untypedThis, right]);
+      return this.generator.builder.createSafeCall(concat, [untypedThis, right]);
     }
 
     error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
-  private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+  private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = getLLVMValue(left, this.generator);
-    right = adjustLLVMValueToType(right, left.type, this.generator);
+    left = left.getValue();
+    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createFSub(left, right), this.generator);
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createSub(left, right), this.generator);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return createHeapAllocatedFromValue(
         handleBinaryWithConversion(
           lhs,
@@ -107,7 +109,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
           left,
           right,
           Conversion.Narrowing,
-          llvm.IRBuilder.prototype.createSub,
+          Builder.prototype.createSub,
           this.generator
         ),
         this.generator
@@ -117,21 +119,21 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     error("Invalid operand types to binary minus");
   }
 
-  private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+  private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = getLLVMValue(left, this.generator);
-    right = adjustLLVMValueToType(right, left.type, this.generator);
+    left = left.getValue();
+    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createFMul(left, right), this.generator);
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createMul(left, right), this.generator);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return createHeapAllocatedFromValue(
         handleBinaryWithConversion(
           lhs,
@@ -139,7 +141,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
           left,
           right,
           Conversion.Promotion,
-          llvm.IRBuilder.prototype.createFMul,
+          Builder.prototype.createFMul,
           this.generator
         ),
         this.generator
@@ -149,24 +151,24 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     error("Invalid operand types to multiply");
   }
 
-  private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+  private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = getLLVMValue(left, this.generator);
-    right = adjustLLVMValueToType(right, left.type, this.generator);
+    left = left.getValue();
+    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createFDiv(left, right), this.generator);
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      const doubleType = llvm.Type.getDoubleTy(this.generator.context);
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
+      const doubleType = LLVMType.getDoubleType(this.generator);
       left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
       right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
       return createHeapAllocatedFromValue(this.generator.builder.createFDiv(left, right), this.generator);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return createHeapAllocatedFromValue(
         handleBinaryWithConversion(
           lhs,
@@ -174,7 +176,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
           left,
           right,
           Conversion.Promotion,
-          llvm.IRBuilder.prototype.createFDiv,
+          Builder.prototype.createFDiv,
           this.generator
         ),
         this.generator
@@ -184,24 +186,24 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     error("Invalid operand types to division");
   }
 
-  private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): llvm.Value {
+  private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = getLLVMValue(left, this.generator);
-    right = adjustLLVMValueToType(right, left.type, this.generator);
+    left = left.getValue();
+    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+    if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return createHeapAllocatedFromValue(this.generator.builder.createFRem(left, right), this.generator);
     }
 
-    if (left.type.isIntegerTy() && right.type.isIntegerTy()) {
-      const doubleType = llvm.Type.getDoubleTy(this.generator.context);
+    if (left.type.isIntegerType() && right.type.isIntegerType()) {
+      const doubleType = LLVMType.getDoubleType(this.generator);
       left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
       right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
       return createHeapAllocatedFromValue(this.generator.builder.createFRem(left, right), this.generator);
     }
 
-    if (isConvertible(left.type, right.type)) {
+    if (left.type.isConvertibleTo(right.type)) {
       return createHeapAllocatedFromValue(
         handleBinaryWithConversion(
           lhs,
@@ -209,7 +211,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
           left,
           right,
           Conversion.Promotion,
-          llvm.IRBuilder.prototype.createFRem,
+          Builder.prototype.createFRem,
           this.generator
         ),
         this.generator

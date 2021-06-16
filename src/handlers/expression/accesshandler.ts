@@ -1,13 +1,14 @@
 import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "@scope";
-import { error, getLLVMValue, getTSObjectPropsFromName, InternalNames, unwrapPointerType } from "@utils";
-import * as llvm from "llvm-node";
+import { error, InternalNames } from "@utils";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { createArraySubscription } from "@handlers";
+import { LLVMValue } from "../../llvm/value";
+import { LLVMStructType } from "../../llvm/type";
 
 export class AccessHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
         const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
@@ -56,7 +57,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     return false;
   }
 
-  private handlePropertyAccessExpression(expression: ts.PropertyAccessExpression, env?: Environment): llvm.Value {
+  private handlePropertyAccessExpression(expression: ts.PropertyAccessExpression, env?: Environment): LLVMValue {
     const left = expression.expression;
     let propertyName = expression.name.text;
 
@@ -67,7 +68,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       }
 
       if (index > -1) {
-        return this.generator.xbuilder.createSafeExtractValue(getLLVMValue(env.typed, this.generator), [index]);
+        return this.generator.builder.createSafeExtractValue(env.typed.getValue(), [index]);
       }
     }
 
@@ -103,7 +104,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
       if (value instanceof HeapVariableDeclaration) {
         return value.allocated;
-      } else if (value instanceof llvm.Value) {
+      } else if (value instanceof LLVMValue) {
         return value;
       } else if (value instanceof Scope) {
         scope = value;
@@ -116,29 +117,29 @@ export class AccessHandler extends AbstractExpressionHandler {
     return this.handlePropertyAccessGEP(propertyName, left, env);
   }
 
-  private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): llvm.Value {
+  private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const subscription = createArraySubscription(expression, this.generator);
     const array = this.generator.handleExpression(expression.expression, env);
-    const arrayUntyped = this.generator.xbuilder.asVoidStar(array);
+    const arrayUntyped = this.generator.builder.asVoidStar(array);
     const index = this.generator.createLoadIfNecessary(
       this.generator.handleExpression(expression.argumentExpression, env)
     );
 
-    return this.generator.xbuilder.createSafeCall(subscription, [arrayUntyped, index]);
+    return this.generator.builder.createSafeCall(subscription, [arrayUntyped, index]);
   }
 
-  private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): llvm.Value {
+  private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): LLVMValue {
     let llvmValue = this.generator.handleExpression(expression, env);
-    if (!llvmValue.type.isPointerTy()) {
+    if (!llvmValue.type.isPointer()) {
       error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
-    while ((llvmValue.type as llvm.PointerType).elementType.isPointerTy()) {
+    while (llvmValue.type.getPointerElementType().isPointer()) {
       llvmValue = this.generator.builder.createLoad(llvmValue);
     }
 
     if (this.generator.types.union.isLLVMUnion(llvmValue.type)) {
-      const unionName = (unwrapPointerType(llvmValue.type) as llvm.StructType).name;
+      const unionName = (llvmValue.type.unwrapPointer() as LLVMStructType).getName();
       if (!unionName) {
         error("Name required for UnionStruct");
       }
@@ -149,9 +150,9 @@ export class AccessHandler extends AbstractExpressionHandler {
         error(`Mapping not found for ${propertyName}`);
       }
 
-      return this.generator.builder.createLoad(this.generator.xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
+      return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]));
     } else if (this.generator.types.intersection.isLLVMIntersection(llvmValue.type)) {
-      const intersectionName = (unwrapPointerType(llvmValue.type) as llvm.StructType).name;
+      const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).getName();
       if (!intersectionName) {
         error("Name required for IntersectionStruct");
       }
@@ -162,7 +163,7 @@ export class AccessHandler extends AbstractExpressionHandler {
         error(`Mapping not found for ${propertyName}`);
       }
 
-      return this.generator.builder.createLoad(this.generator.xbuilder.createSafeInBoundsGEP(llvmValue, [0, index]));
+      return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]));
     } else {
       let propertyIndex = -1;
 
@@ -171,7 +172,7 @@ export class AccessHandler extends AbstractExpressionHandler {
         propertyIndex = type.indexOfProperty(propertyName);
       } else {
         // Object name is its properties names reduced to string, delimited with the dot ('.').
-        const propertyNames = getTSObjectPropsFromName(llvmValue.name);
+        const propertyNames = llvmValue.getTSObjectPropsFromName();
         propertyIndex = propertyNames.indexOf(propertyName);
       }
 
@@ -179,7 +180,7 @@ export class AccessHandler extends AbstractExpressionHandler {
         error(`Property '${propertyName}' not found in '${expression.getText()}'`);
       }
 
-      const elementPtr = this.generator.xbuilder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
+      const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
 
       const inTSClassConstructor = () => Boolean(this.generator.currentFunction.name?.endsWith("__constructor"));
 

@@ -9,15 +9,15 @@
  *
  */
 
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
+import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
 
 export class NoopHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isSpreadElement(expression)) {
-      return llvm.ConstantInt.getFalse(this.generator.context);
+      return LLVMConstantInt.getFalse(this.generator);
     }
 
     if (this.next) {

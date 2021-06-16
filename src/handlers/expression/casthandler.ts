@@ -11,12 +11,13 @@
 
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error, unwrapPointerType } from "@utils";
+import { error } from "@utils";
 import * as ts from "typescript";
-import llvm = require("llvm-node");
+import { LLVMValue } from "../../llvm/value";
+import { LLVMStructType } from "../../llvm/type";
 
 export class CastHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.AsExpression:
         const asExpression = expression as ts.AsExpression;
@@ -34,7 +35,7 @@ export class CastHandler extends AbstractExpressionHandler {
           to '${destinationType.toString()}'`);
         }
 
-        const unionName = (unwrapPointerType(value.type) as llvm.StructType).name;
+        const unionName = (value.type.unwrapPointer() as LLVMStructType).getName();
         if (!unionName) {
           error("Name required for UnionStruct");
         }
@@ -44,7 +45,7 @@ export class CastHandler extends AbstractExpressionHandler {
           const typeProps = destinationType.getProperties();
           const propNames = typeProps.map((symbol) => symbol.name);
           const objectType = destinationType.getLLVMType();
-          const allocated = this.generator.gc.allocate(unwrapPointerType(objectType));
+          const allocated = this.generator.gc.allocate(objectType.unwrapPointer());
 
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
@@ -52,15 +53,15 @@ export class CastHandler extends AbstractExpressionHandler {
               error(`Mapping not found for '${propNames[i]}'`);
             }
 
-            const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
-            const propValuePtr = this.generator.xbuilder.createSafeInBoundsGEP(value, [0, valueIndex]);
+            const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
+            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, valueIndex]);
             const propValue = this.generator.builder.createLoad(propValuePtr);
-            this.generator.xbuilder.createSafeStore(propValue, destinationPtr);
+            this.generator.builder.createSafeStore(propValue, destinationPtr);
           }
           return allocated;
         } else {
-          const destinationStructType = unwrapPointerType(destinationType.getLLVMType()) as llvm.StructType;
-          const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
+          const destinationStructType = destinationType.getLLVMType().unwrapPointer() as LLVMStructType;
+          const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.getName()!);
 
           const allocated = this.generator.gc.allocate(destinationStructType);
 
@@ -70,10 +71,10 @@ export class CastHandler extends AbstractExpressionHandler {
               error(`'${name}' not found in '${unionMeta.name}'`);
             }
 
-            const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, index]);
-            const propValuePtr = this.generator.xbuilder.createSafeInBoundsGEP(value, [0, sourceIndex]);
+            const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, index]);
+            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, sourceIndex]);
             const propValue = this.generator.builder.createLoad(propValuePtr);
-            this.generator.xbuilder.createSafeStore(propValue, destinationPtr);
+            this.generator.builder.createSafeStore(propValue, destinationPtr);
           });
 
           return allocated;

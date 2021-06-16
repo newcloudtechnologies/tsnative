@@ -24,10 +24,6 @@ export function checkIfHasVTable(declaration: ts.ClassDeclaration) {
   return Boolean(declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator));
 }
 
-export function getExpressionTypename(expression: ts.Expression, checker: ts.TypeChecker): string {
-  return checker.typeToString(checker.getTypeAtLocation(expression));
-}
-
 export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
   let parentNode = declaration.parent;
   let moduleBlockSeen = false;
@@ -141,31 +137,6 @@ export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMG
   });
 }
 
-export function getReturnType(expression: ts.CallExpression, generator: LLVMGenerator) {
-  const resolvedSignature = generator.ts.checker.getResolvedSignature(expression)!;
-  const returnType = generator.ts.checker.getReturnTypeOfSignature(resolvedSignature);
-  return returnType;
-}
-
-export function withObjectProperties<R>(
-  expression: ts.ObjectLiteralExpression,
-  action: (property: ts.ObjectLiteralElementLike, index: number, array: R[]) => R
-): R[] {
-  const resultArray: R[] = [];
-  for (const property of expression.properties) {
-    switch (property.kind) {
-      case ts.SyntaxKind.PropertyAssignment:
-      case ts.SyntaxKind.ShorthandPropertyAssignment:
-      case ts.SyntaxKind.SpreadAssignment:
-        resultArray.push(action(property, resultArray.length, resultArray));
-        break;
-      default:
-        error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
-    }
-  }
-  return resultArray;
-}
-
 export function getRandomString() {
   return Math.random()
     .toString(36)
@@ -189,10 +160,6 @@ export function getExpressionText(expression: ts.Expression): string {
   }
 
   return expression.getText();
-}
-
-export function isSyntheticNode(node: ts.Node) {
-  return node.pos === -1 && node.end === -1;
 }
 
 export function getAccessorType(
@@ -237,7 +204,6 @@ export function getAccessorType(
 
 export enum InternalNames {
   Environment = "__environment__",
-  Closure = "__closure__",
   FunctionScope = "__function_scope__",
   Object = "__object__",
   This = "this",

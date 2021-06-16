@@ -9,7 +9,7 @@
  *
  */
 
-import { flatten } from "@utils";
+import { flatten } from "lodash";
 import * as fs from "fs";
 
 export class NmSymbolExtractor {

@@ -9,12 +9,14 @@
  *
  */
 
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 
 import { LLVMGenerator } from "@generator";
-import { checkIfLLVMString, error, flatten, getLLVMValue, getTSObjectPropsFromName, unwrapPointerType } from "@utils";
+import { error } from "@utils";
 import { Type } from "../ts/type";
+import { flatten } from "lodash";
+import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMConstant, LLVMConstantInt, LLVMValue } from "../llvm/value";
 
 export class Union {
   private readonly generator: LLVMGenerator;
@@ -23,7 +25,7 @@ export class Union {
     this.generator = generator;
   }
 
-  private findIndexOfType(types: llvm.Type[], type: llvm.Type) {
+  private findIndexOfType(types: LLVMType[], type: LLVMType) {
     for (let i = 0; i < types.length; ++i) {
       if (types[i].equals(type)) {
         return i;
@@ -32,7 +34,7 @@ export class Union {
     return -1;
   }
 
-  private getLLVMTypename(type: llvm.Type) {
+  private getLLVMTypename(type: LLVMType) {
     return type.toString().replace(/%|\*/g, "");
   }
 
@@ -47,7 +49,7 @@ export class Union {
     );
   }
 
-  private getElementTypes(type: Type): llvm.Type[] {
+  private getElementTypes(type: Type): LLVMType[] {
     return flatten(
       type.types.map((subtype) => {
         if (!subtype.isSymbolless() && ts.isInterfaceDeclaration(subtype.getSymbol().declarations[0])) {
@@ -67,33 +69,37 @@ export class Union {
     return type.isUnion() && (type.flags & ts.TypeFlags.BooleanLike) === 0;
   }
 
-  isLLVMUnion(type: llvm.Type): boolean {
-    const nakedType = unwrapPointerType(type);
-    return Boolean(nakedType.isStructTy() && nakedType.name?.endsWith(".union"));
+  isLLVMUnion(type: LLVMType): boolean {
+    const nakedType = type.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.getName()?.endsWith(".union"));
   }
 
-  isUnionWithUndefined(type: llvm.Type): boolean {
-    const nakedType = unwrapPointerType(type);
+  isUnionWithUndefined(type: LLVMType): boolean {
+    const nakedType = type.unwrapPointer();
     return Boolean(
-      nakedType.isStructTy() && nakedType.name?.startsWith("undefined.") && nakedType.name?.endsWith(".union")
+      nakedType.isStructType() &&
+        nakedType.getName()?.startsWith("undefined.") &&
+        nakedType.getName()?.endsWith(".union")
     );
   }
 
-  isUnionWithNull(type: llvm.Type): boolean {
-    const nakedType = unwrapPointerType(type);
-    return Boolean(nakedType.isStructTy() && nakedType.name?.startsWith("null.") && nakedType.name?.endsWith(".union"));
+  isUnionWithNull(type: LLVMType): boolean {
+    const nakedType = type.unwrapPointer();
+    return Boolean(
+      nakedType.isStructType() && nakedType.getName()?.startsWith("null.") && nakedType.getName()?.endsWith(".union")
+    );
   }
 
   getStructType(type: Type) {
     const unionName = type.toString();
-    let unionType = this.generator.module.getTypeByName(unionName);
-    if (unionType) {
-      return unionType;
+    const knownUnionType = this.generator.module.getTypeByName(unionName);
+    if (knownUnionType) {
+      return LLVMType.make(knownUnionType, this.generator) as LLVMStructType;
     }
 
     const elements = this.getElementTypes(type);
 
-    unionType = llvm.StructType.create(this.generator.context, unionName);
+    const unionType = LLVMStructType.create(this.generator, unionName);
     unionType.setBody(elements);
 
     const allProperties = this.getTypeProperties(type);
@@ -106,24 +112,28 @@ export class Union {
     return unionType;
   }
 
-  initialize(type: llvm.PointerType, initializer: llvm.Value): llvm.Value {
+  initialize(type: LLVMType, initializer: LLVMValue) {
+    if (!type.isPointer()) {
+      error(`Expected pointer type, got '${type.toString()}'`);
+    }
+
     if (type.equals(initializer.type)) {
       return initializer;
     }
 
-    const unionStructType = unwrapPointerType(type);
-    if (!unionStructType.isStructTy()) {
+    const unionStructType = type.unwrapPointer();
+    if (!unionStructType.isStructType()) {
       error("Union expected to be of StructType");
     }
 
-    const unionValue = llvm.Constant.getNullValue(unionStructType);
+    const unionValue = LLVMConstant.createNullValue(unionStructType, this.generator);
     const allocated = this.generator.gc.allocate(unionStructType);
-    this.generator.xbuilder.createSafeStore(unionValue, allocated);
+    this.generator.builder.createSafeStore(unionValue, allocated);
 
     if (
-      !checkIfLLVMString(initializer.type) &&
+      !initializer.type.isString() &&
       !this.generator.types.closure.isOptionalTSClosure(unionValue) &&
-      unwrapPointerType(initializer.type).isStructTy()
+      initializer.type.unwrapPointer().isStructType()
     ) {
       const propNames = [];
 
@@ -138,7 +148,7 @@ export class Union {
         propNames.push(...unionMeta.props);
       } else if (initializer.name) {
         // Try to handle initializer as a plain TS object. Its name is in format: %random__object__prop1.prop2.propN
-        const objectProps = getTSObjectPropsFromName(initializer.name);
+        const objectProps = initializer.getTSObjectPropsFromName();
         propNames.push(...objectProps);
       } else {
         // Try to handle initializer as class/interface. Its props names are available through meta storage.
@@ -150,28 +160,29 @@ export class Union {
         propNames.push(...structMeta.props);
       }
 
-      const unionName = unionStructType.name;
+      const unionName = unionStructType.getName();
       if (!unionName) {
         error("Name required for UnionStruct");
       }
 
       const unionMeta = this.generator.meta.getUnionMeta(unionName);
 
-      const initializerValue = getLLVMValue(initializer, this.generator);
+      const initializerValue = initializer.getValue();
       propNames.forEach((name, index) => {
         const destinationIndex = unionMeta.propsMap.get(name);
         if (typeof destinationIndex === "undefined") {
           error(`Mapping not found for property ${name}`);
         }
 
-        const elementPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, destinationIndex]);
-        this.generator.xbuilder.createSafeStore(
-          this.generator.xbuilder.createSafeExtractValue(initializerValue, [index]),
+        const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, destinationIndex]);
+        this.generator.builder.createSafeStore(
+          this.generator.builder.createSafeExtractValue(initializerValue, [index]),
           elementPtr
         );
       });
     } else {
       const elementTypes = [];
+
       for (let i = 0; i < unionStructType.numElements; ++i) {
         elementTypes.push(unionStructType.getElementType(i));
       }
@@ -182,23 +193,23 @@ export class Union {
       }
 
       if ((this.isUnionWithUndefined(type) || this.isUnionWithNull(type)) && activeIndex === 0) {
-        initializer = llvm.ConstantInt.get(this.generator.context, -1, 8);
+        initializer = LLVMConstantInt.get(this.generator, -1, 8);
       }
 
-      const elementPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, activeIndex]);
-      this.generator.xbuilder.createSafeStore(initializer, elementPtr);
+      const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, activeIndex]);
+      this.generator.builder.createSafeStore(initializer, elementPtr);
     }
 
     return allocated;
   }
 
-  extract(union: llvm.Value, type: llvm.PointerType): llvm.Constant {
-    const unionStructType = unwrapPointerType(union.type) as llvm.StructType;
-    const destinationValueType = unwrapPointerType(type);
+  extract(union: LLVMValue, type: LLVMType) {
+    const unionStructType = union.type.unwrapPointer() as LLVMStructType;
+    const destinationValueType = type.unwrapPointer();
 
-    if (destinationValueType.isStructTy() && !checkIfLLVMString(type)) {
-      const unionMeta = this.generator.meta.getUnionMeta(unionStructType.name!);
-      const objectMeta = this.generator.meta.getObjectMeta((destinationValueType as llvm.StructType).name!);
+    if (destinationValueType.isStructType() && !type.isString()) {
+      const unionMeta = this.generator.meta.getUnionMeta(unionStructType.getName()!);
+      const objectMeta = this.generator.meta.getObjectMeta((destinationValueType as LLVMStructType).getName()!);
 
       const allocated = this.generator.gc.allocate(destinationValueType);
 
@@ -208,13 +219,13 @@ export class Union {
           error(`Mapping not found for '${objectMeta.props[i]}'`);
         }
 
-        const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(allocated, [0, i]);
-        const valuePtr = this.generator.xbuilder.createSafeInBoundsGEP(union, [0, sourceIndex]);
+        const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
+        const valuePtr = this.generator.builder.createSafeInBoundsGEP(union, [0, sourceIndex]);
 
-        this.generator.xbuilder.createSafeStore(this.generator.builder.createLoad(valuePtr), destinationPtr);
+        this.generator.builder.createSafeStore(this.generator.builder.createLoad(valuePtr), destinationPtr);
       }
 
-      return allocated as llvm.Constant;
+      return allocated;
     }
 
     const elementTypes = [];
@@ -228,8 +239,6 @@ export class Union {
       error(`Cannot find type '${type.toString()}' in union type '${unionStructType.toString()}'`);
     }
 
-    return this.generator.builder.createLoad(
-      this.generator.xbuilder.createSafeInBoundsGEP(union, [0, activeIndex])
-    ) as llvm.Constant;
+    return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(union, [0, activeIndex]));
   }
 }

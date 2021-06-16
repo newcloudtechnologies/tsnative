@@ -9,7 +9,7 @@
  *
  */
 
-import { checkIfProperty, error, isSyntheticNode } from "@utils";
+import { checkIfProperty, error } from "@utils";
 import * as ts from "typescript";
 import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
 import { Type } from "../ts/type";
@@ -18,7 +18,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
       const visitor = (node: ts.Node): ts.Node => {
-        if (!isSyntheticNode(node) && node.getText(sourceFile).startsWith("console.log(")) {
+        if (!this.utils.isSyntheticNode(node) && node.getText(sourceFile).startsWith("console.log(")) {
           let call: ts.CallExpression;
           if (ts.isExpressionStatement(node)) {
             call = node.expression as ts.CallExpression;

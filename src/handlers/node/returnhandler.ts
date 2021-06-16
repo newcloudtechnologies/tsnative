@@ -12,25 +12,31 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { isSimilarStructs } from "@utils";
-import { PointerType } from "llvm-node";
+import { LLVMType } from "../../llvm/type";
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isReturnStatement(node)) {
       if (node.expression) {
         let ret = this.generator.handleExpression(node.expression, env);
-        const currentFunctionReturnType = this.generator.currentFunction.type.elementType.returnType;
+        const currentFunctionReturnType = LLVMType.make(
+          this.generator.currentFunction.type.elementType.returnType,
+          this.generator
+        );
 
         if (!ret.type.equals(currentFunctionReturnType)) {
-          if (isSimilarStructs(ret.type, currentFunctionReturnType)) {
+          const retTypeUnwrapped = ret.type.unwrapPointer();
+          if (
+            retTypeUnwrapped.isStructType() &&
+            retTypeUnwrapped.isSameStructs(currentFunctionReturnType.unwrapPointer())
+          ) {
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
           } else if (this.generator.types.union.isLLVMUnion(currentFunctionReturnType)) {
-            ret = this.generator.types.union.initialize(currentFunctionReturnType as PointerType, ret);
+            ret = this.generator.types.union.initialize(currentFunctionReturnType, ret);
           }
         }
 
-        this.generator.xbuilder.createSafeRet(ret);
+        this.generator.builder.createSafeRet(ret);
       } else {
         this.generator.builder.createRetVoid();
       }

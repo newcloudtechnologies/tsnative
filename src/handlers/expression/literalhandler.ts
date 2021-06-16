@@ -1,12 +1,13 @@
-import { createTSObjectName, error, getLLVMTypename, getTSObjectPropsFromName, withObjectProperties } from "@utils";
-import * as llvm from "llvm-node";
+import { createTSObjectName, error } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration } from "@scope";
 import { createArrayConcat, createArrayConstructor, createArrayPush, getArrayType } from "@handlers";
+import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
+import { LLVMStructType, LLVMType } from "../../llvm/type";
 
 export class LiteralHandler extends AbstractExpressionHandler {
-  handle(expression: ts.Expression, env?: Environment): llvm.Value | undefined {
+  handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.TrueKeyword:
       case ts.SyntaxKind.FalseKeyword:
@@ -30,34 +31,34 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleBooleanLiteral(expression: ts.BooleanLiteral): llvm.Value {
-    const allocated = this.generator.gc.allocate(llvm.Type.getIntNTy(this.generator.context, 1));
+  private handleBooleanLiteral(expression: ts.BooleanLiteral): LLVMValue {
+    const allocated = this.generator.gc.allocate(LLVMType.getIntNType(1, this.generator));
     if (expression.kind === ts.SyntaxKind.TrueKeyword) {
-      this.generator.xbuilder.createSafeStore(llvm.ConstantInt.getTrue(this.generator.context), allocated);
+      this.generator.builder.createSafeStore(LLVMConstantInt.getTrue(this.generator), allocated);
     } else {
-      this.generator.xbuilder.createSafeStore(llvm.ConstantInt.getFalse(this.generator.context), allocated);
+      this.generator.builder.createSafeStore(LLVMConstantInt.getFalse(this.generator), allocated);
     }
     return allocated;
   }
 
-  private handleNumericLiteral(expression: ts.NumericLiteral): llvm.Value {
-    const allocated = this.generator.gc.allocate(llvm.Type.getDoubleTy(this.generator.context));
-    const value = llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
-    this.generator.xbuilder.createSafeStore(value, allocated);
+  private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
+    const allocated = this.generator.gc.allocate(LLVMType.getDoubleType(this.generator));
+    const value = LLVMConstantFP.get(this.generator, parseFloat(expression.text));
+    this.generator.builder.createSafeStore(value, allocated);
     return allocated;
   }
 
-  private handleStringLiteral(expression: ts.StringLiteral): llvm.Value {
+  private handleStringLiteral(expression: ts.StringLiteral): LLVMValue {
     const llvmThisType = this.generator.builtinString.getLLVMType();
     const constructor = this.generator.builtinString.getLLVMConstructor(expression);
     const ptr = this.generator.builder.createGlobalStringPtr(expression.text);
-    const allocated = this.generator.gc.allocate(llvmThisType.elementType);
-    this.generator.xbuilder.createSafeCall(constructor, [allocated, ptr]);
+    const allocated = this.generator.gc.allocate(llvmThisType.getPointerElementType());
+    this.generator.builder.createSafeCall(constructor, [allocated, ptr]);
     return allocated;
   }
 
-  private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression, env?: Environment): llvm.Value {
-    const llvmValues = new Map<string, llvm.Value>();
+  private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression, env?: Environment): LLVMValue {
+    const llvmValues = new Map<string, LLVMValue>();
     expression.properties.forEach((property) => {
       switch (property.kind) {
         case ts.SyntaxKind.PropertyAssignment:
@@ -68,35 +69,37 @@ export class LiteralHandler extends AbstractExpressionHandler {
           break;
         case ts.SyntaxKind.SpreadAssignment:
           const propertyValue = this.generator.handleExpression(property.expression, env);
-          if (!propertyValue.type.isPointerTy()) {
+          if (!propertyValue.type.isPointer()) {
             error(`Expected spread initializer to be of PointerType, got ${propertyValue.type.toString()}`);
           }
-          if (!propertyValue.type.elementType.isStructTy()) {
+          if (!propertyValue.type.getPointerElementType().isStructType()) {
             error(
-              `Expected spread initializer element type to be of StructType, got ${propertyValue.type.elementType.toString()}`
+              `Expected spread initializer element type to be of StructType, got ${propertyValue.type
+                .getPointerElementType()
+                .toString()}`
             );
           }
 
           const names = [];
           if (this.generator.types.intersection.isLLVMIntersection(propertyValue.type)) {
-            const name = getLLVMTypename(propertyValue.type);
+            const name = propertyValue.type.getTypename();
             const intersectionMeta = this.generator.meta.getIntersectionMeta(name);
             names.push(...intersectionMeta.props);
           } else {
             if (propertyValue.name) {
               // Try to handle propertyValue as a plain TS object. Its name is in format: %random__object__prop1.prop2.propN
-              const props = getTSObjectPropsFromName(propertyValue.name);
+              const props = propertyValue.getTSObjectPropsFromName();
               names.push(...props);
             } else {
-              const name = getLLVMTypename(propertyValue.type);
+              const name = propertyValue.type.getTypename();
               const structMeta = this.generator.meta.getStructMeta(name);
               names.push(...structMeta.props);
             }
           }
 
-          for (let i = 0; i < propertyValue.type.elementType.numElements; ++i) {
+          for (let i = 0; i < (propertyValue.type.getPointerElementType() as LLVMStructType).numElements; ++i) {
             const value = this.generator.builder.createLoad(
-              this.generator.xbuilder.createSafeInBoundsGEP(propertyValue, [0, i])
+              this.generator.builder.createSafeInBoundsGEP(propertyValue, [0, i])
             );
 
             value.name = names[i];
@@ -110,17 +113,17 @@ export class LiteralHandler extends AbstractExpressionHandler {
     });
 
     const types = Array.from(llvmValues.values()).map((value) => value.type);
-    const objectType = llvm.StructType.get(this.generator.context, types);
+    const objectType = LLVMStructType.get(this.generator, types);
     const object = this.generator.gc.allocate(objectType);
 
     Array.from(llvmValues.values()).forEach((value, index) => {
-      const destinationPtr = this.generator.xbuilder.createSafeInBoundsGEP(object, [0, index]);
-      this.generator.xbuilder.createSafeStore(value, destinationPtr);
+      const destinationPtr = this.generator.builder.createSafeInBoundsGEP(object, [0, index]);
+      this.generator.builder.createSafeStore(value, destinationPtr);
     });
 
     object.name = createTSObjectName(Array.from(llvmValues.keys()));
 
-    const objectPropertyTypesName = withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
+    const objectPropertyTypesName = this.withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
       if (!property.name) {
         return;
       }
@@ -162,7 +165,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return object;
   }
 
-  private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): llvm.Value {
+  private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): LLVMValue {
     const arrayType = getArrayType(expression, this.generator);
     const elementType = arrayType.getTypeGenericArguments()[0];
 
@@ -170,7 +173,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const { constructor } = constructorAndMemory;
     let { allocated } = constructorAndMemory;
 
-    this.generator.xbuilder.createSafeCall(constructor, [this.generator.xbuilder.asVoidStar(allocated)]);
+    this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
 
     const push = createArrayPush(elementType, expression, this.generator);
     for (const element of expression.elements) {
@@ -182,9 +185,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
           elementValue = elementValue.allocated;
         }
 
-        allocated = this.generator.xbuilder.createSafeCall(concat, [
-          this.generator.xbuilder.asVoidStar(allocated),
-          this.generator.xbuilder.asVoidStar(elementValue),
+        allocated = this.generator.builder.createSafeCall(concat, [
+          this.generator.builder.asVoidStar(allocated),
+          this.generator.builder.asVoidStar(elementValue),
         ]);
       } else {
         let elementValue = this.generator.handleExpression(element, outerEnv);
@@ -192,13 +195,32 @@ export class LiteralHandler extends AbstractExpressionHandler {
         const tsType = this.generator.ts.checker.getTypeAtLocation(element);
         elementValue =
           tsType.isObject() || tsType.isFunction()
-            ? this.generator.xbuilder.asVoidStar(elementValue)
+            ? this.generator.builder.asVoidStar(elementValue)
             : this.generator.createLoadIfNecessary(elementValue);
 
-        this.generator.xbuilder.createSafeCall(push, [this.generator.xbuilder.asVoidStar(allocated), elementValue]);
+        this.generator.builder.createSafeCall(push, [this.generator.builder.asVoidStar(allocated), elementValue]);
       }
     }
 
     return allocated;
+  }
+
+  private withObjectProperties<R>(
+    expression: ts.ObjectLiteralExpression,
+    action: (property: ts.ObjectLiteralElementLike, index: number, array: R[]) => R
+  ): R[] {
+    const resultArray: R[] = [];
+    for (const property of expression.properties) {
+      switch (property.kind) {
+        case ts.SyntaxKind.PropertyAssignment:
+        case ts.SyntaxKind.ShorthandPropertyAssignment:
+        case ts.SyntaxKind.SpreadAssignment:
+          resultArray.push(action(property, resultArray.length, resultArray));
+          break;
+        default:
+          error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
+      }
+    }
+    return resultArray;
   }
 }

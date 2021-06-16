@@ -11,13 +11,13 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { checkIfStaticProperty, error, getParentFromOriginal } from "@utils";
+import { checkIfStaticProperty, error } from "@utils";
 
 export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     return (sourceFile) => {
       const visitor = (node: ts.Node): ts.Node => {
-        const parent = node.parent || getParentFromOriginal(node);
+        const parent = node.parent || this.utils.getParentFromOriginal(node);
 
         if (ts.isConstructorDeclaration(node) && node.body && parent) {
           // @ts-ignore

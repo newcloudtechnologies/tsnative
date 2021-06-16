@@ -12,10 +12,6 @@
 import { TypeChecker } from "../ts/typechecker";
 import * as ts from "typescript";
 
-export function isConst(node: ts.VariableDeclaration | ts.VariableDeclarationList): boolean {
-  return Boolean(ts.getCombinedNodeFlags(node) & ts.NodeFlags.Const);
-}
-
 export function checkIfStaticMethod(valueDeclaration: ts.Declaration): boolean {
   return valueDeclaration.getText().startsWith(ts.ScriptElementKindModifier.staticModifier);
 }
@@ -43,18 +39,4 @@ export function checkIfMethod(expression: ts.Expression, checker: TypeChecker): 
 
 export function checkIfProperty(symbol: ts.Symbol): boolean {
   return Boolean(symbol.flags & ts.SymbolFlags.Property);
-}
-
-export function getParentFromOriginal(node: ts.Node): ts.Node | undefined {
-  // @ts-ignore
-  let original = node.original;
-  while (original) {
-    if (original.parent) {
-      return original.parent;
-    }
-
-    original = original.original;
-  }
-
-  return undefined;
 }
