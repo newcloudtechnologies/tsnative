@@ -221,6 +221,20 @@ export class Builder {
     return LLVMValue.create(casted, this.generator);
   }
 
+  private withDoublesAsInts(
+    lhs: LLVMValue,
+    rhs: LLVMValue,
+    generator: LLVMGenerator,
+    handler: (lhs: LLVMValue, rhs: LLVMValue) => LLVMValue
+  ): LLVMValue {
+    lhs = generator.builder.createFPToSI(lhs, LLVMType.getInt32Type(generator));
+    rhs = generator.builder.createFPToSI(rhs, LLVMType.getInt32Type(generator));
+
+    const result = handler(lhs, rhs);
+
+    return generator.builder.createSIToFP(result, LLVMType.getDoubleType(generator));
+  }
+
   createFPToSI(value: LLVMValue, type: LLVMType, name?: string) {
     const casted = this.builder.createFPToSI(value.unwrapped, type.unwrapped, name);
     return LLVMValue.create(casted, this.generator);
@@ -252,81 +266,125 @@ export class Builder {
   }
 
   createAdd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.createFAdd(lhs, rhs);
+    }
+
     const value = this.builder.createAdd(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createFAdd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  private createFAdd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
     const value = this.builder.createFAdd(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
   createSub(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.createFSub(lhs, rhs);
+    }
+
     const value = this.builder.createSub(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createFSub(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  private createFSub(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
     const value = this.builder.createFSub(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
   createMul(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.createFMul(lhs, rhs);
+    }
+
     const value = this.builder.createMul(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createFMul(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  private createFMul(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
     const value = this.builder.createFMul(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createSDiv(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createDiv(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.createFDiv(lhs, rhs);
+    }
+
     const value = this.builder.createSDiv(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createFDiv(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  private createFDiv(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
     const value = this.builder.createFDiv(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createSRem(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createRem(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.createFRem(lhs, rhs);
+    }
+
     const value = this.builder.createSRem(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createFRem(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  private createFRem(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
     const value = this.builder.createFRem(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createAnd(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createAnd(lhs: LLVMValue, rhs: LLVMValue, name?: string): LLVMValue {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.withDoublesAsInts(lhs, rhs, this.generator, (l, r) => this.createAnd(l, r, name));
+    }
+
     const value = this.builder.createAnd(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createOr(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createOr(lhs: LLVMValue, rhs: LLVMValue, name?: string): LLVMValue {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.withDoublesAsInts(lhs, rhs, this.generator, (l, r) => this.createOr(l, r, name));
+    }
+
     const value = this.builder.createOr(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createXor(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createXor(lhs: LLVMValue, rhs: LLVMValue, name?: string): LLVMValue {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.withDoublesAsInts(lhs, rhs, this.generator, (l, r) => this.createXor(l, r, name));
+    }
+
     const value = this.builder.createXor(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createShl(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createShl(lhs: LLVMValue, rhs: LLVMValue, name?: string): LLVMValue {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.withDoublesAsInts(lhs, rhs, this.generator, (l, r) => this.createShl(l, r, name));
+    }
+
     const value = this.builder.createShl(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createLShr(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createLShr(lhs: LLVMValue, rhs: LLVMValue, name?: string): LLVMValue {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.withDoublesAsInts(lhs, rhs, this.generator, (l, r) => this.createLShr(l, r, name));
+    }
+
     const value = this.builder.createLShr(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }
 
-  createAShr(lhs: LLVMValue, rhs: LLVMValue, name?: string) {
+  createAShr(lhs: LLVMValue, rhs: LLVMValue, name?: string): LLVMValue {
+    if (lhs.type.isDoubleType() && rhs.type.isDoubleType()) {
+      return this.withDoublesAsInts(lhs, rhs, this.generator, (l, r) => this.createAShr(l, r, name));
+    }
+
     const value = this.builder.createAShr(lhs.unwrapped, rhs.unwrapped, name);
     return LLVMValue.create(value, this.generator);
   }

@@ -9,18 +9,20 @@
  *
  */
 
-import { checkIfProperty, getDeclarationNamespace, checkIfHasVTable, canCreateLazyClosure } from "@utils";
 import { cloneDeep, flatten } from "lodash";
 import { TypeChecker } from "./typechecker";
 import * as ts from "typescript";
 import { LLVMStructType, LLVMType } from "../llvm/type";
+import { Declaration } from "../ts/declaration";
+
+import { TSSymbol } from "./symbol";
 
 export class TSType {
   private type: ts.Type;
   private readonly originType: ts.Type;
   private readonly checker: TypeChecker;
 
-  constructor(type: ts.Type, checker: TypeChecker) {
+  private constructor(type: ts.Type, checker: TypeChecker) {
     this.type = type;
     this.originType = type;
     this.checker = checker;
@@ -28,6 +30,10 @@ export class TSType {
     if (this.toString() !== "this") {
       this.tryResolveGenericTypeIfNecessary();
     }
+  }
+
+  static create(type: ts.Type, checker: TypeChecker) {
+    return new TSType(type, checker);
   }
 
   originTypename() {
@@ -54,7 +60,7 @@ export class TSType {
     if (this.type.isUnionOrIntersection()) {
       const typeClone = cloneDeep(this.type);
       typeClone.types = typeClone.types
-        .map((type) => new TSType(type, this.checker))
+        .map((type) => TSType.create(type, this.checker))
         .map((type) => {
           if (type.isUnionOrIntersection()) {
             return type.tryResolveGenericTypeIfNecessary().unwrap();
@@ -80,16 +86,16 @@ export class TSType {
   }
 
   getSymbol() {
-    let symbol = this.type.getSymbol();
+    const symbol = this.type.getSymbol();
     if (!symbol) {
       throw new Error(`No symbol found for type '${this.toString()}'`);
     }
 
     if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-      symbol = this.checker.getAliasedSymbol(symbol);
+      return this.checker.getAliasedSymbol(TSSymbol.create(symbol, this.checker.generator));
     }
 
-    return symbol;
+    return TSSymbol.create(symbol, this.checker.generator);
   }
 
   getTypename() {
@@ -102,13 +108,13 @@ export class TSType {
     }
 
     const symbol = this.getSymbol();
-    return getDeclarationNamespace(symbol.valueDeclaration || symbol.declarations[0]).join("::");
+    return (symbol.valueDeclaration || symbol.declarations[0]).getNamespace().join("::");
   }
 
   getTypeGenericArguments() {
     if (this.type.flags & ts.TypeFlags.Object) {
       if ((this.type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
-        return (this.type as ts.TypeReference).typeArguments?.map((type) => new TSType(type, this.checker)) || [];
+        return (this.type as ts.TypeReference).typeArguments?.map((type) => TSType.create(type, this.checker)) || [];
       }
     }
 
@@ -250,19 +256,15 @@ export class TSType {
     return this.type.getCallSignatures();
   }
 
-  getProperties(): ts.Symbol[] {
+  getProperties(): TSSymbol[] {
     if (this.isSymbolless()) {
-      return this.checker.getPropertiesOfType(this.type).filter(checkIfProperty);
+      return this.checker.getPropertiesOfType(this.type).filter((symbol) => symbol.isProperty());
     }
 
     const symbol = this.getSymbol();
 
-    const properties: ts.Symbol[] = [];
-    if (
-      symbol.valueDeclaration &&
-      ts.isClassDeclaration(symbol.valueDeclaration) &&
-      symbol.valueDeclaration.heritageClauses
-    ) {
+    const properties: TSSymbol[] = [];
+    if (symbol.valueDeclaration && symbol.valueDeclaration.isClass() && symbol.valueDeclaration.heritageClauses) {
       const inheritedProps = flatten(
         symbol.valueDeclaration.heritageClauses.map((clause) => {
           const clauseProps = clause.types.map((expressionWithTypeArgs) => {
@@ -276,17 +278,12 @@ export class TSType {
       properties.push(...flatten(inheritedProps));
     }
 
-    properties.push(...this.checker.getPropertiesOfType(this.type).filter(checkIfProperty));
+    properties.push(...this.checker.getPropertiesOfType(this.type).filter((property) => property.isProperty()));
     return properties;
   }
 
   getProperty(name: string) {
-    const property = this.checker.unwrap().getPropertyOfType(this.type, name);
-    if (!property) {
-      throw new Error(`No property '${name}' found in '${this.toString()}'`);
-    }
-
-    return property;
+    return this.checker.getPropertyOfType(this.type, name);
   }
 
   indexOfProperty(name: string): number {
@@ -298,7 +295,7 @@ export class TSType {
   }
 
   getApparentType() {
-    return new TSType(this.checker.unwrap().getApparentType(this.type), this.checker);
+    return TSType.create(this.checker.unwrap().getApparentType(this.type), this.checker);
   }
 
   toString() {
@@ -306,7 +303,7 @@ export class TSType {
       const getElementTypeName = (elementType: TSType): string => {
         if (elementType.isUnionOrIntersection()) {
           return (elementType.unwrap() as ts.UnionOrIntersectionType).types
-            .map((t) => new TSType(t, this.checker))
+            .map((t) => TSType.create(t, this.checker))
             .map((t) => getElementTypeName(t))
             .join(".");
         }
@@ -324,7 +321,7 @@ export class TSType {
 
   get types() {
     if (this.type.isUnionOrIntersection()) {
-      return this.type.types.map((type) => new TSType(type, this.checker));
+      return this.type.types.map((type) => TSType.create(type, this.checker));
     }
 
     return [];
@@ -348,17 +345,17 @@ export class TSType {
       let declaration = this.getSymbol().declarations[0];
       if (declaration) {
         if (
-          ts.isConstructorDeclaration(declaration) ||
-          ts.isMethodDeclaration(declaration) ||
-          ts.isGetAccessorDeclaration(declaration) ||
-          ts.isSetAccessorDeclaration(declaration)
+          declaration.isConstructor() ||
+          declaration.isMethod() ||
+          declaration.isGetAccessor() ||
+          declaration.isSetAccessor()
         ) {
-          declaration = declaration.parent;
+          declaration = Declaration.create(declaration.parent as ts.ClassDeclaration, this.checker.generator);
         }
 
-        if (ts.isInterfaceDeclaration(declaration)) {
+        if (declaration.isInterface()) {
           suffix = "interface";
-        } else if (ts.isClassDeclaration(declaration)) {
+        } else if (declaration.isClass()) {
           suffix = "class";
         }
       }
@@ -377,9 +374,9 @@ export class TSType {
       ).filter((value, index, array) => array.findIndex((v) => v.name === value.name) === index);
     }
 
-    const getTypeAndNameFromProperty = (property: ts.Symbol): { type: LLVMType; name: string } => {
+    const getTypeAndNameFromProperty = (property: TSSymbol): { type: LLVMType; name: string } => {
       const declaration = property.declarations[0];
-      const tsType = this.checker.getTypeAtLocation(declaration);
+      const tsType = this.checker.getTypeAtLocation(declaration.unwrapped);
       const llvmType = tsType.getLLVMType();
       const valueType = property.valueDeclaration?.decorators?.some(
         (decorator) => decorator.getText() === "@ValueType"
@@ -391,11 +388,7 @@ export class TSType {
     const symbol = this.getSymbol();
 
     const properties: { type: LLVMType; name: string }[] = [];
-    if (
-      symbol.valueDeclaration &&
-      ts.isClassDeclaration(symbol.valueDeclaration) &&
-      symbol.valueDeclaration.heritageClauses
-    ) {
+    if (symbol.valueDeclaration && symbol.valueDeclaration.isClass() && symbol.valueDeclaration.heritageClauses) {
       const inheritedProps = flatten(
         symbol.valueDeclaration.heritageClauses.map((clause) => {
           const clauseProps = clause.types
@@ -461,12 +454,12 @@ export class TSType {
 
     let structType: LLVMStructType;
     const declaration =
-      this.getSymbol()?.declarations.find(ts.isClassDeclaration) ||
-      this.getSymbol()?.declarations.find(ts.isInterfaceDeclaration);
+      this.getSymbol().declarations.find((decl) => decl.isClass()) ||
+      this.getSymbol().declarations.find((decl) => decl.isInterface());
 
-    if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
-      const namespace = getDeclarationNamespace(declaration);
-      const name = ts.isClassDeclaration(declaration) ? namespace.concat(this.mangle()).join("_") : this.toString();
+    if ((declaration && declaration.isClass()) || declaration?.isInterface()) {
+      const namespace = declaration.getNamespace();
+      const name = declaration.isClass() ? namespace.concat(this.mangle()).join("_") : this.toString();
       const knownStructType = this.checker.generator.module.getTypeByName(name);
       if (!knownStructType) {
         structType = LLVMStructType.create(this.checker.generator, name);
@@ -479,7 +472,7 @@ export class TSType {
           structType.setBody(syntheticBody);
         } else {
           const structElements = elements.map((element) => element.type);
-          if (ts.isClassDeclaration(declaration) && checkIfHasVTable(declaration)) {
+          if (declaration.withVTable()) {
             // vptr
             structElements.unshift(LLVMType.getInt32Type(this.checker.generator).getPointer());
           }
@@ -513,7 +506,7 @@ export class TSType {
 
         return t.getProperties().map((property) => {
           const declaration = property.declarations[0];
-          const tsType = this.checker.generator.ts.checker.getTypeAtLocation(declaration);
+          const tsType = this.checker.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
           const llvmType = tsType.getLLVMType();
           const valueType = declaration.decorators?.some((decorator) => decorator.getText() === "@ValueType");
           return { type: valueType ? llvmType.unwrapPointer() : llvmType, name: property.name };
@@ -525,7 +518,7 @@ export class TSType {
   private getUnionElementTypes(): LLVMType[] {
     return flatten(
       this.types.map((subtype) => {
-        if (!subtype.isSymbolless() && ts.isInterfaceDeclaration(subtype.getSymbol().declarations[0])) {
+        if (!subtype.isSymbolless() && subtype.getSymbol().declarations[0].isInterface()) {
           return subtype.getObjectPropsLLVMTypesNames().map((value) => value.type);
         }
 
@@ -636,14 +629,14 @@ export class TSType {
         throw new Error("Function declaration not found");
       }
 
-      if (canCreateLazyClosure(declaration, this.checker.generator)) {
-        const signature = this.checker.getSignatureFromDeclaration(declaration as ts.SignatureDeclaration);
+      if (declaration.canCreateLazyClosure()) {
+        const signature = this.checker.getSignatureFromDeclaration(declaration);
         if (!signature) {
           throw new Error("Function signature not found");
         }
 
-        const withFunargs = signature.parameters.some((parameter) => {
-          const symbolType = this.checker.getTypeOfSymbolAtLocation(parameter, declaration);
+        const withFunargs = signature.getParameters().some((parameter) => {
+          const symbolType = this.checker.getTypeOfSymbolAtLocation(parameter, declaration.unwrapped);
           return symbolType.isFunction();
         });
 
@@ -702,8 +695,8 @@ export class TSType {
     } else if (!this.isSymbolless()) {
       const symbol = this.getSymbol();
       const declaration = symbol.declarations[0];
-      if (ts.isClassDeclaration(declaration)) {
-        const ambientDeclaration = !declaration.members.find(ts.isConstructorDeclaration)?.body;
+      if (declaration.isClass()) {
+        const ambientDeclaration = !declaration.members.find((m) => m.isConstructor())?.body;
         if (!ambientDeclaration) {
           typename = "void";
         }

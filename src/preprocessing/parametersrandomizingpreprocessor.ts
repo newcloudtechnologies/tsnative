@@ -50,7 +50,7 @@ export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
             if (symbol.declarations) {
               const declaration = symbol.declarations[0];
 
-              if (declaration && ts.isParameter(declaration)) {
+              if (declaration && declaration.isParameter()) {
                 // Use parent function declaration to generate parameter's name unique suffix
                 const suffix = crypto.createHash("sha256").update(declaration.parent.getText()).digest("hex");
                 const randomizedName = `${node.getText()}_${suffix}`;

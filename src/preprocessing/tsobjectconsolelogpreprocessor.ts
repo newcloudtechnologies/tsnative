@@ -9,10 +9,10 @@
  *
  */
 
-import { checkIfProperty } from "@utils";
 import * as ts from "typescript";
 import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
 import { TSType } from "../ts/type";
+import { TSSymbol } from "../ts/symbol";
 
 export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -68,7 +68,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   }
 
   private isOneliner(type: TSType, node: ts.Node): boolean {
-    const props = type.getProperties().filter(checkIfProperty);
+    const props = type.getProperties().filter((prop) => prop.isProperty());
     if (props.length === 0) {
       return true;
     }
@@ -93,7 +93,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   ): ts.TemplateExpression | ts.StringLiteral {
     const objectSpans: ts.TemplateSpan[] = [];
 
-    const properties = type.getProperties().filter(checkIfProperty);
+    const properties = type.getProperties().filter((prop) => prop.isProperty());
 
     const isOneliner = this.isOneliner(type, callArgument);
     const isEmpty = properties.length === 0;
@@ -105,7 +105,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       ? StringLiteralHelper.space
       : StringLiteralHelper.newLine;
 
-    const buildMiddleLiteral = (propertyType: TSType, nextProperty: ts.Symbol) => {
+    const buildMiddleLiteral = (propertyType: TSType, nextProperty: TSSymbol) => {
       const nextPropertyName = nextProperty.escapedName.toString();
       let nextPropertyDescriptor = StringLiteralHelper.createPropertyStringLiteral(
         nextPropertyName,

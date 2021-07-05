@@ -9,11 +9,10 @@
  *
  */
 
-import { Conversion, handleBinaryWithConversion } from "@handlers";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { LLVMValue } from "../../llvm/value";
+import { Conversion, LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";
 
 export class ComparisonHandler extends AbstractExpressionHandler {
@@ -171,15 +170,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        this.generator.builder.createFCmpOLT,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOLT)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to less than comparison");
@@ -204,15 +197,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        this.generator.builder.createFCmpOGT,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOGT)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to greater than comparison");
@@ -237,15 +224,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        this.generator.builder.createFCmpOLE,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOLE)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to less equals than comparison");
@@ -270,15 +251,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        this.generator.builder.createFCmpOGE,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOGE)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to less than comparison");

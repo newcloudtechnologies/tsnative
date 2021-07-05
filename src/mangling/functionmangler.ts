@@ -10,14 +10,14 @@
  */
 
 import { ExternalSymbolsProvider } from "@mangling";
-import { getDeclarationNamespace } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
 import { TSType } from "../ts/type";
+import { Declaration } from "../ts/declaration";
 
 export class FunctionMangler {
   static mangle(
-    declaration: ts.NamedDeclaration,
+    declaration: Declaration,
     expression: ts.Expression | undefined,
     thisType: TSType | undefined,
     argumentTypes: TSType[],
@@ -45,20 +45,27 @@ export class FunctionMangler {
     if (thisType) {
       parentName = thisType.mangle();
     } else if (ts.isModuleBlock(parent)) {
-      parentName = getDeclarationNamespace(declaration).join("__");
+      parentName = declaration.getNamespace().join("__");
     }
 
     const scopePrefix = parentName ? parentName + "__" : "";
 
     let typeParametersNames = "";
-    const typeParameters = (declaration as ts.FunctionLikeDeclaration).typeParameters;
+    const typeParameters = declaration.typeParameters;
     if (typeParameters?.length) {
       typeParametersNames = argumentTypes.reduce((acc, curr) => {
         return acc + "__" + curr.toString();
       }, "");
     }
 
-    const baseName = ts.isConstructorDeclaration(declaration) ? "constructor" : declaration.name?.getText() || "";
+    const baseName = declaration.isConstructor()
+      ? "constructor"
+      : declaration.name?.getText() ||
+        (expression && ts.isCallExpression(expression) && expression.expression.getText());
+
+    if (!baseName) {
+      throw new Error(`No base name at '${expression?.getText() || "<no expression>"}'`);
+    }
 
     return {
       isExternalSymbol: baseName === "assert", // @todo: make `assert` mangled C++ symbol (stdlib)

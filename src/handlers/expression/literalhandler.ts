@@ -1,8 +1,6 @@
-import { createTSObjectName } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration } from "@scope";
-import { createArrayConcat, createArrayConstructor, createArrayPush, getArrayType } from "@handlers";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
 import { LLVMStructType, LLVMType } from "../../llvm/type";
 
@@ -121,7 +119,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       this.generator.builder.createSafeStore(value, destinationPtr);
     });
 
-    object.name = createTSObjectName(Array.from(llvmValues.keys()));
+    object.name = this.generator.createTSObjectName(Array.from(llvmValues.keys()));
 
     const objectPropertyTypesName = this.withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
       if (!property.name) {
@@ -131,23 +129,18 @@ export class LiteralHandler extends AbstractExpressionHandler {
       const propertyType = this.generator.ts.checker.getTypeAtLocation(property);
       let propertyTypename = "";
       if (propertyType.isFunction()) {
-        // @todo: There should be a better way to get actual signature for generic functions.
+        // @todo: There should be a better way to get actual signature Wfor generic functions.
         const symbol = propertyType.getSymbol();
-        const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+        const valueDeclaration = symbol.declarations[0];
 
-        const signature = this.generator.ts.checker.getSignatureFromDeclaration(
-          valueDeclaration as ts.SignatureDeclaration
-        )!;
-        const returnType = this.generator.ts.checker.getReturnTypeOfSignature(signature);
+        const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration)!;
+        const returnType = signature.getReturnType();
         const parameters = signature.getParameters();
-        const resolvedParameterTypes = parameters.map((parameter) => {
-          const parameterDeclaration = parameter.declarations[0];
-          return this.generator.ts.checker.getTypeAtLocation(parameterDeclaration);
-        });
+        const resolvedParameterTypes = parameters.map((parameter) => parameter.declarations[0].type);
 
         propertyTypename += "(";
         resolvedParameterTypes.forEach((type, index) => {
-          propertyTypename += parameters[index].getName() + ": " + type.toString();
+          propertyTypename += parameters[index].name + ": " + type.toString();
         });
         propertyTypename += ") => ";
         propertyTypename += returnType.toString();
@@ -166,19 +159,19 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): LLVMValue {
-    const arrayType = getArrayType(expression, this.generator);
+    const arrayType = this.generator.ts.array.getType(expression);
     const elementType = arrayType.getTypeGenericArguments()[0];
 
-    const constructorAndMemory = createArrayConstructor(expression, this.generator);
+    const constructorAndMemory = this.generator.ts.array.createConstructor(expression);
     const { constructor } = constructorAndMemory;
     let { allocated } = constructorAndMemory;
 
     this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
 
-    const push = createArrayPush(elementType, expression, this.generator);
+    const push = this.generator.ts.array.createPush(elementType, expression);
     for (const element of expression.elements) {
       if (ts.isSpreadElement(element)) {
-        const concat = createArrayConcat(expression, this.generator);
+        const concat = this.generator.ts.array.createConcat(expression);
         let elementValue = this.generator.handleExpression(element.expression, outerEnv);
 
         if (elementValue instanceof HeapVariableDeclaration) {

@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { createArrayToString } from "@handlers";
 import { LLVMValue } from "../../llvm/value";
 
 export class TemplateExpressionHandler extends AbstractExpressionHandler {
@@ -77,7 +76,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
       this.generator.builder.createSafeCall(stringFromPrimitiveConstructor, [allocated, value.getValue()]);
     } else if (nakedType.isArray()) {
       const arrayType = this.generator.ts.checker.getTypeAtLocation(expression);
-      const toString = createArrayToString(arrayType, expression, this.generator);
+      const toString = this.generator.ts.array.createToString(arrayType, expression);
 
       allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
     } else {

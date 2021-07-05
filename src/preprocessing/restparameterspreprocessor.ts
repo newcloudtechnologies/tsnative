@@ -12,6 +12,7 @@
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
 import { last } from "lodash";
+import { Declaration } from "../ts/declaration";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -99,7 +100,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
             let symbol = type.getSymbol();
             let declaration = symbol.declarations[0];
 
-            if (ts.isVariableDeclaration(declaration)) {
+            if (declaration.isVariable()) {
               if (!declaration.initializer) {
                 throw new Error(`Initializer required for '${declaration.getText()}'`);
               }
@@ -109,16 +110,14 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
               declaration = symbol.declarations[0];
             }
 
-            if ((declaration as ts.FunctionLikeDeclaration).body) {
+            if (declaration.isFunctionLike() && declaration.body) {
               // Skip declarations since they are used for C++ integration
               // @todo: is there a better way to check if declaration is declared in ambient context?
 
-              const signature = this.generator.ts.checker.getSignatureFromDeclaration(
-                declaration as ts.SignatureDeclaration
-              )!;
+              const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration)!;
               const lastParameter = last(signature.getParameters());
 
-              if (lastParameter && this.isRestParameters(lastParameter.declarations[0] as ts.ParameterDeclaration)) {
+              if (lastParameter && this.isRestParameters(lastParameter.declarations[0])) {
                 const nonRestParametersCount = signature.getParameters().length - 1;
                 const restArguments = node.arguments.slice(nonRestParametersCount);
                 const restArgumentsArray = ts.createArrayLiteral(restArguments);
@@ -153,7 +152,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
     };
   };
 
-  private isRestParameters(parameter: ts.ParameterDeclaration) {
-    return Boolean(parameter.dotDotDotToken);
+  private isRestParameters(parameter: Declaration) {
+    return Boolean((parameter.unwrapped as ts.ParameterDeclaration).dotDotDotToken);
   }
 }

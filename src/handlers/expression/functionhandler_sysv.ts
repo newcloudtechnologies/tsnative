@@ -10,13 +10,12 @@
  */
 
 import * as ts from "typescript";
-import { checkIfMethod, getArgumentTypes } from "@utils";
-import { getDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import { Environment } from "@scope";
 import { TSType } from "../../ts/type";
 import { LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";
+import { Expression } from "../../ts/expression";
 
 export class SysVFunctionHandler {
   private readonly generator: LLVMGenerator;
@@ -31,7 +30,10 @@ export class SysVFunctionHandler {
     env?: Environment
   ): LLVMValue {
     const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
-    const valueDeclaration = symbol.valueDeclaration as ts.GetAccessorDeclaration;
+    const valueDeclaration = symbol.valueDeclaration;
+    if (!valueDeclaration) {
+      throw new Error(`No value declaration found at '${expression.getText()}'`);
+    }
 
     const llvmThisType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [llvmThisType];
@@ -61,12 +63,15 @@ export class SysVFunctionHandler {
   }
 
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): LLVMValue {
-    const argumentTypes = getArgumentTypes(expression, this.generator);
-    const isMethod = checkIfMethod(expression.expression, this.generator.ts.checker);
+    const argumentTypes = Expression.create(expression, this.generator).getArgumentTypes();
+    const isMethod = Expression.create(expression.expression, this.generator).isMethod();
 
     const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const symbol = type.getSymbol();
-    const valueDeclaration = symbol.valueDeclaration as ts.FunctionLikeDeclaration;
+    const valueDeclaration = symbol.valueDeclaration;
+    if (!valueDeclaration) {
+      throw new Error(`No value declaration found at '${expression.getText()}'`);
+    }
 
     const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
 
@@ -79,7 +84,7 @@ export class SysVFunctionHandler {
       if (parameters[index]) {
         const tsParameterType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
           parameters[index],
-          valueDeclaration
+          valueDeclaration.unwrapped
         );
         if (tsParameterType.isCppIntegralType()) {
           return tsParameterType.getIntegralType();
@@ -116,7 +121,7 @@ export class SysVFunctionHandler {
     });
 
     const parametersTypes = parameters.map((p) =>
-      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, valueDeclaration)
+      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, valueDeclaration.unwrapped)
     );
     args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 
@@ -129,7 +134,7 @@ export class SysVFunctionHandler {
     }
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
-    const returnType = this.generator.ts.checker.getReturnTypeOfSignature(resolvedSignature);
+    const returnType = resolvedSignature.getReturnType();
     const llvmReturnType = returnType.getLLVMType().correctCppPrimitiveType();
 
     const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
@@ -162,8 +167,11 @@ export class SysVFunctionHandler {
   handleNewExpression(expression: ts.NewExpression, qualifiedName: string, env?: Environment): LLVMValue {
     const thisType = this.generator.ts.checker.getTypeAtLocation(expression);
     const symbol = thisType.getSymbol();
-    const classDeclaration = symbol.valueDeclaration as ts.ClassLikeDeclaration;
-    const constructorDeclaration = classDeclaration.members.find(ts.isConstructorDeclaration)!;
+    const valueDeclaration = symbol.valueDeclaration;
+    if (!valueDeclaration) {
+      throw new Error(`No value declaration found at '${expression.getText()}'`);
+    }
+    const constructorDeclaration = valueDeclaration.members.find((m) => m.isConstructor());
 
     if (!constructorDeclaration) {
       throw new Error(`External symbol '${qualifiedName}' declaration have no constructor provided`);
@@ -175,7 +183,7 @@ export class SysVFunctionHandler {
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
 
-    const parentScope = getDeclarationScope(classDeclaration, thisType, this.generator);
+    const parentScope = valueDeclaration.getScope(thisType);
     const llvmThisType = parentScope.thisData!.llvmType;
 
     const signature = this.generator.ts.checker.getSignatureFromDeclaration(constructorDeclaration);
@@ -190,7 +198,7 @@ export class SysVFunctionHandler {
       if (parameters[index]) {
         const tsParameterType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
           parameters[index],
-          constructorDeclaration
+          constructorDeclaration.unwrapped
         );
         if (tsParameterType.isCppIntegralType()) {
           return tsParameterType.getIntegralType();
@@ -212,7 +220,7 @@ export class SysVFunctionHandler {
       }) || [];
 
     const parametersTypes = parameters.map((p) =>
-      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, constructorDeclaration)
+      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, constructorDeclaration.unwrapped)
     );
     args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 

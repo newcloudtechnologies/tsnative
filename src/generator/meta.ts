@@ -10,11 +10,11 @@
  */
 
 import { Environment } from "@scope";
-import * as ts from "typescript";
 import * as crypto from "crypto";
 import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
+import { Declaration } from "../ts/declaration";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -68,7 +68,7 @@ class ObjectMeta {
 }
 
 class ClosureParametersMetaStorage {
-  readonly storage = new Map<string, Map<string, ts.FunctionDeclaration>>();
+  readonly storage = new Map<string, Map<string, Declaration>>();
 }
 
 class FunctionExpressionEnvStorage {
@@ -136,14 +136,10 @@ export class MetaInfoStorage {
     return meta;
   }
 
-  registerClosureParameter(
-    parentFunction: string,
-    closureParameter: string,
-    closureFunctionDeclaration: ts.FunctionDeclaration
-  ) {
+  registerClosureParameter(parentFunction: string, closureParameter: string, closureFunctionDeclaration: Declaration) {
     const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);
     if (!knownClosureParameters) {
-      const closuresForParentFunction = new Map<string, ts.FunctionDeclaration>();
+      const closuresForParentFunction = new Map<string, Declaration>();
       closuresForParentFunction.set(closureParameter, closureFunctionDeclaration);
       this.closureParametersMeta.storage.set(parentFunction, closuresForParentFunction);
     } else {
@@ -166,14 +162,14 @@ export class MetaInfoStorage {
     return declaration;
   }
 
-  registerFunctionEnvironment(declaration: ts.Declaration, env: Environment) {
+  registerFunctionEnvironment(declaration: Declaration, env: Environment) {
     this.functionExpressionEnv.storage.set(
       crypto.createHash("sha256").update(declaration.getText()).digest("hex"),
       env
     );
   }
 
-  getFunctionEnvironment(declaration: ts.Declaration): Environment {
+  getFunctionEnvironment(declaration: Declaration): Environment {
     const hash = crypto.createHash("sha256").update(declaration.getText()).digest("hex");
     const stored = this.functionExpressionEnv.storage.get(hash);
     if (!stored) {

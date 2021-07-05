@@ -10,10 +10,10 @@
  */
 
 import { NmSymbolExtractor } from "@mangling";
-import { getDeclarationNamespace, getGenericsToActualMapFromSignature } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
 import { TSType } from "../ts/type";
+import { Declaration } from "../ts/declaration";
 
 export let externalMangledSymbolsTable: string[] = [];
 export let externalDemangledSymbolsTable: string[] = [];
@@ -35,7 +35,7 @@ export async function prepareExternalSymbols(demangledTables: string[], mangledT
     case "openbsd":
     case "sunos":
     case "win32":
-      const extractor: NmSymbolExtractor = new NmSymbolExtractor();
+      const extractor = new NmSymbolExtractor();
       return extractor.readSymbols(demangledTables, mangledTables);
     default:
       throw new Error(`Unsupported platform ${process.platform}`);
@@ -58,7 +58,7 @@ export class ExternalSymbolsProvider {
   private readonly generator: LLVMGenerator;
 
   constructor(
-    declaration: ts.Declaration,
+    declaration: Declaration,
     expression: ts.NewExpression | ts.CallExpression | undefined,
     argumentTypes: TSType[],
     thisType: TSType | undefined,
@@ -66,12 +66,14 @@ export class ExternalSymbolsProvider {
     knownMethodName?: string
   ) {
     this.generator = generator;
-    const namespace = getDeclarationNamespace(declaration).join("::");
+    const namespace = declaration.getNamespace().join("::");
     this.namespace = namespace ? namespace + "::" : "";
+
     if (thisType) {
       this.thisTypeName = thisType.getTypename();
 
       const typeArguments = thisType.getTypeGenericArguments();
+
       this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
         typeArguments.map((type) => {
           if (type.isTypeParameter() && !type.isSupported()) {
@@ -83,10 +85,7 @@ export class ExternalSymbolsProvider {
       );
     }
 
-    const functionLikeDeclaration = declaration as ts.FunctionLikeDeclaration;
-    const parameterTypes = functionLikeDeclaration.parameters.map((parameter) =>
-      generator.ts.checker.getTypeAtLocation(parameter)
-    );
+    const parameterTypes = declaration.parameters.map((parameter) => generator.ts.checker.getTypeAtLocation(parameter));
 
     this.methodName = knownMethodName || this.getDeclarationBaseName(declaration);
 
@@ -110,21 +109,21 @@ export class ExternalSymbolsProvider {
 
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }
-  tryGet(declaration: ts.NamedDeclaration): string | undefined {
+  tryGet(declaration: Declaration): string | undefined {
     let mangledName = this.tryGetImpl(declaration);
 
     if (mangledName) {
       return mangledName;
     }
 
-    if (ts.isMethodDeclaration(declaration)) {
-      const classDeclaration = declaration.parent as ts.ClassDeclaration;
+    if (declaration.isMethod()) {
+      const classDeclaration = Declaration.create(declaration.parent as ts.ClassDeclaration, this.generator);
       if (!classDeclaration.name) {
         return;
       }
 
-      const tryGetFromDeclaration = (otherDeclaration: ts.Declaration, name: string) => {
-        const classNamespace = getDeclarationNamespace(otherDeclaration).join("::");
+      const tryGetFromDeclaration = (otherDeclaration: Declaration, name: string) => {
+        const classNamespace = otherDeclaration.getNamespace().join("::");
 
         const classMethodPattern = new RegExp(
           `(?=(^| )${classNamespace.length > 0 ? classNamespace + "::" : ""}${name}(<.*>::|::)${
@@ -162,7 +161,7 @@ export class ExternalSymbolsProvider {
 
     return;
   }
-  private getDeclarationBaseName(declaration: ts.NamedDeclaration) {
+  private getDeclarationBaseName(declaration: Declaration) {
     switch (declaration.kind) {
       case ts.SyntaxKind.IndexSignature:
         return "operator\\[]";
@@ -172,7 +171,7 @@ export class ExternalSymbolsProvider {
   }
 
   private extractFunctionTemplateParameters(
-    declaration: ts.Declaration,
+    declaration: Declaration,
     expression: ts.CallExpression | ts.NewExpression | undefined,
     generator: LLVMGenerator
   ): string {
@@ -182,12 +181,12 @@ export class ExternalSymbolsProvider {
       return functionTemplateParametersPattern;
     }
 
-    const isConstructor = ts.isConstructorDeclaration(declaration);
+    const isConstructor = declaration.isConstructor();
     if (isConstructor) {
       return functionTemplateParametersPattern;
     }
 
-    const signature = generator.ts.checker.getSignatureFromDeclaration(declaration as ts.SignatureDeclaration)!;
+    const signature = generator.ts.checker.getSignatureFromDeclaration(declaration);
     const formalTypeParameters = signature.getTypeParameters();
 
     if (!formalTypeParameters) {
@@ -197,11 +196,11 @@ export class ExternalSymbolsProvider {
     const formalParameters = signature.getParameters();
     const resolvedSignature = generator.ts.checker.getResolvedSignature(expression)!;
     if (formalParameters.length === 0) {
-      functionTemplateParametersPattern = generator.ts.checker.getReturnTypeOfSignature(resolvedSignature).toCppType();
+      functionTemplateParametersPattern = resolvedSignature.getReturnType().toCppType();
       return functionTemplateParametersPattern;
     }
 
-    const typenameTypeMap = getGenericsToActualMapFromSignature(signature, expression as ts.CallExpression, generator);
+    const typenameTypeMap = signature.getGenericsToActualMap(expression);
     const templateTypes: string[] = [];
     typenameTypeMap.forEach((value) => {
       templateTypes.push(value.toCppType());
@@ -210,8 +209,8 @@ export class ExternalSymbolsProvider {
     functionTemplateParametersPattern = templateTypes.join(",");
     return functionTemplateParametersPattern;
   }
-  private tryGetImpl(declaration: ts.NamedDeclaration): string | undefined {
-    if (ts.isConstructorDeclaration(declaration)) {
+  private tryGetImpl(declaration: Declaration): string | undefined {
+    if (declaration.isConstructor()) {
       // `Ctor::Ctor(` or `Ctor<T>::Ctor(`
       const constructorPattern = new RegExp(
         `(?=^${this.namespace}${this.thisTypeName}(<.*>::|::)${this.thisTypeName}\\()`,
@@ -224,7 +223,7 @@ export class ExternalSymbolsProvider {
           externalMangledSymbolsTable[mangledIndex].includes(Itanium.completeObjectConstructor)
         );
       });
-    } else if (ts.isFunctionDeclaration(declaration)) {
+    } else if (declaration.isFunction()) {
       // `.*methodName<T>(` or `.*methodName(`
       // @todo is it possible to use mangled form to figure out if this is a class method or free function wrapped in namespace?
       const freeFunctionPattern = new RegExp(`(?=(^| )${this.namespace}${this.methodName}(\\(|<.*>\\())`);
@@ -232,10 +231,10 @@ export class ExternalSymbolsProvider {
         return freeFunctionPattern.test(cppSignature);
       });
     } else if (
-      ts.isMethodDeclaration(declaration) ||
-      ts.isIndexSignatureDeclaration(declaration) ||
-      ts.isPropertyDeclaration(declaration) ||
-      ts.isGetAccessorDeclaration(declaration)
+      declaration.isMethod() ||
+      declaration.isIndexSignature() ||
+      declaration.isProperty() ||
+      declaration.isGetAccessor()
     ) {
       // `.*( | ns)Class::method(`
       // `.*( | ns)Class::method<U>(`
@@ -357,6 +356,12 @@ export class ExternalSymbolsProvider {
       matching = parameters === this.argumentsPattern;
     }
 
+    // console.log("=====")
+    //  console.log(cppSignature)
+    //  console.log("parameters:", parameters)
+    //  console.log("this.parametersPattern:", this.parametersPattern)
+    //  console.log("this.argumentsPattern:", this.argumentsPattern)
+
     if (matching) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
 
@@ -370,6 +375,14 @@ export class ExternalSymbolsProvider {
           functionTemplateParameters === this.functionTemplateParametersPattern;
       }
       */
+
+      //  console.log("=====")
+      //  console.log(cppSignature)
+      //  console.log("parameters:", parameters)
+      //  console.log("this.parametersPattern:", this.parametersPattern)
+      //  console.log("this.argumentsPattern:", this.argumentsPattern)
+      //  console.log("classTemplateParameters:", classTemplateParameters)
+      //  console.log("this.classTemplateParametersPattern:", this.classTemplateParametersPattern)
 
       if (this.classTemplateParametersPattern.length > 0) {
         matching = classTemplateParameters === this.classTemplateParametersPattern;

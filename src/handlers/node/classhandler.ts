@@ -12,14 +12,14 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { checkIfStaticProperty, getDeclarationNamespace } from "@utils";
 import { LLVMGenerator } from "@generator";
 import { LLVMValue } from "../../llvm/value";
+import { Declaration } from "../../ts/declaration";
 
 export class ClassHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isClassDeclaration(node)) {
-      this.handleClassDeclaration(node as ts.ClassDeclaration, parentScope, this.generator);
+      this.handleClassDeclaration(Declaration.create(node, this.generator), parentScope, this.generator);
       return true;
     }
 
@@ -30,22 +30,19 @@ export class ClassHandler extends AbstractNodeHandler {
     return false;
   }
 
-  private getStaticPropertiesFromDeclaration(declaration: ts.ClassDeclaration, parentScope: Scope) {
+  private getStaticPropertiesFromDeclaration(declaration: Declaration, parentScope: Scope) {
     const staticProperties = new Map<string, LLVMValue>();
 
     if (declaration.heritageClauses) {
       for (const clause of declaration.heritageClauses) {
         for (const type of clause.types) {
           const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
-          const baseClassDeclaration = symbol.declarations[0] as ts.ClassDeclaration;
-          if (!baseClassDeclaration) {
-            throw new Error("Base class declaration not found");
-          }
+          const baseClassDeclaration = symbol.declarations[0];
 
-          const baseClassThisType = this.generator.ts.checker.getTypeAtLocation(baseClassDeclaration);
+          const baseClassThisType = baseClassDeclaration.type;
           const mangledBaseClassTypename = baseClassThisType.mangle();
 
-          const namespace = getDeclarationNamespace(baseClassDeclaration);
+          const namespace = baseClassDeclaration.getNamespace();
           const qualifiedName = namespace.concat(mangledBaseClassTypename).join(".");
           const baseClassScope = parentScope.get(qualifiedName) as Scope;
 
@@ -57,23 +54,23 @@ export class ClassHandler extends AbstractNodeHandler {
     }
 
     for (const memberDecl of declaration.members) {
-      if (ts.isPropertyDeclaration(memberDecl) && memberDecl.initializer && checkIfStaticProperty(memberDecl)) {
+      if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStaticProperty()) {
         const initializerValue = this.generator.handleExpression(memberDecl.initializer);
-        staticProperties.set(memberDecl.name.getText(), initializerValue);
+        staticProperties.set(memberDecl.name!.getText(), initializerValue);
       }
     }
 
     return staticProperties;
   }
 
-  private handleClassDeclaration(declaration: ts.ClassDeclaration, parentScope: Scope, generator: LLVMGenerator): void {
+  private handleClassDeclaration(declaration: Declaration, parentScope: Scope, generator: LLVMGenerator): void {
     if (declaration.typeParameters) {
       // Generics will be handled once called to figure out actual generic arguments.
       return;
     }
 
     const name = declaration.name!.getText();
-    const thisType = generator.ts.checker.getTypeAtLocation(declaration);
+    const thisType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
     if (thisType.isDeclared() && parentScope.get(name)) {
       return;
     }
@@ -91,13 +88,9 @@ export class ClassHandler extends AbstractNodeHandler {
     });
 
     for (const memberDecl of declaration.members) {
-      if (
-        ts.isPropertyDeclaration(memberDecl) &&
-        memberDecl.initializer &&
-        this.generator.ts.checker.getTypeAtLocation(memberDecl).isFunction()
-      ) {
+      if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.type.isFunction()) {
         const method = this.generator.handleExpression(memberDecl.initializer);
-        scope.set(memberDecl.name.getText(), method);
+        scope.set(memberDecl.name!.getText(), method);
       }
     }
 

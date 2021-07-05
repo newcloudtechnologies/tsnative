@@ -11,7 +11,7 @@
       "@generator": [ "src/generator" ],
       "@mangling": [ "src/mangling" ],
       "@scope": [ "src/scope" ],
-      "@utils": [ "src/utils" ],
+      "@utils": [ "src/build" ],
       "@preprocessing": [ "src/preprocessing" ]
     },
     "module": "commonjs",

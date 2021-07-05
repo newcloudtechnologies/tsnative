@@ -5,19 +5,18 @@ import { FunctionMangler } from "@mangling";
 import { SIZEOF_STRING, SIZEOF_TSCLOSURE } from "@cpp";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
+import { Declaration } from "../ts/declaration";
 
 export class GC {
   private readonly allocateFn: LLVMValue;
   private readonly generator: LLVMGenerator;
 
-  constructor(declaration: ts.ClassDeclaration, generator: LLVMGenerator) {
+  constructor(declaration: Declaration, generator: LLVMGenerator) {
     this.generator = generator;
 
-    const allocateDeclaration = declaration.members.find(
-      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "allocate"
-    )!;
+    const allocateDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "allocate")!;
 
-    const thisType = this.generator.ts.checker.getTypeAtLocation(declaration);
+    const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
 
     const { qualifiedName } = FunctionMangler.mangle(
       allocateDeclaration,
@@ -71,11 +70,11 @@ class Builtin {
     return this.thisData!.llvmType;
   }
 
-  getDeclaration(): ts.ClassDeclaration {
+  getDeclaration() {
     if (!this.thisData) {
       this.init();
     }
-    return this.thisData!.declaration as ts.ClassDeclaration;
+    return this.thisData!.declaration!;
   }
 
   private init(): void {
@@ -153,7 +152,7 @@ export class BuiltinTSClosure extends Builtin {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
-    const callDeclaration = declaration.members.find((m) => ts.isMethodDeclaration(m) && m.name.getText() === "call");
+    const callDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "call");
 
     if (!callDeclaration) {
       throw new Error("No function declaration for TSClosure.call provided");
@@ -183,7 +182,7 @@ export class BuiltinTSClosure extends Builtin {
     const thisType = this.getTSType();
 
     const getEnvironmentDeclaration = declaration.members.find(
-      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "getEnvironment"
+      (m) => m.isMethod() && m.name?.getText() === "getEnvironment"
     );
 
     if (!getEnvironmentDeclaration) {
@@ -215,13 +214,7 @@ export class BuiltinTSClosure extends Builtin {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
-    const constructorDeclaration = declaration.members.find((m) =>
-      ts.isConstructorDeclaration(m)
-    ) as ts.ConstructorDeclaration;
-
-    if (!constructorDeclaration) {
-      throw new Error("No constructor declaration provided for TSClosure");
-    }
+    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
 
     const argTypes = constructorDeclaration.parameters.map((p) => this.generator.ts.checker.getTypeAtLocation(p));
 
@@ -290,7 +283,7 @@ export class BuiltinString extends Builtin {
     const declaration = this.getDeclaration();
     const llvmThisType = this.getLLVMType();
 
-    const constructorDeclaration = declaration.members.find(ts.isConstructorDeclaration)!;
+    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
     const thisType = this.getTSType();
 
     const argType = constructorArg
@@ -326,13 +319,9 @@ export class BuiltinString extends Builtin {
     const thisType = this.getTSType();
     const llvmThisType = this.getLLVMType();
 
-    const concatDeclaration = declaration.members.find(
-      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "concat"
-    );
-    const argTypes = (concatDeclaration! as ts.MethodDeclaration).parameters.map((p) =>
-      this.generator.ts.checker.getTypeAtLocation(p)
-    );
-    const { qualifiedName } = FunctionMangler.mangle(concatDeclaration!, undefined, thisType, argTypes, this.generator);
+    const concatDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "concat")!;
+    const argTypes = concatDeclaration.parameters.map((p) => this.generator.ts.checker.getTypeAtLocation(p));
+    const { qualifiedName } = FunctionMangler.mangle(concatDeclaration, undefined, thisType, argTypes, this.generator);
 
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer(), llvmThisType];
     const { fn: concat } = this.generator.llvm.function.create(llvmThisType, llvmArgumentTypes, qualifiedName);
@@ -345,9 +334,9 @@ export class BuiltinString extends Builtin {
     const thisType = this.getTSType();
     const llvmThisType = this.getLLVMType();
 
-    const lengthDeclaration = declaration.members.find((m) => ts.isGetAccessor(m) && m.name.getText() === "length");
+    const lengthDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "length")!;
 
-    const { qualifiedName } = FunctionMangler.mangle(lengthDeclaration!, undefined, thisType, [], this.generator);
+    const { qualifiedName } = FunctionMangler.mangle(lengthDeclaration, undefined, thisType, [], this.generator);
 
     const llvmReturnType = LLVMType.getInt32Type(this.generator);
     const llvmArgumentTypes = [llvmThisType];
@@ -361,12 +350,10 @@ export class BuiltinString extends Builtin {
     const thisType = this.getTSType();
     const llvmThisType = this.getLLVMType();
 
-    const equalsDeclaration = declaration.members.find(
-      (m) => ts.isMethodDeclaration(m) && m.name.getText() === "equals"
-    );
+    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "equals")!;
 
     const { qualifiedName } = FunctionMangler.mangle(
-      equalsDeclaration!,
+      equalsDeclaration,
       undefined,
       thisType,
       [thisType],

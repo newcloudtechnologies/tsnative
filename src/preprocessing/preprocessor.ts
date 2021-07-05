@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import * as path from "path";
 import * as fs from "fs";
-import { getRandomString } from "@utils";
 import { first } from "lodash";
 import {
   AbstractPreprocessor,
@@ -43,7 +42,7 @@ export class Preprocessor {
       new RestParametersPreprocessor(generator)
     );
 
-    const outputDir = path.join(process.cwd(), path.sep, getRandomString() + "_generated");
+    const outputDir = path.join(process.cwd(), path.sep, generator.randomString + "_generated");
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir);
     }

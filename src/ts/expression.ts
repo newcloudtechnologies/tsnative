@@ -1,0 +1,101 @@
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2021
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+import { LLVMGenerator } from "../generator";
+import * as ts from "typescript";
+
+export class Expression {
+  private readonly expression: ts.Expression;
+  private readonly generator: LLVMGenerator;
+
+  private constructor(expression: ts.Expression, generator: LLVMGenerator) {
+    this.expression = expression;
+    this.generator = generator;
+  }
+
+  static create(expression: ts.Expression, generator: LLVMGenerator) {
+    return new Expression(expression, generator);
+  }
+
+  getExpressionText(): string {
+    // @todo: are there any other ts.Kinds we might be interested in?
+    if (ts.isParenthesizedExpression(this.expression)) {
+      return Expression.create(this.expression.expression, this.generator).getExpressionText();
+    }
+    if (ts.isAsExpression(this.expression)) {
+      return Expression.create(this.expression.expression, this.generator).getExpressionText();
+    }
+
+    return this.expression.getText();
+  }
+
+  getAccessorType(): ts.SyntaxKind.GetAccessor | ts.SyntaxKind.SetAccessor | undefined {
+    let result: ts.SyntaxKind.GetAccessor | ts.SyntaxKind.SetAccessor | undefined;
+
+    const symbol = this.generator.ts.checker.getSymbolAtLocation(this.expression);
+    if (symbol.declarations.length === 1) {
+      if (symbol.declarations[0].isGetAccessor()) {
+        result = ts.SyntaxKind.GetAccessor;
+      } else if (symbol.declarations[0].isSetAccessor()) {
+        result = ts.SyntaxKind.SetAccessor;
+      }
+    } else if (
+      symbol.declarations.length > 1 &&
+      symbol.declarations.some((declaration) => declaration.isGetAccessor() || declaration.isSetAccessor())
+    ) {
+      if (ts.isBinaryExpression(this.expression.parent)) {
+        // @todo: what about property access chains?
+        if (
+          ts.isPropertyAccessExpression(this.expression.parent.left) ||
+          ts.isPropertyAccessExpression(this.expression.parent.right)
+        ) {
+          result =
+            this.expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+              ? ts.SyntaxKind.SetAccessor
+              : ts.SyntaxKind.GetAccessor;
+        } else if (ts.isPropertyAccessExpression(this.expression)) {
+          result = ts.SyntaxKind.GetAccessor;
+        }
+      } else {
+        result = ts.SyntaxKind.GetAccessor;
+      }
+    }
+
+    return result;
+  }
+
+  getArgumentTypes() {
+    if (!ts.isCallExpression(this.expression)) {
+      throw new Error(
+        `'getArgumentTypes' expected to be called on ts.CallExpression wrapper, called on '${this.expression.getText()}'`
+      );
+    }
+
+    return this.expression.arguments.map((arg) => {
+      const type = this.generator.ts.checker.getTypeAtLocation(arg);
+      if (type.isTypeParameter()) {
+        const typenameAlias = type.toString();
+        return this.generator.symbolTable.currentScope.typeMapper.get(typenameAlias);
+      } else {
+        return type;
+      }
+    });
+  }
+
+  isMethod() {
+    return Boolean(
+      ts.isPropertyAccessExpression(this.expression) &&
+        (this.generator.ts.checker.getTypeAtLocation(this.expression).getSymbol().flags & ts.SymbolFlags.Method) !==
+          0 &&
+        !this.generator.ts.checker.getTypeAtLocation(this.expression).getSymbol().valueDeclaration!.isStaticMethod()
+    );
+  }
+}

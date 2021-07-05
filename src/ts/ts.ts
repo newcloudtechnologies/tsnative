@@ -9,15 +9,16 @@
  *
  */
 
-import * as ts from "typescript";
-
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import { TypeChecker } from "./typechecker";
+import { TSArray } from "./array";
 
 export class TS {
   readonly checker: TypeChecker;
+  readonly array: TSArray;
 
-  constructor(checker: ts.TypeChecker, generator: LLVMGenerator) {
-    this.checker = new TypeChecker(checker, generator);
+  constructor(generator: LLVMGenerator) {
+    this.checker = new TypeChecker(generator.program.getTypeChecker(), generator);
+    this.array = new TSArray(generator);
   }
 }

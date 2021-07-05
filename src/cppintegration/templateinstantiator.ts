@@ -14,8 +14,6 @@ import * as ts from "typescript";
 import * as path from "path";
 import { flatten } from "lodash";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
-import { getGenericsToActualMapFromSignature } from "@utils";
-import { getArgumentArrayType } from "@handlers/utils";
 import { LLVMGenerator } from "@generator";
 import { TSType } from "../ts/type";
 
@@ -208,7 +206,7 @@ export class TemplateInstantiator {
       this.handleArrayFromVariableDeclaration(node);
     } else {
       if (ts.isCallExpression(node.parent) && ts.isArrayLiteralExpression(node) && node.elements.length === 0) {
-        const typeFromParameterDeclaration = getArgumentArrayType(node, this.generator.ts.checker);
+        const typeFromParameterDeclaration = this.generator.ts.array.getArgumentArrayType(node);
         const templateInstance = `template class ${typeFromParameterDeclaration.toCppType()};`;
         this.generatedContent.push(templateInstance);
       } else {
@@ -259,7 +257,7 @@ export class TemplateInstantiator {
     const methodName = call.expression.name.getText();
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(call);
-    const tsReturnType = this.generator.ts.checker.getReturnTypeOfSignature(resolvedSignature!);
+    const tsReturnType = resolvedSignature.getReturnType();
     let cppReturnType = this.correctQualifiers(tsReturnType, tsReturnType.toCppType());
 
     const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, TSType>) => {
@@ -339,7 +337,7 @@ export class TemplateInstantiator {
     const methodName = node.expression.name.getText();
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(node);
-    const tsReturnType = this.generator.ts.checker.getReturnTypeOfSignature(resolvedSignature);
+    const tsReturnType = resolvedSignature.getReturnType();
     const cppReturnType = this.correctQualifiers(tsReturnType, tsReturnType.toCppType());
 
     const elementType = tsArrayType.getTypeGenericArguments()[0];
@@ -432,10 +430,8 @@ export class TemplateInstantiator {
 
     const typesProviderType = this.generator.ts.checker.getTypeAtLocation(genericTypesProvider);
     const typesProviderSymbol = typesProviderType.getSymbol();
-    const typesProviderDeclaration = typesProviderSymbol.declarations[0] as ts.FunctionLikeDeclaration;
-    const typesProviderSignature = this.generator.ts.checker.getSignatureFromDeclaration(
-      typesProviderDeclaration as ts.SignatureDeclaration
-    );
+    const typesProviderDeclaration = typesProviderSymbol.declarations[0];
+    const typesProviderSignature = this.generator.ts.checker.getSignatureFromDeclaration(typesProviderDeclaration);
 
     const visitor = (n: ts.Node) => {
       n.forEachChild(visitor);
@@ -458,16 +454,11 @@ export class TemplateInstantiator {
         }
 
         const symbol = type.getSymbol();
-        if (symbol !== typesProviderSymbol) {
+        if (!symbol.equals(typesProviderSymbol)) {
           return;
         }
 
-        const genericTypesMap = getGenericsToActualMapFromSignature(
-          typesProviderSignature,
-          referenceCall,
-          this.generator
-        );
-
+        const genericTypesMap = typesProviderSignature.getGenericsToActualMap(referenceCall);
         action(genericTypesMap);
       }
     };

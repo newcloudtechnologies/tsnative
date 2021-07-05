@@ -12,6 +12,9 @@
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
 import { TSType } from "./type";
+import { Signature } from "./signature";
+import { TSSymbol } from "../ts/symbol";
+import { Declaration } from "../ts/declaration";
 
 export class TypeChecker {
   private readonly checker: ts.TypeChecker;
@@ -36,44 +39,45 @@ export class TypeChecker {
       symbol = this.checker.getAliasedSymbol(symbol);
     }
 
-    return symbol;
+    return TSSymbol.create(symbol, this.generator);
   }
 
-  getAliasedSymbol(symbol: ts.Symbol) {
-    return this.checker.getAliasedSymbol(symbol);
+  getAliasedSymbol(symbol: TSSymbol) {
+    return TSSymbol.create(this.checker.getAliasedSymbol(symbol.unwrapped), this.generator);
   }
 
   getTypeAtLocation(node: ts.Node) {
-    return new TSType(this.checker.getTypeAtLocation(node), this);
+    return TSType.create(this.checker.getTypeAtLocation(node), this);
   }
 
   getDeclaredTypeOfSymbol(symbol: ts.Symbol) {
-    return new TSType(this.checker.getDeclaredTypeOfSymbol(symbol), this);
+    return TSType.create(this.checker.getDeclaredTypeOfSymbol(symbol), this);
   }
 
-  getTypeOfSymbolAtLocation(symbol: ts.Symbol, node: ts.Node) {
+  getTypeOfSymbolAtLocation(symbol: TSSymbol, node: ts.Node) {
     if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-      symbol = this.checker.getAliasedSymbol(symbol);
+      symbol = this.getAliasedSymbol(symbol);
     }
 
-    return new TSType(this.checker.getTypeOfSymbolAtLocation(symbol, node), this);
+    return TSType.create(this.checker.getTypeOfSymbolAtLocation(symbol.unwrapped, node), this);
   }
 
   getTypeFromTypeNode(typeNode: ts.TypeNode) {
-    return new TSType(this.checker.getTypeFromTypeNode(typeNode), this);
+    return TSType.create(this.checker.getTypeFromTypeNode(typeNode), this);
   }
 
   getBaseTypeOfLiteralType(type: ts.Type) {
-    return new TSType(this.checker.getBaseTypeOfLiteralType(type), this);
+    return TSType.create(this.checker.getBaseTypeOfLiteralType(type), this);
   }
 
-  getSignatureFromDeclaration(declaration: ts.SignatureDeclaration): ts.Signature {
-    const signature = this.checker.getSignatureFromDeclaration(declaration);
+  getSignatureFromDeclaration(declaration: Declaration) {
+    const signatureDeclaration = declaration.unwrapped as ts.SignatureDeclaration;
+    const signature = this.checker.getSignatureFromDeclaration(signatureDeclaration);
     if (!signature) {
       throw new Error(`Signature not found for '${declaration.getText()}'`);
     }
 
-    return signature;
+    return Signature.create(signature, this.generator);
   }
 
   getResolvedSignature(node: ts.CallLikeExpression, candidatesOutArray?: ts.Signature[], argumentCount?: number) {
@@ -82,15 +86,24 @@ export class TypeChecker {
       throw new Error(`Signature not found at '${node.getText()}'`);
     }
 
-    return signature;
+    return Signature.create(signature, this.generator);
   }
 
   getReturnTypeOfSignature(signature: ts.Signature) {
-    return new TSType(this.checker.getReturnTypeOfSignature(signature), this);
+    return TSType.create(this.checker.getReturnTypeOfSignature(signature), this);
+  }
+
+  getPropertyOfType(type: ts.Type, name: string) {
+    const property = this.checker.getPropertyOfType(type, name);
+    if (!property) {
+      throw new Error(`No property '${name}' found in type '${this.checker.typeToString(type)}'`);
+    }
+
+    return TSSymbol.create(property, this.generator);
   }
 
   getPropertiesOfType(type: ts.Type) {
-    return this.checker.getPropertiesOfType(type);
+    return this.checker.getPropertiesOfType(type).map((symbol) => TSSymbol.create(symbol, this.generator));
   }
 
   unwrap() {

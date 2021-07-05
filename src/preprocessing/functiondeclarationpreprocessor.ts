@@ -25,9 +25,9 @@ export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
             if (!type.isSymbolless()) {
               const symbol = type.getSymbol();
               const declaration = symbol.declarations[0];
-              if (ts.isInterfaceDeclaration(declaration)) {
+              if (declaration.isInterface()) {
                 for (const member of declaration.members) {
-                  const memberType = this.generator.ts.checker.getTypeAtLocation(member);
+                  const memberType = member.type;
                   if (memberType.isFunction()) {
                     const memberSymbol = memberType.getSymbol();
                     const memberDeclaration = memberSymbol.declarations[0];
@@ -35,12 +35,13 @@ export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
                       throw new Error("Declaration not found");
                     }
 
-                    const signature = this.generator.ts.checker.getSignatureFromDeclaration(
-                      memberDeclaration as ts.SignatureDeclaration
-                    );
+                    const signature = this.generator.ts.checker.getSignatureFromDeclaration(memberDeclaration);
 
-                    const withFunargs = signature.parameters.some((parameter) => {
-                      const symbolType = this.generator.ts.checker.getTypeOfSymbolAtLocation(parameter, declaration);
+                    const withFunargs = signature.getParameters().some((parameter) => {
+                      const symbolType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
+                        parameter,
+                        declaration.unwrapped
+                      );
                       return symbolType.isFunction();
                     });
 

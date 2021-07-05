@@ -9,11 +9,10 @@
  *
  */
 
-import { Conversion, handleBinaryWithConversion } from "@handlers";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { LLVMValue } from "../../llvm/value";
+import { Conversion, LLVMValue } from "../../llvm/value";
 import { Builder } from "../../builder/builder";
 import { LLVMType } from "../../llvm/type";
 
@@ -52,24 +51,17 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     left = left.getValue();
     right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFAdd(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
+    if (
+      (left.type.isDoubleType() && right.type.isDoubleType()) ||
+      (left.type.isIntegerType() && right.type.isIntegerType())
+    ) {
       return this.generator.builder.createAdd(left, right).createHeapAllocated();
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Narrowing,
-        Builder.prototype.createAdd,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Narrowing, Builder.prototype.createAdd)
+        .createHeapAllocated();
     }
 
     if (left.type.isString() && right.type.isString()) {
@@ -88,24 +80,17 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     left = left.getValue();
     right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFSub(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
+    if (
+      (left.type.isDoubleType() && right.type.isDoubleType()) ||
+      (left.type.isIntegerType() && right.type.isIntegerType())
+    ) {
       return this.generator.builder.createSub(left, right).createHeapAllocated();
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Narrowing,
-        Builder.prototype.createSub,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Narrowing, Builder.prototype.createSub)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to binary minus");
@@ -117,24 +102,17 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     left = left.getValue();
     right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFMul(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
+    if (
+      (left.type.isDoubleType() && right.type.isDoubleType()) ||
+      (left.type.isIntegerType() && right.type.isIntegerType())
+    ) {
       return this.generator.builder.createMul(left, right).createHeapAllocated();
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        Builder.prototype.createFMul,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, Builder.prototype.createMul)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to multiply");
@@ -147,7 +125,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = right.adjustToType(left.type);
 
     if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFDiv(left, right).createHeapAllocated();
+      return this.generator.builder.createDiv(left, right).createHeapAllocated();
     }
 
     if (left.type.isIntegerType() && right.type.isIntegerType()) {
@@ -158,19 +136,13 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
 
       left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
       right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
-      return this.generator.builder.createFDiv(left, right).createHeapAllocated();
+      return this.generator.builder.createDiv(left, right).createHeapAllocated();
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        Builder.prototype.createFDiv,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, Builder.prototype.createDiv)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to division");
@@ -183,7 +155,7 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     right = right.adjustToType(left.type);
 
     if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFRem(left, right).createHeapAllocated();
+      return this.generator.builder.createRem(left, right).createHeapAllocated();
     }
 
     if (left.type.isIntegerType() && right.type.isIntegerType()) {
@@ -195,19 +167,13 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
       right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
 
-      return this.generator.builder.createFRem(left, right).createHeapAllocated();
+      return this.generator.builder.createRem(left, right).createHeapAllocated();
     }
 
     if (left.type.isConvertibleTo(right.type)) {
-      return handleBinaryWithConversion(
-        lhs,
-        rhs,
-        left,
-        right,
-        Conversion.Promotion,
-        Builder.prototype.createFRem,
-        this.generator
-      ).createHeapAllocated();
+      return left
+        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, Builder.prototype.createRem)
+        .createHeapAllocated();
     }
 
     throw new Error("Invalid operand types to modulo");

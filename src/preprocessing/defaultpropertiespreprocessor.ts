@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { checkIfStaticProperty } from "@utils";
+import { Declaration } from "../ts/declaration";
 
 export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -30,7 +30,7 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
               continue;
             }
 
-            if (checkIfStaticProperty(member)) {
+            if (Declaration.create(member, this.generator).isStaticProperty()) {
               continue;
             }
 

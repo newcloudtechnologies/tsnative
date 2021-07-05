@@ -2,16 +2,16 @@ import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "@scope"
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { createArraySubscription } from "@handlers";
 import { LLVMValue } from "../../llvm/value";
 import { LLVMStructType } from "../../llvm/type";
+import { Declaration } from "../../ts/declaration";
 
 export class AccessHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
         const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
-        if (symbol.declarations.some((declaration) => ts.isGetAccessor(declaration) || ts.isSetAccessor(declaration))) {
+        if (symbol.declarations.some((declaration) => declaration.isGetAccessor() || declaration.isSetAccessor())) {
           // Handle accessors in FunctionHandler.
           break;
         }
@@ -30,11 +30,8 @@ export class AccessHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private hasProperty(declaration: ts.ClassDeclaration | ts.InterfaceDeclaration, property: string): boolean {
-    const has =
-      declaration.members.findIndex(
-        (member: ts.TypeElement | ts.ClassElement) => member.name?.getText() === property
-      ) !== -1;
+  private hasProperty(declaration: Declaration, property: string): boolean {
+    const has = declaration.members.findIndex((member: Declaration) => member.name?.getText() === property) !== -1;
     if (has) {
       return has;
     }
@@ -44,7 +41,7 @@ export class AccessHandler extends AbstractExpressionHandler {
         for (const type of clause.types) {
           const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
           const baseDeclaration = symbol.valueDeclaration;
-          const baseHas = this.hasProperty(baseDeclaration as ts.ClassDeclaration | ts.InterfaceDeclaration, property);
+          const baseHas = baseDeclaration && this.hasProperty(baseDeclaration, property);
 
           if (baseHas) {
             return baseHas;
@@ -74,13 +71,16 @@ export class AccessHandler extends AbstractExpressionHandler {
     let scope;
     try {
       const symbol = this.generator.ts.checker.getSymbolAtLocation(left);
-      const declaration = symbol.valueDeclaration;
+      const valueDeclaration = symbol.valueDeclaration;
+      if (!valueDeclaration) {
+        throw new Error(`No value declaration found at '${expression.getText()}'`);
+      }
 
       let identifier = left.getText();
 
       if (
-        (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration)) &&
-        this.hasProperty(declaration, propertyName)
+        (valueDeclaration.isClass() || valueDeclaration.isInterface()) &&
+        this.hasProperty(valueDeclaration, propertyName)
       ) {
         const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
         identifier = type.mangle();
@@ -117,7 +117,7 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
-    const subscription = createArraySubscription(expression, this.generator);
+    const subscription = this.generator.ts.array.createSubscription(expression);
     const array = this.generator.handleExpression(expression.expression, env);
     const arrayUntyped = this.generator.builder.asVoidStar(array);
     const index = this.generator.createLoadIfNecessary(

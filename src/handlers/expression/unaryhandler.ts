@@ -1,4 +1,3 @@
-import { castToInt32AndBack } from "@handlers";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
@@ -33,21 +32,16 @@ export class UnaryHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.PlusPlusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
-        const newValue = this.generator.builder.createFAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
+        const newValue = this.generator.builder.createAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
         return value.makeAssignment(newValue);
       }
       case ts.SyntaxKind.MinusMinusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
-        const newValue = this.generator.builder.createFSub(oldValue, LLVMConstantFP.get(this.generator, 1));
+        const newValue = this.generator.builder.createSub(oldValue, LLVMConstantFP.get(this.generator, 1));
         return value.makeAssignment(newValue);
       }
-      case ts.SyntaxKind.TildeToken:
-        return castToInt32AndBack(
-          [this.generator.handleExpression(operand, env).getValue()],
-          this.generator,
-          ([value]) => this.generator.builder.createNot(value)
-        );
+      // case ts.SyntaxKind.TildeToken: @todo
       case ts.SyntaxKind.ExclamationToken:
         return this.generator.builder.createNot(this.generator.handleExpression(operand, env).makeBoolean());
       default:
@@ -62,14 +56,14 @@ export class UnaryHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.PlusPlusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
-        const newValue = this.generator.builder.createFAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
+        const newValue = this.generator.builder.createAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
         value.makeAssignment(newValue);
         return oldValue.createHeapAllocated();
       }
       case ts.SyntaxKind.MinusMinusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
-        const newValue = this.generator.builder.createFSub(oldValue, LLVMConstantFP.get(this.generator, 1));
+        const newValue = this.generator.builder.createSub(oldValue, LLVMConstantFP.get(this.generator, 1));
         value.makeAssignment(newValue);
         return oldValue.createHeapAllocated();
       }

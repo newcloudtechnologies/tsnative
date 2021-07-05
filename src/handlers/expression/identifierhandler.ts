@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment } from "@scope";
-import { getDeclarationNamespace } from "@utils";
 import { LLVMValue } from "../../llvm/value";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
@@ -46,9 +45,9 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     const declaration = symbol.valueDeclaration;
 
     let identifier = expression.getText();
-    if (declaration && (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration))) {
+    if (declaration && (declaration.isClass() || declaration.isInterface())) {
       const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
-      const namespace = getDeclarationNamespace(declaration);
+      const namespace = declaration.getNamespace();
       identifier = namespace.concat(type.mangle()).join(".");
     }
 

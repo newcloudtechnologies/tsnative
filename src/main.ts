@@ -11,7 +11,7 @@ import * as ts from "typescript";
 import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
-import { Build } from "@utils";
+import { Build } from "./buildutils/build";
 import { TemplateInstantiator } from "@cpp";
 import { Preprocessor } from "@preprocessing";
 

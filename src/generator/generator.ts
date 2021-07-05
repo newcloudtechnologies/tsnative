@@ -23,6 +23,7 @@ import { TS } from "../ts/ts";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Builder } from "../builder/builder";
 import { LLVMType } from "../llvm/type";
+import { Declaration } from "../ts/declaration";
 
 enum InternalNames {
   Environment = "__environment__",
@@ -74,7 +75,7 @@ export class LLVMGenerator {
     this.sizeOf = new SizeOf();
 
     this.llvm = new LLVM(this);
-    this.ts = new TS(program.getTypeChecker(), this);
+    this.ts = new TS(this);
   }
 
   createModule(): llvm.Module {
@@ -121,8 +122,8 @@ export class LLVMGenerator {
     }
     gc.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
-        const clazz = node as ts.ClassDeclaration;
-        const clazzName = this.ts.checker.getTypeAtLocation(clazz).getSymbol().escapedName;
+        const clazz = Declaration.create(node as ts.ClassDeclaration, this);
+        const clazzName = clazz.type.getSymbol().escapedName;
         if (clazzName === "GC") {
           this.garbageCollector = new GC(clazz, this);
         }
@@ -203,5 +204,18 @@ export class LLVMGenerator {
       this.initGC();
     }
     return this.garbageCollector!;
+  }
+
+  get randomString() {
+    return Math.random()
+      .toString(36)
+      .replace(/[^a-z]+/g, "")
+      .substr(0, 5);
+  }
+
+  createTSObjectName(props: string[]) {
+    // Reduce object's props names to string to store them as object's name.
+    // Later this name may be used for out-of-order object initialization and property access.
+    return this.randomString + "__object__" + props.join(".");
   }
 }

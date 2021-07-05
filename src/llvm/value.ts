@@ -11,7 +11,13 @@
 
 import { LLVMGenerator } from "@generator";
 import * as llvm from "llvm-node";
+import * as ts from "typescript";
 import { LLVMStructType, LLVMType } from "./type";
+
+export enum Conversion {
+  Narrowing,
+  Promotion,
+}
 
 export class LLVMValue {
   protected readonly value: llvm.Value;
@@ -275,6 +281,46 @@ export class LLVMValue {
     }
 
     return value;
+  }
+
+  // @todo: refactor this
+  handleBinaryWithConversion(
+    lhsExpression: ts.Expression,
+    rhsExpression: ts.Expression,
+    rhsValue: LLVMValue,
+    conversion: Conversion,
+    handler: (l: LLVMValue, r: LLVMValue) => LLVMValue
+  ): LLVMValue {
+    const convertor =
+      conversion === Conversion.Narrowing
+        ? LLVMValue.prototype.castFPToIntegralType
+        : LLVMValue.prototype.promoteIntegralToFP;
+
+    if (this.type.isIntegerType() && rhsValue.type.isDoubleType()) {
+      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhsExpression);
+      const signed = lhsTsType.isSigned();
+      const destinationType = conversion === Conversion.Narrowing ? this.type : rhsValue.type;
+      let convertedArg = conversion === Conversion.Narrowing ? rhsValue : this;
+      const untouchedArg = conversion === Conversion.Narrowing ? this : rhsValue;
+      convertedArg = convertor.call(convertedArg, destinationType, signed);
+      const args: [LLVMValue, LLVMValue] =
+        conversion === Conversion.Narrowing ? [untouchedArg, convertedArg] : [convertedArg, untouchedArg];
+      return handler.apply(this.generator.builder, args);
+    }
+
+    if (this.type.isDoubleType() && rhsValue.type.isIntegerType()) {
+      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhsExpression);
+      const signed = rhsTsType.isSigned();
+      const destinationType = conversion === Conversion.Narrowing ? rhsValue.type : this.type;
+      let convertedArg = conversion === Conversion.Narrowing ? this : rhsValue;
+      const untouchedArg = conversion === Conversion.Narrowing ? rhsValue : this;
+      convertedArg = convertor.call(convertedArg, destinationType, signed);
+      const args: [LLVMValue, LLVMValue] =
+        conversion === Conversion.Narrowing ? [convertedArg, untouchedArg] : [untouchedArg, convertedArg];
+      return handler.apply(this.generator.builder, args);
+    }
+
+    throw new Error("Invalid types to handle with conversion");
   }
 
   createHeapAllocated(): LLVMValue {

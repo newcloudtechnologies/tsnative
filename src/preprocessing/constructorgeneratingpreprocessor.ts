@@ -31,9 +31,9 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
                 const type = this.generator.ts.checker.getTypeAtLocation(expessionWithTypeArgs);
 
                 const symbol = type.getSymbol();
-                const declaration = symbol.declarations[0] as ts.ClassDeclaration;
+                const declaration = symbol.declarations[0];
 
-                const baseConstructor = declaration.members.find(ts.isConstructorDeclaration);
+                const baseConstructor = declaration.members.find((m) => m.isConstructor());
                 if (!baseConstructor) {
                   throw new Error(`No constructor provided for '${type.toString()}'`);
                 }
@@ -66,7 +66,7 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
 
             defaultConstructor.parent = updated;
             updated.parent = node.parent || sourceFile;
-            symbol.declarations[0] = updated;
+            symbol.unwrapped.declarations[0] = updated;
 
             node = updated;
           }

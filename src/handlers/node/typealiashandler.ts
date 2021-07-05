@@ -14,6 +14,7 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
 import { LLVMGenerator } from "@generator";
 import { LLVMType } from "../../llvm/type";
+import { Declaration } from "../../ts/declaration";
 
 const utilityReturnType = "ReturnType";
 const utilityTypeNames = [utilityReturnType];
@@ -35,9 +36,9 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
             if (declaration.initializer) {
               if (ts.isFunctionLike(declaration.initializer)) {
                 const symbol = generator.ts.checker.getTypeAtLocation(declaration.initializer).getSymbol();
-                const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
-                const signature = generator.ts.checker.getSignatureFromDeclaration(valueDeclaration)!;
-                const tsReturnType = generator.ts.checker.getReturnTypeOfSignature(signature);
+                const valueDeclaration = symbol.declarations[0];
+                const signature = generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
+                const tsReturnType = signature.getReturnType();
 
                 if (!declaration.initializer) {
                   throw new Error("Declaration initializer required");
@@ -74,13 +75,13 @@ export class TypeAliasHandler extends AbstractNodeHandler {
           return true;
         }
 
-        let declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
+        let declaration: Declaration | undefined;
 
         const type = this.generator.ts.checker.getTypeFromTypeNode(typeAlias.type);
 
         if (!type.isSymbolless()) {
           const symbol = type.getSymbol();
-          declaration = symbol.declarations[0] as ts.ClassDeclaration | ts.InterfaceDeclaration;
+          declaration = symbol.declarations[0];
         }
 
         let llvmType: LLVMType | undefined;

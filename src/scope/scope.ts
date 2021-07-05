@@ -9,16 +9,16 @@
  *
  */
 
-import { getDeclarationNamespace } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "@generator";
 
-import { getArrayType } from "@handlers";
 import { TSType } from "../ts/type";
 import { flatten } from "lodash";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMValue } from "../llvm/value";
+import { Declaration } from "../ts/declaration";
+import { Signature } from "../ts/signature";
 
 export class Environment {
   private readonly pVariables: string[];
@@ -185,13 +185,13 @@ export function addClassScope(
 ): void {
   let thisType: TSType;
   if (ts.isArrayLiteralExpression(expression)) {
-    thisType = getArrayType(expression, generator);
+    thisType = generator.ts.array.getType(expression);
   } else if (
     ts.isVariableDeclaration(expression) &&
     expression.initializer &&
     ts.isArrayLiteralExpression(expression.initializer)
   ) {
-    thisType = getArrayType(expression.initializer, generator);
+    thisType = generator.ts.array.getType(expression.initializer);
   } else {
     thisType = generator.ts.checker.getTypeAtLocation(expression).getApparentType();
   }
@@ -200,14 +200,14 @@ export function addClassScope(
     return;
   }
 
-  const declaration = thisType.getSymbol().declarations.find(ts.isClassDeclaration);
+  const declaration = thisType.getSymbol().declarations.find((decl) => decl.isClass());
 
   if (!declaration) {
     return;
   }
 
   let mangledTypename = thisType.mangle();
-  const namespace: string[] = getDeclarationNamespace(declaration);
+  const namespace = declaration.getNamespace();
   mangledTypename = namespace.concat(mangledTypename).join(".");
 
   const name = declaration.name!.getText();
@@ -234,7 +234,7 @@ export function addClassScope(
     throw new Error("Expected pointer");
   }
 
-  const tsType = generator.ts.checker.getTypeAtLocation(declaration as ts.Node);
+  const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
   const scope = new Scope(name, mangledTypename, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
@@ -266,7 +266,7 @@ export function createEnvironment(
   scope: Scope,
   environmentVariables: string[],
   generator: LLVMGenerator,
-  functionData?: { args: LLVMValue[]; signature: ts.Signature },
+  functionData?: { args: LLVMValue[]; signature: Signature },
   outerEnv?: Environment,
   functionBody?: ts.ConciseBody,
   preferLocalThis?: boolean
@@ -537,7 +537,7 @@ export function populateContext(
 export type ScopeValue = LLVMValue | HeapVariableDeclaration | Scope;
 
 export interface ThisData {
-  readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
+  readonly declaration: Declaration | undefined;
   readonly llvmType: LLVMType;
   readonly tsType: TSType;
   readonly staticProperties?: Map<string, LLVMValue>;
