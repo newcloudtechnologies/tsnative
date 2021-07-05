@@ -319,7 +319,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const adjustedArgs = args.map((arg, index) => {
       const llvmArgType = types[index];
       if (!arg.type.equals(llvmArgType)) {
-        if (arg.type.isStructType() && !arg.type.isSameStructs(llvmArgType)) {
+        const argTypeUnwrapped = arg.type.unwrapPointer();
+        if (argTypeUnwrapped.isStructType() && !argTypeUnwrapped.isSameStructs(llvmArgType)) {
           if (this.generator.types.union.isLLVMUnion(llvmArgType)) {
             arg = this.generator.types.union.initialize(llvmArgType, arg);
           } else if (this.generator.types.intersection.isLLVMIntersection(llvmArgType)) {
@@ -332,7 +333,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     adjustedArgs.forEach((arg, argIndex) => {
       const llvmArgType = types[argIndex];
-      if (!arg.type.equals(llvmArgType) && arg.type.isStructType() && !arg.type.isSameStructs(llvmArgType)) {
+      const argTypeUnwrapped = arg.type.unwrapPointer();
+      if (
+        !arg.type.equals(llvmArgType) &&
+        argTypeUnwrapped.isStructType() &&
+        !argTypeUnwrapped.isSameStructs(llvmArgType)
+      ) {
         mismatchArgs.push({ arg, llvmArgType });
       }
     });
@@ -439,20 +445,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const closureEnvironment = this.generator.meta.try(MetaInfoStorage.prototype.getClosureEnvironment, closure);
-    let environmentStructType;
+    let environmentStructType: LLVMStructType;
     if (closureEnvironment) {
       environmentStructType = closureEnvironment.type;
     } else {
       environmentStructType = LLVMStructType.get(
         this.generator,
         adjustedArgs.map((a) => a.type)
-      ).getPointer();
+      );
     }
 
     const getEnvironment = this.generator.builtinTSClosure.getLLVMGetEnvironment();
     const environment = this.generator.builder.createBitCast(
       this.generator.builder.createSafeCall(getEnvironment, [closure]),
-      environmentStructType
+      environmentStructType.getPointer()
     );
 
     storeActualArguments(adjustedArgs, environment, this.generator, closureEnvironment?.fixedArgsCount);
@@ -1108,7 +1114,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       fn = this.generator.llvm.function.create(
         llvmReturnType,
         llvmArgumentTypes,
-        qualifiedName + (checkIfStaticMethod(valueDeclaration) ? "__static" : "")
+        getRandomString() // use random string to unconditionally create higher-order function
       ).fn;
       this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, env);
       setLLVMFunctionScope(fn, parentScope, this.generator);
@@ -1210,12 +1216,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     effectiveArguments.forEach((arg, argIndex) => {
       const llvmArgType = llvmArgTypes[argIndex];
+      const argTypeUnwrapped = arg.type.unwrapPointer();
+
       if (
         !arg.type.equals(llvmArgType) &&
         !this.generator.types.union.isLLVMUnion(llvmArgType) &&
         !this.generator.types.union.isLLVMUnion(arg.type) &&
-        arg.type.isStructType() &&
-        !arg.type.isSameStructs(llvmArgType)
+        argTypeUnwrapped.isStructType() &&
+        !argTypeUnwrapped.isSameStructs(llvmArgType)
       ) {
         mismatchArgs.push({ arg, llvmArgType });
       }
@@ -1275,10 +1283,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const closureEnv = this.generator.meta.getFunctionEnvironment(argument.declaration);
 
       const generatedEnvironmentValues = effectiveArguments;
-      const closureEnvironmentStructType = closureEnv.type as LLVMStructType;
       const closureEnvironmentValue = this.generator.builder.createLoad(closureEnv.typed);
 
-      for (let i = effectiveArguments.length; i < closureEnvironmentStructType.numElements; ++i) {
+      for (let i = effectiveArguments.length; i < closureEnv.type.numElements; ++i) {
         const value = this.generator.builder.createSafeExtractValue(closureEnvironmentValue, [i]);
         generatedEnvironmentValues.push(value);
       }
@@ -1297,7 +1304,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const generatedEnvironment = new Environment(
         closureEnv.variables,
         this.generator.builder.asVoidStar(generatedEnvironmentAllocated),
-        generatedEnvironmentAllocated.type,
+        generatedEnvironmentType,
         this.generator
       );
       this.generator.meta.registerFunctionEnvironment(argument.declaration, generatedEnvironment);

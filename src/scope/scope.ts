@@ -23,17 +23,13 @@ import { LLVMConstant, LLVMValue } from "../llvm/value";
 export class Environment {
   private readonly pVariables: string[];
   private pAllocated: LLVMValue;
-  private readonly pLLVMType: LLVMType;
+  private readonly pLLVMType: LLVMStructType;
   private readonly pGenerator: LLVMGenerator;
   private pFixedArgsCount: number = 0;
 
-  constructor(variables: string[], allocated: LLVMValue, llvmType: LLVMType, generator: LLVMGenerator) {
+  constructor(variables: string[], allocated: LLVMValue, llvmType: LLVMStructType, generator: LLVMGenerator) {
     if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
       error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
-    }
-
-    if (!llvmType.getPointerElementType().isStructType()) {
-      error(`Expected llvmType to be of LLCMStructType*, got '${llvmType.toString()}'`);
     }
 
     this.pVariables = variables;
@@ -59,7 +55,7 @@ export class Environment {
   }
 
   get typed() {
-    return this.pGenerator.builder.createBitCast(this.pAllocated, this.pLLVMType);
+    return this.pGenerator.builder.createBitCast(this.pAllocated, this.pLLVMType.getPointer());
   }
 
   get type() {
@@ -84,13 +80,9 @@ export class Environment {
 
   static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
     const baseValues = [];
-    const envStructType = base.type.unwrapPointer();
-    if (!envStructType.isStructType()) {
-      error("Expected struct");
-    }
 
     const envValue = generator.builder.createLoad(base.typed);
-    for (let i = 0; i < envStructType.numElements; ++i) {
+    for (let i = 0; i < base.type.numElements; ++i) {
       const value = generator.builder.createSafeExtractValue(envValue, [i]);
       baseValues.push(value);
     }
@@ -98,13 +90,9 @@ export class Environment {
     const values = flatten(
       envs.map((e) => {
         const envValues = [];
-        const structType = e.type.unwrapPointer();
-        if (!structType.isStructType()) {
-          error("Expected struct type");
-        }
 
         const structValue = generator.builder.createLoad(e.typed);
-        for (let i = 0; i < structType.numElements; ++i) {
+        for (let i = 0; i < e.type.numElements; ++i) {
           const value = generator.builder.createSafeExtractValue(structValue, [i]);
           envValues.push(value);
         }
@@ -142,7 +130,7 @@ export class Environment {
     return new Environment(
       mergedVariableNames,
       generator.builder.asVoidStar(allocatedMergedEnvironment),
-      allocatedMergedEnvironment.type as LLVMStructType,
+      mergedEnvironmentType,
       generator
     );
   }
@@ -164,7 +152,7 @@ export class Environment {
     const existingType = generator.module.getTypeByName(environmentName);
 
     if (existingType) {
-      return LLVMStructType.make(existingType, generator);
+      return LLVMType.make(existingType, generator) as LLVMStructType;
     }
 
     const envType = LLVMStructType.create(generator, environmentName);
@@ -366,12 +354,7 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
-  let env = new Environment(
-    names,
-    generator.builder.asVoidStar(environmentAlloca),
-    environmentAlloca.type as LLVMStructType,
-    generator
-  );
+  let env = new Environment(names, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
 
   if (functionBody) {
     const innerEnvironments = [];
