@@ -10,7 +10,6 @@
  */
 
 import { castToInt32AndBack, Conversion, handleBinaryWithConversion } from "@handlers";
-import { error } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
@@ -73,7 +72,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    error("Invalid operand types to bitwise AND");
+    throw new Error("Invalid operand types to bitwise AND");
   }
 
   private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -102,7 +101,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    error("Invalid operand types to bitwise OR");
+    throw new Error("Invalid operand types to bitwise OR");
   }
 
   private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -131,7 +130,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    error("Invalid operand types to bitwise XOR");
+    throw new Error("Invalid operand types to bitwise XOR");
   }
 
   private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -160,7 +159,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    error("Invalid operand types to left shift");
+    throw new Error("Invalid operand types to left shift");
   }
 
   private handleRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -189,7 +188,7 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    error("Invalid operand types to right shift");
+    throw new Error("Invalid operand types to right shift");
   }
 
   private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -218,6 +217,6 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       );
     }
 
-    error("Invalid operand types to logical right shift");
+    throw new Error("Invalid operand types to logical right shift");
   }
 }

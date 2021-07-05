@@ -9,11 +9,9 @@
  *
  */
 
-import { makeAssignment } from "@handlers";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error } from "@utils";
 import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
@@ -60,8 +58,8 @@ export class AssignmentHandler extends AbstractExpressionHandler {
           }
 
           if (right.kind === ts.SyntaxKind.NullKeyword) {
-            if (!this.generator.types.union.isUnionWithNull(lhs.type)) {
-              error(
+            if (!lhs.type.isUnionWithNull()) {
+              throw new Error(
                 `Expected left hand side operand to be union with null type, got '${lhs.type
                   .unwrapPointer()
                   .toString()}'`
@@ -75,7 +73,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             rhs = this.generator.handleExpression(right, env);
           }
 
-          return makeAssignment(lhs, rhs, this.generator);
+          return lhs.makeAssignment(rhs);
         default:
           break;
       }

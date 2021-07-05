@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment } from "@scope";
-import { error, getDeclarationNamespace, InternalNames } from "@utils";
+import { getDeclarationNamespace } from "@utils";
 import { LLVMValue } from "../../llvm/value";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
@@ -52,31 +52,31 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       identifier = namespace.concat(type.mangle()).join(".");
     }
 
-    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier, false);
+    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier);
     if (value) {
       if (value instanceof HeapVariableDeclaration) {
         return value.allocated;
       }
 
       if (!value) {
-        error(`Identifier handler: LLVMValue for '${expression.text}' not found`);
+        throw new Error(`Identifier handler: LLVMValue for '${expression.text}' not found`);
       }
 
       return value as LLVMValue;
     }
 
-    error(`Identifier '${expression.text}' not found in local scope nor environment`);
+    throw new Error(`Identifier '${expression.text}' not found in local scope nor environment`);
   }
 
   private handleThis(env?: Environment): LLVMValue {
     if (env) {
-      const index = env.getVariableIndex(InternalNames.This);
+      const index = env.getVariableIndex(this.generator.internalNames.This);
       if (index > -1) {
         const agg = this.generator.builder.createLoad(env.typed);
         return this.generator.builder.createSafeExtractValue(agg, [index]);
       }
     }
 
-    return this.generator.symbolTable.get(InternalNames.This) as LLVMValue;
+    return this.generator.symbolTable.get(this.generator.internalNames.This) as LLVMValue;
   }
 }

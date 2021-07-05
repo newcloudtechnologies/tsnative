@@ -12,19 +12,24 @@
 import { ExpressionHandlerChain } from "@handlers/expression";
 import { NodeHandlerChain } from "@handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
-import { error } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
 import { MetaInfoStorage } from "@generator";
 import { GC_DEFINITION } from "std-typescript-llvm/constants";
-import { Types } from "../types/types";
 import { SizeOf } from "@cpp";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Builder } from "../builder/builder";
 import { LLVMType } from "../llvm/type";
+
+enum InternalNames {
+  Environment = "__environment__",
+  FunctionScope = "__function_scope__",
+  Object = "__object__",
+  This = "this",
+}
 
 export class LLVMGenerator {
   readonly module: llvm.Module;
@@ -47,10 +52,11 @@ export class LLVMGenerator {
 
   private garbageCollector: GC | undefined;
 
-  readonly types: Types;
   readonly sizeOf: SizeOf;
   readonly llvm: LLVM;
   readonly ts: TS;
+
+  readonly internalNames = InternalNames;
 
   constructor(program: ts.Program) {
     this.program = program;
@@ -61,11 +67,11 @@ export class LLVMGenerator {
 
     this.builtinInt8 = new BuiltinInt8(this);
     this.builtinUInt32 = new BuiltinUInt32(this);
+
     this.builtinString = new BuiltinString(this);
     this.builtinTSClosure = new BuiltinTSClosure(this);
 
-    this.types = new Types(this);
-    this.sizeOf = new SizeOf(this);
+    this.sizeOf = new SizeOf();
 
     this.llvm = new LLVM(this);
     this.ts = new TS(program.getTypeChecker(), this);
@@ -111,7 +117,7 @@ export class LLVMGenerator {
   initGC(): void {
     const gc = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === GC_DEFINITION);
     if (!gc) {
-      error("No GC definition found");
+      throw new Error("No GC definition found");
     }
     gc.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
@@ -123,7 +129,7 @@ export class LLVMGenerator {
       }
     });
     if (!this.garbageCollector) {
-      error("GC declaration not found");
+      throw new Error("GC declaration not found");
     }
   }
 
@@ -144,7 +150,7 @@ export class LLVMGenerator {
 
   handleNode(node: ts.Node, parentScope: Scope, env?: Environment): void {
     if (!this.nodeHandlerChain.handle(node, parentScope, env))
-      error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
+      throw new Error(`Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
   }
 
   handleExpression(expression: ts.Expression, env?: Environment): LLVMValue {
@@ -153,7 +159,7 @@ export class LLVMGenerator {
       return value;
     }
 
-    error(
+    throw new Error(
       `Unhandled expression of kind ${expression.kind}: '${ts.SyntaxKind[expression.kind]}' at ${expression.getText()}`
     );
   }
@@ -171,7 +177,7 @@ export class LLVMGenerator {
 
   get currentSourceFile(): ts.SourceFile {
     if (!this.currentSource) {
-      error("No current source available");
+      throw new Error("No current source available");
     }
     return this.currentSource;
   }
@@ -187,7 +193,7 @@ export class LLVMGenerator {
   get currentFunction(): llvm.Function {
     const insertBlock = this.builder.getInsertBlock();
     if (!insertBlock) {
-      error("Cannot get current LLVM function: no insert block");
+      throw new Error("Cannot get current LLVM function: no insert block");
     }
     return insertBlock.parent!;
   }

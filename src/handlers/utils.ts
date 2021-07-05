@@ -1,18 +1,10 @@
-import { adjustValue, getIntegralLLVMTypeTypename, isSigned } from "@cpp";
 import { LLVMGenerator } from "@generator";
 import { FunctionMangler } from "@mangling";
-import {
-  error,
-  getExpressionText,
-  checkIfStaticProperty,
-  getAccessorType,
-  getDeclarationNamespace,
-  InternalNames,
-} from "@utils";
+import { getExpressionText, checkIfStaticProperty, getAccessorType, getDeclarationNamespace } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { addClassScope, Environment, HeapVariableDeclaration, Scope } from "@scope";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 import { TypeChecker } from "../ts/typechecker";
 import { LLVMConstant, LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { LLVMType } from "../llvm/type";
@@ -24,80 +16,6 @@ export function castToInt32AndBack(
 ): LLVMValue {
   const ints = values.map((value) => generator.builder.createFPToSI(value, LLVMType.getInt32Type(generator)));
   return generator.builder.createSIToFP(handle(ints), LLVMType.getDoubleType(generator));
-}
-
-export function castFPToIntegralType(
-  value: LLVMValue,
-  target: LLVMType,
-  signed: boolean,
-  generator: LLVMGenerator
-): LLVMValue {
-  return signed ? generator.builder.createFPToSI(value, target) : generator.builder.createFPToUI(value, target);
-}
-
-export function promoteIntegralToFP(
-  value: LLVMValue,
-  target: LLVMType,
-  signed: boolean,
-  generator: LLVMGenerator
-): LLVMValue {
-  return signed ? generator.builder.createSIToFP(value, target) : generator.builder.createUIToFP(value, target);
-}
-
-export function makeAssignment(left: LLVMValue, right: LLVMValue, generator: LLVMGenerator): LLVMValue {
-  if (!left.type.isPointer()) {
-    error(`Assignment destination expected to be of PointerType, got '${left.type.toString()}'`);
-  }
-
-  const typename = getIntegralLLVMTypeTypename(left.type.unwrapPointer());
-  if (typename) {
-    right = adjustValue(right, typename, generator);
-  } else if (generator.types.union.isLLVMUnion(left.type)) {
-    let unionValue = generator.types.union.initialize(left.type, right);
-    if (!left.type.getPointerElementType().equals(unionValue.type)) {
-      unionValue = unionValue.adjustToType(left.type.getPointerElementType());
-    }
-    generator.builder.createSafeStore(unionValue, left);
-    return left;
-  }
-
-  right = right.adjustToType(left.type.getPointerElementType());
-
-  generator.builder.createSafeStore(right, left);
-  return left;
-}
-
-export function makeBoolean(value: LLVMValue, expression: ts.Expression, generator: LLVMGenerator): LLVMValue {
-  value = value.getValue();
-
-  if (value.type.isDoubleType()) {
-    return generator.builder.createFCmpONE(value, LLVMConstant.createNullValue(value.type, generator));
-  }
-
-  if (value.type.isIntegerType()) {
-    return generator.builder.createICmpNE(value, LLVMConstant.createNullValue(value.type, generator));
-  }
-
-  if (value.type.isString()) {
-    const lengthGetter = generator.builtinString.getLLVMLength(expression);
-    const length = generator.builder.createSafeCall(lengthGetter, [value]);
-    return generator.builder.createICmpNE(length, LLVMConstant.createNullValue(length.type, generator));
-  }
-
-  if (generator.types.union.isLLVMUnion(value.type)) {
-    if (generator.types.union.isUnionWithNull(value.type) || generator.types.union.isUnionWithUndefined(value.type)) {
-      const marker = generator.builder.createSafeExtractValue(value, [0]);
-      return generator.builder.createICmpNE(marker, LLVMConstantInt.get(generator, -1, 8));
-    }
-
-    return LLVMConstantInt.getTrue(generator);
-  }
-
-  if (generator.types.closure.isTSClosure(value.type)) {
-    return LLVMConstantInt.getTrue(generator);
-  }
-
-  error(`Unable to convert operand of type ${value.type.toString()} to boolean value`);
 }
 
 export enum Conversion {
@@ -115,36 +33,41 @@ export function handleBinaryWithConversion(
   handler: (l: LLVMValue, r: LLVMValue) => LLVMValue,
   generator: LLVMGenerator
 ): LLVMValue {
-  const convertor = conversion === Conversion.Narrowing ? castFPToIntegralType : promoteIntegralToFP;
+  const convertor =
+    conversion === Conversion.Narrowing
+      ? LLVMValue.prototype.castFPToIntegralType
+      : LLVMValue.prototype.promoteIntegralToFP;
 
   if (lhsValue.type.isIntegerType() && rhsValue.type.isDoubleType()) {
-    const signed = isSigned(lhsExpression, generator);
+    const lhsTsType = generator.ts.checker.getTypeAtLocation(lhsExpression);
+    const signed = lhsTsType.isSigned();
     const destinationType = conversion === Conversion.Narrowing ? lhsValue.type : rhsValue.type;
     let convertedArg = conversion === Conversion.Narrowing ? rhsValue : lhsValue;
     const untouchedArg = conversion === Conversion.Narrowing ? lhsValue : rhsValue;
-    convertedArg = convertor(convertedArg, destinationType, signed, generator);
+    convertedArg = convertor.call(convertedArg, destinationType, signed);
     const args: [LLVMValue, LLVMValue] =
       conversion === Conversion.Narrowing ? [untouchedArg, convertedArg] : [convertedArg, untouchedArg];
     return handler.apply(generator.builder, args);
   }
 
   if (lhsValue.type.isDoubleType() && rhsValue.type.isIntegerType()) {
-    const signed = isSigned(rhsExpression, generator);
+    const rhsTsType = generator.ts.checker.getTypeAtLocation(rhsExpression);
+    const signed = rhsTsType.isSigned();
     const destinationType = conversion === Conversion.Narrowing ? rhsValue.type : lhsValue.type;
     let convertedArg = conversion === Conversion.Narrowing ? lhsValue : rhsValue;
     const untouchedArg = conversion === Conversion.Narrowing ? rhsValue : lhsValue;
-    convertedArg = convertor(convertedArg, destinationType, signed, generator);
+    convertedArg = convertor.call(convertedArg, destinationType, signed);
     const args: [LLVMValue, LLVMValue] =
       conversion === Conversion.Narrowing ? [convertedArg, untouchedArg] : [untouchedArg, convertedArg];
     return handler.apply(generator.builder, args);
   }
 
-  error("Invalid types to handle with conversion");
+  throw new Error("Invalid types to handle with conversion");
 }
 
 export function getDeclarationScope(
   declaration: ts.Declaration,
-  thisType: Type | undefined,
+  thisType: TSType | undefined,
   generator: LLVMGenerator
 ): Scope {
   if (thisType) {
@@ -159,13 +82,15 @@ export function getDeclarationScope(
 
 export function getArgumentArrayType(expression: ts.ArrayLiteralExpression, checker: TypeChecker) {
   if (!ts.isCallExpression(expression.parent)) {
-    error(`Expected expression parent to be of kind ts.CallExpression, got '${ts.SyntaxKind[expression.parent.kind]}'`);
+    throw new Error(
+      `Expected expression parent to be of kind ts.CallExpression, got '${ts.SyntaxKind[expression.parent.kind]}'`
+    );
   }
 
   const parentType = checker.getTypeAtLocation(expression.parent.expression);
   const argumentIndex = expression.parent.arguments.findIndex((argument) => argument === expression);
   if (argumentIndex === -1) {
-    error(`Argument '${expression.getText()}' not found`); // unreachable
+    throw new Error(`Argument '${expression.getText()}' not found`); // unreachable
   }
 
   const parentDeclaration = parentType.getSymbol().valueDeclaration as ts.FunctionLikeDeclaration;
@@ -173,7 +98,7 @@ export function getArgumentArrayType(expression: ts.ArrayLiteralExpression, chec
 }
 
 export function getArrayType(expression: ts.ArrayLiteralExpression, generator: LLVMGenerator) {
-  let arrayType: Type | undefined;
+  let arrayType: TSType | undefined;
   if (expression.elements.length === 0) {
     if (ts.isVariableDeclaration(expression.parent)) {
       arrayType = generator.ts.checker.getTypeAtLocation(expression.parent);
@@ -211,12 +136,12 @@ export function createArrayConstructor(
     generator
   );
   if (!isExternalSymbol) {
-    error(`Array constructor for type '${arrayType.toString()}' not found`);
+    throw new Error(`Array constructor for type '${arrayType.toString()}' not found`);
   }
 
   const parentScope = getDeclarationScope(valueDeclaration, arrayType, generator);
   if (!parentScope.thisData) {
-    error("No 'this' data found");
+    throw new Error("No 'this' data found");
   }
 
   const { fn: constructor } = generator.llvm.function.create(
@@ -230,7 +155,7 @@ export function createArrayConstructor(
 }
 
 export function createArrayPush(
-  elementType: Type,
+  elementType: TSType,
   expression: ts.ArrayLiteralExpression,
   generator: LLVMGenerator
 ): LLVMValue {
@@ -251,7 +176,7 @@ export function createArrayPush(
   );
 
   if (!isExternalSymbol) {
-    error(`Array 'push' for type '${arrayType.toString()}' not found`);
+    throw new Error(`Array 'push' for type '${arrayType.toString()}' not found`);
   }
 
   const parameterType =
@@ -286,7 +211,7 @@ export function createArraySubscription(expression: ts.ElementAccessExpression, 
   );
 
   if (!isExternalSymbol) {
-    error(`Array 'subscription' for type '${arrayType.toString()}' not found`);
+    throw new Error(`Array 'subscription' for type '${arrayType.toString()}' not found`);
   }
 
   const retType = elementType.getLLVMType();
@@ -315,7 +240,7 @@ export function createArrayConcat(expression: ts.ArrayLiteralExpression, generat
   );
 
   if (!isExternalSymbol) {
-    error(`Array 'concat' for type '${arrayType.toString()}' not found`);
+    throw new Error(`Array 'concat' for type '${arrayType.toString()}' not found`);
   }
 
   const llvmArrayType = arrayType.getLLVMType();
@@ -329,7 +254,7 @@ export function createArrayConcat(expression: ts.ArrayLiteralExpression, generat
   return concat;
 }
 
-export function createArrayToString(arrayType: Type, expression: ts.Expression, generator: LLVMGenerator): LLVMValue {
+export function createArrayToString(arrayType: TSType, expression: ts.Expression, generator: LLVMGenerator): LLVMValue {
   let elementType = arrayType.getTypeGenericArguments()[0];
   if (elementType.isFunction()) {
     elementType = generator.builtinTSClosure.getTSType();
@@ -347,7 +272,7 @@ export function createArrayToString(arrayType: Type, expression: ts.Expression, 
   );
 
   if (!isExternalSymbol) {
-    error(`Array 'toString' for type '${arrayType.toString()}' not found`);
+    throw new Error(`Array 'toString' for type '${arrayType.toString()}' not found`);
   }
 
   const { fn: toString } = generator.llvm.function.create(
@@ -357,16 +282,6 @@ export function createArrayToString(arrayType: Type, expression: ts.Expression, 
   );
 
   return toString;
-}
-
-export function getLLVMReturnType(tsReturnType: Type) {
-  const llvmReturnType = tsReturnType.getLLVMType();
-
-  if (llvmReturnType.isVoid()) {
-    return llvmReturnType;
-  }
-
-  return llvmReturnType.isPointer() ? llvmReturnType : llvmReturnType.getPointer();
 }
 
 export function getEnvironmentVariables(
@@ -441,10 +356,12 @@ function getFunctionEnvironmentVariables(
         };
 
         if (
-          ((ts.isPropertyAccessExpression(node) && !isCall(node) && !node.getText().startsWith(InternalNames.This)) ||
+          ((ts.isPropertyAccessExpression(node) &&
+            !isCall(node) &&
+            !node.getText().startsWith(generator.internalNames.This)) ||
             ts.isIdentifier(node)) &&
           !bodyScope.get(nodeText) &&
-          nodeText !== InternalNames.This &&
+          nodeText !== generator.internalNames.This &&
           !externalVariables.includes(nodeText) &&
           !ts.isPropertyAssignment(node.parent) &&
           !isStaticProperty(node)
@@ -466,7 +383,7 @@ function getFunctionEnvironmentVariables(
               accessorType === ts.SyntaxKind.GetAccessor ? ts.isGetAccessorDeclaration : ts.isSetAccessorDeclaration
             );
             if (!declaration) {
-              error("No accessor declaration found");
+              throw new Error("No accessor declaration found");
             }
 
             const declarationBody = (declaration as ts.FunctionLikeDeclaration).body;
@@ -495,7 +412,7 @@ function getFunctionEnvironmentVariables(
             const classFileName = declaration.getSourceFile().fileName;
             const classRootScope = generator.symbolTable.getScope(classFileName);
             if (!classRootScope) {
-              error(`No scope '${classFileName}' found`);
+              throw new Error(`No scope '${classFileName}' found`);
             }
 
             if (!extendScope.get(classFileName)) {
@@ -507,7 +424,7 @@ function getFunctionEnvironmentVariables(
             );
             if (!constructorDeclaration) {
               // unreachable if source is preprocessed correctly
-              error(`No constructor provided: ${declaration.getText()}`);
+              throw new Error(`No constructor provided: ${declaration.getText()}`);
             }
 
             declaration = constructorDeclaration;

@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { createHeapAllocatedFromValue } from "@utils";
 import { LLVMConstantFP } from "../../llvm/value";
 
 export class EnumHandler extends AbstractNodeHandler {
@@ -28,7 +27,7 @@ export class EnumHandler extends AbstractNodeHandler {
             ? this.generator.handleExpression(member.initializer, env)
             : LLVMConstantFP.get(this.generator, index);
           if (!value.type.isPointer()) {
-            value = createHeapAllocatedFromValue(value, this.generator);
+            value = value.createHeapAllocated();
           }
           localScope.set(member.name.getText(), value);
           scope.set(member.name.getText(), value);

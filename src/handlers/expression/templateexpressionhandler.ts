@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error } from "@utils";
 import { createArrayToString } from "@handlers";
 import { LLVMValue } from "../../llvm/value";
 
@@ -31,8 +30,8 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
 
   private handleTemplateExpression(expression: ts.TemplateExpression, env?: Environment) {
     const stringType = this.generator.builtinString.getLLVMType();
-    const stringConstructor = this.generator.builtinString.getLLVMConstructor(expression);
-    const stringConcat = this.generator.builtinString.getLLVMConcat(expression);
+    const stringConstructor = this.generator.builtinString.getLLVMConstructor();
+    const stringConcat = this.generator.builtinString.getLLVMConcat();
     let allocated = this.generator.gc.allocate(stringType.getPointerElementType());
 
     const head = this.generator.builder.createGlobalStringPtr(expression.head.rawText || "");
@@ -41,7 +40,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     for (const span of expression.templateSpans) {
       const value = this.generator.handleExpression(span.expression, env);
 
-      const allocatedSpanExpression = this.llvmValueToString(expression, span.expression, value);
+      const allocatedSpanExpression = this.llvmValueToString(span.expression, value);
 
       allocated = this.generator.builder.createSafeCall(stringConcat, [
         this.generator.builder.asVoidStar(allocated),
@@ -63,20 +62,17 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     return allocated;
   }
 
-  private llvmValueToString(contextExpression: ts.Expression, expression: ts.Expression, value: LLVMValue) {
+  private llvmValueToString(expression: ts.Expression, value: LLVMValue) {
     const nakedType = value.type.unwrapPointer();
     if (!nakedType.isCppPrimitiveType() && !nakedType.isString() && !nakedType.isArray()) {
-      error("Only primitives, strings and arrays are supported");
+      throw new Error("Only primitives, strings and arrays are supported");
     }
 
     const stringType = this.generator.builtinString.getLLVMType();
 
     let allocated;
     if (nakedType.isCppPrimitiveType()) {
-      const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(
-        contextExpression,
-        expression
-      );
+      const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(expression);
       allocated = this.generator.gc.allocate(stringType.getPointerElementType());
       this.generator.builder.createSafeCall(stringFromPrimitiveConstructor, [allocated, value.getValue()]);
     } else if (nakedType.isArray()) {

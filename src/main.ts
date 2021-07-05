@@ -11,7 +11,7 @@ import * as ts from "typescript";
 import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION } from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
-import { Build, error } from "@utils";
+import { Build } from "@utils";
 import { TemplateInstantiator } from "@cpp";
 import { Preprocessor } from "@preprocessing";
 
@@ -46,7 +46,7 @@ function parseTSConfig(): any {
   try {
     tsconfig = JSON.parse(fs.readFileSync(argv.tsconfig).toString());
   } catch (e) {
-    error("Failed to parse tsconfig:" + e);
+    throw new Error("Failed to parse tsconfig:" + e);
   }
 
   return tsconfig;

@@ -1,5 +1,4 @@
-import { castToInt32AndBack, makeBoolean, makeAssignment } from "@handlers";
-import { createHeapAllocatedFromValue, error } from "@utils";
+import { castToInt32AndBack } from "@handlers";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
@@ -7,13 +6,10 @@ import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 
 export class UnaryHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
-    switch (expression.kind) {
-      case ts.SyntaxKind.PrefixUnaryExpression:
-        return this.handlePrefixUnaryExpression(expression as ts.PrefixUnaryExpression, env);
-      case ts.SyntaxKind.PostfixUnaryExpression:
-        return this.handlePostfixUnaryExpression(expression as ts.PostfixUnaryExpression, env);
-      default:
-        break;
+    if (ts.isPrefixUnaryExpression(expression)) {
+      return this.handlePrefixUnaryExpression(expression, env);
+    } else if (ts.isPostfixUnaryExpression(expression)) {
+      return this.handlePostfixUnaryExpression(expression, env);
     }
 
     if (this.next) {
@@ -32,21 +28,19 @@ export class UnaryHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.MinusToken: {
         const value = this.generator.handleExpression(operand, env);
         const negated = this.generator.builder.createFNeg(this.generator.createLoadIfNecessary(value));
-        return makeAssignment(value, negated, this.generator);
+        return value.makeAssignment(negated);
       }
       case ts.SyntaxKind.PlusPlusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
         const newValue = this.generator.builder.createFAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
-        makeAssignment(value, newValue, this.generator);
-        return value;
+        return value.makeAssignment(newValue);
       }
       case ts.SyntaxKind.MinusMinusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
         const newValue = this.generator.builder.createFSub(oldValue, LLVMConstantFP.get(this.generator, 1));
-        makeAssignment(value, newValue, this.generator);
-        return value;
+        return value.makeAssignment(newValue);
       }
       case ts.SyntaxKind.TildeToken:
         return castToInt32AndBack(
@@ -55,11 +49,9 @@ export class UnaryHandler extends AbstractExpressionHandler {
           ([value]) => this.generator.builder.createNot(value)
         );
       case ts.SyntaxKind.ExclamationToken:
-        return this.generator.builder.createNot(
-          makeBoolean(this.generator.handleExpression(operand, env), operand, this.generator)
-        );
+        return this.generator.builder.createNot(this.generator.handleExpression(operand, env).makeBoolean());
       default:
-        error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
+        throw new Error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
     }
   }
 
@@ -71,15 +63,15 @@ export class UnaryHandler extends AbstractExpressionHandler {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
         const newValue = this.generator.builder.createFAdd(oldValue, LLVMConstantFP.get(this.generator, 1));
-        makeAssignment(value, newValue, this.generator);
-        return createHeapAllocatedFromValue(oldValue, this.generator);
+        value.makeAssignment(newValue);
+        return oldValue.createHeapAllocated();
       }
       case ts.SyntaxKind.MinusMinusToken: {
         const value = this.generator.handleExpression(operand, env);
         const oldValue = value.getValue();
         const newValue = this.generator.builder.createFSub(oldValue, LLVMConstantFP.get(this.generator, 1));
-        makeAssignment(value, newValue, this.generator);
-        return createHeapAllocatedFromValue(oldValue, this.generator);
+        value.makeAssignment(newValue);
+        return oldValue.createHeapAllocated();
       }
     }
   }

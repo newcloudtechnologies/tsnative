@@ -12,7 +12,6 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { error } from "@utils";
 
 export class ModuleHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -22,7 +21,7 @@ export class ModuleHandler extends AbstractNodeHandler {
       const scope = new Scope(name, name);
 
       if (!declaration.body) {
-        error(`Expected body for module declaration ${declaration.getText()}`);
+        throw new Error(`Expected body for module declaration ${declaration.getText()}`);
       }
 
       declaration.body.forEachChild((childNode) => this.generator.handleNode(childNode, scope, env));

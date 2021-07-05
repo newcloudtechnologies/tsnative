@@ -10,9 +10,10 @@
  */
 
 import * as ts from "typescript";
-import { error } from "@utils";
+import { checkIfMethod, checkIfStaticMethod } from "@utils";
 import { LLVMGenerator } from "@generator";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
+import { FunctionMangler } from "@mangling";
 
 const valueTypeDecorator: string = "ValueType";
 export function checkIfValueTypeProperty(declaration: ts.Declaration): boolean {
@@ -46,18 +47,66 @@ export function getDeclarationNamespace(declaration: ts.Declaration): string[] {
   return namespace;
 }
 
+// @todo: temporary hack in fact!
+//        there is potential problem with function expression declared in body of another function in case if this function expression is a returned value
+//        its environment cannot be used on call (illformed IR will be generated)
+//        workaround this issue by this hack
+export function canCreateLazyClosure(declaration: ts.Declaration, generator: LLVMGenerator) {
+  if (ts.isPropertyAssignment(declaration.parent)) {
+    return false;
+  }
+
+  if (ts.isReturnStatement(declaration.parent)) {
+    return false;
+  }
+
+  if (ts.isCallExpression(declaration.parent)) {
+    const callExpression = declaration.parent;
+
+    const argumentTypes = getArgumentTypes(callExpression, generator);
+    const isMethod = checkIfMethod(callExpression.expression, generator.ts.checker);
+    let thisType;
+    if (isMethod) {
+      const methodReference = callExpression.expression as ts.PropertyAccessExpression;
+      thisType = generator.ts.checker.getTypeAtLocation(methodReference.expression);
+    }
+
+    const symbol = generator.ts.checker.getTypeAtLocation(callExpression.expression).getSymbol();
+    const valueDeclaration = symbol.declarations[0] as ts.FunctionLikeDeclaration;
+
+    const thisTypeForMangling = checkIfStaticMethod(valueDeclaration)
+      ? generator.ts.checker.getTypeAtLocation((callExpression.expression as ts.PropertyAccessExpression).expression)
+      : thisType;
+
+    const { isExternalSymbol } = FunctionMangler.mangle(
+      valueDeclaration,
+      callExpression,
+      thisTypeForMangling,
+      argumentTypes,
+      generator
+    );
+
+    if (isExternalSymbol) {
+      // C++ backend knows nothing about `lazy` closures
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export function getGenericsToActualMapFromSignature(
   signature: ts.Signature,
   expression: ts.CallLikeExpression,
   generator: LLVMGenerator
 ) {
-  const typenameTypeMap = new Map<string, Type>();
+  const typenameTypeMap = new Map<string, TSType>();
 
   const resolvedSignature = generator.ts.checker.getResolvedSignature(expression);
   const actualParameters = resolvedSignature.getParameters();
   const formalParameters = signature.getParameters();
 
-  function handleType(type: Type, actualType: Type) {
+  function handleType(type: TSType, actualType: TSType) {
     if ((type.isSupported() && !type.isFunction()) || typenameTypeMap.has(type.toString())) {
       return;
     }
@@ -96,7 +145,7 @@ export function getGenericsToActualMapFromSignature(
     if (type.isUnionOrIntersection()) {
       const actualType = generator.ts.checker.getTypeOfSymbolAtLocation(actualParameters[i], expression);
       if (!actualType.isUnionOrIntersection()) {
-        error(`Expected actual type to be of UnionOrIntersection, got '${actualType.toString()}'`);
+        throw new Error(`Expected actual type to be of UnionOrIntersection, got '${actualType.toString()}'`);
       }
 
       type.types.forEach((subtype, index) => {
@@ -112,12 +161,12 @@ export function getGenericsToActualMapFromSignature(
 
   const formalTypeParameters = signature.getTypeParameters();
   const formalTypeParametersNames =
-    formalTypeParameters?.map((parameter) => new Type(parameter, generator.ts.checker).toString()) || [];
+    formalTypeParameters?.map((parameter) => new TSType(parameter, generator.ts.checker).toString()) || [];
 
   const readyTypenames = Object.keys(typenameTypeMap);
   const difference = formalTypeParametersNames.filter((type) => !readyTypenames.includes(type));
   if (difference.length === 1 && !typenameTypeMap.get(difference[0])) {
-    typenameTypeMap.set(difference[0], new Type(resolvedSignature.getReturnType(), generator.ts.checker));
+    typenameTypeMap.set(difference[0], new TSType(resolvedSignature.getReturnType(), generator.ts.checker));
   } else if (difference.length > 1) {
     console.log("Cannot map generic type arguments to template arguments.\nNot an external symbol?");
   }
@@ -125,7 +174,7 @@ export function getGenericsToActualMapFromSignature(
   return typenameTypeMap;
 }
 
-export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMGenerator): Type[] {
+export function getArgumentTypes(expression: ts.CallExpression, generator: LLVMGenerator): TSType[] {
   return expression.arguments.map((arg) => {
     const type = generator.ts.checker.getTypeAtLocation(arg);
     if (type.isTypeParameter()) {
@@ -147,7 +196,7 @@ export function getRandomString() {
 export function createTSObjectName(props: string[]) {
   // Reduce object's props names to string to store them as object's name.
   // Later this name may be used for out-of-order object initialization and property access.
-  return getRandomString() + InternalNames.Object + props.join(".");
+  return getRandomString() + "__object__" + props.join(".");
 }
 
 export function getExpressionText(expression: ts.Expression): string {
@@ -200,11 +249,4 @@ export function getAccessorType(
   }
 
   return result;
-}
-
-export enum InternalNames {
-  Environment = "__environment__",
-  FunctionScope = "__function_scope__",
-  Object = "__object__",
-  This = "this",
 }

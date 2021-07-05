@@ -1,4 +1,4 @@
-import { createTSObjectName, error } from "@utils";
+import { createTSObjectName } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration } from "@scope";
@@ -50,7 +50,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
   private handleStringLiteral(expression: ts.StringLiteral): LLVMValue {
     const llvmThisType = this.generator.builtinString.getLLVMType();
-    const constructor = this.generator.builtinString.getLLVMConstructor(expression);
+    const constructor = this.generator.builtinString.getLLVMConstructor();
     const ptr = this.generator.builder.createGlobalStringPtr(expression.text);
     const allocated = this.generator.gc.allocate(llvmThisType.getPointerElementType());
     this.generator.builder.createSafeCall(constructor, [allocated, ptr]);
@@ -70,10 +70,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
         case ts.SyntaxKind.SpreadAssignment:
           const propertyValue = this.generator.handleExpression(property.expression, env);
           if (!propertyValue.type.isPointer()) {
-            error(`Expected spread initializer to be of PointerType, got ${propertyValue.type.toString()}`);
+            throw new Error(`Expected spread initializer to be of PointerType, got ${propertyValue.type.toString()}`);
           }
           if (!propertyValue.type.getPointerElementType().isStructType()) {
-            error(
+            throw new Error(
               `Expected spread initializer element type to be of StructType, got ${propertyValue.type
                 .getPointerElementType()
                 .toString()}`
@@ -81,7 +81,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           }
 
           const names = [];
-          if (this.generator.types.intersection.isLLVMIntersection(propertyValue.type)) {
+          if (propertyValue.type.isIntersection()) {
             const name = propertyValue.type.getTypename();
             const intersectionMeta = this.generator.meta.getIntersectionMeta(name);
             names.push(...intersectionMeta.props);
@@ -108,7 +108,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
           break;
         default:
-          error(`Unreachable '${ts.SyntaxKind[property.kind]}'`);
+          throw new Error(`Unreachable '${ts.SyntaxKind[property.kind]}'`);
       }
     });
 
@@ -218,7 +218,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           resultArray.push(action(property, resultArray.length, resultArray));
           break;
         default:
-          error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
+          throw new Error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
       }
     }
     return resultArray;

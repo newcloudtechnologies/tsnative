@@ -10,10 +10,9 @@
  */
 
 import { Environment } from "@scope";
-import { error } from "@utils";
 import * as ts from "typescript";
 import * as crypto from "crypto";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 
@@ -96,7 +95,7 @@ export class MetaInfoStorage {
   getUnionMeta(name: string) {
     const meta = this.unionMetaInfoStorage.find((value) => value.name === name);
     if (!meta) {
-      error(`No union meta found for '${name}'`);
+      throw new Error(`No union meta found for '${name}'`);
     }
     return meta;
   }
@@ -108,7 +107,7 @@ export class MetaInfoStorage {
   getIntersectionMeta(name: string) {
     const meta = this.intersectionMetaInfoStorage.find((value) => value.name === name);
     if (!meta) {
-      error(`No intersection meta found for '${name}'`);
+      throw new Error(`No intersection meta found for '${name}'`);
     }
     return meta;
   }
@@ -120,7 +119,7 @@ export class MetaInfoStorage {
   getStructMeta(name: string) {
     const meta = this.structMetaInfoStorage.find((value) => value.name === name);
     if (!meta) {
-      error(`No struct meta found for '${name}'`);
+      throw new Error(`No struct meta found for '${name}'`);
     }
     return meta;
   }
@@ -132,7 +131,7 @@ export class MetaInfoStorage {
   getObjectMeta(name: string) {
     const meta = this.objectMetaInfoStorage.find((value) => value.name === name);
     if (!meta) {
-      error(`No object meta found for '${name}'`);
+      throw new Error(`No object meta found for '${name}'`);
     }
     return meta;
   }
@@ -156,12 +155,12 @@ export class MetaInfoStorage {
   getClosureParameterDeclaration(parentFunction: string, closureParameter: string) {
     const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);
     if (!knownClosureParameters) {
-      error(`No closure parameters registered for '${parentFunction}'`);
+      throw new Error(`No closure parameters registered for '${parentFunction}'`);
     }
 
     const declaration = knownClosureParameters.get(closureParameter);
     if (!declaration) {
-      error(`No declaration registered for '${closureParameter}'`);
+      throw new Error(`No declaration registered for '${closureParameter}'`);
     }
 
     return declaration;
@@ -178,7 +177,7 @@ export class MetaInfoStorage {
     const hash = crypto.createHash("sha256").update(declaration.getText()).digest("hex");
     const stored = this.functionExpressionEnv.storage.get(hash);
     if (!stored) {
-      error(`No environment registered`);
+      throw new Error(`No environment registered`);
     }
 
     return stored;
@@ -191,7 +190,7 @@ export class MetaInfoStorage {
   getClosureEnvironment(closure: LLVMValue) {
     const environment = this.closureEnvironment.storage.get(closure);
     if (!environment) {
-      error("No environment registered");
+      throw new Error("No environment registered");
     }
     return environment;
   }
@@ -207,25 +206,25 @@ export class MetaInfoStorage {
 }
 
 export class GenericTypeMapper {
-  private readonly genericTypenameTypeMap = new Map<string, Type>();
+  private readonly genericTypenameTypeMap = new Map<string, TSType>();
   private parent: GenericTypeMapper | undefined;
 
   setParent(parent: GenericTypeMapper) {
     this.parent = parent;
   }
 
-  register(name: string, type: Type) {
+  register(name: string, type: TSType) {
     if (this.genericTypenameTypeMap.has(name)) {
-      error(`Generic type '${name}' already registered`);
+      throw new Error(`Generic type '${name}' already registered`);
     }
     this.genericTypenameTypeMap.set(name, type);
   }
 
-  get(name: string): Type {
+  get(name: string): TSType {
     let type = this.genericTypenameTypeMap.get(name);
     if (!type) {
       if (!this.parent) {
-        error(`Generic typename '${name}' is not registered`);
+        throw new Error(`Generic typename '${name}' is not registered`);
       }
 
       type = this.parent.get(name);

@@ -10,22 +10,15 @@
  */
 
 import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE } from "@cpp";
-import { LLVMGenerator } from "@generator";
 import { LLVMType } from "../llvm/type";
 
 export class SizeOf {
-  private readonly generator: LLVMGenerator;
-
-  constructor(generator: LLVMGenerator) {
-    this.generator = generator;
-  }
-
   getByLLVMType(type: LLVMType): number | undefined {
     if (type.isString()) {
       return SIZEOF_STRING;
     } else if (type.isArray()) {
       return SIZEOF_ARRAY;
-    } else if (this.generator.types.closure.isTSClosure(type)) {
+    } else if (type.isClosure()) {
       return SIZEOF_TSCLOSURE;
     }
     return;

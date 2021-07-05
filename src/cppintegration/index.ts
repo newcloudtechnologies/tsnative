@@ -10,6 +10,5 @@
  */
 
 export * from "./constants";
-export * from "./numeric";
 export * from "./templateinstantiator";
 export * from "./types";

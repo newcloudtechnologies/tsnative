@@ -12,8 +12,6 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { error } from "@utils";
-import { getLLVMReturnType } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import { LLVMType } from "../../llvm/type";
 
@@ -42,10 +40,10 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
                 const tsReturnType = generator.ts.checker.getReturnTypeOfSignature(signature);
 
                 if (!declaration.initializer) {
-                  error("Declaration initializer required");
+                  throw new Error("Declaration initializer required");
                 }
 
-                llvmType = getLLVMReturnType(tsReturnType);
+                llvmType = tsReturnType.getLLVMReturnType();
               } else if (ts.isCallExpression(declaration.initializer)) {
                 const type = generator.ts.checker.getTypeAtLocation(declaration.initializer);
                 llvmType = type.getLLVMType();
@@ -98,7 +96,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
 
         const scope: Scope = new Scope(name, name, parentScope, {
           declaration,
-          llvmType: llvmType.isPointer() ? llvmType : llvmType.getPointer(),
+          llvmType: llvmType.ensurePointer(),
           tsType: type,
         });
 

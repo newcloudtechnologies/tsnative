@@ -13,6 +13,7 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
 import { LLVMType } from "../../llvm/type";
+import { LLVMUnion } from "../../llvm/value";
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -31,8 +32,9 @@ export class ReturnHandler extends AbstractNodeHandler {
             retTypeUnwrapped.isSameStructs(currentFunctionReturnType.unwrapPointer())
           ) {
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
-          } else if (this.generator.types.union.isLLVMUnion(currentFunctionReturnType)) {
-            ret = this.generator.types.union.initialize(currentFunctionReturnType, ret);
+          } else if (currentFunctionReturnType.isUnion()) {
+            const nullUnion = LLVMUnion.createNullValue(currentFunctionReturnType, this.generator);
+            ret = nullUnion.initialize(ret);
           }
         }
 

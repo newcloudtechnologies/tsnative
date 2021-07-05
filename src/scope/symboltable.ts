@@ -10,7 +10,6 @@
  */
 
 import { Scope, ScopeValue } from "@scope";
-import { error } from "@utils";
 
 export class SymbolTable {
   private readonly scopes: Scope[];
@@ -53,7 +52,7 @@ export class SymbolTable {
       const candidates = this.scopes.filter((scope) => scope.map.has(parts[0]));
 
       if (candidates.length === 0) {
-        error(`No '${parts[0]}' in symbol table`);
+        throw new Error(`No '${parts[0]}' in symbol table`);
       }
 
       for (const candidate of candidates) {
@@ -64,7 +63,7 @@ export class SymbolTable {
       }
     }
 
-    error(`Identifier '${identifier}' not found`);
+    throw new Error(`Identifier '${identifier}' not found`);
   }
 
   addScope(name: string): void {

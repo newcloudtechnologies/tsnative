@@ -9,11 +9,9 @@
  *
  */
 
-import { adjustValue } from "@cpp";
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
-import { error } from "@utils";
 import { LLVMStructType } from "../../llvm/type";
-import { LLVMConstant, LLVMConstantInt } from "../../llvm/value";
+import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 
@@ -48,19 +46,21 @@ export class VariableHandler extends AbstractNodeHandler {
     const type = this.generator.ts.checker.getTypeAtLocation(declaration);
     const typename = type.toString();
     if (type.isCppIntegralType()) {
-      initializer = adjustValue(initializer, typename, this.generator);
+      initializer = initializer.adjustToIntegralType(typename);
     }
 
     if (type.isUnion()) {
       const llvmUnionType = type.getLLVMType();
-      initializer = this.generator.types.union.initialize(llvmUnionType, initializer);
+      const nullUnion = LLVMUnion.createNullValue(llvmUnionType, this.generator);
+      initializer = nullUnion.initialize(initializer);
     } else if (type.isIntersection()) {
       const llvmIntersectionType = type.getLLVMType();
-      initializer = this.generator.types.intersection.initialize(llvmIntersectionType, initializer);
+      const nullIntersection = LLVMIntersection.createNullValue(llvmIntersectionType, this.generator);
+      initializer = nullIntersection.initialize(initializer);
     } else if (type.isClassOrInterface()) {
       const initializerNakedType = initializer.type.unwrapPointer();
       if (!initializerNakedType.isStructType()) {
-        error(`Expected initializer to be of StructType`);
+        throw new Error(`Expected initializer to be of StructType`);
       }
 
       const declarationLLVMType = type.getLLVMType().unwrapPointer() as LLVMStructType;
@@ -115,10 +115,7 @@ export class VariableHandler extends AbstractNodeHandler {
       }
       initializer = LLVMConstant.createNullValue(declarationLLVMType.unwrapPointer(), this.generator);
 
-      if (
-        this.generator.types.union.isUnionWithUndefined(declarationLLVMType) ||
-        this.generator.types.union.isUnionWithNull(declarationLLVMType)
-      ) {
+      if (declarationLLVMType.isUnionWithUndefined() || declarationLLVMType.isUnionWithNull()) {
         initializer = this.generator.builder.createSafeInsert(initializer, LLVMConstantInt.get(this.generator, -1, 8), [
           0,
         ]);

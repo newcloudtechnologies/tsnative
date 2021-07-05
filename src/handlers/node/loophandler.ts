@@ -9,7 +9,6 @@
  *
  */
 
-import { error } from "@utils";
 import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 
@@ -168,7 +167,7 @@ export class LoopHandler extends AbstractNodeHandler {
       this.generator.builder.createBr(currentLatchBlock!);
     } else {
       // To allow conditionless `continue` we have to erase body's latch block, which is quite impossible lacking an API provided for that.
-      error("Conditionless `continue` is not supported");
+      throw new Error("Conditionless `continue` is not supported");
     }
   }
 
@@ -189,7 +188,7 @@ export class LoopHandler extends AbstractNodeHandler {
       this.generator.builder.createBr(currentExitingBlock!);
     } else {
       // To allow conditionless `break` we have to erase exiting block, which is quite impossible lacking an API provided for that.
-      error("Conditionless `break` is not supported");
+      throw new Error("Conditionless `break` is not supported");
     }
   }
 

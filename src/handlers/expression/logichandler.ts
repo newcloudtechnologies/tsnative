@@ -9,9 +9,6 @@
  *
  */
 
-import { isSigned } from "@cpp";
-import { makeBoolean, promoteIntegralToFP } from "@handlers";
-import { error } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
@@ -40,7 +37,7 @@ export class LogicHandler extends AbstractExpressionHandler {
       const conditionValue = this.generator.createLoadIfNecessary(
         this.generator.handleExpression(expression.condition, env)
       );
-      const condition = makeBoolean(conditionValue, expression.condition, this.generator);
+      const condition = conditionValue.makeBoolean();
 
       return this.generator.builder.createSelect(
         condition,
@@ -60,7 +57,7 @@ export class LogicHandler extends AbstractExpressionHandler {
     let left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
     let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    const lhsBoolean = makeBoolean(left, lhs, this.generator);
+    const lhsBoolean = left.makeBoolean();
 
     if (left.type.equals(right.type)) {
       return this.generator.builder.createSelect(lhsBoolean, right, left);
@@ -68,24 +65,26 @@ export class LogicHandler extends AbstractExpressionHandler {
 
     if (left.type.isIntegerType() && right.type.isDoubleType()) {
       const doubleType = LLVMType.getDoubleType(this.generator);
-      left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
+      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
+      left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
     if (left.type.isDoubleType() && right.type.isIntegerType()) {
       const doubleType = LLVMType.getDoubleType(this.generator);
-      right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
+      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
+      right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
-    error("Invalid operand types to logical AND");
+    throw new Error("Invalid operand types to logical AND");
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    let right: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    let left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    const lhsBoolean = makeBoolean(left, lhs, this.generator);
+    const lhsBoolean = left.makeBoolean();
 
     if (left.type.equals(right.type)) {
       return this.generator.builder.createSelect(lhsBoolean, left, right);
@@ -93,16 +92,18 @@ export class LogicHandler extends AbstractExpressionHandler {
 
     if (left.type.isIntegerType() && right.type.isDoubleType()) {
       const doubleType = LLVMType.getDoubleType(this.generator);
-      left = promoteIntegralToFP(left, doubleType, isSigned(lhs, this.generator), this.generator);
+      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
+      left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }
 
     if (left.type.isDoubleType() && right.type.isIntegerType()) {
       const doubleType = LLVMType.getDoubleType(this.generator);
-      right = promoteIntegralToFP(right, doubleType, isSigned(rhs, this.generator), this.generator);
+      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
+      right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }
 
-    error("Invalid operand types to logical OR");
+    throw new Error("Invalid operand types to logical OR");
   }
 }

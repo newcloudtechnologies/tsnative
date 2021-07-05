@@ -11,7 +11,6 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error } from "@utils";
 
 export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -33,7 +32,7 @@ export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
                     const memberSymbol = memberType.getSymbol();
                     const memberDeclaration = memberSymbol.declarations[0];
                     if (!memberDeclaration) {
-                      error("Declaration not found");
+                      throw new Error("Declaration not found");
                     }
 
                     const signature = this.generator.ts.checker.getSignatureFromDeclaration(
@@ -65,7 +64,7 @@ export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
           );
 
           if (!node.name) {
-            error("Name not provided");
+            throw new Error("Name not provided");
           }
 
           const isDefaultExport = Boolean(

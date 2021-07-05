@@ -14,10 +14,10 @@ import * as ts from "typescript";
 import * as path from "path";
 import { flatten } from "lodash";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
-import { error, getGenericsToActualMapFromSignature } from "@utils";
+import { getGenericsToActualMapFromSignature } from "@utils";
 import { getArgumentArrayType } from "@handlers/utils";
 import { LLVMGenerator } from "@generator";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
@@ -56,7 +56,7 @@ export class TemplateInstantiator {
     this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
   }
 
-  private correctQualifiers(tsType: Type, cppType: string) {
+  private correctQualifiers(tsType: TSType, cppType: string) {
     if (tsType.isArray() || tsType.isString() || tsType.isObject()) {
       cppType += "*";
     }
@@ -65,7 +65,7 @@ export class TemplateInstantiator {
   }
 
   private handleGenericConsoleLog(call: ts.CallExpression) {
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, Type>) => {
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, TSType>) => {
       const argumentTypes = call.arguments.map((arg) => {
         let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
@@ -74,7 +74,7 @@ export class TemplateInstantiator {
           tsType = typeMap.get(typename)!;
 
           if (tsType.isObject()) {
-            error("console.log with object is not supported for generic types");
+            throw new Error("console.log with object is not supported for generic types");
           }
         }
 
@@ -113,7 +113,7 @@ export class TemplateInstantiator {
     } else if (ts.isCallExpression(node)) {
       call = node;
     } else {
-      error(
+      throw new Error(
         `Expected 'console.log' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${
           ts.SyntaxKind[node.kind]
         }`
@@ -155,7 +155,7 @@ export class TemplateInstantiator {
 
   private handleArrayFromVariableDeclaration(node: ts.VariableDeclaration) {
     if (!node.initializer) {
-      error(`Expected initializer: error at ${node.getText()}`);
+      throw new Error(`Expected initializer: error at ${node.getText()}`);
     }
 
     if (ts.isArrayLiteralExpression(node.initializer)) {
@@ -175,7 +175,7 @@ export class TemplateInstantiator {
             return elementTypename !== tsTypename;
           })
         ) {
-          error(`All array's elements have to be of same type: error at '${node.getText()}'`);
+          throw new Error(`All array's elements have to be of same type: error at '${node.getText()}'`);
         }
 
         const typeNamespace = tsType.getNamespace();
@@ -196,7 +196,7 @@ export class TemplateInstantiator {
     } else if (ts.isCallExpression(node.initializer)) {
       const tsType = this.generator.ts.checker.getTypeAtLocation(node);
       if (!tsType.isArray()) {
-        error(`Array type expected, got '${tsType.toString()}'`); // unreachable
+        throw new Error(`Array type expected, got '${tsType.toString()}'`); // unreachable
       }
       const templateInstance = `template class ${tsType.toCppType()};`;
       this.generatedContent.push(templateInstance);
@@ -221,7 +221,7 @@ export class TemplateInstantiator {
           let elementType = tsType.getTypeGenericArguments()[0];
 
           if (elementType.isTypeParameter() && !elementType.isSupported()) {
-            const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, Type>) => {
+            const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, TSType>) => {
               elementType = typesMap.get(elementType.toString())!;
 
               const typeNamespace = elementType.getNamespace();
@@ -251,7 +251,7 @@ export class TemplateInstantiator {
 
   private handleGenericArrayMethods(call: ts.CallExpression) {
     if (!ts.isPropertyAccessExpression(call.expression)) {
-      error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[call.expression.kind]}'`);
+      throw new Error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[call.expression.kind]}'`);
     }
 
     const tsArrayType = this.generator.ts.checker.getTypeAtLocation(call.expression.expression);
@@ -262,7 +262,7 @@ export class TemplateInstantiator {
     const tsReturnType = this.generator.ts.checker.getReturnTypeOfSignature(resolvedSignature!);
     let cppReturnType = this.correctQualifiers(tsReturnType, tsReturnType.toCppType());
 
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, Type>) => {
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, TSType>) => {
       const argumentTypes = call.arguments.map((arg) => {
         let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
@@ -291,7 +291,7 @@ export class TemplateInstantiator {
         return;
       }
 
-      const resolveArrayElementType = (arrayType: Type) => {
+      const resolveArrayElementType = (arrayType: TSType) => {
         const arrayTypename = arrayType.toString();
         arrayType = typesMap.get(arrayTypename)!;
 
@@ -331,7 +331,7 @@ export class TemplateInstantiator {
 
   private handleArrayMethods(node: ts.CallExpression) {
     if (!ts.isPropertyAccessExpression(node.expression)) {
-      error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[node.expression.kind]}'`);
+      throw new Error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[node.expression.kind]}'`);
     }
 
     const tsArrayType = this.generator.ts.checker.getTypeAtLocation(node.expression.expression);
@@ -424,7 +424,7 @@ export class TemplateInstantiator {
     }
   }
 
-  private withTypesMapFromTypesProviderForNode(node: ts.Node, action: (map: Map<string, Type>) => void) {
+  private withTypesMapFromTypesProviderForNode(node: ts.Node, action: (map: Map<string, TSType>) => void) {
     let genericTypesProvider = node.parent;
     while (!ts.isFunctionLike(genericTypesProvider)) {
       genericTypesProvider = genericTypesProvider.parent;

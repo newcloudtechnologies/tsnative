@@ -13,14 +13,14 @@ import { ExternalSymbolsProvider } from "@mangling";
 import { getDeclarationNamespace } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 
 export class FunctionMangler {
   static mangle(
     declaration: ts.NamedDeclaration,
     expression: ts.Expression | undefined,
-    thisType: Type | undefined,
-    argumentTypes: Type[],
+    thisType: TSType | undefined,
+    argumentTypes: TSType[],
     generator: LLVMGenerator,
     knownMethodName?: string
   ): { isExternalSymbol: boolean; qualifiedName: string } {

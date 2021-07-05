@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "@scope";
-import { checkIfStaticProperty, getDeclarationNamespace, error } from "@utils";
+import { checkIfStaticProperty, getDeclarationNamespace } from "@utils";
 import { LLVMGenerator } from "@generator";
 import { LLVMValue } from "../../llvm/value";
 
@@ -39,7 +39,7 @@ export class ClassHandler extends AbstractNodeHandler {
           const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
           const baseClassDeclaration = symbol.declarations[0] as ts.ClassDeclaration;
           if (!baseClassDeclaration) {
-            error("Base class declaration not found");
+            throw new Error("Base class declaration not found");
           }
 
           const baseClassThisType = this.generator.ts.checker.getTypeAtLocation(baseClassDeclaration);

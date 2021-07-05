@@ -11,7 +11,6 @@
 
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
-import { error } from "@utils";
 import * as ts from "typescript";
 import { LLVMValue } from "../../llvm/value";
 import { LLVMStructType } from "../../llvm/type";
@@ -25,19 +24,19 @@ export class CastHandler extends AbstractExpressionHandler {
 
         const destinationType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
 
-        if (!this.generator.types.union.isLLVMUnion(value.type)) {
+        if (!value.isUnion()) {
           return this.generator.builder.createBitCast(value, destinationType.getLLVMType());
         }
 
         if (!destinationType.isObject() && !destinationType.isUnion()) {
-          error(`Cast to non-object/union not supported; trying to cast
+          throw new Error(`Cast to non-object/union not supported; trying to cast
           '${this.generator.ts.checker.getTypeAtLocation(asExpression.expression).toString()}'
           to '${destinationType.toString()}'`);
         }
 
-        const unionName = (value.type.unwrapPointer() as LLVMStructType).getName();
+        const unionName = (value.type.unwrapPointer() as LLVMStructType).name;
         if (!unionName) {
-          error("Name required for UnionStruct");
+          throw new Error("Name required for UnionStruct");
         }
 
         const unionMeta = this.generator.meta.getUnionMeta(unionName);
@@ -50,7 +49,7 @@ export class CastHandler extends AbstractExpressionHandler {
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
             if (typeof valueIndex === "undefined") {
-              error(`Mapping not found for '${propNames[i]}'`);
+              throw new Error(`Mapping not found for '${propNames[i]}'`);
             }
 
             const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
@@ -61,14 +60,14 @@ export class CastHandler extends AbstractExpressionHandler {
           return allocated;
         } else {
           const destinationStructType = destinationType.getLLVMType().unwrapPointer() as LLVMStructType;
-          const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.getName()!);
+          const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
 
           const allocated = this.generator.gc.allocate(destinationStructType);
 
           destinationUnionMeta.propsMap.forEach((index, name) => {
             const sourceIndex = unionMeta.propsMap.get(name);
             if (!sourceIndex) {
-              error(`'${name}' not found in '${unionMeta.name}'`);
+              throw new Error(`'${name}' not found in '${unionMeta.name}'`);
             }
 
             const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, index]);

@@ -11,7 +11,6 @@
 
 import * as llvm from "llvm-node";
 import { LLVMGenerator } from "@generator";
-import { error } from "@utils";
 
 export class LLVMType {
   type: llvm.Type;
@@ -117,6 +116,35 @@ export class LLVMType {
     return this.type.isPointerTy() && this.getPointerElementType().isStructType();
   }
 
+  isIntersection() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.name?.endsWith(".intersection"));
+  }
+
+  isUnion() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.name?.endsWith(".union"));
+  }
+
+  isUnionWithUndefined(): boolean {
+    const nakedType = this.unwrapPointer();
+    return Boolean(
+      nakedType.isStructType() && nakedType.name?.startsWith("undefined.") && nakedType.name?.endsWith(".union")
+    );
+  }
+
+  isUnionWithNull(): boolean {
+    const nakedType = this.unwrapPointer();
+    return Boolean(
+      nakedType.isStructType() && nakedType.name?.startsWith("null.") && nakedType.name?.endsWith(".union")
+    );
+  }
+
+  isClosure() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.name?.startsWith("TSClosure__class"));
+  }
+
   getTypeSize() {
     const size = this.generator.sizeOf.getByLLVMType(this);
     if (size) {
@@ -129,9 +157,33 @@ export class LLVMType {
     return this.toString().replace(/%|\*/g, "");
   }
 
+  getSubtypesNames() {
+    return this.type
+      .toString()
+      .split(".")
+      .slice(0, -1)
+      .map((typeName) => typeName.replace(/%|\*/g, ""));
+  }
+
+  getIntegralLLVMTypeTypename() {
+    if (this.isIntegerType(8)) {
+      return "int8_t";
+    }
+
+    if (this.isIntegerType(16)) {
+      return "int16_t";
+    }
+
+    if (this.isIntegerType(32)) {
+      return "int32_t";
+    }
+
+    return "";
+  }
+
   getPointerElementType() {
     if (!this.type.isPointerTy()) {
-      error(`Expected pointer type, got '${this.toString()}'`);
+      throw new Error(`Expected pointer type, got '${this.toString()}'`);
     }
 
     return LLVMType.make(this.type.elementType, this.generator);
@@ -184,6 +236,10 @@ export class LLVMType {
     return false;
   }
 
+  ensurePointer(): LLVMType {
+    return this.isPointer() ? this : this.getPointer();
+  }
+
   equals(other: LLVMType) {
     return this.type.equals(other.unwrapped);
   }
@@ -216,9 +272,25 @@ export class LLVMStructType extends LLVMType {
     return LLVMType.make(type, generator) as LLVMStructType;
   }
 
+  getSyntheticBody(size: number) {
+    const syntheticBody = [];
+    while (size > 8) {
+      // Consider int64_t is the widest available inttype.
+      syntheticBody.push(LLVMType.getIntNType(8 * 8, this.generator));
+      size -= 8;
+    }
+
+    if (size > 0) {
+      console.assert((size & (size - 1)) === 0, `Expected 'size' reminder to be a power of two, got ${size}`);
+      syntheticBody.push(LLVMType.getIntNType(size * 8, this.generator));
+    }
+
+    return syntheticBody;
+  }
+
   setBody(elements: LLVMType[], packed?: boolean) {
     if (!this.type.isStructTy()) {
-      error("Expected struct type");
+      throw new Error("Expected struct type");
     }
 
     const types = elements.map((element) => element.unwrapped);
@@ -248,21 +320,21 @@ export class LLVMStructType extends LLVMType {
 
   getElementType(index: number) {
     if (!this.type.isStructTy()) {
-      error("Expected StructType");
+      throw new Error("Expected StructType");
     }
     return LLVMType.make(this.type.getElementType(index), this.generator);
   }
 
   get numElements() {
     if (!this.type.isStructTy()) {
-      error("Expected StructType");
+      throw new Error("Expected StructType");
     }
     return this.type.numElements;
   }
 
-  getName() {
+  get name() {
     if (!this.type.isStructTy()) {
-      error("Expected StructType");
+      throw new Error("Expected StructType");
     }
     return this.type.name;
   }

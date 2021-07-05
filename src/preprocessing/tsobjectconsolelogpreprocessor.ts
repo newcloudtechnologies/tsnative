@@ -9,10 +9,10 @@
  *
  */
 
-import { checkIfProperty, error } from "@utils";
+import { checkIfProperty } from "@utils";
 import * as ts from "typescript";
 import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 
 export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -27,7 +27,9 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
           } else if (ts.isSourceFile(node)) {
             call = (node.statements[0] as ts.ExpressionStatement).expression as ts.CallExpression;
           } else {
-            error(`Expected 'console.log' call to be of 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]}`);
+            throw new Error(
+              `Expected 'console.log' call to be of 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]}`
+            );
           }
 
           const argumentTypes = call.arguments.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg));
@@ -65,7 +67,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
     return property ? property.split(".").length + 1 : 1;
   }
 
-  private isOneliner(type: Type, node: ts.Node): boolean {
+  private isOneliner(type: TSType, node: ts.Node): boolean {
     const props = type.getProperties().filter(checkIfProperty);
     if (props.length === 0) {
       return true;
@@ -85,7 +87,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
   }
 
   private objectToString(
-    type: Type,
+    type: TSType,
     callArgument: ts.Expression,
     nestedProperty?: string
   ): ts.TemplateExpression | ts.StringLiteral {
@@ -103,7 +105,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       ? StringLiteralHelper.space
       : StringLiteralHelper.newLine;
 
-    const buildMiddleLiteral = (propertyType: Type, nextProperty: ts.Symbol) => {
+    const buildMiddleLiteral = (propertyType: TSType, nextProperty: ts.Symbol) => {
       const nextPropertyName = nextProperty.escapedName.toString();
       let nextPropertyDescriptor = StringLiteralHelper.createPropertyStringLiteral(
         nextPropertyName,
@@ -120,7 +122,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
       const literal = `${possibleQuote},${fieldSeparator}${nextPropertyDescriptor}`;
       return literal;
     };
-    const buildEpilogue = (propertyType: Type, expression?: ts.Expression) => {
+    const buildEpilogue = (propertyType: TSType, expression?: ts.Expression) => {
       const possibleQuote = propertyType.isString() ? "'" : "";
       const newLineOrSpace = isEmpty
         ? StringLiteralHelper.empty

@@ -12,7 +12,6 @@
 import * as llvm from "llvm-node";
 
 import { LLVMGenerator } from "@generator";
-import { error } from "@utils";
 import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 
@@ -27,7 +26,7 @@ export class LLVMFunction {
     const fn = this.generator.module.getFunction(name);
     if (fn) {
       if (!fn.type.elementType.returnType.equals(returnType.unwrapped)) {
-        error(
+        throw new Error(
           `Function '${name}' already exists with different return type: existing - '${fn.type.elementType.returnType.toString()}, requested - '${returnType.toString()}'`
         );
       }
@@ -36,7 +35,7 @@ export class LLVMFunction {
         fn.getArguments().length !== parameterTypes.length ||
         fn.getArguments().some((arg, index) => !arg.type.equals(parameterTypes[index].unwrapped))
       ) {
-        error(
+        throw new Error(
           `Function '${name}' already exists with different parameter types: existing - '${fn
             .getArguments()
             .map((arg) => arg.type.toString())

@@ -11,7 +11,6 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error } from "@utils";
 import { last } from "lodash";
 
 export class RestParametersPreprocessor extends AbstractPreprocessor {
@@ -58,13 +57,13 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
 
                   if (!ts.isIdentifier(argument.expression)) {
                     console.log(ts.SyntaxKind[argument.expression.kind]);
-                    error("Non-identifier spread elements are not supported");
+                    throw new Error("Non-identifier spread elements are not supported");
                   }
 
                   const spreadArrayIdentifier = argument.expression;
 
                   if (node.expression.expression.expression.getText(sourceFile) === argument.expression.escapedText) {
-                    error(
+                    throw new Error(
                       "Using same array with spread operator in 'push' is not supported (will cause endless recursion)"
                     );
                   }
@@ -102,7 +101,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
 
             if (ts.isVariableDeclaration(declaration)) {
               if (!declaration.initializer) {
-                error(`Initializer required for '${declaration.getText()}'`);
+                throw new Error(`Initializer required for '${declaration.getText()}'`);
               }
 
               const initializerType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
@@ -136,7 +135,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
 
                 const parent = node.parent || this.utils.getParentFromOriginal(node);
                 if (!parent) {
-                  error("No parent found");
+                  throw new Error("No parent found");
                 }
 
                 updatedCall.parent = parent;

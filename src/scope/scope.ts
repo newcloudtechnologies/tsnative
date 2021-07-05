@@ -9,13 +9,13 @@
  *
  */
 
-import { error, getDeclarationNamespace, InternalNames } from "@utils";
+import { getDeclarationNamespace } from "@utils";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "@generator";
 
 import { getArrayType } from "@handlers";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 import { flatten } from "lodash";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMValue } from "../llvm/value";
@@ -29,7 +29,7 @@ export class Environment {
 
   constructor(variables: string[], allocated: LLVMValue, llvmType: LLVMStructType, generator: LLVMGenerator) {
     if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
-      error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
+      throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
 
     this.pVariables = variables;
@@ -44,7 +44,7 @@ export class Environment {
 
   set untyped(allocated: LLVMValue) {
     if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
-      error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
+      throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
 
     this.pAllocated = allocated;
@@ -137,7 +137,7 @@ export class Environment {
 
   static getEnvironmentType(types: LLVMType[], generator: LLVMGenerator) {
     if (types.some((type) => !type.isPointer())) {
-      error(
+      throw new Error(
         `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}`
       );
     }
@@ -183,7 +183,7 @@ export function addClassScope(
   parentScope: Scope,
   generator: LLVMGenerator
 ): void {
-  let thisType: Type;
+  let thisType: TSType;
   if (ts.isArrayLiteralExpression(expression)) {
     thisType = getArrayType(expression, generator);
   } else if (
@@ -231,7 +231,7 @@ export function addClassScope(
   }, generator.symbolTable.currentScope);
 
   if (!llvmType.isPointer()) {
-    error("Expected pointer");
+    throw new Error("Expected pointer");
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration as ts.Node);
@@ -276,7 +276,7 @@ export function createEnvironment(
   if (functionData) {
     const argsTypes = functionData.args.map((arg) => {
       if (!arg.type.isPointer()) {
-        error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
+        throw new Error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
       }
       return arg.type;
     });
@@ -297,7 +297,7 @@ export function createEnvironment(
   const context = populateContext(generator, scope, environmentVariables);
 
   context.forEach((value) => {
-    if (value.name === InternalNames.Environment) {
+    if (value.name === generator.internalNames.Environment) {
       return;
     }
 
@@ -322,7 +322,7 @@ export function createEnvironment(
         continue;
       }
 
-      if (variableName === InternalNames.This && typeof preferLocalThis !== "undefined" && preferLocalThis) {
+      if (variableName === generator.internalNames.This && typeof preferLocalThis !== "undefined" && preferLocalThis) {
         continue;
       }
 
@@ -444,7 +444,7 @@ export function populateContext(
       return false;
     });
 
-    if (index === -1 && key !== InternalNames.Environment) {
+    if (index === -1 && key !== generator.internalNames.Environment) {
       return;
     }
 
@@ -539,7 +539,7 @@ export type ScopeValue = LLVMValue | HeapVariableDeclaration | Scope;
 export interface ThisData {
   readonly declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined;
   readonly llvmType: LLVMType;
-  readonly tsType: Type;
+  readonly tsType: TSType;
   readonly staticProperties?: Map<string, LLVMValue>;
 }
 
@@ -603,13 +603,13 @@ export class Scope {
     return result;
   }
 
-  tryGetThroughParentChain(identifier: string, ignoreTopLevel?: boolean): ScopeValue | undefined {
+  tryGetThroughParentChain(identifier: string): ScopeValue | undefined {
     const value = this.map.get(identifier);
 
     if (value) {
       return value;
-    } else if (!value && this.parent && (this.parent.name === InternalNames.FunctionScope || !ignoreTopLevel)) {
-      return this.parent.tryGetThroughParentChain(identifier, ignoreTopLevel);
+    } else if (!value && this.parent) {
+      return this.parent.tryGetThroughParentChain(identifier);
     }
 
     return;
@@ -620,7 +620,7 @@ export class Scope {
       return this.map.set(identifier, value);
     }
 
-    error(`Identifier '${identifier}' already exists. Use 'Scope.overwrite' instead of 'Scope.set'`);
+    throw new Error(`Identifier '${identifier}' already exists. Use 'Scope.overwrite' instead of 'Scope.set'`);
   }
 
   overwrite(identifier: string, value: ScopeValue) {
@@ -628,7 +628,7 @@ export class Scope {
       return this.map.set(identifier, value);
     }
 
-    error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+    throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
   }
 
   dump(pad = 0, seen: Scope[] = []) {

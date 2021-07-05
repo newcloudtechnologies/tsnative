@@ -10,12 +10,11 @@
  */
 
 import * as ts from "typescript";
-import { error, checkIfMethod, getArgumentTypes } from "@utils";
-import { castFPToIntegralType, getDeclarationScope, promoteIntegralToFP } from "@handlers";
+import { checkIfMethod, getArgumentTypes } from "@utils";
+import { getDeclarationScope } from "@handlers";
 import { LLVMGenerator } from "@generator";
 import { Environment } from "@scope";
-import { isSignedType } from "@cpp";
-import { Type } from "../../ts/type";
+import { TSType } from "../../ts/type";
 import { LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";
 
@@ -43,7 +42,7 @@ export class SysVFunctionHandler {
     const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
     const body = valueDeclaration.body;
     if (body) {
-      error(`External symbol '${qualifiedName}' cannot have function body`);
+      throw new Error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
     const thisValue = this.generator.handleExpression(expression.expression, env);
@@ -104,12 +103,12 @@ export class SysVFunctionHandler {
 
     let args = expression.arguments.map((argument) => {
       if (ts.isSpreadElement(argument)) {
-        error("Spread element in arguments is not supported");
+        throw new Error("Spread element in arguments is not supported");
       }
 
       const arg = this.generator.handleExpression(argument, env);
       const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
-      if (tsType.isObject() || tsType.isFunction() || this.generator.types.closure.isTSClosure(arg.type)) {
+      if (tsType.isObject() || tsType.isFunction() || arg.type.isClosure()) {
         return this.generator.builder.asVoidStar(arg);
       }
 
@@ -122,7 +121,7 @@ export class SysVFunctionHandler {
     args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
 
     if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
-      error("Parameters adjusting failed");
+      throw new Error("Parameters adjusting failed");
     }
 
     if (isMethod) {
@@ -136,7 +135,7 @@ export class SysVFunctionHandler {
     const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     if (valueDeclaration.body) {
-      error(`External symbol '${qualifiedName}' cannot have function body`);
+      throw new Error(`External symbol '${qualifiedName}' cannot have function body`);
     }
 
     if (thisValue) {
@@ -146,7 +145,7 @@ export class SysVFunctionHandler {
 
     if (!llvmReturnType.isCppPrimitiveType()) {
       if (!llvmReturnType.isPointer() && !llvmReturnType.isVoid()) {
-        error(
+        throw new Error(
           `Error at '${expression.getText()}': returning values from C++ in not allowed. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
         );
       }
@@ -167,11 +166,11 @@ export class SysVFunctionHandler {
     const constructorDeclaration = classDeclaration.members.find(ts.isConstructorDeclaration)!;
 
     if (!constructorDeclaration) {
-      error(`External symbol '${qualifiedName}' declaration have no constructor provided`);
+      throw new Error(`External symbol '${qualifiedName}' declaration have no constructor provided`);
     }
 
     if (constructorDeclaration.body) {
-      error(`External symbol '${qualifiedName}' cannot have constructor body`);
+      throw new Error(`External symbol '${qualifiedName}' cannot have constructor body`);
     }
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
@@ -233,9 +232,9 @@ export class SysVFunctionHandler {
     return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
   }
 
-  private adjustParameters(parameters: LLVMValue[], tsTypes: Type[], llvmTypes: LLVMType[]) {
+  private adjustParameters(parameters: LLVMValue[], tsTypes: TSType[], llvmTypes: LLVMType[]) {
     if (parameters.length !== llvmTypes.length) {
-      error("Expected arrays of same length");
+      throw new Error("Expected arrays of same length");
     }
 
     return parameters.map((parameter, index) => {
@@ -243,8 +242,10 @@ export class SysVFunctionHandler {
       const adjusted = parameter.adjustToType(destinationType);
 
       if (adjusted.type.isConvertibleTo(destinationType)) {
-        const converter = destinationType.isIntegerType() ? castFPToIntegralType : promoteIntegralToFP;
-        return converter(adjusted, destinationType, isSignedType(tsTypes[index].toString()), this.generator);
+        const converter = destinationType.isIntegerType()
+          ? LLVMValue.prototype.castFPToIntegralType
+          : LLVMValue.prototype.promoteIntegralToFP;
+        return converter.call(adjusted, destinationType, tsTypes[index].isSigned());
       }
 
       return adjusted;

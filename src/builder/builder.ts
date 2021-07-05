@@ -10,10 +10,9 @@
  */
 
 import { LLVMGenerator } from "@generator";
-import { error } from "@utils";
 import * as llvm from "llvm-node";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { LLVMValue } from "../llvm/value";
+import { LLVMIntersection, LLVMValue } from "../llvm/value";
 
 export class Builder {
   private readonly generator: LLVMGenerator;
@@ -26,11 +25,11 @@ export class Builder {
 
   checkInsert(aggregate: LLVMValue, value: LLVMValue, idxList: number[]) {
     if (!aggregate.type.isStructType()) {
-      error(`Expected aggregate to be of StructType, got ${aggregate.type.toString()}`);
+      throw new Error(`Expected aggregate to be of StructType, got ${aggregate.type.toString()}`);
     }
 
     if (!aggregate.type.getElementType(idxList[0]).equals(value.type)) {
-      error(
+      throw new Error(
         `Types mismatch, trying to insert '${value.type.toString()}'
                  into '${aggregate.type.getElementType(idxList[0]).toString()}'`
       );
@@ -45,7 +44,7 @@ export class Builder {
 
   checkStore(value: LLVMValue, ptr: LLVMValue) {
     if (!value.type.equals(ptr.type.getPointerElementType())) {
-      error(
+      throw new Error(
         `Types mismatch: value '${value.type.toString()}', pointer element type '${ptr.type
           .getPointerElementType()
           .toString()}'`
@@ -60,11 +59,11 @@ export class Builder {
 
   checkExtractValue(aggregate: LLVMValue, idxList: number[]) {
     if (!aggregate.type.isStructType()) {
-      error(`Expected aggregate to be of StructType, got ${aggregate.type.toString()}`);
+      throw new Error(`Expected aggregate to be of StructType, got ${aggregate.type.toString()}`);
     }
     const aggregateStructType = aggregate.type;
     if (idxList.some((idx) => idx >= aggregateStructType.numElements || idx < 0)) {
-      error(`Index out of bounds for ${aggregateStructType.toString()}, ${idxList}`);
+      throw new Error(`Index out of bounds for ${aggregateStructType.toString()}, ${idxList}`);
     }
   }
 
@@ -76,19 +75,19 @@ export class Builder {
 
   checkInBoundsGEP(ptr: LLVMValue, idxList: number[]) {
     if (!ptr.type.isPointer()) {
-      error(`Expected ptr to be of PointerType, got '${ptr.type.toString()}'`);
+      throw new Error(`Expected ptr to be of PointerType, got '${ptr.type.toString()}'`);
     }
     if (!ptr.type.isPointerToStruct()) {
-      error(`Expected ptr element to be of StructType, got '${ptr.type.toString()}'`);
+      throw new Error(`Expected ptr element to be of StructType, got '${ptr.type.toString()}'`);
     }
 
     if ((ptr.type.getPointerElementType() as LLVMStructType).numElements === 0) {
-      error(`Invalid GEP from empty struct`);
+      throw new Error(`Invalid GEP from empty struct`);
     }
 
     for (const idx of idxList) {
       if (idx > (ptr.type.getPointerElementType() as LLVMStructType).numElements - 1) {
-        error(
+        throw new Error(
           `GEP index out of bounds: ${idx}, upper bound: ${
             (ptr.type.getPointerElementType() as LLVMStructType).numElements - 1
           }`
@@ -96,7 +95,7 @@ export class Builder {
       }
 
       if (idx < 0) {
-        error(`Invalid GEP index: -1`);
+        throw new Error(`Invalid GEP index: -1`);
       }
     }
   }
@@ -117,14 +116,16 @@ export class Builder {
 
     const calleeArgs = calleeUnwrapped.getArguments();
     if (calleeArgs.length !== args.length) {
-      error(`Arguments length mismatch, expected ${calleeArgs.length}, got ${args.length}`);
+      throw new Error(`Arguments length mismatch, expected ${calleeArgs.length}, got ${args.length}`);
     }
 
     for (let i = 0; i < calleeArgs.length; ++i) {
       const calleeArg = calleeArgs[i];
       const arg = args[i];
       if (!calleeArg.type.equals(arg.type.unwrapped)) {
-        error(`Types mismatch: '${calleeArg.type.toString()}' - '${arg.type.unwrapped.toString()}' at index: ${i}`);
+        throw new Error(
+          `Types mismatch: '${calleeArg.type.toString()}' - '${arg.type.unwrapped.toString()}' at index: ${i}`
+        );
       }
     }
   }
@@ -142,7 +143,7 @@ export class Builder {
   checkRet(value: LLVMValue) {
     const currentFnReturnType = this.generator.currentFunction.type.elementType.returnType;
     if (!currentFnReturnType.equals(value.type.unwrapped)) {
-      error(
+      throw new Error(
         `Expected return value to be of '${currentFnReturnType.toString()}', got '${value.type.unwrapped.toString()}'`
       );
     }
@@ -177,7 +178,7 @@ export class Builder {
 
   setInsertionPoint(basicBlock?: llvm.BasicBlock) {
     if (!basicBlock) {
-      error("No basic block provided to `Builder.setInsertionPoint`");
+      throw new Error("No basic block provided to `Builder.setInsertionPoint`");
     }
 
     this.builder.setInsertionPoint(basicBlock);
@@ -209,6 +210,9 @@ export class Builder {
 
   createLoad(value: LLVMValue) {
     const loaded = this.builder.createLoad(value.unwrapped);
+    if (value.type.getPointerElementType().isIntersection()) {
+      return LLVMIntersection.create(loaded, this.generator);
+    }
     return LLVMValue.create(loaded, this.generator);
   }
 

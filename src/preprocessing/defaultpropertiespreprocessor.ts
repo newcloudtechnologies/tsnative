@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { checkIfStaticProperty, error } from "@utils";
+import { checkIfStaticProperty } from "@utils";
 
 export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -35,7 +35,7 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
             }
 
             if (!ts.isIdentifier(member.name)) {
-              error(`Expected identifier at '${member.name.getText()}'`);
+              throw new Error(`Expected identifier at '${member.name.getText()}'`);
             }
 
             const thisExpression = ts.createThis();

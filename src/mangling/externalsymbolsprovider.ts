@@ -10,16 +10,16 @@
  */
 
 import { NmSymbolExtractor } from "@mangling";
-import { error, getDeclarationNamespace, getGenericsToActualMapFromSignature } from "@utils";
+import { getDeclarationNamespace, getGenericsToActualMapFromSignature } from "@utils";
 import * as ts from "typescript";
 import { LLVMGenerator } from "@generator";
-import { Type } from "../ts/type";
+import { TSType } from "../ts/type";
 
 export let externalMangledSymbolsTable: string[] = [];
 export let externalDemangledSymbolsTable: string[] = [];
 export function injectExternalSymbolsTables(mangled: string[], demangled: string[]): void {
   if (mangled.length !== demangled.length) {
-    error("Symbols tables size mismatch");
+    throw new Error("Symbols tables size mismatch");
   }
 
   externalMangledSymbolsTable = mangled;
@@ -38,7 +38,7 @@ export async function prepareExternalSymbols(demangledTables: string[], mangledT
       const extractor: NmSymbolExtractor = new NmSymbolExtractor();
       return extractor.readSymbols(demangledTables, mangledTables);
     default:
-      error(`Unsupported platform ${process.platform}`);
+      throw new Error(`Unsupported platform ${process.platform}`);
   }
 }
 
@@ -60,8 +60,8 @@ export class ExternalSymbolsProvider {
   constructor(
     declaration: ts.Declaration,
     expression: ts.NewExpression | ts.CallExpression | undefined,
-    argumentTypes: Type[],
-    thisType: Type | undefined,
+    argumentTypes: TSType[],
+    thisType: TSType | undefined,
     generator: LLVMGenerator,
     knownMethodName?: string
   ) {
@@ -242,7 +242,8 @@ export class ExternalSymbolsProvider {
       // `.*( | ns)Class<T>::method(`
       // `.*( | ns)Class<T>::method<U>(`
       const classMethodPattern = new RegExp(
-        `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+        `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`,
+        "i" // @todo: potential pitfall, but handy for String-string case
       );
 
       const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${this.namespace}${this.thisTypeName}>(::)${this.methodName}`);
@@ -278,7 +279,7 @@ export class ExternalSymbolsProvider {
       const duplicatesOnly = candidates.every((candidate) => candidate.signature === candidates[0].signature);
       if (candidates.length > 1 && !duplicatesOnly) {
         console.log(candidates);
-        error("Ambiguous function call");
+        throw new Error("Ambiguous function call");
       }
     }
     return externalMangledSymbolsTable[candidates[0]?.index];

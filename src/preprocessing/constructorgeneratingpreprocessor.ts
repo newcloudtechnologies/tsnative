@@ -11,7 +11,6 @@
 
 import * as ts from "typescript";
 import { AbstractPreprocessor } from "@preprocessing";
-import { error } from "@utils";
 
 export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
@@ -36,7 +35,7 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
 
                 const baseConstructor = declaration.members.find(ts.isConstructorDeclaration);
                 if (!baseConstructor) {
-                  error(`No constructor provided for '${type.toString()}'`);
+                  throw new Error(`No constructor provided for '${type.toString()}'`);
                 }
 
                 parameters.push(...baseConstructor.parameters);

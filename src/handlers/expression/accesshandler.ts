@@ -1,5 +1,4 @@
 import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "@scope";
-import { error, InternalNames } from "@utils";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -131,43 +130,43 @@ export class AccessHandler extends AbstractExpressionHandler {
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): LLVMValue {
     let llvmValue = this.generator.handleExpression(expression, env);
     if (!llvmValue.type.isPointer()) {
-      error(`Expected pointer, got '${llvmValue.type}'`);
+      throw new Error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
     while (llvmValue.type.getPointerElementType().isPointer()) {
       llvmValue = this.generator.builder.createLoad(llvmValue);
     }
 
-    if (this.generator.types.union.isLLVMUnion(llvmValue.type)) {
-      const unionName = (llvmValue.type.unwrapPointer() as LLVMStructType).getName();
+    if (llvmValue.isUnion()) {
+      const unionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
       if (!unionName) {
-        error("Name required for UnionStruct");
+        throw new Error("Name required for UnionStruct");
       }
 
       const unionMeta = this.generator.meta.getUnionMeta(unionName);
       const index = unionMeta.propsMap.get(propertyName);
       if (typeof index === "undefined") {
-        error(`Mapping not found for ${propertyName}`);
+        throw new Error(`Mapping not found for ${propertyName}`);
       }
 
       return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]));
-    } else if (this.generator.types.intersection.isLLVMIntersection(llvmValue.type)) {
-      const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).getName();
+    } else if (llvmValue.type.isIntersection()) {
+      const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
       if (!intersectionName) {
-        error("Name required for IntersectionStruct");
+        throw new Error("Name required for IntersectionStruct");
       }
 
       const intersectionMeta = this.generator.meta.getIntersectionMeta(intersectionName);
       const index = intersectionMeta.props.indexOf(propertyName);
       if (index === -1) {
-        error(`Mapping not found for ${propertyName}`);
+        throw new Error(`Mapping not found for ${propertyName}`);
       }
 
       return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]));
     } else {
       let propertyIndex = -1;
 
-      if (!llvmValue.name || llvmValue.name === InternalNames.This) {
+      if (!llvmValue.name || llvmValue.name === this.generator.internalNames.This) {
         const type = this.generator.ts.checker.getTypeAtLocation(expression);
         propertyIndex = type.indexOfProperty(propertyName);
       } else {
@@ -177,7 +176,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       }
 
       if (propertyIndex === -1) {
-        error(`Property '${propertyName}' not found in '${expression.getText()}'`);
+        throw new Error(`Property '${propertyName}' not found in '${expression.getText()}'`);
       }
 
       const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
@@ -186,7 +185,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
       // In ts class constructor we cannot dereference 'this' pointer since the memory was just allocated and was not initialized.
       // Dereferencing will lead to segfault.
-      return inTSClassConstructor() && expression.getText() === InternalNames.This
+      return inTSClassConstructor() && expression.getText() === this.generator.internalNames.This
         ? elementPtr
         : this.generator.builder.createLoad(elementPtr);
     }

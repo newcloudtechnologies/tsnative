@@ -9,10 +9,8 @@
  *
  */
 
-import { isSigned } from "@cpp";
-import { castFPToIntegralType, castToInt32AndBack, makeAssignment, promoteIntegralToFP } from "@handlers";
+import { castToInt32AndBack } from "@handlers";
 import { LLVMGenerator } from "@generator";
-import { error } from "@utils";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "@scope";
@@ -65,7 +63,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       this.generator.builder.createFAdd(l, r);
     const iHandler: CompoundHandler = (l: LLVMValue, r: LLVMValue): LLVMValue => this.generator.builder.createAdd(l, r);
     const sHandler: CompoundHandler = (l: LLVMValue, r: LLVMValue): LLVMValue => {
-      const concat = this.generator.builtinString.getLLVMConcat(lhs);
+      const concat = this.generator.builtinString.getLLVMConcat();
       const untypedThis = this.generator.builder.asVoidStar(l);
 
       return this.generator.builder.createSafeCall(concat, [untypedThis, r]);
@@ -179,60 +177,57 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
     if (oldValue.type.isDoubleType() && right.type.isDoubleType()) {
       if (!fpHandler) {
-        error("Floating point type met, but no handler provided");
+        throw new Error("Floating point type met, but no handler provided");
       }
       const newValue = fpHandler(oldValue, right);
-      return makeAssignment(left, newValue, this.generator);
+      return left.makeAssignment(newValue);
     }
 
     if (oldValue.type.isIntegerType() && right.type.isIntegerType()) {
       if (!iHandler) {
-        error("Integer type met, but no handler provided");
+        throw new Error("Integer type met, but no handler provided");
       }
 
       const newValue = iHandler(oldValue, right);
-      return makeAssignment(left, newValue, this.generator);
+      return left.makeAssignment(newValue);
     }
 
     if (oldValue.type.isString() && right.type.isString()) {
       if (!sHandler) {
-        error("String type met, but no handler provided");
+        throw new Error("String type met, but no handler provided");
       }
       const newValue = sHandler(oldValue, right, this.generator);
-      return makeAssignment(left, newValue, this.generator);
+      return left.makeAssignment(newValue);
     }
 
     if (oldValue.type.isIntegerType() && right.type.isDoubleType()) {
       if (!iHandler) {
-        error("Integer type met, but no handler provided");
+        throw new Error("Integer type met, but no handler provided");
       }
 
       if (!left.type.isPointer()) {
-        error("Pointer type expected");
+        throw new Error("Pointer type expected");
       }
 
-      right = castFPToIntegralType(
-        right,
-        left.type.getPointerElementType(),
-        isSigned(lhs, this.generator),
-        this.generator
-      );
+      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
+      right = right.castFPToIntegralType(left.type.getPointerElementType(), lhsTsType.isSigned());
 
       const newValue = iHandler(oldValue, right);
-      return makeAssignment(left, newValue, this.generator);
+      return left.makeAssignment(newValue);
     }
 
     if (oldValue.type.isDoubleType() && right.type.isIntegerType()) {
       if (!fpHandler) {
-        error("Floating point type met, but no handler provided");
+        throw new Error("Floating point type met, but no handler provided");
       }
 
-      right = promoteIntegralToFP(right, oldValue.type, isSigned(rhs, this.generator), this.generator);
+      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
+      right = right.promoteIntegralToFP(oldValue.type, rhsTsType.isSigned());
 
       const newValue = fpHandler(oldValue, right);
-      return makeAssignment(left, newValue, this.generator);
+      return left.makeAssignment(newValue);
     }
 
-    error("Invalid operand types to compound assignment");
+    throw new Error("Invalid operand types to compound assignment");
   }
 }
