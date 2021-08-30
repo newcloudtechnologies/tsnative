@@ -21,8 +21,8 @@ import {
   RestParametersPreprocessor,
   TSObjectConsoleLogPreprocessor,
   DefaultPropertiesPreprocessor,
-} from "@preprocessing";
-import { LLVMGenerator } from "@generator";
+} from "./index";
+import { LLVMGenerator } from "../generator";
 
 export class Preprocessor {
   private readonly generatedProgram: ts.Program;

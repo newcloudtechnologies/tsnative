@@ -9,7 +9,7 @@
  *
  */
 
-import { Scope, ScopeValue } from "@scope";
+import { Scope, ScopeValue } from "../scope";
 
 export class SymbolTable {
   private readonly scopes: Scope[];

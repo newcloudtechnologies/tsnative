@@ -48,15 +48,10 @@ SRCDIR=$(readlink -f ${CURRENT_DIR}/..)
 
 STAGE_DIR=$(dirname "${SOURCE}")
 
-if [ -n "${EXTENSION+x}" ]; then
-    ln -sr ${EXTENSION} ${CURRENT_DIR}/extension
-    ln -sr ${EXTENSION}/../node_modules ${CURRENT_DIR}/node_modules
-fi
-
 mkdir -p ${CURRENT_DIR}/build
 cd ${CURRENT_DIR}/build
 
-cmake \
+cmake -G "Unix Makefiles" \
     -DCMAKE_BUILD_TYPE=release \
     -DSRCDIR=${SRCDIR} \
     -DSOURCE=${SOURCE} \
@@ -64,6 +59,7 @@ cmake \
     -DSTAGE_DIR=${STAGE_DIR} \
     -DEXTENSION=${EXTENSION} \
     -DPRINT_IR=${PRINT_IR} \
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
     ..
 
 make -j$(expr 2 \* $(cat /proc/cpuinfo | grep "processor" | wc -l))

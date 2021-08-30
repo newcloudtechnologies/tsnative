@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { HeapVariableDeclaration, Environment } from "@scope";
+import { HeapVariableDeclaration, Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
 
 export class IdentifierHandler extends AbstractExpressionHandler {

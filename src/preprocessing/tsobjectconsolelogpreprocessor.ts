@@ -10,7 +10,8 @@
  */
 
 import * as ts from "typescript";
-import { StringLiteralHelper, AbstractPreprocessor } from "@preprocessing";
+import { AbstractPreprocessor } from "./abstractpreprocessor";
+import { StringLiteralHelper } from "./stringliteralhelper";
 import { TSType } from "../ts/type";
 import { TSSymbol } from "../ts/symbol";
 

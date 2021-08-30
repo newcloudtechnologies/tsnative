@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "@scope";
+import { Environment } from "../../scope";
 import { Conversion, LLVMValue } from "../../llvm/value";
 import { Builder } from "../../builder/builder";
 

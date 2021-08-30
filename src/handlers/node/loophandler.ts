@@ -13,7 +13,7 @@ import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment } from "@scope";
+import { Scope, Environment } from "../../scope";
 import { last } from "lodash";
 
 export class LoopHandler extends AbstractNodeHandler {

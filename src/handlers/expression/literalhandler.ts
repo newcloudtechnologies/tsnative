@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment, HeapVariableDeclaration } from "@scope";
+import { Environment, HeapVariableDeclaration } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
 import { LLVMStructType, LLVMType } from "../../llvm/type";
 

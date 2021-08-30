@@ -11,7 +11,7 @@
 
 import * as llvm from "llvm-node";
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 

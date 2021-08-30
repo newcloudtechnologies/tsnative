@@ -1,60 +1,57 @@
 {
-  "name": "typescript-llvm",
-  "version": "0.1.0",
-  "scripts": {
-    "build": "tsc",
-    "start": "playground/start.sh",
-    "test": "tsc && mkdir -p test/build && cd test/build && cmake -DCMAKE_BUILD_TYPE=release .. && make \"-j$(expr 2 \\* $(cat /proc/cpuinfo | grep \"processor\" | wc -l))\" && make test",
-    "clean_test": "rm -rf test/build",
-    "clean_playground": "rm -rf playground/build playground/extension",
-    "lint": "tslint --project tsconfig.json",
-    "format": "tslint --project tsconfig.json --fix",
-    "prepare": "tsc",
-    "postinstall": "tsc"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "tslint --project tsconfig.json --fix",
-      "pre-push": "npm test"
+    "name": "typescript-llvm",
+    "version": "0.1.0",
+    "scripts": {
+        "transpile": "tsc",
+        "start": "playground/start.sh",
+        "test": "tsc && cd test && rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release -G \"Unix Makefiles\" .. && bash -x -exec \"make -j$(cat /proc/cpuinfo | grep \"processor\" | wc -l)\" && make test",
+        "clean_test": "rm -rf test/build",
+        "clean_playground": "rm -rf playground/build playground/extension",
+        "lint": "tslint --project tsconfig.json",
+        "format": "tslint --project tsconfig.json --fix",
+        "prepare": "npm-prebuilt-dependencies && tsc && npm run pkg",
+        "pkg": "pkg bin --output pkg/compiler",
+        "publishToLocalRegistry": "npm-prebuilt-dependencies publish"
+    },
+    "bin": {
+        "tsnative": "tsnative.js"
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "tslint --project tsconfig.json --fix",
+            "pre-push": "npm test"
+        }
+    },
+    "prettier": {
+        "printWidth": 120
+    },
+    "devDependencies": {
+        "@types/diff": "^3.5.1",
+        "@types/lodash": "^4.14.161",
+        "@types/node": "^13.13.1",
+        "commander": "^5.0.0",
+        "diff": "^4.0.2",
+        "husky": "^4.2.5",
+        "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#wip/delay_load",
+        "lodash": "^4.17.20",
+        "lookpath": "^1.0.4",
+        "pkg": "^5.0.0",
+        "prettier": "^2.0.5",
+        "segfault-handler": "^1.0.1",
+        "ts-node": "^8.9.0",
+        "tslint": "^6.1.1",
+        "tslint-config-prettier": "^1.18.0",
+        "tslint-plugin-prettier": "^2.3.0",
+        "typescript": "^3.8.3",
+        "npm-prebuilt-dependencies": "^0.0.1"
+    },
+    "files": [
+        "builder/*",
+        "cmake/*",
+        "pkg/*",
+        "tsnative.js"
+    ],
+    "prebuiltDependencies": {
+        "std-typescript-llvm": "^0.1.0"
     }
-  },
-  "prettier": {
-    "printWidth": 120
-  },
-  "bin": {
-    "tsvmc": "./bin/tsvmc"
-  },
-  "dependencies": {
-    "@types/lodash": "^4.14.161",
-    "@types/node": "^13.13.1",
-    "commander": "^5.0.0",
-    "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#mgt_patches",
-    "lodash": "^4.17.20",
-    "lookpath": "^1.0.4",
-    "module-alias": "^2.2.2",
-    "segfault-handler": "^1.0.1",
-    "std-typescript-llvm": "git+ssh://git@gitea.devos.club:222/antiq/std-typescript-llvm.git",
-    "typescript": "^3.8.3"
-  },
-  "devDependencies": {
-    "@types/diff": "^3.5.1",
-    "diff": "^4.0.2",
-    "husky": "^4.2.5",
-    "prettier": "^2.0.5",
-    "ts-node": "^8.9.0",
-    "tslint": "^6.1.1",
-    "tslint-config-prettier": "^1.18.0",
-    "tslint-plugin-prettier": "^2.3.0"
-  },
-  "_moduleAliases": {
-    "@builtins": "build/tsbuiltins",
-    "@cpp": "build/cppintegration",
-    "@handlers": "build/handlers",
-    "@handlers/*": "build/handlers/*",
-    "@generator": "build/generator",
-    "@mangling": "build/mangling",
-    "@scope": "build/scope",
-    "@utils": "build/utils",
-    "@preprocessing": "build/preprocessing"
-  }
 }

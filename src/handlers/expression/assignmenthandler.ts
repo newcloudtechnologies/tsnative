@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "@scope";
+import { Environment } from "../../scope";
 import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
 
 export class AssignmentHandler extends AbstractExpressionHandler {

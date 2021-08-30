@@ -1,6 +1,4 @@
-import "module-alias/register";
-
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "./generator";
 import * as argv from "commander";
 import * as fs from "fs";
 import * as llvm from "llvm-node";
@@ -10,10 +8,10 @@ import * as ts from "typescript";
 
 import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION } from "std-typescript-llvm/constants";
 
-import { injectExternalSymbolsTables, prepareExternalSymbols } from "@mangling";
+import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
-import { TemplateInstantiator } from "@cpp";
-import { Preprocessor } from "@preprocessing";
+import { TemplateInstantiator } from "./cppintegration/templateinstantiator";
+import { Preprocessor } from "./preprocessing";
 
 SegfaultHandler.registerHandler("ts-llvm-crash.log");
 

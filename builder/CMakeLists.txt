@@ -10,10 +10,10 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(tests LANGUAGES CXX)
+project(builder LANGUAGES CXX)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../node_modules/std-typescript-llvm/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../std-typescript-llvm/cmake")
 
 find_package(StdLib REQUIRED)
 find_package(Tsvmc REQUIRED)
@@ -30,13 +30,23 @@ set(LIBRARY_DEPENDENCIES )
 add_custom_target(build_anyway ALL)
 
 if (NOT ${EXTENSION} STREQUAL "")
-    add_subdirectory(extension EXCLUDE_FROM_ALL)
+    include(${EXTENSION}/CMakeLists.txt)
+
     get_target_property(exts_INCLUDES exts INCLUDES)
     get_target_property(exts_LIBRARY exts OUTPUT)
     get_property(LIBRARY_DEPENDENCIES TARGET exts PROPERTY LIBRARY_DEPENDENCIES)
     get_target_property(exts_HEADER_DEPENDENCIES exts HEADER_DEPENDENCIES)
+    get_target_property(EXTRA_DEPENDENCIES exts EXTRA_DEPENDENCIES)
     get_property(DEFINITIONS TARGET exts PROPERTY DEFINITIONS)
+
+    list(FILTER exts_HEADER_DEPENDENCIES EXCLUDE REGEX "^/usr*")
     set(INCLUDES ${exts_INCLUDES} ${exts_HEADER_DEPENDENCIES})
+
+    get_target_property(EXTRA_CMAKE exts EXTRA_CMAKE)
+
+    if (${EXTRA_CMAKE})
+        include(${EXTRA_CMAKE})
+    endif()
 else()
     add_custom_target(exts)
 endif()
@@ -47,12 +57,11 @@ else()
     set(PRINT_IR FALSE)
 endif()
 
-set(DEPENDENCIES
-    ${StdLib_LIBRARY}
-    ${exts_LIBRARY}
-    ${LIBRARY_DEPENDENCIES})
+list(APPEND DEPENDENCIES
+    "${StdLib_LIBRARY}"
+    "${exts_LIBRARY}"
+    "${LIBRARY_DEPENDENCIES}")
 
 build(binary_target exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
 
 add_dependencies(build_anyway ${binary_target})
-

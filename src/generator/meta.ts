@@ -9,7 +9,7 @@
  *
  */
 
-import { Environment } from "@scope";
+import { Environment } from "../scope";
 import * as crypto from "crypto";
 import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";

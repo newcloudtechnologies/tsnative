@@ -9,9 +9,9 @@
  *
  */
 
-import { NmSymbolExtractor } from "@mangling";
+import { NmSymbolExtractor } from "../mangling";
 import * as ts from "typescript";
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 

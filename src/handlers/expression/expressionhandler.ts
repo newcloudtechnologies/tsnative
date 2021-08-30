@@ -9,9 +9,9 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../../generator";
 import { Expression } from "typescript";
-import { Environment } from "@scope";
+import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
 
 export abstract class AbstractExpressionHandler {

@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import * as crypto from "crypto";
-import { AbstractPreprocessor } from "@preprocessing";
+import { AbstractPreprocessor } from "./abstractpreprocessor";
 
 export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {

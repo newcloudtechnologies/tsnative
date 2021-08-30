@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import { LLVMFunction } from "./function";
 
 export class LLVM {

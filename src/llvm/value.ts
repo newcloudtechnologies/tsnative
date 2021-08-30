@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMStructType, LLVMType } from "./type";

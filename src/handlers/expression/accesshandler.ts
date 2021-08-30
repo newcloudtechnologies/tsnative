@@ -1,4 +1,4 @@
-import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "@scope";
+import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "../../scope";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";

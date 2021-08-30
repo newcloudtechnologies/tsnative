@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "@scope";
+import { Environment } from "../../scope";
 import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 
 export class UnaryHandler extends AbstractExpressionHandler {

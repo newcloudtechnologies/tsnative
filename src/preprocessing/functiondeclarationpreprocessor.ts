@@ -10,7 +10,7 @@
  */
 
 import * as ts from "typescript";
-import { AbstractPreprocessor } from "@preprocessing";
+import { AbstractPreprocessor } from "./abstractpreprocessor";
 
 export class FunctionDeclarationPreprocessor extends AbstractPreprocessor {
   transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {

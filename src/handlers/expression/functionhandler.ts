@@ -9,8 +9,8 @@
  *
  */
 
-import { LLVMGenerator, MetaInfoStorage } from "@generator";
-import { FunctionMangler } from "@mangling";
+import { LLVMGenerator, MetaInfoStorage } from "../../generator";
+import { FunctionMangler } from "../../mangling";
 import {
   setLLVMFunctionScope,
   addClassScope,
@@ -19,7 +19,7 @@ import {
   Environment,
   ScopeValue,
   createEnvironment,
-} from "@scope";
+} from "../../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";

@@ -11,8 +11,8 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment } from "@scope";
-import { LLVMGenerator } from "@generator";
+import { Scope, Environment } from "../../scope";
+import { LLVMGenerator } from "../../generator";
 import { LLVMValue } from "../../llvm/value";
 import { Declaration } from "../../ts/declaration";
 

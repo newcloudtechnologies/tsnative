@@ -1,8 +1,8 @@
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { ThisData, Scope } from "@scope";
-import { FunctionMangler } from "@mangling";
-import { SIZEOF_STRING, SIZEOF_TSCLOSURE } from "@cpp";
+import { ThisData, Scope } from "../scope";
+import { FunctionMangler } from "../mangling";
+import { SIZEOF_STRING, SIZEOF_TSCLOSURE } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";

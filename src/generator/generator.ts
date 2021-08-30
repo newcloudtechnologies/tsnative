@@ -9,15 +9,15 @@
  *
  */
 
-import { ExpressionHandlerChain } from "@handlers/expression";
-import { NodeHandlerChain } from "@handlers/node";
-import { Scope, SymbolTable, Environment, injectUndefined } from "@scope";
+import { ExpressionHandlerChain } from "../handlers/expression";
+import { NodeHandlerChain } from "../handlers/node";
+import { Scope, SymbolTable, Environment, injectUndefined } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "@builtins";
-import { MetaInfoStorage } from "@generator";
+import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "../tsbuiltins";
+import { MetaInfoStorage } from "../generator";
 import { GC_DEFINITION } from "std-typescript-llvm/constants";
-import { SizeOf } from "@cpp";
+import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";

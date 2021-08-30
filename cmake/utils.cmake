@@ -18,6 +18,10 @@ if (NOT StdLib_FOUND)
     message(FATAL_ERROR "stdlib not included")
 endif()
 
+if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+endif()
+
 function(makeOutputDir target dep_target source output_dir)
     getBinaryName(${source} binary_name)
 
@@ -156,12 +160,13 @@ endif()
     set(${functions_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(compile_cpp target dep_target includes source output_dir compiled)
+function(compile_cpp target dep_target includes definitions source output_dir compiled)
     string(REPLACE ".cpp" ".o" output "${source}")
 
     set(INCLUDES )
     list(APPEND INCLUDES "${SRCDIR}/node_modules")
     list(APPEND INCLUDES "${SRCDIR}/../node_modules")
+    list(APPEND INCLUDES "${SRCDIR}/..")
 
     if (NOT "${includes}" STREQUAL "")
         list(APPEND INCLUDES "${includes}")
@@ -175,7 +180,7 @@ function(compile_cpp target dep_target includes source output_dir compiled)
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compile cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -c ${INCLUDES} ${source}
+        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${INCLUDES} ${definitions} ${source}
     )
 
     add_custom_target(${target}
@@ -225,7 +230,7 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
         OUTPUT ${output}
         DEPENDS ${ll_bytecode}
         COMMAND echo "Run llc..."
-        COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc ${optimizationLevel} -relocation-model=pic -filetype=obj ${ll_bytecode} -o ${output}
+        COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX} ${optimizationLevel} -relocation-model=pic -filetype=obj ${ll_bytecode} -o ${output}
     )
 
     add_custom_target(${target}
@@ -258,7 +263,7 @@ function(link target dep_target seed_src compiled_source dependencies extra_depe
     add_dependencies(${${target}} ${dep_target})
 endfunction()
 
-function(build target dep_target source includes dependencies extra_dependencies optimization_level is_test is_printIr)
+function(build target dep_target source includes dependencies extra_dependencies definitions optimization_level is_test is_printIr)
 
     getBinaryName("${source}" binary_name)
 
@@ -266,16 +271,15 @@ function(build target dep_target source includes dependencies extra_dependencies
 
     instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${includes}" "${source}" "${output_dir}" CLASSES_SRC)
 
-    compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
+    compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${definitions}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
 
     extractSymbols(extract_classes_symbols_${binary_name} compile_classes_${binary_name} "${COMPILED_CLASSES}" "${output_dir}" COMPILED_CLASSES_DEMANGLED_NAMES COMPILED_CLASSES_MANGLED_NAMES)
 
     instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${includes}" "${source}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} FUNCTIONS_SRC)
 
-    compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
+    compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${definitions}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
 
-    set(DEPENDENCIES )
-    list(APPEND DEPENDENCIES ${dependencies} ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS} ${StdLib_LIBRARY})
+    list(APPEND DEPENDENCIES ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 
@@ -296,8 +300,3 @@ function(build target dep_target source includes dependencies extra_dependencies
 
     set(${target} ${binary_name} PARENT_SCOPE)
 endfunction()
-
-
-
-
-

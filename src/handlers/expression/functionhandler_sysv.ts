@@ -10,8 +10,8 @@
  */
 
 import * as ts from "typescript";
-import { LLVMGenerator } from "@generator";
-import { Environment } from "@scope";
+import { LLVMGenerator } from "../../generator";
+import { Environment } from "../../scope";
 import { TSType } from "../../ts/type";
 import { LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";

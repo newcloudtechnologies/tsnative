@@ -10,7 +10,7 @@
  */
 
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "@scope";
+import { Environment } from "../../scope";
 import * as ts from "typescript";
 import { LLVMValue } from "../../llvm/value";
 import { LLVMStructType } from "../../llvm/type";

@@ -57,6 +57,7 @@ while(index LESS ${count})
         get_target_property(cpp_exts_INCLUDES cpp_exts INCLUDES)
         get_target_property(cpp_exts_DEPENDENCIES cpp_exts DEPENDENCIES)
         get_target_property(cpp_exts_LIBRARY cpp_exts OUTPUT)
+        get_property(DEFINITIONS TARGET cpp_exts PROPERTY DEFINITIONS)
 
         set(INCLUDES "${cpp_exts_INCLUDES}")
         set(DEPENDENCIES
@@ -64,7 +65,7 @@ while(index LESS ${count})
             ${cpp_exts_LIBRARY}
             ${cpp_exts_DEPENDENCIES})
 
-        build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
+        build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
     elseif(SOURCE MATCHES "^src/cpp_integration/")
@@ -72,9 +73,12 @@ while(index LESS ${count})
             add_subdirectory(src/cpp_integration/cpp EXCLUDE_FROM_ALL)
         endif()
 
+        set(DEFINITIONS )
+
         get_target_property(cpp_exts_INCLUDES cpp_integration_exts INCLUDES)
         get_target_property(cpp_exts_DEPENDENCIES cpp_integration_exts DEPENDENCIES)
         get_target_property(cpp_exts_LIBRARY cpp_integration_exts OUTPUT)
+        get_property(DEFINITIONS TARGET cpp_integration_exts PROPERTY DEFINITIONS)
 
         set(INCLUDES "${cpp_exts_INCLUDES}")
         set(DEPENDENCIES
@@ -82,7 +86,7 @@ while(index LESS ${count})
             ${cpp_exts_LIBRARY}
             ${cpp_exts_DEPENDENCIES})
 
-        build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
+        build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
     else()
@@ -91,10 +95,11 @@ while(index LESS ${count})
         endif()
 
         set(INCLUDES )
+        set(DEFINITIONS )
         set(DEPENDENCIES
             ${StdLib_LIBRARY})
 
-        build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
+        build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
     endif()
 

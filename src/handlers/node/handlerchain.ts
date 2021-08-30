@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../../generator";
 import * as ts from "typescript";
 
 import {
@@ -26,10 +26,10 @@ import {
   VariableHandler,
   SwitchHandler,
   EnumHandler,
-} from "@handlers/node";
+} from "../../handlers/node";
 
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment } from "@scope";
+import { Scope, Environment } from "../../scope";
 
 export class NodeHandlerChain {
   private readonly root: AbstractNodeHandler;

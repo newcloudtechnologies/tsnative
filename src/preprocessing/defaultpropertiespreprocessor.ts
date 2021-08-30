@@ -10,7 +10,7 @@
  */
 
 import * as ts from "typescript";
-import { AbstractPreprocessor } from "@preprocessing";
+import { AbstractPreprocessor } from "./abstractpreprocessor";
 import { Declaration } from "../ts/declaration";
 
 export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {

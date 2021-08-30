@@ -12,7 +12,7 @@
 import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment } from "@scope";
+import { Scope, Environment } from "../../scope";
 import { LLVMConstantInt } from "../../llvm/value";
 
 export class BranchHandler extends AbstractNodeHandler {

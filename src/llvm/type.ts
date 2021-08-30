@@ -10,7 +10,7 @@
  */
 
 import * as llvm from "llvm-node";
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 
 export class LLVMType {
   type: llvm.Type;

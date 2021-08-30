@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMIntersection, LLVMValue } from "../llvm/value";

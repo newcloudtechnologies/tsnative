@@ -1,0 +1,28 @@
+{
+    "name": "tsnative",
+    "bin": {
+	   "compiler": "compiler.js"
+    },
+    "publishConfig": {
+        "registry": "https://nexus.devos.club/repository/antiq_npm_local/"
+    },
+    "pkg": {
+        "assets": [
+            "../tsconfig.json",
+            "../build/*",
+            "../build/**/*",
+            "../node_modules/llvm-node/build/Release/llvm-node.node",
+            "../node_modules/segfault-handler/build/Release/segfault-handler.node",
+            "../node_modules/std-typescript-llvm/*",
+            "../node_modules/std-typescript-llvm/**/*"
+        ]
+    },
+    "dependencies": {
+        "commander": "^5.0.0",
+        "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#mgt_patches",
+        "lodash": "^4.17.20",
+        "lookpath": "^1.0.4",
+        "segfault-handler": "^1.0.1",
+        "typescript": "^3.8.3"
+    }
+}

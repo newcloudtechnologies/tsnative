@@ -1,13 +1,13 @@
-FROM ubuntu:18.04
+# docreg.devos.club/typescript-environment:1.3
+
+FROM docreg.devos.club/ubuntu-cmake:1.7
 
 LABEL TypeScript-LLVM environment image
 
 RUN apt-get update && apt-get install -y \
     sudo \
-    build-essential \
     wget \
     libz-dev \
-    git \
     make \
     nodejs \
     npm \
@@ -37,7 +37,7 @@ RUN update-alternatives --install /usr/bin/llc llc /usr/lib/llvm-11/bin/llc 60
 
 RUN npm i -g n
 
-RUN n install 13
+RUN n install 16.6.2
 
 ENV PATH $PATH
 

@@ -13,8 +13,8 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
 import { flatten } from "lodash";
-import { NmSymbolExtractor, ExternalSymbolsProvider } from "@mangling";
-import { LLVMGenerator } from "@generator";
+import { NmSymbolExtractor, ExternalSymbolsProvider } from "../mangling";
+import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 
 export class TemplateInstantiator {

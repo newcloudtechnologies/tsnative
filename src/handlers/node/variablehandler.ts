@@ -9,7 +9,7 @@
  *
  */
 
-import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "@scope";
+import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
 import { LLVMStructType } from "../../llvm/type";
 import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion } from "../../llvm/value";
 import * as ts from "typescript";

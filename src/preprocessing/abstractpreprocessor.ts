@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 
 class PrepocessorUtils {

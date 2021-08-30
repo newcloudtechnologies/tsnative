@@ -11,7 +11,7 @@
 
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "@generator";
+import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "../generator";
 
 import { TSType } from "../ts/type";
 import { flatten } from "lodash";

@@ -9,9 +9,9 @@
  *
  */
 
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../../generator";
 import * as ts from "typescript";
-import { Scope, Environment } from "@scope";
+import { Scope, Environment } from "../../scope";
 
 export abstract class AbstractNodeHandler {
   protected next: AbstractNodeHandler | undefined;

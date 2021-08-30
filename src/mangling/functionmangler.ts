@@ -9,9 +9,9 @@
  *
  */
 
-import { ExternalSymbolsProvider } from "@mangling";
+import { ExternalSymbolsProvider } from "../mangling";
 import * as ts from "typescript";
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 

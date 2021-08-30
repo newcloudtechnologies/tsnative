@@ -9,7 +9,7 @@
  *
  */
 
-import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE } from "@cpp";
+import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE } from "../cppintegration";
 import { LLVMType } from "../llvm/type";
 
 export class SizeOf {

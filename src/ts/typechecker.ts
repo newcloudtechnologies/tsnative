@@ -10,7 +10,7 @@
  */
 
 import * as ts from "typescript";
-import { LLVMGenerator } from "@generator";
+import { LLVMGenerator } from "../generator";
 import { TSType } from "./type";
 import { Signature } from "./signature";
 import { TSSymbol } from "../ts/symbol";

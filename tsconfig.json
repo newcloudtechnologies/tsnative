@@ -3,17 +3,6 @@
     "target": "es6",
     "lib": ["es2016"],
     "baseUrl": ".",
-    "paths": {
-      "@builtins": [ "src/tsbuiltins" ],
-      "@cpp": [ "src/cppintegration" ],
-      "@handlers": [ "src/handlers" ],
-      "@handlers/*": [ "src/handlers/*" ],
-      "@generator": [ "src/generator" ],
-      "@mangling": [ "src/mangling" ],
-      "@scope": [ "src/scope" ],
-      "@utils": [ "src/build" ],
-      "@preprocessing": [ "src/preprocessing" ]
-    },
     "module": "commonjs",
     "outDir": "build",
     "strict": true,

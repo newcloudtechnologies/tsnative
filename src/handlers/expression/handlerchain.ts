@@ -26,11 +26,11 @@ import {
   NoopHandler,
   TemplateExpressionHandler,
   NullKeywordHandler,
-} from "@handlers/expression";
-import { LLVMGenerator } from "@generator";
+} from "../../handlers/expression";
+import { LLVMGenerator } from "../../generator";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "@scope";
+import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
 
 export class ExpressionHandlerChain {

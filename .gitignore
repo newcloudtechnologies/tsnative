@@ -3,3 +3,7 @@ build/
 *.log
 .idea/
 .vscode/
+pkg/
+
+# ignore lock file since prebuilt packages are used
+package-lock.json
