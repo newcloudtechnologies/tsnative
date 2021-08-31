@@ -14,6 +14,7 @@ import * as ts from "typescript";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
+import { Expression } from "../ts/expression";
 
 export class FunctionMangler {
   static mangle(
@@ -71,5 +72,32 @@ export class FunctionMangler {
       isExternalSymbol: baseName === "assert", // @todo: make `assert` mangled C++ symbol (stdlib)
       qualifiedName: scopePrefix + baseName + typeParametersNames,
     };
+  }
+
+  static checkIfExternalSymbol(call: ts.CallExpression, generator: LLVMGenerator) {
+    const argumentTypes = Expression.create(call, generator).getArgumentTypes();
+    const isMethod = Expression.create(call.expression, generator).isMethod();
+    let thisType;
+    if (isMethod) {
+      const methodReference = call.expression as ts.PropertyAccessExpression;
+      thisType = generator.ts.checker.getTypeAtLocation(methodReference.expression);
+    }
+
+    const symbol = generator.ts.checker.getTypeAtLocation(call.expression).getSymbol();
+    const valueDeclaration = symbol.declarations[0];
+
+    const thisTypeForMangling = valueDeclaration.isStaticMethod()
+      ? generator.ts.checker.getTypeAtLocation((call.expression as ts.PropertyAccessExpression).expression)
+      : thisType;
+
+    const { isExternalSymbol } = FunctionMangler.mangle(
+      valueDeclaration,
+      call,
+      thisTypeForMangling,
+      argumentTypes,
+      generator
+    );
+
+    return isExternalSymbol;
   }
 }

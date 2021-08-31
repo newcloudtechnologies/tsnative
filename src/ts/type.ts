@@ -16,6 +16,7 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
 
 import { TSSymbol } from "./symbol";
+import { FunctionMangler } from "../mangling/functionmangler";
 
 export class TSType {
   private type: ts.Type;
@@ -625,22 +626,17 @@ export class TSType {
     if (this.isFunction()) {
       const symbol = this.getSymbol();
       const declaration = symbol.declarations[0];
-      if (!declaration) {
-        throw new Error("Function declaration not found");
-      }
+      const signature = this.checker.getSignatureFromDeclaration(declaration);
+      const withFunargs = signature.getParameters().some((parameter) => {
+        const symbolType = this.checker.getTypeOfSymbolAtLocation(parameter, declaration.unwrapped);
+        return symbolType.isFunction();
+      });
 
-      if (declaration.canCreateLazyClosure()) {
-        const signature = this.checker.getSignatureFromDeclaration(declaration);
-        if (!signature) {
-          throw new Error("Function signature not found");
-        }
-
-        const withFunargs = signature.getParameters().some((parameter) => {
-          const symbolType = this.checker.getTypeOfSymbolAtLocation(parameter, declaration.unwrapped);
-          return symbolType.isFunction();
-        });
-
-        if (withFunargs) {
+      if (withFunargs) {
+        if (
+          !ts.isCallExpression(declaration.parent) ||
+          !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.checker.generator)
+        ) {
           return this.checker.generator.builtinTSClosure.lazyClosure.type;
         }
       }

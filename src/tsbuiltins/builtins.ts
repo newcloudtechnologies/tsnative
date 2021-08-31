@@ -111,7 +111,7 @@ class LazyClosure {
 
   constructor(generator: LLVMGenerator) {
     const structType = LLVMStructType.create(generator, this.tag);
-    structType.setBody([]);
+    structType.setBody([generator.builtinInt8.getLLVMType().getPointer()]);
     this.generator = generator;
     this.llvmType = structType.getPointer();
   }
@@ -120,8 +120,11 @@ class LazyClosure {
     return this.llvmType;
   }
 
-  get create() {
-    return this.generator.gc.allocate(this.llvmType.getPointerElementType());
+  create(env: LLVMValue) {
+    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const envPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, 0]);
+    this.generator.builder.createSafeStore(env, envPtr);
+    return allocated;
   }
 
   isLazyClosure(value: LLVMValue) {

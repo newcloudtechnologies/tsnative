@@ -13,25 +13,9 @@ import { Scope, ScopeValue } from "../scope";
 
 export class SymbolTable {
   private readonly scopes: Scope[];
-  private readonly objectNames: string[];
 
   constructor() {
     this.scopes = [new Scope("root", "root")];
-    this.objectNames = [];
-  }
-
-  addObjectName(objectName: string) {
-    this.objectNames.push(objectName);
-  }
-
-  getObjectName(fieldName: string) {
-    // @todo. This is an heuristic algorithm, so it's worth to handle the case of multiple objectName matches as an error!
-    for (const objectName of this.objectNames) {
-      if (objectName.includes(fieldName)) {
-        return objectName;
-      }
-    }
-    return;
   }
 
   getScope(name: string) {

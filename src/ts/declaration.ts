@@ -10,11 +10,9 @@
  */
 
 import { LLVMGenerator } from "../generator";
-import { FunctionMangler } from "../mangling/functionmangler";
 import { Scope } from "../scope/scope";
 import { TSType } from "../ts/type";
 import * as ts from "typescript";
-import { Expression } from "../ts/expression";
 
 export class Declaration {
   private readonly declaration: ts.Declaration;
@@ -111,14 +109,11 @@ export class Declaration {
   }
 
   get initializer() {
-    if (!ts.isPropertyDeclaration(this.declaration)) {
-      throw new Error(
-        `Expected 'initializer' to be called on property declaration, called on '${
-          ts.SyntaxKind[this.declaration.kind]
-        }'`
-      );
+    if (ts.isPropertyAssignment(this.declaration) || ts.isPropertyDeclaration(this.declaration)) {
+      return this.declaration.initializer;
     }
-    return this.declaration.initializer;
+
+    throw new Error(`Declaration.initializer called on unexpected kind '${ts.SyntaxKind[this.declaration.kind]}'`);
   }
 
   get type() {
@@ -255,56 +250,6 @@ export class Declaration {
     }
 
     return result;
-  }
-
-  // @todo: temporary hack in fact!
-  //        there is potential problem with function expression declared in body of another function in case if this function expression is a returned value
-  //        its environment cannot be used on call (illformed IR will be generated)
-  //        workaround this issue by this hack
-  canCreateLazyClosure() {
-    if (ts.isPropertyAssignment(this.declaration.parent)) {
-      return false;
-    }
-
-    if (ts.isReturnStatement(this.declaration.parent)) {
-      return false;
-    }
-
-    if (ts.isCallExpression(this.declaration.parent)) {
-      const callExpression = this.declaration.parent;
-
-      const argumentTypes = Expression.create(callExpression, this.generator).getArgumentTypes();
-      const isMethod = Expression.create(callExpression.expression, this.generator).isMethod();
-      let thisType;
-      if (isMethod) {
-        const methodReference = callExpression.expression as ts.PropertyAccessExpression;
-        thisType = this.generator.ts.checker.getTypeAtLocation(methodReference.expression);
-      }
-
-      const symbol = this.generator.ts.checker.getTypeAtLocation(callExpression.expression).getSymbol();
-      const valueDeclaration = symbol.declarations[0];
-
-      const thisTypeForMangling = valueDeclaration.isStaticMethod()
-        ? this.generator.ts.checker.getTypeAtLocation(
-            (callExpression.expression as ts.PropertyAccessExpression).expression
-          )
-        : thisType;
-
-      const { isExternalSymbol } = FunctionMangler.mangle(
-        valueDeclaration,
-        callExpression,
-        thisTypeForMangling,
-        argumentTypes,
-        this.generator
-      );
-
-      if (isExternalSymbol) {
-        // C++ backend knows nothing about `lazy` closures
-        return false;
-      }
-    }
-
-    return true;
   }
 
   get unwrapped() {

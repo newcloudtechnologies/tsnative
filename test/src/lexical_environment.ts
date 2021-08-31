@@ -76,7 +76,6 @@
     console.assert(fval.ff() === 23, "In-object closure test failed");
 }
 
-/* @todo
 {
     function f(fn: () => number) {
         return function() {
@@ -88,6 +87,43 @@
         return a;
     }
     const h = f(g);
-    h();
+    console.assert(h() === a, "Funarg closure capturing failed");
 }
-*/
+
+{
+    function f1(fn: () => number) {
+        return function() {
+            return {
+                fun: fn
+            }
+        }
+    }
+    let a = 42;
+    let g = function() {
+        return a;
+    }
+    const h = f1(g);
+    const v = h();
+
+    console.assert(v.fun() === a, "Funarg closure in-object capturing failed");
+}
+
+{
+    function f2(fn: () => number) {
+        return function(firstAddend: number) {
+            return {
+                fun: function(secondAddend: number) {
+                    return fn() + firstAddend + secondAddend;
+                }
+            }
+        }
+    }
+    let a = 1;
+    let g = function() {
+        return a;
+    }
+    const h = f2(g);
+    const v = h(100);
+
+    console.assert(v.fun(10) === 111, "More complex funarg capturing failed");
+}

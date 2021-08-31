@@ -119,41 +119,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       this.generator.builder.createSafeStore(value, destinationPtr);
     });
 
-    object.name = this.generator.createTSObjectName(Array.from(llvmValues.keys()));
-
-    const objectPropertyTypesName = this.withObjectProperties(expression, (property: ts.ObjectLiteralElementLike) => {
-      if (!property.name) {
-        return;
-      }
-
-      const propertyType = this.generator.ts.checker.getTypeAtLocation(property);
-      let propertyTypename = "";
-      if (propertyType.isFunction()) {
-        // @todo: There should be a better way to get actual signature Wfor generic functions.
-        const symbol = propertyType.getSymbol();
-        const valueDeclaration = symbol.declarations[0];
-
-        const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration)!;
-        const returnType = signature.getReturnType();
-        const parameters = signature.getParameters();
-        const resolvedParameterTypes = parameters.map((parameter) => parameter.declarations[0].type);
-
-        propertyTypename += "(";
-        resolvedParameterTypes.forEach((type, index) => {
-          propertyTypename += parameters[index].name + ": " + type.toString();
-        });
-        propertyTypename += ") => ";
-        propertyTypename += returnType.toString();
-      } else {
-        propertyTypename = propertyType.toString();
-      }
-
-      return property.name!.getText() + "__" + propertyTypename;
-    })
-      .filter(Boolean)
-      .join(",");
-
-    this.generator.symbolTable.addObjectName(objectPropertyTypesName);
+    object.name = this.createTSObjectName(Array.from(llvmValues.keys()));
 
     return object;
   }
@@ -198,22 +164,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return allocated;
   }
 
-  private withObjectProperties<R>(
-    expression: ts.ObjectLiteralExpression,
-    action: (property: ts.ObjectLiteralElementLike, index: number, array: R[]) => R
-  ): R[] {
-    const resultArray: R[] = [];
-    for (const property of expression.properties) {
-      switch (property.kind) {
-        case ts.SyntaxKind.PropertyAssignment:
-        case ts.SyntaxKind.ShorthandPropertyAssignment:
-        case ts.SyntaxKind.SpreadAssignment:
-          resultArray.push(action(property, resultArray.length, resultArray));
-          break;
-        default:
-          throw new Error(`Unhandled ts.ObjectLiteralElementLike '${ts.SyntaxKind[property.kind]}'`);
-      }
-    }
-    return resultArray;
+  private createTSObjectName(props: string[]) {
+    // Reduce object's props names to string to store them as object's name.
+    // Later this name may be used for out-of-order object initialization and property access.
+    return this.generator.randomString + "__object__" + props.join(".");
   }
 }
