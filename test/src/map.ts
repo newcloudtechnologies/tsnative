@@ -1,0 +1,133 @@
+/*
+ * Copyright (c) Laboratory of Cloud Technologies, Ltd., 2013-2021
+ *
+ * You can not use the contents of the file in any way without
+ * Laboratory of Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact Laboratory of Cloud Technologies, Ltd.
+ * at http://cloudtechlab.ru/#contacts
+ *
+ */
+
+class A {
+    constructor(n: number, s: string) {
+        this.n = n;
+        this.s = s;
+    }
+
+    readonly n: number;
+    readonly s: string
+}
+const m: Map<string, A> = new Map;
+
+const first = new A(1, "1");
+const second = new A(2, "2");
+const third = new A(3, "3");
+
+// test `set` chaining
+m.set("a", first)
+    .set("b", second)
+    .set("c", third);
+
+
+// test size
+console.assert(m.size === 3, "Map size");
+
+let keys = "";
+const expectedKeysSum = "abc";
+
+let nValuesSum = 0;
+const expected_nValuesSum = 6;
+
+let sValuesSum = "";
+const expected_sValuesSum = "123";
+
+// test `forEach` with single argument
+m.forEach((v) => {
+    nValuesSum += v.n;
+    sValuesSum += v.s;
+});
+
+// test `forEach` with two arguments
+m.forEach((_, k) => {
+    keys += k;
+});
+
+console.assert(keys === expectedKeysSum, "Keys reducing");
+console.assert(nValuesSum === expected_nValuesSum, "Ns sum");
+console.assert(sValuesSum === expected_sValuesSum, "Ss sum");
+
+const is_equal_arrays = function <T>(a: T[], b: T[]): boolean {
+    if (a.length !== b.length) {
+        return false;
+    }
+
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
+const expectedKeys = ["a", "b", "c"];
+const expectedValues = [first, second, third];
+
+// test `Map.keys()` and `Map.values()`
+console.assert(is_equal_arrays(m.keys(), expectedKeys), "Map.keys()");
+console.assert(is_equal_arrays(m.values(), expectedValues), "Map.values()");
+
+// test values overwriting
+{
+    const first = new A(101, "101");
+    const second = new A(201, "201");
+    const third = new A(301, "301");
+
+    m.set("a", first)
+        .set("b", second)
+        .set("c", third);
+
+    const expectedValues = [first, second, third];
+    const expectedSize = 3;
+
+    console.assert(is_equal_arrays(m.keys(), expectedKeys), "Map.keys() overwritten");
+    console.assert(is_equal_arrays(m.values(), expectedValues), "Map.values() overwritten");
+    console.assert(m.size === expectedSize, "Map.size overwritten");
+}
+
+// test deletion
+const deletionResult = m.delete("a");
+console.assert(deletionResult, "Map.delete result");
+console.assert(!m.has("a"), "Map.has after deletion");
+console.assert(m.size === 2, "Map.size after deletion");
+
+// test `clear`
+m.clear();
+console.assert(m.size === 0, "Map.size after `clear`");
+
+// test deletion in `forEach`
+m.set("a", first)
+    .set("b", second)
+    .set("c", third);
+
+m.forEach((_, key) => {
+    if (key === "b") {
+        m.delete(key);
+    }
+});
+
+console.assert(m.has("a") && m.has("c") && !m.has("b"), "Map.has after deletion in `forEach`");
+console.assert(m.size === 2, "Map.size after deletion in `forEach`");
+
+// test `clear` in `forEach`
+let cyclesCounter = 0;
+const expectedCyclesCounter = 1;
+
+m.forEach((_, __, map) => {
+    map.clear();
+    ++cyclesCounter;
+});
+
+console.assert(m.size === 0, "Map.size after `clear` in `forEach`");
+console.assert(cyclesCounter === expectedCyclesCounter, "cyclesCounter");

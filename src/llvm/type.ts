@@ -100,6 +100,16 @@ export class LLVMType {
     return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Array__"));
   }
 
+  isMap() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Map__"));
+  }
+
+  isSet() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Set__"));
+  }
+
   isCppPrimitiveType() {
     return this.type.isIntegerTy() || this.type.isDoubleTy();
   }

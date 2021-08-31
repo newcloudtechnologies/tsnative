@@ -130,6 +130,22 @@ export class TSType {
     return Boolean(this.getSymbol().name === "Array");
   }
 
+  isMap() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    return Boolean(this.getSymbol().name === "Map");
+  }
+
+  isSet() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    return Boolean(this.getSymbol().name === "Set");
+  }
+
   isObject() {
     if (this.isSymbolless()) {
       return false;
@@ -663,6 +679,15 @@ export class TSType {
     return Boolean(this.checker.generator.module.getTypeByName(this.mangle()));
   }
 
+  toPlainCppType() {
+    let cppType = this.toCppType();
+    if (cppType.endsWith("*")) {
+      cppType = cppType.substring(0, cppType.length - 1);
+    }
+
+    return cppType;
+  }
+
   toCppType(): string {
     if (this.isFunction()) {
       return "TSClosure*";
@@ -670,14 +695,40 @@ export class TSType {
     if (this.isArray()) {
       const elementType = this.getTypeGenericArguments()[0]!;
       let cppElementType = elementType.toCppType();
-      if (elementType.isArray() || elementType.isString() || elementType.isObject()) {
-        cppElementType += "*";
-      }
-
       if (elementType.isClassOrInterface()) {
         cppElementType = "void*";
       }
-      return `Array<${cppElementType}>`;
+      return `Array<${cppElementType}>*`;
+    }
+
+    if (this.isMap()) {
+      const typeParameters = this.getTypeGenericArguments();
+      const cppTypeParameters = [];
+      for (const type of typeParameters) {
+        let cppType = type.toCppType();
+        if (type.isClassOrInterface()) {
+          cppType = "void*";
+        }
+
+        cppTypeParameters.push(cppType);
+      }
+
+      return `Map<${cppTypeParameters.join(",")}>*`;
+    }
+
+    if (this.isSet()) {
+      const typeParameters = this.getTypeGenericArguments();
+      const cppTypeParameters = [];
+      for (const type of typeParameters) {
+        let cppType = type.toCppType();
+        if (type.isClassOrInterface()) {
+          cppType = "void*";
+        }
+
+        cppTypeParameters.push(cppType);
+      }
+
+      return `Set<${cppTypeParameters.join(",")}>*`;
     }
 
     let typename = this.toString();
@@ -685,16 +736,17 @@ export class TSType {
     if (this.isNumber()) {
       typename = "number";
     } else if (this.isString()) {
-      typename = "string";
+      return "string*";
     } else if (this.isUnionOrIntersection()) {
-      typename = "void*";
+      return "void*";
     } else if (!this.isSymbolless()) {
       const symbol = this.getSymbol();
       const declaration = symbol.declarations[0];
+
       if (declaration.isClass()) {
         const ambientDeclaration = !declaration.members.find((m) => m.isConstructor())?.body;
         if (!ambientDeclaration) {
-          typename = "void";
+          return "void*";
         }
       }
     }
@@ -712,7 +764,7 @@ export class TSType {
 
     switch (typename) {
       case "String": // @todo
-        return "string";
+        return "string*";
       case "Number":
       case "number":
         return "double";
@@ -741,6 +793,11 @@ export class TSType {
         if (!typename) {
           throw new Error(`Type '${this.toString()}' is not mapped to C++ type`);
         }
+
+        if (this.isClassOrInterface()) {
+          typename += "*";
+        }
+
         return typename;
     }
   }

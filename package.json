@@ -9,7 +9,9 @@
         "clean_playground": "rm -rf playground/build playground/extension",
         "lint": "tslint --project tsconfig.json",
         "format": "tslint --project tsconfig.json --fix",
-        "prepare": "npm-prebuilt-dependencies && tsc && npm run pkg",
+        "prepare": "npm-prebuilt-dependencies",
+        "build": "tsc && npm run pkg",
+        "prepack": "tsc && npm run pkg",
         "pkg": "pkg bin --output pkg/compiler",
         "publishToLocalRegistry": "npm-prebuilt-dependencies publish"
     },

@@ -235,6 +235,27 @@ export class Declaration {
     );
   }
 
+  get mapping() {
+    const mapsToDecorator = "MapsTo";
+    const mappingDecorator = this.declaration.decorators?.find((decorator) =>
+      decorator.expression.getText().startsWith(mapsToDecorator)
+    );
+
+    if (mappingDecorator) {
+      const pattern = new RegExp(`(?<=${mapsToDecorator}\\(\\").*(?=\\")`);
+      const decoratorText = mappingDecorator.expression.getText();
+      const cppMethodName = decoratorText.match(pattern);
+
+      if (!cppMethodName) {
+        throw new Error(`@MapsTo in wrong format: ${mappingDecorator.getText()}, expected @MapsTo(\"<method_name>\")`);
+      }
+
+      return cppMethodName[0];
+    }
+
+    return;
+  }
+
   isStaticMethod(): boolean {
     return this.declaration.getText().startsWith(ts.ScriptElementKindModifier.staticModifier);
   }

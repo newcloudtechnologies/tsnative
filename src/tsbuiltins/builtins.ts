@@ -166,8 +166,7 @@ export class BuiltinTSClosure extends Builtin {
       undefined,
       thisType,
       [],
-      this.generator,
-      "operator()()"
+      this.generator
     );
     if (!isExternalSymbol) {
       throw new Error("External symbol for ts closure call not found");
@@ -360,8 +359,7 @@ export class BuiltinString extends Builtin {
       undefined,
       thisType,
       [thisType],
-      this.generator,
-      "operator=="
+      this.generator
     );
 
     const llvmReturnType = LLVMType.getIntNType(1, this.generator);

@@ -55,7 +55,7 @@ export class Signature {
     const formalParameters = this.getParameters();
 
     function handleType(type: TSType, actualType: TSType, generator: LLVMGenerator) {
-      if ((type.isSupported() && !type.isFunction()) || typenameTypeMap.has(type.toString())) {
+      if ((type.isSupported() && !type.isFunction() && !type.isArray()) || typenameTypeMap.has(type.toString())) {
         return;
       }
 
@@ -81,6 +81,10 @@ export class Signature {
         const actualReturnType = actualCall.getReturnType();
 
         typenameTypeMap.set(formalReturnTypename, actualReturnType);
+      } else if (type.isArray()) {
+        const typeArgument = type.getTypeGenericArguments()[0];
+        const actualTypeArgument = actualType.getTypeGenericArguments()[0];
+        typenameTypeMap.set(typeArgument.originTypename(), actualTypeArgument);
       } else {
         typenameTypeMap.set(type.originTypename(), actualType);
       }

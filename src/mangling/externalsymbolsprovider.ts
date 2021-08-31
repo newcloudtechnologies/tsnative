@@ -196,14 +196,14 @@ export class ExternalSymbolsProvider {
     const formalParameters = signature.getParameters();
     const resolvedSignature = generator.ts.checker.getResolvedSignature(expression)!;
     if (formalParameters.length === 0) {
-      functionTemplateParametersPattern = resolvedSignature.getReturnType().toCppType();
+      functionTemplateParametersPattern = resolvedSignature.getReturnType().toPlainCppType();
       return functionTemplateParametersPattern;
     }
 
     const typenameTypeMap = signature.getGenericsToActualMap(expression);
     const templateTypes: string[] = [];
     typenameTypeMap.forEach((value) => {
-      templateTypes.push(value.toCppType());
+      templateTypes.push(value.toPlainCppType());
     });
 
     functionTemplateParametersPattern = templateTypes.join(",");
@@ -356,12 +356,6 @@ export class ExternalSymbolsProvider {
       matching = parameters === this.argumentsPattern;
     }
 
-    // console.log("=====")
-    //  console.log(cppSignature)
-    //  console.log("parameters:", parameters)
-    //  console.log("this.parametersPattern:", this.parametersPattern)
-    //  console.log("this.argumentsPattern:", this.argumentsPattern)
-
     if (matching) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
 
@@ -375,14 +369,6 @@ export class ExternalSymbolsProvider {
           functionTemplateParameters === this.functionTemplateParametersPattern;
       }
       */
-
-      //  console.log("=====")
-      //  console.log(cppSignature)
-      //  console.log("parameters:", parameters)
-      //  console.log("this.parametersPattern:", this.parametersPattern)
-      //  console.log("this.argumentsPattern:", this.argumentsPattern)
-      //  console.log("classTemplateParameters:", classTemplateParameters)
-      //  console.log("this.classTemplateParametersPattern:", this.classTemplateParametersPattern)
 
       if (this.classTemplateParametersPattern.length > 0) {
         matching = classTemplateParameters === this.classTemplateParametersPattern;
