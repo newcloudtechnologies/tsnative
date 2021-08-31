@@ -62,7 +62,17 @@ export class TemplateInstantiator {
     return cppType;
   }
 
-  private handleGenericConsoleLog(call: ts.CallExpression) {
+  private getConsoleFunction(call: ts.CallExpression) {
+    if (call.getText().startsWith("console.log")) {
+      return "log";
+    } else if (call.getText().startsWith("console.assert")) {
+      return "assert";
+    }
+
+    throw new Error(`Unhandled 'console' call: ${call.getText()}`);
+  }
+
+  private handleGenericConsoleOutput(call: ts.CallExpression) {
     const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, TSType>) => {
       const argumentTypes = call.arguments.map((arg) => {
         let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
@@ -72,7 +82,7 @@ export class TemplateInstantiator {
           tsType = typeMap.get(typename)!;
 
           if (tsType.isObject()) {
-            throw new Error("console.log with object is not supported for generic types");
+            throw new Error("console.log/assert with object is not supported for generic types");
           }
         }
 
@@ -84,7 +94,9 @@ export class TemplateInstantiator {
         );
       });
 
-      const maybeExists = this.demangled.filter((s) => s.includes("console::log"));
+      const consoleFunction = this.getConsoleFunction(call);
+
+      const maybeExists = this.demangled.filter((s) => s.includes(`console::${consoleFunction}`));
 
       const exists = maybeExists.some((s) => {
         return (
@@ -94,7 +106,7 @@ export class TemplateInstantiator {
       });
 
       if (!exists) {
-        const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
+        const templateSignature = `template void console::${consoleFunction}(${argumentTypes.join(", ")});`;
         this.generatedContent.push(templateSignature);
       }
     });
@@ -104,7 +116,7 @@ export class TemplateInstantiator {
     });
   }
 
-  private handleConsoleLog(node: ts.Node) {
+  private handleConsoleOutput(node: ts.Node) {
     let call: ts.CallExpression;
     if (ts.isExpressionStatement(node)) {
       call = node.expression as ts.CallExpression;
@@ -112,7 +124,7 @@ export class TemplateInstantiator {
       call = node;
     } else {
       throw new Error(
-        `Expected 'console.log' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${
+        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${
           ts.SyntaxKind[node.kind]
         }`
       );
@@ -122,7 +134,7 @@ export class TemplateInstantiator {
       this.generator.ts.checker.getTypeAtLocation(arg).isTypeParameter()
     );
     if (hasGenericArguments) {
-      this.handleGenericConsoleLog(call);
+      this.handleGenericConsoleOutput(call);
     } else {
       const argumentTypes = call.arguments.map((arg) => {
         const tsType = this.generator.ts.checker.getTypeAtLocation(arg);
@@ -135,7 +147,9 @@ export class TemplateInstantiator {
         );
       });
 
-      const maybeExists = this.demangled.filter((s) => s.includes("console::log"));
+      const consoleFunction = this.getConsoleFunction(call);
+
+      const maybeExists = this.demangled.filter((s) => s.includes(`console::${consoleFunction}`));
 
       const exists = maybeExists.some((signature) => {
         return (
@@ -145,7 +159,7 @@ export class TemplateInstantiator {
       });
 
       if (!exists) {
-        const templateSignature = `template void console::log(${argumentTypes.join(", ")});`;
+        const templateSignature = `template void console::${consoleFunction}(${argumentTypes.join(", ")});`;
         this.generatedContent.push(templateSignature);
       }
     }
@@ -384,8 +398,8 @@ export class TemplateInstantiator {
       node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.methodsVisitor.bind(this)));
     }
 
-    if (node.getText().startsWith("console.log")) {
-      this.handleConsoleLog(node);
+    if (node.getText().startsWith("console.log") || node.getText().startsWith("console.assert")) {
+      this.handleConsoleOutput(node);
     } else if (
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&

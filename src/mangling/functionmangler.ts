@@ -69,7 +69,7 @@ export class FunctionMangler {
     }
 
     return {
-      isExternalSymbol: baseName === "assert", // @todo: make `assert` mangled C++ symbol (stdlib)
+      isExternalSymbol: false,
       qualifiedName: scopePrefix + baseName + typeParametersNames,
     };
   }
