@@ -2,7 +2,7 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { ThisData, Scope } from "../scope";
 import { FunctionMangler } from "../mangling";
-import { SIZEOF_STRING, SIZEOF_TSCLOSURE } from "../cppintegration/constants";
+import { SIZEOF_STRING } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
@@ -137,12 +137,9 @@ export class BuiltinTSClosure extends Builtin {
   private readonly llvmType: LLVMType;
   readonly lazyClosure: LazyClosure;
 
-  constructor(generator: LLVMGenerator) {
-    super("TSClosure__class", generator);
-    const structType = LLVMStructType.create(generator, "TSClosure__class");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_TSCLOSURE);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+  constructor(declaration: Declaration, generator: LLVMGenerator) {
+    super(declaration.type.mangle(), generator);
+    this.llvmType = declaration.type.getLLVMType();
 
     this.lazyClosure = new LazyClosure(generator);
   }

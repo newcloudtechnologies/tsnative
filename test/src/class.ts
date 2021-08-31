@@ -9,8 +9,6 @@
  *
  */
 
-// @ts-nocheck
-
 {
   class B {
     cnt: number = 0;
@@ -29,29 +27,29 @@
 }
 
 {
-  class ClassA {
+  class A {
     static a: number = 0;
     constructor() { }
   }
 
-  class ClassB extends ClassA {
+  class B extends A {
     static b: number = 0;
 
     constructor() {
       super()
-      ClassB.a++;
+      B.a++;
     }
 
     getA(): number {
-      return ClassB.a;
+      return B.a;
     }
 
     setA(v: number) {
-      ClassB.a = v;
+      B.a = v;
     }
   }
 
-  const inst = new ClassB();
+  const inst = new B();
 
   console.assert(inst.getA() === 1, "class: inst.getA() === 1 failed");
 
@@ -59,62 +57,62 @@
 
   console.assert(inst.getA() === 2, "class: inst.getA() === 2 failed");
 
-  console.assert(ClassA.a === 2, "class: ClassA.a === 2 failed");
-  console.assert(ClassB.a === 2, "class: ClassB.a === 2 failed");
+  console.assert(A.a === 2, "class: ClassA.a === 2 failed");
+  console.assert(B.a === 2, "class: ClassB.a === 2 failed");
 
-  ClassB.a = 3;
-  console.assert(ClassA.a === 3, "class: ClassA.a === 3 failed");
-  console.assert(ClassB.a === 3, "class: ClassB.a === 3 failed");
+  B.a = 3;
+  console.assert(A.a === 3, "class: ClassA.a === 3 failed");
+  console.assert(B.a === 3, "class: ClassB.a === 3 failed");
 
-  ClassA.a = 4;
-  console.assert(ClassA.a === 4, "class: ClassA.a === 4 failed");
-  console.assert(ClassB.a === 4, "class: ClassB.a === 4 failed");
+  A.a = 4;
+  console.assert(A.a === 4, "class: ClassA.a === 4 failed");
+  console.assert(B.a === 4, "class: ClassB.a === 4 failed");
 
-  console.assert(ClassB.b === 0, "class: ClassB.b === 0 failed");
+  console.assert(B.b === 0, "class: ClassB.b === 0 failed");
 
-  ClassB.b = 1;
+  B.b = 1;
 
-  console.assert(ClassB.b === 1, "class: ClassB.b === 1 failed");
+  console.assert(B.b === 1, "class: ClassB.b === 1 failed");
 }
 
 {
-  class ClassAA {
+  class A {
     static a: number = 0;
     constructor() { }
   }
 
-  class ClassBB extends ClassAA {
+  class B extends A {
     static a: number = 0;
 
     constructor() {
       super();
-      ClassAA.a++;
+      A.a++;
     }
 
     setStatic(v: number) {
-      ClassAA.a = v;
+      A.a = v;
     }
   }
 
-  const inst = new ClassBB();
+  const inst = new B();
   inst.setStatic(1);
 
-  console.assert(ClassBB.a === 0, "ClassBB.a === 0 failed");
-  console.assert(ClassAA.a === 1, "ClassAA.a === 1 failed");
+  console.assert(B.a === 0, "ClassBB.a === 0 failed");
+  console.assert(A.a === 1, "ClassAA.a === 1 failed");
 }
 
 {
-  class ClasssA {
+  class A {
     static a: number = 0;
     constructor() { }
   }
 
-  class ClasssB extends ClasssA {
+  class B extends A {
     static b: number = 0;
 
     constructor() {
       super();
-      ClasssB.a++;
+      B.a++;
     }
   }
 
@@ -133,10 +131,10 @@
   console.assert(ClasssB.b === 1, "class: ClasssB.b === 1 failed");
   */
 
-  new ClasssB();
+  new B();
 
-  console.assert(ClasssB.a === 1, "class: ClasssB.a === 1 failed");
-  console.assert(ClasssA.a === 1, "class: ClasssA.a === 1 failed");
+  console.assert(B.a === 1, "class: ClasssB.a === 1 failed");
+  console.assert(A.a === 1, "class: ClasssA.a === 1 failed");
 }
 
 {
@@ -249,7 +247,7 @@
 }
 
 {
-  class Clazz {
+  class A {
     public s: string = "sss";
     public r: string;
     public n: number = 3;
@@ -259,7 +257,7 @@
     }
   }
 
-  let inst = new Clazz();
+  let inst = new A();
 
   console.assert(inst.s === "sss", "class: inst.s === 'sss' failed");
   console.assert(inst.r === "rrr", "class: inst.r === 'rrr' failed");
@@ -267,7 +265,7 @@
 }
 
 {
-  class Clazzz {
+  class A {
     public n: number = 3;
 
     constructor() {
@@ -275,7 +273,7 @@
     }
   }
 
-  let inst = new Clazzz();
+  let inst = new A();
 
   console.assert(inst.n === 10, "class: inst.n === 10 failed");
 }

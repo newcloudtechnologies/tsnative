@@ -85,7 +85,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
             }, this.generator.symbolTable.currentScope)
             .map((value) => value.value);
 
-          const declaredLLVMFunctionType = this.generator.builtinTSClosure.getLLVMType();
+          const declaredLLVMFunctionType = this.generator.tsclosure.getLLVMType();
           return this.handleTSClosureCall(
             call,
             signature,
@@ -169,7 +169,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const valueDeclaration = symbol.declarations[0];
     const signature = this.generator.ts.checker.getResolvedSignature(expression);
 
-    if (this.generator.builtinTSClosure.lazyClosure.isLazyClosure(knownFunction)) {
+    if (this.generator.tsclosure.lazyClosure.isLazyClosure(knownFunction)) {
       let closureEnv = this.generator.meta.getFunctionEnvironment(valueDeclaration);
       const lazyClosureEnvironment = this.generator.builder.createLoad(
         this.generator.builder.createSafeInBoundsGEP(knownFunction, [0, 0])
@@ -202,7 +202,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     if (knownFunction.type.isPointer() && knownFunction.type.getPointerElementType().isIntegerType(8)) {
-      const declaredLLVMFunctionType = this.generator.builtinTSClosure.getLLVMType();
+      const declaredLLVMFunctionType = this.generator.tsclosure.getLLVMType();
       return this.handleTSClosureCall(
         expression,
         signature,
@@ -225,7 +225,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const valueDeclaration = symbol.declarations[0];
     const signature = this.generator.ts.checker.getResolvedSignature(expression);
 
-    if (this.generator.builtinTSClosure.lazyClosure.isLazyClosure(ptr)) {
+    if (this.generator.tsclosure.lazyClosure.isLazyClosure(ptr)) {
       let closureEnv = this.generator.meta.getFunctionEnvironment(valueDeclaration);
       const lazyClosureEnvironment = this.generator.builder.createLoad(
         this.generator.builder.createSafeInBoundsGEP(ptr, [0, 0])
@@ -424,7 +424,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
         const functionType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
         closure = this.makeClosure(fn, functionType, e);
-        const closureCall = this.generator.builtinTSClosure.getLLVMCall();
+        const closureCall = this.generator.tsclosure.getLLVMCall();
 
         if (llvmReturnType.isVoid()) {
           return this.generator.builder.createSafeCall(closureCall, [closure]);
@@ -448,7 +448,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    const getEnvironment = this.generator.builtinTSClosure.getLLVMGetEnvironment();
+    const getEnvironment = this.generator.tsclosure.getLLVMGetEnvironment();
     const environment = this.generator.builder.createBitCast(
       this.generator.builder.createSafeCall(getEnvironment, [closure]),
       environmentStructType.getPointer()
@@ -456,7 +456,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     this.storeActualArguments(adjustedArgs, environment, closureEnvironment?.fixedArgsCount);
 
-    const closureCall = this.generator.builtinTSClosure.getLLVMCall();
+    const closureCall = this.generator.tsclosure.getLLVMCall();
     if (llvmReturnType.isVoid()) {
       return this.generator.builder.createSafeCall(closureCall, [closure]);
     }
@@ -599,7 +599,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     this.generator.meta.registerFunctionEnvironment(expressionDeclaration, env);
 
     if (declaration.typeParameters) {
-      return this.generator.builtinTSClosure.lazyClosure.create(env.untyped);
+      return this.generator.tsclosure.lazyClosure.create(env.untyped);
     }
 
     if (llvmArgumentTypes.some((argType) => argType.isClosure())) {
@@ -607,7 +607,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         !ts.isCallExpression(declaration.parent) ||
         !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.generator)
       ) {
-        return this.generator.builtinTSClosure.lazyClosure.create(env.untyped);
+        return this.generator.tsclosure.lazyClosure.create(env.untyped);
       }
     }
 
@@ -987,7 +987,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           const args = handledArgs.map((value) => value.value);
 
           return this.handleTSClosureCall(expression, signature, args, callable, undefined, outerEnv);
-        } else if (this.generator.builtinTSClosure.lazyClosure.isLazyClosure(callable)) {
+        } else if (this.generator.tsclosure.lazyClosure.isLazyClosure(callable)) {
           const initializer = propertySymbol.valueDeclaration?.initializer;
           if (!initializer) {
             throw new Error(`Initializer not found for '${expression.expression.getText()}'`);
@@ -1123,7 +1123,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const creationResult = this.generator.llvm.function.create(
       llvmReturnType,
       llvmArgumentTypes,
-      qualifiedName + (valueDeclaration.isStaticMethod() ? "__static" : "")
+      qualifiedName + "__" + valueDeclaration.unique + (valueDeclaration.isStaticMethod() ? "__static" : "")
     );
     let { fn } = creationResult;
     const { existing } = creationResult;
@@ -1351,11 +1351,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
   private makeClosure(fn: LLVMValue, functionType: TSType, env: Environment) {
     const functionDeclaration = functionType.getSymbol().declarations[0];
-    const closure = this.generator.builtinTSClosure.createClosure(
-      fn,
-      env.untyped,
-      functionDeclaration.parameters.length
-    );
+    const closure = this.generator.tsclosure.createClosure(fn, env.untyped, functionDeclaration.parameters.length);
     this.generator.meta.registerClosureEnvironment(closure, env);
     return closure;
   }
@@ -1504,7 +1500,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     this.generator.meta.registerFunctionEnvironment(expressionDeclaration, env);
 
     if (declaration.typeParameters) {
-      return this.generator.builtinTSClosure.lazyClosure.create(env.untyped);
+      return this.generator.tsclosure.lazyClosure.create(env.untyped);
     }
 
     if (llvmArgumentTypes.some((argType) => argType.isClosure())) {
@@ -1512,14 +1508,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
         !ts.isCallExpression(declaration.parent) ||
         !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.generator)
       ) {
-        return this.generator.builtinTSClosure.lazyClosure.create(env.untyped);
+        return this.generator.tsclosure.lazyClosure.create(env.untyped);
       }
     }
 
     const tsReturnType = signature.getReturnType();
     const llvmReturnType = tsReturnType.getLLVMReturnType();
 
-    const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], this.generator.randomString);
+    const functionName = expression.name
+      ? expression.name.getText() + "__" + this.generator.randomString
+      : this.generator.randomString;
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
 
     this.handleFunctionBody(llvmReturnType, expressionDeclaration, fn, env);
     llvm.verifyFunction(fn.unwrapped as llvm.Function);

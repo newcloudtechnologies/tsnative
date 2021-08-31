@@ -71,15 +71,15 @@ export class ClassHandler extends AbstractNodeHandler {
 
     const name = declaration.name!.getText();
     const thisType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-    if (thisType.isDeclared() && parentScope.get(name)) {
+    const mangledTypename = thisType.mangle();
+
+    if (thisType.isDeclared() && parentScope.get(mangledTypename)) {
       return;
     }
 
     const llvmType = thisType.getLLVMType();
-
     const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
 
-    const mangledTypename = thisType.mangle();
     const scope = new Scope(name, mangledTypename, parentScope, {
       declaration,
       llvmType,

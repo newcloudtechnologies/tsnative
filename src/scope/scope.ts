@@ -432,7 +432,7 @@ export function populateContext(
     }
 
     const index = variables.findIndex((variable) => {
-      if (variable === key || variable + "__class" === key) {
+      if (variable === key || (key.startsWith(variable + "__class") && value instanceof Scope)) {
         return true;
       }
 

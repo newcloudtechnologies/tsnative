@@ -124,7 +124,15 @@ export class AccessHandler extends AbstractExpressionHandler {
       this.generator.handleExpression(expression.argumentExpression, env)
     );
 
-    return this.generator.builder.createSafeCall(subscription, [arrayUntyped, index]);
+    const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    let elementType = arrayType.getTypeGenericArguments()[0];
+    if (elementType.isFunction()) {
+      elementType = this.generator.tsclosure.getTSType();
+    }
+
+    const element = this.generator.builder.createSafeCall(subscription, [arrayUntyped, index]);
+
+    return this.generator.builder.createBitCast(element, elementType.getLLVMType());
   }
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): LLVMValue {

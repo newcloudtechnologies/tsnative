@@ -46,9 +46,9 @@ export class ImportsHandler extends AbstractNodeHandler {
                 const value = this.generator.symbolTable.get(name);
                 parentScope.set(name, value);
               } catch (_) {
-                // Or maybe it is a class?
-                const value = this.generator.symbolTable.get(name + "__class");
-                parentScope.set(name + "__class", value);
+                // Or maybe it is a class/interface?
+                const value = this.generator.symbolTable.get(type.mangle());
+                parentScope.set(type.mangle(), value);
               }
 
               // Ignore empty catch block

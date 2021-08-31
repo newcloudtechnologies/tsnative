@@ -11,7 +11,7 @@
 
 {
     function f(a: number) {
-        return function() {
+        return function () {
             return a;
         }
     }
@@ -20,42 +20,42 @@
 }
 
 {
-    function ff() {
+    function f() {
         let a = 22;
-        return function() {
+        return function () {
             return a;
         }
     }
-    const fff = ff();
-    console.assert(fff() === 22, "Local variable capture failed");
+    const ff = f();
+    console.assert(ff() === 22, "Local variable capture failed");
 }
 
 {
-    function fff(_: number, fn: () => number) {
-        return function() {
+    function f(_: number, fn: () => number) {
+        return function () {
             return fn();
         }
     }
-    let ffff = function() {
+    let ff = function () {
         return 42;
     }
-    const f = fff(111, ffff);
-    console.assert(f() === 42, "Funarg capture failed");
+    const fff = f(111, ff);
+    console.assert(fff() === 42, "Funarg capture failed");
 }
 
 {
     let i = 22;
-    function ffff() {
+    function f() {
         i = 42;
     }
-    ffff();
+    f();
     console.assert(i === 42, "Free variable capture failed");
 }
 
 {
     let a = 0;
     function f() {
-        return function() {
+        return function () {
             return a;
         }
     }
@@ -66,24 +66,24 @@
 }
 
 {
-    function f2(a: number) {
+    function f(a: number) {
         return {
             ff: () => a + 1
         }
     }
 
-    const fval = f2(22)
+    const fval = f(22)
     console.assert(fval.ff() === 23, "In-object closure test failed");
 }
 
 {
     function f(fn: () => number) {
-        return function() {
+        return function () {
             return fn();
         }
     }
     let a = 42;
-    let g = function() {
+    let g = function () {
         return a;
     }
     const h = f(g);
@@ -91,38 +91,38 @@
 }
 
 {
-    function f1(fn: () => number) {
-        return function() {
+    function f(fn: () => number) {
+        return function () {
             return {
                 fun: fn
             }
         }
     }
     let a = 42;
-    let g = function() {
+    let g = function () {
         return a;
     }
-    const h = f1(g);
+    const h = f(g);
     const v = h();
 
     console.assert(v.fun() === a, "Funarg closure in-object capturing failed");
 }
 
 {
-    function f2(fn: () => number) {
-        return function(firstAddend: number) {
+    function f(fn: () => number) {
+        return function (firstAddend: number) {
             return {
-                fun: function(secondAddend: number) {
+                fun: function (secondAddend: number) {
                     return fn() + firstAddend + secondAddend;
                 }
             }
         }
     }
     let a = 1;
-    let g = function() {
+    let g = function () {
         return a;
     }
-    const h = f2(g);
+    const h = f(g);
     const v = h(100);
 
     console.assert(v.fun(10) === 111, "More complex funarg capturing failed");

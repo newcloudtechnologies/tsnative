@@ -13,6 +13,7 @@ import { LLVMGenerator } from "../generator";
 import { Scope } from "../scope/scope";
 import { TSType } from "../ts/type";
 import * as ts from "typescript";
+import * as crypto from "crypto";
 
 export class Declaration {
   private readonly declaration: ts.Declaration;
@@ -55,6 +56,22 @@ export class Declaration {
 
   get parent() {
     return this.declaration.parent;
+  }
+
+  private get parentBlock() {
+    let parentNode = this.declaration.parent;
+
+    while (parentNode.parent && !ts.isBlock(parentNode)) {
+      parentNode = parentNode.parent;
+    }
+
+    return parentNode;
+  }
+
+  get unique() {
+    const hashSource =
+      this.parentBlock.getText() + this.parentBlock.getSourceFile().fileName + this.parentBlock.getStart();
+    return crypto.createHash("sha256").update(hashSource).digest("hex");
   }
 
   get heritageClauses() {

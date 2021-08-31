@@ -29,14 +29,14 @@
 }
 
 {
-    function fz() {
+    function f() {
         let z = 9119;
         return function fn(_: () => void) {
             return z;
         }
     }
 
-    const ffz = fz();
-    const z = ffz(() => { });
+    const ff = f();
+    const z = ff(() => { });
     console.assert(z === 9119, "Function expression with funarg in return failed");
 }

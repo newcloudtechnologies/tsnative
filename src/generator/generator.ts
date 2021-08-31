@@ -16,7 +16,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { GC_DEFINITION } from "std-typescript-llvm/constants";
+import { GC_DEFINITION, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -49,8 +49,8 @@ export class LLVMGenerator {
   readonly builtinInt8: BuiltinInt8;
   readonly builtinUInt32: BuiltinUInt32;
   readonly builtinString: BuiltinString;
-  readonly builtinTSClosure: BuiltinTSClosure;
 
+  private builtinTSClosure: BuiltinTSClosure | undefined;
   private garbageCollector: GC | undefined;
 
   readonly sizeOf: SizeOf;
@@ -70,7 +70,6 @@ export class LLVMGenerator {
     this.builtinUInt32 = new BuiltinUInt32(this);
 
     this.builtinString = new BuiltinString(this);
-    this.builtinTSClosure = new BuiltinTSClosure(this);
 
     this.sizeOf = new SizeOf();
 
@@ -118,7 +117,7 @@ export class LLVMGenerator {
   initGC(): void {
     const gc = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === GC_DEFINITION);
     if (!gc) {
-      throw new Error("No GC definition found");
+      throw new Error("No std GC file found");
     }
     gc.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
@@ -131,6 +130,25 @@ export class LLVMGenerator {
     });
     if (!this.garbageCollector) {
       throw new Error("GC declaration not found");
+    }
+  }
+
+  initTSClosure(): void {
+    const tsclosure = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === UTILITY_DEFINITIONS);
+    if (!tsclosure) {
+      throw new Error("No std utility source file found");
+    }
+    tsclosure.forEachChild((node) => {
+      if (ts.isClassDeclaration(node)) {
+        const clazz = Declaration.create(node as ts.ClassDeclaration, this);
+        const clazzName = clazz.type.getSymbol().escapedName;
+        if (clazzName === "TSClosure") {
+          this.builtinTSClosure = new BuiltinTSClosure(clazz, this);
+        }
+      }
+    });
+    if (!this.builtinTSClosure) {
+      throw new Error("TSClosure declaration not found");
     }
   }
 
@@ -204,6 +222,14 @@ export class LLVMGenerator {
       this.initGC();
     }
     return this.garbageCollector!;
+  }
+
+  get tsclosure() {
+    if (!this.builtinTSClosure) {
+      this.initTSClosure();
+    }
+
+    return this.builtinTSClosure!;
   }
 
   get randomString() {

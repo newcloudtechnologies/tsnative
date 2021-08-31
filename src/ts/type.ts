@@ -163,7 +163,7 @@ export class TSType {
   }
 
   isUnion(): this is ts.UnionType {
-    return this.type.isUnion() && (this.type.flags & ts.TypeFlags.BooleanLike) === 0;
+    return this.type.isUnion() && (this.type.flags & ts.TypeFlags.BooleanLike) === 0 && !this.isEnum();
   }
 
   isIntersection(): this is ts.IntersectionType {
@@ -202,7 +202,7 @@ export class TSType {
   }
 
   isEnum() {
-    return Boolean(this.type.flags & ts.TypeFlags.Enum);
+    return Boolean(this.type.flags & (ts.TypeFlags.Enum | ts.TypeFlags.EnumLiteral | ts.TypeFlags.EnumLike));
   }
 
   isVoid() {
@@ -324,7 +324,7 @@ export class TSType {
             .map((t) => getElementTypeName(t))
             .join(".");
         }
-        return elementType.toString();
+        return elementType.mangle();
       };
 
       return this.types
@@ -372,8 +372,10 @@ export class TSType {
 
         if (declaration.isInterface()) {
           suffix = "interface";
+          suffix += "__" + declaration.unique;
         } else if (declaration.isClass()) {
           suffix = "class";
+          suffix += "__" + declaration.unique;
         }
       }
     }
@@ -474,10 +476,12 @@ export class TSType {
       this.getSymbol().declarations.find((decl) => decl.isClass()) ||
       this.getSymbol().declarations.find((decl) => decl.isInterface());
 
-    if ((declaration && declaration.isClass()) || declaration?.isInterface()) {
+    if (declaration) {
       const namespace = declaration.getNamespace();
-      const name = declaration.isClass() ? namespace.concat(this.mangle()).join("_") : this.toString();
+      const name = namespace.concat(this.mangle()).join("_");
+
       const knownStructType = this.checker.generator.module.getTypeByName(name);
+
       if (!knownStructType) {
         structType = LLVMStructType.create(this.checker.generator, name);
         const props = this.getProperties().map((symbol) => symbol.name);
@@ -653,11 +657,11 @@ export class TSType {
           !ts.isCallExpression(declaration.parent) ||
           !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.checker.generator)
         ) {
-          return this.checker.generator.builtinTSClosure.lazyClosure.type;
+          return this.checker.generator.tsclosure.lazyClosure.type;
         }
       }
 
-      return this.checker.generator.builtinTSClosure.getLLVMType();
+      return this.checker.generator.tsclosure.getLLVMType();
     }
 
     if (this.isUndefined()) {

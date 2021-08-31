@@ -107,7 +107,7 @@ export class TSArray {
   createPush(elementType: TSType, expression: ts.ArrayLiteralExpression) {
     const arrayType = this.getType(expression);
     if (elementType.isFunction()) {
-      elementType = this.generator.builtinTSClosure.getTSType();
+      elementType = this.generator.tsclosure.getTSType();
     }
 
     const pushSymbol = arrayType.getProperty("push");
@@ -145,10 +145,7 @@ export class TSArray {
 
   createSubscription(expression: ts.ElementAccessExpression) {
     const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
-    let elementType = arrayType.getTypeGenericArguments()[0];
-    if (elementType.isFunction()) {
-      elementType = this.generator.builtinTSClosure.getTSType();
-    }
+
     const valueDeclaration = arrayType.getSymbol().valueDeclaration;
     if (!valueDeclaration) {
       throw new Error("No declaration for Array[] found");
@@ -167,7 +164,7 @@ export class TSArray {
       throw new Error(`Array 'subscription' for type '${arrayType.toString()}' not found`);
     }
 
-    const retType = elementType.getLLVMType();
+    const retType = LLVMType.getInt8Type(this.generator).getPointer(); // void*; caller have to perform cast
 
     const { fn: subscript } = this.generator.llvm.function.create(
       retType,
@@ -214,7 +211,7 @@ export class TSArray {
   createToString(arrayType: TSType, expression: ts.Expression): LLVMValue {
     let elementType = arrayType.getTypeGenericArguments()[0];
     if (elementType.isFunction()) {
-      elementType = this.generator.builtinTSClosure.getTSType();
+      elementType = this.generator.tsclosure.getTSType();
     }
 
     const toStringSymbol = arrayType.getProperty("toString");
