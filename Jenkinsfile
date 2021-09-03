@@ -11,7 +11,7 @@ pipeline {
                 stage('Linux x86_64') {
                     agent {
                         docker {
-                            image "docreg.devos.club/typescript-environment:1.3"
+                            image "docreg.devos.club/typescript-environment:1.4"
                             args "--user root"
                             registryUrl 'https://docreg.devos.club'
                             registryCredentialsId 'docker_kos'
@@ -35,6 +35,8 @@ pipeline {
                             steps {
                                 script {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+
                                         useradd()
                                         ssh_config()
                                         ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
@@ -107,6 +109,8 @@ pipeline {
                             steps {
                                 script {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+                                        
                                         sh """
                                             mkdir -p \$HOME/.ssh
                                             cat \${SSH_KEY} > \$HOME/.ssh/id_rsa
