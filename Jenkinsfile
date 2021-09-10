@@ -11,24 +11,12 @@ pipeline {
                 stage('Linux x86_64') {
                     agent {
                         docker {
-                            image "docreg.devos.club/typescript-environment:1.4"
+                            image "docreg.devos.club/typescript-environment:1.5"
                             args "--user root"
                             registryUrl 'https://docreg.devos.club'
                             registryCredentialsId 'docker_kos'
                             alwaysPull true
                         }
-                    }
-                    environment {
-                         // Override HOME to WORKSPACE
-                         // ВНИМАНИЕ! опцию надо будет включить, когда переведём контейнер в пользовательское окружение!!
-                         // пока не работает, поскольку всё внутри проекта создаётся из под пользователя jenkins
-                         //HOME = "${WORKSPACE}"
-                         // ВНИМАНИЕ! опцию надо будет включить, когда переведём контейнер в пользовательское окружение!!
-                         // пока не работает, поскольку всё внутри проекта создаётся из под пользователя jenkins
-                         // or override default cache directory (~/.npm)
-                         //NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
-                         // CI enable
-                         CI = 'true'
                     }
                     stages {
                         stage("Build") {
@@ -97,12 +85,7 @@ pipeline {
                         label 'winsrv19'
                     }
                     environment {
-                         // Override HOME to WORKSPACE
-                         HOME = "${WORKSPACE}"
-                         // or override default cache directory (~/.npm)
-                         NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
-                         // CI enable
-                         CI = 'true'
+                         PATH = "/usr/bin:${env.PATH}"
                     }
                     stages {
                         stage("Build") {
@@ -132,7 +115,7 @@ pipeline {
                                         sh "npm config list"
 
                                         // reorder paths so that npm uses msys' git instead one from windows
-                                        sh "export PATH=/usr/bin:\$PATH && DEBUG=1 npm install"
+                                        sh "DEBUG=1 npm install"
                                         sh "npm run build"
                                     }
                                 }

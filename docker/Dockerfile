@@ -1,6 +1,6 @@
-# docreg.devos.club/typescript-environment:1.4
+# docreg.devos.club/typescript-environment:1.5
 
-FROM docreg.devos.club/ubuntu-cmake:1.8
+FROM docreg.devos.club/ubuntu-cmake:1.9
 
 LABEL TypeScript-LLVM environment image
 
