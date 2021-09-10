@@ -29,26 +29,29 @@ set(LIBRARY_DEPENDENCIES )
 
 add_custom_target(build_anyway ALL)
 
+# build extensions from builder only
+set(TS_EXTENSION_TARGET "exts")
+
 if (NOT ${EXTENSION} STREQUAL "")
     include(${EXTENSION}/CMakeLists.txt)
 
-    get_target_property(exts_INCLUDES exts INCLUDES)
-    get_target_property(exts_LIBRARY exts OUTPUT)
-    get_property(LIBRARY_DEPENDENCIES TARGET exts PROPERTY LIBRARY_DEPENDENCIES)
-    get_target_property(exts_HEADER_DEPENDENCIES exts HEADER_DEPENDENCIES)
-    get_target_property(EXTRA_DEPENDENCIES exts EXTRA_DEPENDENCIES)
-    get_property(DEFINITIONS TARGET exts PROPERTY DEFINITIONS)
+    get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDES)
+    get_target_property(exts_LIBRARY ${TS_EXTENSION_TARGET} OUTPUT)
+    get_property(LIBRARY_DEPENDENCIES TARGET ${TS_EXTENSION_TARGET} PROPERTY LIBRARY_DEPENDENCIES)
+    get_target_property(exts_HEADER_DEPENDENCIES ${TS_EXTENSION_TARGET} HEADER_DEPENDENCIES)
+    get_target_property(EXTRA_DEPENDENCIES ${TS_EXTENSION_TARGET} EXTRA_DEPENDENCIES)
+    get_property(DEFINITIONS TARGET ${TS_EXTENSION_TARGET} PROPERTY DEFINITIONS)
 
     list(FILTER exts_HEADER_DEPENDENCIES EXCLUDE REGEX "^/usr*")
     set(INCLUDES ${exts_INCLUDES} ${exts_HEADER_DEPENDENCIES})
 
-    get_target_property(EXTRA_CMAKE exts EXTRA_CMAKE)
+    get_target_property(EXTRA_CMAKE ${TS_EXTENSION_TARGET} EXTRA_CMAKE)
 
     if (${EXTRA_CMAKE})
         include(${EXTRA_CMAKE})
     endif()
 else()
-    add_custom_target(exts)
+    add_custom_target(${TS_EXTENSION_TARGET})
 endif()
 
 if (PRINT_IR)
@@ -62,6 +65,6 @@ list(APPEND DEPENDENCIES
     "${exts_LIBRARY}"
     "${LIBRARY_DEPENDENCIES}")
 
-build(binary_target exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
+build(binary_target ${TS_EXTENSION_TARGET} "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
 
 add_dependencies(build_anyway ${binary_target})
