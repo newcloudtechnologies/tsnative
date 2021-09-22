@@ -157,6 +157,10 @@ export class Declaration {
     return ts.isInterfaceDeclaration(this.declaration);
   }
 
+  isClassOrInterface() {
+    return this.isClass() || this.isInterface();
+  }
+
   isMethod() {
     return ts.isMethodDeclaration(this.declaration);
   }

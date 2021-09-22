@@ -279,7 +279,7 @@ function(build target dep_target source includes dependencies extra_dependencies
 
     compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${definitions}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
 
-    list(APPEND DEPENDENCIES ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
+    list(PREPEND DEPENDENCIES ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 

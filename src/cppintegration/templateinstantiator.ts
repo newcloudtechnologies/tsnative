@@ -29,6 +29,7 @@ export class TemplateInstantiator {
     "std-typescript-llvm/include/tsclosure.h",
     "std-typescript-llvm/include/map.h",
     "std-typescript-llvm/include/set.h",
+    "std-typescript-llvm/include/iterable.h",
   ];
   private generatedContent: string[] = [];
 
@@ -80,9 +81,7 @@ export class TemplateInstantiator {
           }
         }
 
-        const typeNamespace = tsType.getNamespace();
-        const cppTypename = tsType.toCppType();
-        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+        return tsType.toCppType();
       });
 
       const consoleFunction = this.getConsoleFunction(call);
@@ -129,10 +128,7 @@ export class TemplateInstantiator {
     } else {
       const argumentTypes = call.arguments.map((arg) => {
         const tsType = this.generator.ts.checker.getTypeAtLocation(arg);
-
-        const typeNamespace = tsType.getNamespace();
-        const cppTypename = tsType.toCppType();
-        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+        return tsType.toCppType();
       });
 
       const consoleFunction = this.getConsoleFunction(call);
@@ -153,6 +149,13 @@ export class TemplateInstantiator {
     }
   }
 
+  private instantiateIteratorResult(type: TSType) {
+    const instance = `template class IteratorResult<${type.toCppType()}>;`;
+    const doubleSpecialization = "template class IteratorResult<double>;";
+
+    return [instance, doubleSpecialization];
+  }
+
   private handleArrayFromVariableDeclaration(node: ts.VariableDeclaration) {
     if (!node.initializer) {
       throw new Error(`Expected initializer: error at ${node.getText()}`);
@@ -160,6 +163,7 @@ export class TemplateInstantiator {
 
     if (ts.isArrayLiteralExpression(node.initializer)) {
       let templateInstance;
+      let iteratorResultInstance;
       if (node.initializer.elements.length > 0) {
         // const arr = [1, 2, 3];
         // Use elements to figure out array type.
@@ -178,24 +182,26 @@ export class TemplateInstantiator {
           throw new Error(`All array's elements have to be of same type: error at '${node.getText()}'`);
         }
 
-        templateInstance = `template class ${this.generator.ts.checker
-          .getTypeAtLocation(node.initializer)
-          .toPlainCppType()};`;
+        const arrayType = this.generator.ts.checker.getTypeAtLocation(node.initializer);
+        templateInstance = `template class ${arrayType.toPlainCppType()};`;
+        iteratorResultInstance = this.instantiateIteratorResult(tsType);
       } else {
         // const arr: number[] = [];
         // Use declared type as array type.
         const tsType = this.generator.ts.checker.getTypeAtLocation(node);
         templateInstance = `template class ${tsType.toPlainCppType()};`;
+        iteratorResultInstance = this.instantiateIteratorResult(tsType);
       }
 
-      this.generatedContent.push(templateInstance);
+      this.generatedContent.push(templateInstance, ...iteratorResultInstance);
     } else if (ts.isCallExpression(node.initializer)) {
       const tsType = this.generator.ts.checker.getTypeAtLocation(node);
       if (!tsType.isArray()) {
         throw new Error(`Array type expected, got '${tsType.toString()}'`); // unreachable
       }
+
       const templateInstance = `template class ${tsType.toPlainCppType()};`;
-      this.generatedContent.push(templateInstance);
+      this.generatedContent.push(templateInstance, ...this.instantiateIteratorResult(tsType));
     }
   }
 
@@ -205,8 +211,11 @@ export class TemplateInstantiator {
     } else {
       if (ts.isCallExpression(node.parent) && ts.isArrayLiteralExpression(node) && node.elements.length === 0) {
         const typeFromParameterDeclaration = this.generator.ts.array.getArgumentArrayType(node);
-        const templateInstance = `template class ${typeFromParameterDeclaration.toPlainCppType()};`;
-        this.generatedContent.push(templateInstance);
+        const arrayTemplateInstance = `template class ${typeFromParameterDeclaration.toPlainCppType()};`;
+        this.generatedContent.push(
+          arrayTemplateInstance,
+          ...this.instantiateIteratorResult(typeFromParameterDeclaration)
+        );
       } else {
         let tsType;
 
@@ -219,15 +228,11 @@ export class TemplateInstantiator {
           if (elementType.isTypeParameter() && !elementType.isSupported()) {
             const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, TSType>) => {
               const concreteElementType = typesMap.get(elementType.toString())!;
-
-              const typeNamespace = concreteElementType.getNamespace();
               const elementTypename = concreteElementType.toCppType();
 
-              const templateInstance = `template class Array<${
-                typeNamespace.length > 0 ? typeNamespace + "::" + elementTypename : elementTypename
-              }>;`;
+              const templateInstance = `template class Array<${elementTypename}>;`;
 
-              this.generatedContent.push(templateInstance);
+              this.generatedContent.push(templateInstance, ...this.instantiateIteratorResult(concreteElementType));
             });
 
             this.sources.forEach((source) => {
@@ -238,8 +243,9 @@ export class TemplateInstantiator {
           }
         }
 
+        const elementType = tsType.getTypeGenericArguments()[0]!;
         const templateInstance = `template class ${tsType.toPlainCppType()};`;
-        this.generatedContent.push(templateInstance);
+        this.generatedContent.push(templateInstance, ...this.instantiateIteratorResult(elementType));
       }
     }
   }
@@ -265,9 +271,7 @@ export class TemplateInstantiator {
           tsType = typesMap.get(tsType.toString())!;
         }
 
-        const typeNamespace = tsType.getNamespace();
-        const cppTypename = tsType.toCppType();
-        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+        return tsType.toCppType();
       });
 
       const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
@@ -287,12 +291,7 @@ export class TemplateInstantiator {
         const arrayTypename = arrayType.toString();
         arrayType = typesMap.get(arrayTypename)!;
 
-        const typeNamespace = arrayType.getNamespace();
-
-        let cppType = arrayType.toCppType();
-        cppType = typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType;
-
-        return cppType;
+        return arrayType.toCppType();
       };
 
       const thisArrayElementType = tsArrayType.getTypeGenericArguments()[0];
@@ -341,10 +340,9 @@ export class TemplateInstantiator {
     const argumentTypes =
       node.arguments.map((a) => {
         const tsType = this.generator.ts.checker.getTypeAtLocation(a);
-        const typeNamespace = tsType.getNamespace();
         const cppType = tsType.toCppType();
 
-        return typeNamespace.length > 0 ? typeNamespace + "::" + cppType : cppType;
+        return cppType;
       }) || [];
 
     const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
@@ -502,7 +500,10 @@ export class TemplateInstantiator {
         const tsType = this.generator.ts.checker.getTypeAtLocation(node);
         const templateInstance = `template class ${tsType.toPlainCppType()};`;
 
-        this.generatedContent.push(templateInstance);
+        const elementType = tsType.getTypeGenericArguments()[0]!;
+        const iteratorResultInstance = `template class IteratorResult<${elementType.toCppType()}>;`;
+
+        this.generatedContent.push(templateInstance, iteratorResultInstance);
       }
     } else {
       ts.forEachChild(node, this.mapNodeVisitor.bind(this));
@@ -523,7 +524,10 @@ export class TemplateInstantiator {
         const tsType = this.generator.ts.checker.getTypeAtLocation(node);
         const templateInstance = `template class ${tsType.toPlainCppType()};`;
 
-        this.generatedContent.push(templateInstance);
+        const elementType = tsType.getTypeGenericArguments()[0]!;
+        const iteratorResultInstance = `template class IteratorResult<${elementType.toCppType()}>;`;
+
+        this.generatedContent.push(templateInstance, iteratorResultInstance);
       }
     } else {
       ts.forEachChild(node, this.setNodeVisitor.bind(this));

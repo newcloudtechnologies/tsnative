@@ -48,9 +48,9 @@ else()
 endif()
 
 set(DEPENDENCIES
-    ${StdLib_LIBRARY}
     ${exts_LIBRARY}
-    ${LIBRARY_DEPENDENCIES})
+    ${LIBRARY_DEPENDENCIES}
+    ${StdLib_LIBRARY})
 
 build(binary_target exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
 

@@ -6,7 +6,14 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION, STUBS } from "std-typescript-llvm/constants";
+import {
+  NUMERIC,
+  DEFINITIONS,
+  UTILITY_DEFINITIONS,
+  GC_DEFINITION,
+  STUBS,
+  ITERABLE,
+} from "std-typescript-llvm/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
@@ -64,7 +71,7 @@ async function main() {
   const demangledTables: string[] = [];
   const mangledTables: string[] = [];
   const includeDirs: string[] = [];
-  options.lib = [STUBS, NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION];
+  options.lib = [STUBS, NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION, ITERABLE];
   options.types = [];
 
   if (!options.strict) {

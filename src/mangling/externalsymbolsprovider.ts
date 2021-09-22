@@ -92,18 +92,15 @@ export class ExternalSymbolsProvider {
     // defined in declaration
     this.parametersPattern = ExternalSymbolsProvider.unqualifyParameters(
       parameterTypes.map((type) => {
-        const typeNamespace = type.getNamespace();
         const cppTypename = type.toCppType();
-        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+        return cppTypename;
       })
     );
 
     // passed in fact
     this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
       argumentTypes.map((type) => {
-        const typeNamespace = type.getNamespace();
-        const cppTypename = type.toCppType();
-        return typeNamespace.length > 0 ? typeNamespace + "::" + cppTypename : cppTypename;
+        return type.toCppType();
       })
     );
 

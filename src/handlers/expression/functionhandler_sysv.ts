@@ -41,7 +41,14 @@ export class SysVFunctionHandler {
     const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
     const llvmReturnType = tsReturnType.getLLVMType().correctCppPrimitiveType();
 
-    const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+    const returnsVoidStar =
+      !tsReturnType.isSymbolless() && tsReturnType.getSymbol().valueDeclaration?.isClassOrInterface();
+
+    const { fn } = this.generator.llvm.function.create(
+      returnsVoidStar ? LLVMType.getInt8Type(this.generator).getPointer() : llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName
+    );
     const body = valueDeclaration.body;
     if (body) {
       throw new Error(`External symbol '${qualifiedName}' cannot have function body`);
@@ -52,10 +59,13 @@ export class SysVFunctionHandler {
     const args = [thisValueUntyped];
 
     if (!llvmReturnType.isCppPrimitiveType()) {
-      return this.generator.builder.createSafeCall(fn, args);
+      let callResult = this.generator.builder.createSafeCall(fn, args);
+      if (returnsVoidStar) {
+        callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+      }
+      return callResult;
     }
 
-    // WTF?
     const allocated = this.generator.gc.allocate(llvmReturnType);
     const callResult = this.generator.builder.createSafeCall(fn, args);
     this.generator.builder.createSafeStore(callResult, allocated);
@@ -137,7 +147,13 @@ export class SysVFunctionHandler {
     const returnType = resolvedSignature.getReturnType();
     const llvmReturnType = returnType.getLLVMType().correctCppPrimitiveType();
 
-    const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+    const returnsVoidStar = !returnType.isSymbolless() && returnType.getSymbol().valueDeclaration?.isClassOrInterface();
+
+    const { fn } = this.generator.llvm.function.create(
+      returnsVoidStar ? LLVMType.getInt8Type(this.generator).getPointer() : llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName
+    );
 
     if (valueDeclaration.body) {
       throw new Error(`External symbol '${qualifiedName}' cannot have function body`);
@@ -154,7 +170,12 @@ export class SysVFunctionHandler {
           `Error at '${expression.getText()}': returning values from C++ in not allowed. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
         );
       }
-      return this.generator.builder.createSafeCall(fn, args);
+
+      let callResult = this.generator.builder.createSafeCall(fn, args);
+      if (returnsVoidStar) {
+        callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+      }
+      return callResult;
     }
 
     const allocated = this.generator.gc.allocate(llvmReturnType);

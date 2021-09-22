@@ -802,7 +802,8 @@ export class TSType {
           typename += "*";
         }
 
-        return typename;
+        const namespace = this.getNamespace();
+        return namespace.length > 0 ? namespace + "::" + typename : typename;
     }
   }
 

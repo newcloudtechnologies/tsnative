@@ -57,26 +57,32 @@ console.assert(keys === expectedKeysSum, "Keys reducing");
 console.assert(nValuesSum === expected_nValuesSum, "Ns sum");
 console.assert(sValuesSum === expected_sValuesSum, "Ss sum");
 
-const is_equal_arrays = function <T>(a: T[], b: T[]): boolean {
-    if (a.length !== b.length) {
-        return false;
-    }
-
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) {
-            return false;
-        }
-    }
-
-    return true;
-};
-
-const expectedKeys = ["a", "b", "c"];
-const expectedValues = [first, second, third];
-
 // test `Map.keys()` and `Map.values()`
-console.assert(is_equal_arrays(m.keys(), expectedKeys), "Map.keys()");
-console.assert(is_equal_arrays(m.values(), expectedValues), "Map.values()");
+{
+    const expectedKeys = ["a", "b", "c"];
+
+    const it = m.keys();
+    let next = it.next();
+    let currentIndex = 0;
+    while (!next.done) {
+        console.assert(next.value === expectedKeys[currentIndex], "Map.keys()");
+        next = it.next();
+        ++currentIndex;
+    }
+}
+
+{
+    const expectedValues = [first, second, third];
+
+    const it = m.values();
+    let next = it.next();
+    let currentIndex = 0;
+    while (!next.done) {
+        console.assert(next.value === expectedValues[currentIndex], "Map.values()");
+        next = it.next();
+        ++currentIndex;
+    }
+}
 
 // test values overwriting
 {
@@ -88,11 +94,34 @@ console.assert(is_equal_arrays(m.values(), expectedValues), "Map.values()");
         .set("b", second)
         .set("c", third);
 
-    const expectedValues = [first, second, third];
     const expectedSize = 3;
 
-    console.assert(is_equal_arrays(m.keys(), expectedKeys), "Map.keys() overwritten");
-    console.assert(is_equal_arrays(m.values(), expectedValues), "Map.values() overwritten");
+    {
+        const expectedKeys = ["a", "b", "c"];
+
+        const it = m.keys();
+        let next = it.next();
+        let currentIndex = 0;
+        while (!next.done) {
+            console.assert(next.value === expectedKeys[currentIndex], "Map.keys() overwritten");
+            next = it.next();
+            ++currentIndex;
+        }
+    }
+
+    {
+        const expectedValues = [first, second, third];
+
+        const it = m.values();
+        let next = it.next();
+        let currentIndex = 0;
+        while (!next.done) {
+            console.assert(next.value === expectedValues[currentIndex], "Map.values() overwritten");
+            next = it.next();
+            ++currentIndex;
+        }
+    }
+
     console.assert(m.size === expectedSize, "Map.size overwritten");
 }
 

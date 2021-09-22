@@ -71,9 +71,41 @@ const is_equal_arrays = function <T>(a: T[], b: T[]): boolean {
 const expectedValues = [first, second, third];
 
 // test `Set.keys()` and `Set.values()`
-console.assert(is_equal_arrays(set.keys(), expectedValues), "Set.keys()");
-console.assert(is_equal_arrays(set.values(), expectedValues), "Set.values()");
-console.assert(is_equal_arrays(set.values(), set.keys()), "Set.values() & Set.keys() are same");
+{
+    const it = set.keys();
+    let next = it.next();
+    let index = 0;
+    while (!next.done) {
+        console.assert(next.value === expectedValues[index], "Set.keys()");
+        next = it.next();
+        ++index;
+    }
+}
+
+{
+    const it = set.values();
+    let next = it.next();
+    let index = 0;
+    while (!next.done) {
+        console.assert(next.value === expectedValues[index], "Set.values()");
+        next = it.next();
+        ++index;
+    }
+}
+
+{
+    const itKeys = set.keys();
+    const itVals = set.values();
+    let nextKey = itKeys.next();
+    let nextVal = itVals.next();
+    while (!nextKey.done && !nextVal.done) {
+        console.assert(nextKey.value === nextVal.value, "Set.values() & Set.keys()");
+        nextKey = itKeys.next();
+        nextVal = itVals.next();
+
+        console.assert(nextVal.done === nextKey.done, "Keys and values are same");
+    }
+}
 
 // test deletion
 const deletionResult = set.delete(first);

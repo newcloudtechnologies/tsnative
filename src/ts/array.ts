@@ -197,10 +197,10 @@ export class TSArray {
       throw new Error(`Array 'concat' for type '${arrayType.toString()}' not found`);
     }
 
-    const llvmArrayType = arrayType.getLLVMType();
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer(); // void*; caller have to perform cast
 
     const { fn: concat } = this.generator.llvm.function.create(
-      llvmArrayType,
+      llvmReturnType,
       [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );

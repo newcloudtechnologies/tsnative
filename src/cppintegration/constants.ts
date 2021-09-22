@@ -11,7 +11,7 @@
 
 // @todo: these values have to be generated using cpp's sizeof operator
 export const SIZEOF_STRING = 32;
-export const SIZEOF_ARRAY = 80;
+export const SIZEOF_ARRAY = 80 + 8;
 export const SIZEOF_TSCLOSURE = 24;
-export const SIZEOF_MAP = 80;
-export const SIZEOF_SET = 72;
+export const SIZEOF_MAP = 80 + 8;
+export const SIZEOF_SET = 72 + 8;

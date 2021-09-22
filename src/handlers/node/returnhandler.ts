@@ -28,8 +28,9 @@ export class ReturnHandler extends AbstractNodeHandler {
         if (!ret.type.equals(currentFunctionReturnType)) {
           const retTypeUnwrapped = ret.type.unwrapPointer();
           if (
-            retTypeUnwrapped.isStructType() &&
-            retTypeUnwrapped.isSameStructs(currentFunctionReturnType.unwrapPointer())
+            (retTypeUnwrapped.isStructType() &&
+              retTypeUnwrapped.isSameStructs(currentFunctionReturnType.unwrapPointer())) ||
+            (ret.type.isPointer() && retTypeUnwrapped.isIntegerType(8))
           ) {
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
           } else if (currentFunctionReturnType.isUnion()) {
