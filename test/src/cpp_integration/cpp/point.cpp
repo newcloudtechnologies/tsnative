@@ -1,6 +1,6 @@
 #include "point.h"
 
-#include <std-typescript-llvm/include/gc.h>
+#include <std/include/gc.h>
 
 using namespace cpp;
 

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es6",
     "lib": ["es2016"],
+    "experimentalDecorators": true,
     "baseUrl": ".",
     "module": "commonjs",
     "outDir": "build",

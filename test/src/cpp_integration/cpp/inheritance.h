@@ -6,7 +6,7 @@
 #include "point.h"
 #include "rect.h"
 
-#include <std-typescript-llvm/include/stdstring.h>
+#include <std/include/stdstring.h>
 
 namespace cpp {
 

@@ -1,8 +1,8 @@
 /// <reference path="dummy_base.d.ts" />
 
 declare module "cpp" {
-    import { ValueType, VTable } from "std-typescript-llvm/decorators/decorators";
-    import { int32_t } from "std-typescript-llvm/definitions/lib.std.numeric";
+    import { ValueType, VTable } from "std/decorators/decorators";
+    import { int32_t } from "std/definitions/lib.std.numeric";
 
     import { Base } from "test";
 

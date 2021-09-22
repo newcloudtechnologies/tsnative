@@ -1,5 +1,5 @@
 declare module "cpp" {
-    import { ValueType } from "std-typescript-llvm/decorators/decorators";
+    import { ValueType } from "std/decorators/decorators";
 
     export class Rect {
         constructor(topLeft: Point, bottomRight: Point);

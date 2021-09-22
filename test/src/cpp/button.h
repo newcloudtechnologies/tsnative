@@ -1,6 +1,6 @@
 #pragma once
 
-#include <std-typescript-llvm/include/tsclosure.h>
+#include <std/include/tsclosure.h>
 
 class Point;
 

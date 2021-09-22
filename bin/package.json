@@ -11,10 +11,11 @@
             "../tsconfig.json",
             "../build/*",
             "../build/**/*",
+            "../build/**/**/*",
             "../node_modules/llvm-node/build/Release/llvm-node.node",
             "../node_modules/segfault-handler/build/Release/segfault-handler.node",
-            "../node_modules/std-typescript-llvm/*",
-            "../node_modules/std-typescript-llvm/**/*"
+            "../std/*",
+            "../std/**/*"
         ]
     },
     "dependencies": {

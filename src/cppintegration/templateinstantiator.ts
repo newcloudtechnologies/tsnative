@@ -23,13 +23,13 @@ export class TemplateInstantiator {
   private readonly demangled: string[] = [];
   private readonly includeDirs: string[] = [];
   private readonly stdIncludes: string[] = [
-    "std-typescript-llvm/include/array.h",
-    "std-typescript-llvm/include/console.h",
-    "std-typescript-llvm/include/stdstring.h",
-    "std-typescript-llvm/include/tsclosure.h",
-    "std-typescript-llvm/include/map.h",
-    "std-typescript-llvm/include/set.h",
-    "std-typescript-llvm/include/iterable.h",
+    "array.h",
+    "console.h",
+    "stdstring.h",
+    "tsclosure.h",
+    "map.h",
+    "set.h",
+    "iterable.h",
   ];
   private generatedContent: string[] = [];
 

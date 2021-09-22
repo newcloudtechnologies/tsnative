@@ -1,8 +1,8 @@
 #pragma once
 
 #include "point.h"
-#include <std-typescript-llvm/include/array.h>
-#include <std-typescript-llvm/include/stdstring.h>
+#include <std/include/array.h>
+#include <std/include/stdstring.h>
 
 namespace cpp {
 

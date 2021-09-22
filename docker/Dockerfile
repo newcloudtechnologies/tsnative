@@ -2,7 +2,7 @@
 
 FROM docreg.devos.club/ubuntu-cmake:1.9
 
-LABEL TypeScript-LLVM environment image
+LABEL TSNative environment image
 
 RUN apt-get update && apt-get install -y \
     sudo \

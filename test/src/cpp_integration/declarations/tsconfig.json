@@ -1,8 +1,15 @@
 {
-    "compilerOptions": {
-        "experimentalDecorators": true
-    },
-    "include": [
-        "*"
-    ]
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["es2016"],
+    "experimentalDecorators": true,
+    "baseUrl": "../../../../",
+    "module": "commonjs",
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "pretty": true
+  },
+  "include": ["*"]
 }

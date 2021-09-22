@@ -57,20 +57,13 @@ export class Preprocessor {
 
     const generatedSources = program.getSourceFiles().map((file) => {
       let filePath = file.fileName;
+
       if (!path.isAbsolute(filePath)) {
-        // @todo: revise this "implementation"
-        if (filePath.startsWith("C:/")) {
-          filePath = filePath.split("C:/")[1];
-        } else if (filePath.startsWith("C:\\")) {
-          filePath = filePath.split("C:\\")[1];
-        }
         filePath = path.resolve(process.cwd(), filePath);
       }
-      // @todo: revise this "implementation"
-      if (filePath.startsWith("C:/")) {
-        filePath = filePath.split("C:/")[1];
-      } else if (filePath.startsWith("C:\\")) {
-        filePath = filePath.split("C:\\")[1];
+
+      if (process.platform === "win32") {
+        filePath = filePath.slice(3); // cut 'C:\' or 'C:/' off
       }
 
       const outFile = path.join(outputDir, filePath);
@@ -92,6 +85,10 @@ export class Preprocessor {
     });
 
     const generatedSourcesWithoutDeclarations = generatedSources.filter((file) => !file.endsWith(".d.ts"));
+
+    if (process.platform === "win32" && path.isAbsolute(options.baseUrl!)) {
+      options.baseUrl = options.baseUrl!.slice(3); // cut 'C:\' or 'C:/' off
+    }
 
     options.baseUrl = path.join(outputDir, options.baseUrl!);
     this.generatedProgram = ts.createProgram(generatedSourcesWithoutDeclarations, options, host);

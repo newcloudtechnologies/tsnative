@@ -745,7 +745,11 @@ export class TSType {
       return "void*";
     } else if (!this.isSymbolless()) {
       const symbol = this.getSymbol();
-      const declaration = symbol.declarations[0];
+      const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+      if (declaration.isInterface()) {
+        return "void*";
+      }
 
       if (declaration.isClass()) {
         const ambientDeclaration = !declaration.members.find((m) => m.isConstructor())?.body;

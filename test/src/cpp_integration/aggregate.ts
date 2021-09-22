@@ -1,5 +1,5 @@
 import { Point, Aggregate } from "./declarations/cpp"
-import { int8_t } from "std-typescript-llvm/definitions/lib.std.numeric"
+import { int8_t } from "std/definitions/lib.std.numeric"
 
 const point = new Point(1, 1);
 

@@ -16,7 +16,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { GC_DEFINITION, UTILITY_DEFINITIONS } from "std-typescript-llvm/constants";
+import { GC_DEFINITION, UTILITY_DEFINITIONS } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";

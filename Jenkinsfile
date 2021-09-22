@@ -38,7 +38,7 @@ pipeline {
 
                                         npm_login_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
 
-                                        sh "DEBUG=1 npm install --unsafe-perm"
+                                        sh "npm install --unsafe-perm"
                                         sh "npm run build"
                                     }
                                 }
@@ -115,7 +115,7 @@ pipeline {
                                         sh "npm config list"
 
                                         // reorder paths so that npm uses msys' git instead one from windows
-                                        sh "DEBUG=1 npm install"
+                                        sh "npm install"
                                         sh "npm run build"
                                     }
                                 }

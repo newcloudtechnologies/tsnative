@@ -1,5 +1,5 @@
 {
-    "name": "typescript-llvm",
+    "name": "tsnative",
     "version": "0.1.0",
     "scripts": {
         "transpile": "tsc",
@@ -9,9 +9,8 @@
         "clean_playground": "rm -rf playground/build playground/extension",
         "lint": "tslint --project tsconfig.json",
         "format": "tslint --project tsconfig.json --fix",
-        "prepare": "npm-prebuilt-dependencies",
-        "build": "tsc && npm run pkg",
-        "prepack": "tsc && npm run pkg",
+        "build": "sh std/build.sh && tsc && npm run pkg",
+        "prepack": "npm run build",
         "pkg": "pkg bin --output pkg/compiler",
         "publishToLocalRegistry": "npm-prebuilt-dependencies publish"
     },
@@ -48,12 +47,14 @@
         "npm-prebuilt-dependencies": "^0.0.1"
     },
     "files": [
+        "std/include/*",
+        "std/cmake/*",
+        "std/decorators/*",
+        "std/definitions/*",
+        "std/lib/libtsnative-std.a",
         "builder/*",
         "cmake/*",
         "pkg/*",
         "tsnative.js"
-    ],
-    "prebuiltDependencies": {
-        "std-typescript-llvm": "^0.1.0"
-    }
+    ]
 }

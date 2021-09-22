@@ -1,4 +1,4 @@
-#include <std-typescript-llvm/include/gc.h>
+#include <std/include/gc.h>
 
 #include "aggregate.h"
 

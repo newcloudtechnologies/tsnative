@@ -6,14 +6,7 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import {
-  NUMERIC,
-  DEFINITIONS,
-  UTILITY_DEFINITIONS,
-  GC_DEFINITION,
-  STUBS,
-  ITERABLE,
-} from "std-typescript-llvm/constants";
+import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION, STUBS, ITERABLE } from "../std/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
@@ -30,7 +23,7 @@ argv
   .option("--templatesOutputDir [value]", "specify path to instantiated templates", "")
   .option("--target [value]", "generate code for the given target")
   .option("--output [value]", "specify output file for final executable")
-  .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "tsconfig.json"))
+  .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "..", "tsconfig.json"))
   .option("--demangledTables <items>", "specify demangled symbol files (comma separated list)", (value: string) => {
     return value.split(",");
   })

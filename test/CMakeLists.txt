@@ -15,7 +15,7 @@ project(tests LANGUAGES CXX)
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../node_modules/std-typescript-llvm/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
 find_package(StdLib REQUIRED)
 find_package(Tsvmc REQUIRED)
@@ -27,11 +27,6 @@ if (NOT DEFINED SOURCES)
     # looking for all test cases
     file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.ts")
     list(FILTER SOURCES EXCLUDE REGEX ".*[.]d.ts$")
-endif()
-
-if (NOT DEFINED TS_CONFIG)
-    set(TS_CONFIG
-        tsconfig.json)
 endif()
 
 if (NOT DEFINED SRCDIR)
@@ -65,6 +60,9 @@ while(index LESS ${count})
             ${cpp_exts_LIBRARY}
             ${cpp_exts_DEPENDENCIES})
 
+        list(APPEND INCLUDES
+            "${StdLib_INCLUDE_DIR}")
+
         build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
@@ -86,6 +84,9 @@ while(index LESS ${count})
             ${cpp_exts_LIBRARY}
             ${cpp_exts_DEPENDENCIES})
 
+        list(APPEND INCLUDES
+            "${StdLib_INCLUDE_DIR}")
+
         build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
@@ -98,6 +99,9 @@ while(index LESS ${count})
         set(DEFINITIONS )
         set(DEPENDENCIES
             ${StdLib_LIBRARY})
+
+        list(APPEND INCLUDES
+            "${StdLib_INCLUDE_DIR}")
 
         build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")

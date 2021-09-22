@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.10)
 project(tests LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../node_modules/std-typescript-llvm/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
 find_package(StdLib REQUIRED)
 find_package(Tsvmc REQUIRED)
@@ -46,6 +46,9 @@ if (PRINT_IR)
 else()
     set(PRINT_IR FALSE)
 endif()
+
+list(APPEND INCLUDES
+    "${StdLib_INCLUDE_DIR}")
 
 set(DEPENDENCIES
     ${exts_LIBRARY}

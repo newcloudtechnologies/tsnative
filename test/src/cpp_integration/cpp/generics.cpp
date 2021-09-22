@@ -1,7 +1,7 @@
 #include <cstdint>
 
-#include <std-typescript-llvm/include/gc.h>
-#include <std-typescript-llvm/include/stdstring.h>
+#include <std/include/gc.h>
+#include <std/include/stdstring.h>
 
 template <typename T, typename R> R sum(T op1, T op2) { return op1 + op2; }
 

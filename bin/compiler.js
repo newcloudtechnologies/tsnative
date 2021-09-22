@@ -15,7 +15,7 @@ function isCompilerCall() {
 }
 
 if (isCompilerCall()) {
-    execSync(`node ${join(__dirname, "..", "build", "main.js")} ${getArguments().map((value) => value.startsWith("--") ? value : `"${value}"`).join(" ")}`, { stdio: 'inherit' });
+    execSync(`node ${join(__dirname, "..", "build", "src", "main.js")} ${getArguments().map((value) => value.startsWith("--") ? value : `"${value}"`).join(" ")}`, { stdio: 'inherit' });
 } else {
     // Entry point.
     // Overwrite PKG_EXECPATH environment variable, see: https://github.com/vercel/pkg/issues/376

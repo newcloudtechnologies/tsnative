@@ -35,7 +35,7 @@ export class TSSymbol {
   }
 
   get declarations() {
-    return this.symbol.declarations.map((declaration) => Declaration.create(declaration, this.generator));
+    return this.symbol.declarations?.map((declaration) => Declaration.create(declaration, this.generator)) || [];
   }
 
   get valueDeclaration() {
