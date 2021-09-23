@@ -624,7 +624,18 @@ export class TSType {
     }
 
     if (this.isEnum()) {
-      return LLVMType.getInt32Type(this.checker.generator).getPointer();
+      const declaration = this.getSymbol().valueDeclaration!;
+      if (!declaration || !declaration.isEnumMember()) {
+        throw new Error("No declaration for enum found or declaration is not a enum member");
+      }
+
+      if (!declaration.initializer) {
+        // initializer absence indicates that it is numeric enum
+        return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      }
+
+      const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
+      return initializerType.getLLVMType();
     }
 
     if (this.isBoolean()) {

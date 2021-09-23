@@ -126,7 +126,11 @@ export class Declaration {
   }
 
   get initializer() {
-    if (ts.isPropertyAssignment(this.declaration) || ts.isPropertyDeclaration(this.declaration)) {
+    if (
+      ts.isPropertyAssignment(this.declaration) ||
+      ts.isPropertyDeclaration(this.declaration) ||
+      ts.isEnumMember(this.declaration)
+    ) {
       return this.declaration.initializer;
     }
 
@@ -159,6 +163,10 @@ export class Declaration {
 
   isClassOrInterface() {
     return this.isClass() || this.isInterface();
+  }
+
+  isEnumMember() {
+    return ts.isEnumMember(this.declaration);
   }
 
   isMethod() {
