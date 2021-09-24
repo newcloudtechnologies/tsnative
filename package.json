@@ -27,24 +27,20 @@
         "printWidth": 120
     },
     "devDependencies": {
-        "@types/diff": "^3.5.1",
         "@types/lodash": "^4.14.161",
         "@types/node": "^13.13.1",
         "commander": "^5.0.0",
-        "diff": "^4.0.2",
         "husky": "^4.2.5",
         "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#wip/delay_load",
         "lodash": "^4.17.20",
-        "lookpath": "^1.0.4",
+        "npm-prebuilt-dependencies": "^0.0.1",
         "pkg": "^5.0.0",
         "prettier": "^2.0.5",
         "segfault-handler": "^1.0.1",
-        "ts-node": "^8.9.0",
         "tslint": "^6.1.1",
         "tslint-config-prettier": "^1.18.0",
         "tslint-plugin-prettier": "^2.3.0",
-        "typescript": "^3.8.3",
-        "npm-prebuilt-dependencies": "^0.0.1"
+        "typescript": "^3.8.3"
     },
     "files": [
         "std/include/*",

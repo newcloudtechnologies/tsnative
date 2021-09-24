@@ -250,13 +250,6 @@ export class Declaration {
     return namespace;
   }
 
-  isValueTypeProperty(): boolean {
-    const valueTypeDecorator = "ValueType";
-    return Boolean(
-      this.declaration.decorators?.some((decorator) => decorator.expression.getText() === valueTypeDecorator)
-    );
-  }
-
   withVTable() {
     const withVTableDecorator = "VTable";
     return Boolean(

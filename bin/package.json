@@ -22,7 +22,6 @@
         "commander": "^5.0.0",
         "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#mgt_patches",
         "lodash": "^4.17.20",
-        "lookpath": "^1.0.4",
         "segfault-handler": "^1.0.1",
         "typescript": "^3.8.3"
     }
