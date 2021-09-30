@@ -639,7 +639,7 @@ export class Scope {
         console.log("--".repeat(pad + 1), key, value instanceof LLVMValue ? "(llvm value)" : "(heap variable)");
       } else if (!seen.includes(value)) {
         seen.push(value);
-        value.dump(++pad, seen);
+        value.dump(pad + 1, seen);
       }
     }
 

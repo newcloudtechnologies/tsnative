@@ -217,6 +217,10 @@ export class Declaration {
     return ts.isParameter(this.declaration);
   }
 
+  isInModule() {
+    return Boolean(this.declaration.parent?.parent && ts.isModuleDeclaration(this.declaration.parent.parent));
+  }
+
   getScope(thisType: TSType | undefined): Scope {
     if (thisType) {
       const namespace = this.getNamespace();

@@ -379,7 +379,8 @@ export class TSType {
     let suffix = "";
 
     if (!this.isSymbolless()) {
-      let declaration = this.getSymbol().declarations[0];
+      const symbol = this.getSymbol();
+      let declaration = symbol.valueDeclaration || symbol.declarations[0];
       if (declaration) {
         if (
           declaration.isConstructor() ||

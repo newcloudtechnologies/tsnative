@@ -69,28 +69,56 @@ export class AccessHandler extends AbstractExpressionHandler {
     }
 
     let scope;
-    try {
-      const symbol = this.generator.ts.checker.getSymbolAtLocation(left);
+    let identifier = left.getText();
+
+    if (!this.generator.ts.checker.getTypeAtLocation(left).isSymbolless()) {
+      const symbol = this.generator.ts.checker.getTypeAtLocation(left).getSymbol();
       const valueDeclaration = symbol.valueDeclaration;
-      if (!valueDeclaration) {
-        throw new Error(`No value declaration found at '${expression.getText()}'`);
+      if (valueDeclaration) {
+        if (valueDeclaration.isInModule()) {
+          if (!valueDeclaration.name) {
+            throw new Error(`Expected declaration name at '${valueDeclaration.getText()}'`);
+          }
+
+          const namespace = valueDeclaration.getNamespace();
+          const declarationName = valueDeclaration.name.getText();
+
+          const fullyQualified = namespace.concat(declarationName, propertyName).join(".");
+          const value = this.generator.symbolTable.get(fullyQualified);
+
+          if (value instanceof Scope) {
+            scope = value;
+
+            let parent = expression.parent;
+            while (parent.parent && ts.isPropertyAccessExpression(parent)) {
+              propertyName = parent.name.getText();
+              parent = parent.parent;
+            }
+          } else if (value instanceof LLVMValue) {
+            return value;
+          } else if (value instanceof HeapVariableDeclaration) {
+            return value.allocated;
+          }
+        }
+
+        if (
+          (valueDeclaration.isClass() || valueDeclaration.isInterface()) &&
+          this.hasProperty(valueDeclaration, propertyName)
+        ) {
+          const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
+          identifier = type.mangle();
+        }
       }
+    }
 
-      let identifier = left.getText();
+    if (!scope) {
+      try {
+        scope = this.generator.symbolTable.get(identifier);
 
-      if (
-        (valueDeclaration.isClass() || valueDeclaration.isInterface()) &&
-        this.hasProperty(valueDeclaration, propertyName)
-      ) {
-        const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
-        identifier = type.mangle();
-      }
-
-      scope = this.generator.symbolTable.get(identifier);
-
-      // Ignore empty catch block
-      // tslint:disable-next-line
-    } catch (_) { }
+        // Ignore empty catch block
+        // tslint:disable-next-line
+      } catch (_) { }
+    }
 
     while (scope && scope instanceof Scope) {
       const value: ScopeValue | HeapVariableDeclaration | undefined =
