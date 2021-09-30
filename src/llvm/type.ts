@@ -110,6 +110,11 @@ export class LLVMType {
     return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Set__"));
   }
 
+  isTuple() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Tuple__"));
+  }
+
   isCppPrimitiveType() {
     return this.type.isIntegerTy() || this.type.isDoubleTy();
   }
@@ -347,5 +352,16 @@ export class LLVMStructType extends LLVMType {
       throw new Error("Expected StructType");
     }
     return this.type.name;
+  }
+}
+
+export class LLVMArrayType extends LLVMType {
+  constructor(type: llvm.ArrayType, generator: LLVMGenerator) {
+    super(type, generator);
+  }
+
+  static get(generator: LLVMGenerator, elementType: LLVMType, numElements: number) {
+    const type = llvm.ArrayType.get(elementType.unwrapped, numElements);
+    return LLVMType.make(type, generator) as LLVMArrayType;
   }
 }

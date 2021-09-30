@@ -87,7 +87,15 @@ export class TSType {
   }
 
   getSymbol() {
-    const symbol = this.type.getSymbol();
+    let symbol = this.type.getSymbol();
+
+    // Forcely map tuples to custom implementation of Tuple.
+    if (this.isTuple()) {
+      // ts.TypeChecker.getSymbol won't return symbol for declaration placed in *.d.ts (https://github.com/Microsoft/TypeScript/issues/5218)
+      // Actually 'symbol' property exists, so try hard to get it.
+      symbol = (this.checker.generator.tuple.getDeclaration().unwrapped as any).symbol;
+    }
+
     if (!symbol) {
       throw new Error(`No symbol found for type '${this.toString()}'`);
     }
@@ -130,6 +138,10 @@ export class TSType {
     return Boolean(this.getSymbol().name === "Array");
   }
 
+  isTuple() {
+    return ts.isTupleTypeNode(this.checker.unwrap().typeToTypeNode(this.type)!);
+  }
+
   isMap() {
     if (this.isSymbolless()) {
       return false;
@@ -163,7 +175,7 @@ export class TSType {
   }
 
   isUnion(): this is ts.UnionType {
-    return this.type.isUnion() && (this.type.flags & ts.TypeFlags.BooleanLike) === 0 && !this.isEnum();
+    return this.type.isUnion() && !this.isBoolean() && !this.isEnum();
   }
 
   isIntersection(): this is ts.IntersectionType {
@@ -262,7 +274,14 @@ export class TSType {
   }
 
   isSupported() {
-    return this.isPrimitive() || this.isArray() || this.isObject() || this.isFunction() || this.isUnionOrIntersection();
+    return (
+      this.isPrimitive() ||
+      this.isArray() ||
+      this.isTuple() ||
+      this.isObject() ||
+      this.isFunction() ||
+      this.isUnionOrIntersection()
+    );
   }
 
   isTypeParameter() {
@@ -319,10 +338,7 @@ export class TSType {
     if (this.isUnionOrIntersection()) {
       const getElementTypeName = (elementType: TSType): string => {
         if (elementType.isUnionOrIntersection()) {
-          return (elementType.unwrap() as ts.UnionOrIntersectionType).types
-            .map((t) => TSType.create(t, this.checker))
-            .map((t) => getElementTypeName(t))
-            .join(".");
+          return elementType.types.map((t) => getElementTypeName(t)).join(".");
         }
         return elementType.mangle();
       };
@@ -338,7 +354,11 @@ export class TSType {
 
   get types() {
     if (this.type.isUnionOrIntersection()) {
-      return this.type.types.map((type) => TSType.create(type, this.checker));
+      return this.type.types
+        .map((type) => TSType.create(type, this.checker))
+        .filter(
+          (type, index, array) => !(type.isBoolean() && index + 1 < array.length && array[index + 1].isBoolean())
+        );
     }
 
     return [];
@@ -598,6 +618,10 @@ export class TSType {
 
     this.checker.generator.meta.registerUnionMeta(unionName, unionType, props, propsMap);
     return unionType;
+  }
+
+  getTupleElementTypes() {
+    return (this.checker.unwrap().typeToTypeNode(this.type)! as ts.TupleTypeNode).elementTypes;
   }
 
   getLLVMReturnType() {

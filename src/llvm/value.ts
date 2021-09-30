@@ -12,7 +12,7 @@
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { LLVMStructType, LLVMType } from "./type";
+import { LLVMArrayType, LLVMStructType, LLVMType } from "./type";
 
 export enum Conversion {
   Narrowing,
@@ -529,7 +529,7 @@ export class LLVMUnion extends LLVMValue {
     return -1;
   }
 
-  initialize(initializer: LLVMValue) {
+  initialize(initializer: LLVMValue, runtimeIndex?: LLVMValue) {
     if (!this.type.isPointer()) {
       throw new Error(`Expected pointer type, got '${this.type.toString()}'`);
     }
@@ -598,23 +598,60 @@ export class LLVMUnion extends LLVMValue {
         );
       });
     } else {
-      const elementTypes = [];
+      if (runtimeIndex) {
+        if (runtimeIndex.type.isDoubleType()) {
+          runtimeIndex = this.generator.builder.createFPToSI(runtimeIndex, LLVMType.getInt32Type(this.generator));
+        }
 
-      for (let i = 0; i < unionStructType.numElements; ++i) {
-        elementTypes.push(unionStructType.getElementType(i));
+        if (!runtimeIndex.type.isIntegerType(32)) {
+          throw new Error(`Expected runtime index to be of int32/double type, got '${runtimeIndex.type.toString()}'`);
+        }
+
+        const nullIndex = LLVMConstantInt.get(this.generator, 0);
+        const arrayType = LLVMArrayType.get(
+          this.generator,
+          LLVMType.getInt8Type(this.generator).getPointer(),
+          unionStructType.numElements
+        );
+
+        // Runtime indexes are invalid for GEP for structs since element type must be known.
+        // Apply some dark magic here, treat struct as array of void* pointers since its a contract for struct types to consist only of pointers.
+        const allocatedAsArray = this.generator.builder.createBitCast(allocated, arrayType.getPointer());
+
+        const elementPtr = this.generator.builder.createInBoundsGEP(allocatedAsArray, [nullIndex, runtimeIndex]);
+
+        if (!initializer.type.isPointer()) {
+          throw new Error(`Expected initializer to be of pointer type, got '${initializer.type.toString()}'`);
+        }
+
+        // If initializer is not casted to void* previously, do it right here.
+        if (!initializer.type.getPointerElementType().isIntegerType(8)) {
+          initializer = this.generator.builder.createBitCast(
+            initializer,
+            LLVMType.getInt8Type(this.generator).getPointer()
+          );
+        }
+
+        this.generator.builder.createSafeStore(initializer, elementPtr);
+      } else {
+        const elementTypes = [];
+
+        for (let i = 0; i < unionStructType.numElements; ++i) {
+          elementTypes.push(unionStructType.getElementType(i));
+        }
+
+        const activeIndex = this.findIndexOfType(elementTypes, initializer.type);
+        if (activeIndex === -1) {
+          throw new Error(`Cannot find type '${initializer.type.toString()}' in union type '${this.type.toString()}'`);
+        }
+
+        if ((this.type.isUnionWithUndefined() || this.type.isUnionWithNull()) && activeIndex === 0) {
+          initializer = LLVMConstantInt.get(this.generator, -1, 8);
+        }
+
+        const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, activeIndex]);
+        this.generator.builder.createSafeStore(initializer, elementPtr);
       }
-
-      const activeIndex = this.findIndexOfType(elementTypes, initializer.type);
-      if (activeIndex === -1) {
-        throw new Error(`Cannot find type '${initializer.type.toString()}' in union type '${this.type.toString()}'`);
-      }
-
-      if ((this.type.isUnionWithUndefined() || this.type.isUnionWithNull()) && activeIndex === 0) {
-        initializer = LLVMConstantInt.get(this.generator, -1, 8);
-      }
-
-      const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, activeIndex]);
-      this.generator.builder.createSafeStore(initializer, elementPtr);
     }
 
     return allocated;

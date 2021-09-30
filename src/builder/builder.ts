@@ -100,6 +100,12 @@ export class Builder {
     }
   }
 
+  createInBoundsGEP(ptr: LLVMValue, idxList: LLVMValue[], name?: string) {
+    const idxValues = idxList.map((idx) => idx.unwrapped);
+    const value = this.builder.createInBoundsGEP(ptr.unwrapped, idxValues, name);
+    return LLVMValue.create(value, this.generator);
+  }
+
   createSafeInBoundsGEP(ptr: LLVMValue, idxList: number[], name?: string) {
     this.checkInBoundsGEP(ptr, idxList);
     const idxValues = idxList.map((idx) => llvm.ConstantInt.get(this.generator.context, idx));

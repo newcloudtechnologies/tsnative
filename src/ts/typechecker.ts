@@ -39,6 +39,26 @@ export class TypeChecker {
       symbol = this.checker.getAliasedSymbol(symbol);
     }
 
+    if (ts.isPropertyAccessExpression(node)) {
+      const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
+
+      if (type.isTuple()) {
+        const declaration = this.generator.tuple.getDeclaration();
+        const methodName = node.name.getText();
+        const tupleMember = declaration.members.find((m) => m.name?.getText() === methodName)!;
+
+        // `ts.TypeChecker.getSymbolAtLocation` returns undefined for class declarations
+        // placed in *.d.ts even symbols are available through ts.Declaration's introspection
+        // https://github.com/Microsoft/TypeScript/issues/5218
+        // Hack it.
+        symbol = (tupleMember.unwrapped as any).symbol;
+
+        if (!symbol) {
+          throw new Error("No symbol found");
+        }
+      }
+    }
+
     return TSSymbol.create(symbol, this.generator);
   }
 

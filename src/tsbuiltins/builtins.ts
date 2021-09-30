@@ -6,6 +6,7 @@ import { SIZEOF_STRING } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
+import { TSType } from "../ts/type";
 
 export class GC {
   private readonly allocateFn: LLVMValue;
@@ -130,6 +131,39 @@ class LazyClosure {
   isLazyClosure(value: LLVMValue) {
     const nakedType = value.type.unwrapPointer();
     return Boolean(nakedType.isStructType() && nakedType.name?.startsWith(this.tag));
+  }
+}
+
+export class BuiltinTSTuple extends Builtin {
+  constructor(declaration: Declaration, generator: LLVMGenerator) {
+    super(declaration.type.mangle(), generator);
+  }
+
+  getLLVMConstructor(argTypes: TSType[]) {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+
+    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      constructorDeclaration,
+      undefined,
+      thisType,
+      argTypes,
+      this.generator
+    );
+    if (!isExternalSymbol) {
+      throw new Error("External symbol Tuple constructor not found");
+    }
+
+    const llvmReturnType = LLVMType.getVoidType(this.generator);
+    const llvmArgumentTypes = [
+      this.getLLVMType(),
+      ...argTypes.map((type) => type.getLLVMType().correctCppPrimitiveType()),
+    ];
+    const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return constructor;
   }
 }
 
@@ -298,7 +332,6 @@ export class BuiltinString extends Builtin {
     );
 
     if (!isExternalSymbol) {
-      console.log("--- argType:", argType.toCppType());
       throw new Error(`String constructor for '${thisType.toString()}' not found`);
     }
 

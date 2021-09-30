@@ -11,12 +11,12 @@
 
 import { ExpressionHandlerChain } from "../handlers/expression";
 import { NodeHandlerChain } from "../handlers/node";
-import { Scope, SymbolTable, Environment, injectUndefined } from "../scope";
+import { Scope, SymbolTable, Environment, injectUndefined, addClassScope } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure } from "../tsbuiltins";
+import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure, BuiltinTSTuple } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { GC_DEFINITION, UTILITY_DEFINITIONS } from "../../std/constants";
+import { DEFINITIONS, GC_DEFINITION, UTILITY_DEFINITIONS } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -50,6 +50,7 @@ export class LLVMGenerator {
   readonly builtinUInt32: BuiltinUInt32;
   readonly builtinString: BuiltinString;
 
+  private builtinTSTuple: BuiltinTSTuple | undefined;
   private builtinTSClosure: BuiltinTSClosure | undefined;
   private garbageCollector: GC | undefined;
 
@@ -152,6 +153,26 @@ export class LLVMGenerator {
     }
   }
 
+  initTSTuple(): void {
+    const stddefs = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === DEFINITIONS);
+    if (!stddefs) {
+      throw new Error("No std definitions source file found");
+    }
+    stddefs.forEachChild((node) => {
+      if (ts.isClassDeclaration(node)) {
+        const clazz = Declaration.create(node as ts.ClassDeclaration, this);
+        const clazzName = clazz.type.getSymbol().escapedName;
+        if (clazzName === "Tuple") {
+          this.builtinTSTuple = new BuiltinTSTuple(clazz, this);
+          addClassScope(node, this.symbolTable.globalScope, this);
+        }
+      }
+    });
+    if (!this.builtinTSTuple) {
+      throw new Error("Tuple declaration not found");
+    }
+  }
+
   withLocalBuilder<R>(action: () => R): R {
     const builder = this.builder;
     this.irBuilder = new Builder(this, this.currentFunction.getEntryBlock());
@@ -222,6 +243,14 @@ export class LLVMGenerator {
       this.initGC();
     }
     return this.garbageCollector!;
+  }
+
+  get tuple() {
+    if (!this.builtinTSTuple) {
+      this.initTSTuple();
+    }
+
+    return this.builtinTSTuple!;
   }
 
   get tsclosure() {

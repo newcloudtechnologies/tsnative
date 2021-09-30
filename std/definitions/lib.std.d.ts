@@ -24,6 +24,14 @@ declare class Array<T> {
   values(): ArrayIterator<T>;
 }
 
+declare class Tuple {
+  constructor(...initializer: any);
+
+  [index: number]: any;
+
+  get length(): number;
+}
+
 declare class Map<K, V> {
   constructor();
 

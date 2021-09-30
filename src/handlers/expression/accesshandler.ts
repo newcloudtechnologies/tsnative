@@ -2,7 +2,7 @@ import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "../../s
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { LLVMValue } from "../../llvm/value";
+import { LLVMUnion, LLVMValue } from "../../llvm/value";
 import { LLVMStructType } from "../../llvm/type";
 import { Declaration } from "../../ts/declaration";
 
@@ -117,6 +117,18 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
+    const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+
+    if (type.isArray()) {
+      return this.handleArrayElementAccess(expression, env);
+    } else if (type.isTuple()) {
+      return this.handleTupleElementAccess(expression, env);
+    } else {
+      throw new Error(`Unsupported element access for type: ${type.toString()}`);
+    }
+  }
+
+  private handleArrayElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const subscription = this.generator.ts.array.createSubscription(expression);
     const array = this.generator.handleExpression(expression.expression, env);
     const arrayUntyped = this.generator.builder.asVoidStar(array);
@@ -131,6 +143,33 @@ export class AccessHandler extends AbstractExpressionHandler {
     }
 
     const element = this.generator.builder.createSafeCall(subscription, [arrayUntyped, index]);
+
+    return this.generator.builder.createBitCast(element, elementType.getLLVMType());
+  }
+
+  private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
+    const subscription = this.generator.ts.tuple.createSubscription(expression);
+    const tuple = this.generator.handleExpression(expression.expression, env);
+    const tupleUntyped = this.generator.builder.asVoidStar(tuple);
+    const index = this.generator.createLoadIfNecessary(
+      this.generator.handleExpression(expression.argumentExpression, env)
+    );
+
+    const element = this.generator.builder.createSafeCall(subscription, [tupleUntyped, index]);
+    const elementIndex = parseInt(expression.argumentExpression.getText(), 10);
+
+    // Handle case with runtime index access.
+    if (isNaN(elementIndex)) {
+      const llvmUnionType = this.generator.ts.checker.getTypeAtLocation(expression).getLLVMType();
+      const nullUnion = LLVMUnion.createNullValue(llvmUnionType, this.generator);
+      return nullUnion.initialize(element, index);
+    }
+
+    const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    let elementType = tupleType.getTypeGenericArguments()[elementIndex];
+    if (elementType.isFunction()) {
+      elementType = this.generator.tsclosure.getTSType();
+    }
 
     return this.generator.builder.createBitCast(element, elementType.getLLVMType());
   }

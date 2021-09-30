@@ -30,6 +30,7 @@ export class TemplateInstantiator {
     "map.h",
     "set.h",
     "iterable.h",
+    "tuple.h",
   ];
   private generatedContent: string[] = [];
 
@@ -534,11 +535,30 @@ export class TemplateInstantiator {
     }
   }
 
+  tupleNodeVisitor(node: ts.Node) {
+    if (ts.isImportDeclaration(node) || node.kind === ts.SyntaxKind.EndOfFileToken) {
+      return;
+    }
+
+    if (ts.isVariableDeclaration(node.parent) && node.parent.type && ts.isTupleTypeNode(node.parent.type)) {
+      const tupleType = node.parent.type! as ts.TupleTypeNode;
+      const types = tupleType.elementTypes.map((type: ts.TypeNode) =>
+        this.generator.ts.checker.getTypeFromTypeNode(type)
+      );
+
+      const templateInstance = `template class Tuple<${types.map((type) => type.toCppType()).join(",")}>;`;
+      this.generatedContent.push(templateInstance);
+    } else {
+      ts.forEachChild(node, this.tupleNodeVisitor.bind(this));
+    }
+  }
+
   instantiateClasses() {
     for (const sourceFile of this.sources) {
       sourceFile.forEachChild(this.arrayNodeVisitor.bind(this));
       sourceFile.forEachChild(this.mapNodeVisitor.bind(this));
       sourceFile.forEachChild(this.setNodeVisitor.bind(this));
+      sourceFile.forEachChild(this.tupleNodeVisitor.bind(this));
     }
 
     return this.handleInstantiated(this.INSTANTIATED_CLASSES_FILE);

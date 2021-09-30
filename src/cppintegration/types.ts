@@ -9,7 +9,7 @@
  *
  */
 
-import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE, SIZEOF_MAP, SIZEOF_SET } from "../cppintegration";
+import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE, SIZEOF_MAP, SIZEOF_SET, SIZEOF_TUPLE } from "../cppintegration";
 import { LLVMType } from "../llvm/type";
 
 export class SizeOf {
@@ -24,6 +24,8 @@ export class SizeOf {
       return SIZEOF_MAP;
     } else if (type.isSet()) {
       return SIZEOF_SET;
+    } else if (type.isTuple()) {
+      return SIZEOF_TUPLE;
     }
     return;
   }
@@ -39,6 +41,8 @@ export class SizeOf {
       return SIZEOF_MAP;
     } else if (name.startsWith("Set__")) {
       return SIZEOF_SET;
+    } else if (name.startsWith("Tuple__")) {
+      return SIZEOF_TUPLE;
     }
     return;
   }

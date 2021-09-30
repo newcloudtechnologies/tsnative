@@ -15,3 +15,4 @@ export const SIZEOF_ARRAY = 80 + 8;
 export const SIZEOF_TSCLOSURE = 24;
 export const SIZEOF_MAP = 80 + 8;
 export const SIZEOF_SET = 72 + 8;
+export const SIZEOF_TUPLE = 8;

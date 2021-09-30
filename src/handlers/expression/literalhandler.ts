@@ -17,6 +17,14 @@ export class LiteralHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.ObjectLiteralExpression:
         return this.handleObjectLiteralExpression(expression as ts.ObjectLiteralExpression, env);
       case ts.SyntaxKind.ArrayLiteralExpression:
+        if (
+          ts.isVariableDeclaration(expression.parent) &&
+          expression.parent.type &&
+          ts.isTupleTypeNode(expression.parent.type)
+        ) {
+          return this.handleTupleLiteral(expression.parent, env);
+        }
+
         return this.handleArrayLiteralExpression(expression as ts.ArrayLiteralExpression, env);
       default:
         break;
@@ -27,6 +35,34 @@ export class LiteralHandler extends AbstractExpressionHandler {
     }
 
     return;
+  }
+
+  private handleTupleLiteral(expression: ts.VariableDeclaration, env?: Environment) {
+    if (!expression.initializer) {
+      throw new Error(`Tuples without initializer are not implemented`);
+    }
+
+    const tupleType = expression.type! as ts.TupleTypeNode;
+    const types = tupleType.elementTypes.map((type: ts.TypeNode) =>
+      this.generator.ts.checker.getTypeFromTypeNode(type)
+    );
+
+    const constructor = this.generator.tuple.getLLVMConstructor(types);
+    const type = this.generator.tuple.getLLVMType();
+
+    const allocated = this.generator.gc.allocate(type.getPointerElementType());
+
+    if (!ts.isArrayLiteralExpression(expression.initializer)) {
+      throw new Error(
+        `Unexpected tuple initializer of king ${ts.SyntaxKind[expression.initializer.kind]}, expected array literal`
+      );
+    }
+    const initializer = expression.initializer.elements.map((element) =>
+      this.generator.createLoadIfNecessary(this.generator.handleExpression(element, env))
+    );
+
+    this.generator.builder.createSafeCall(constructor, [allocated, ...initializer]);
+    return allocated;
   }
 
   private handleBooleanLiteral(expression: ts.BooleanLiteral): LLVMValue {
