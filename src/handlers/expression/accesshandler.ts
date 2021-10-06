@@ -157,14 +157,14 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleArrayElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
-    const subscription = this.generator.ts.array.createSubscription(expression);
+    const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    const subscription = this.generator.ts.array.createSubscription(arrayType);
     const array = this.generator.handleExpression(expression.expression, env);
     const arrayUntyped = this.generator.builder.asVoidStar(array);
     const index = this.generator.createLoadIfNecessary(
       this.generator.handleExpression(expression.argumentExpression, env)
     );
 
-    const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     let elementType = arrayType.getTypeGenericArguments()[0];
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();
@@ -176,7 +176,8 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
-    const subscription = this.generator.ts.tuple.createSubscription(expression);
+    const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    const subscription = this.generator.ts.tuple.createSubscription(tupleType);
     const tuple = this.generator.handleExpression(expression.expression, env);
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
     const index = this.generator.createLoadIfNecessary(
@@ -193,7 +194,6 @@ export class AccessHandler extends AbstractExpressionHandler {
       return nullUnion.initialize(element, index);
     }
 
-    const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     let elementType = tupleType.getTypeGenericArguments()[elementIndex];
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();

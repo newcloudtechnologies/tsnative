@@ -16,22 +16,14 @@ import { flatten } from "lodash";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "../mangling";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
+import { TSTuple } from "../ts/tuple";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
   private readonly generator: LLVMGenerator;
   private readonly demangled: string[] = [];
   private readonly includeDirs: string[] = [];
-  private readonly stdIncludes: string[] = [
-    "array.h",
-    "console.h",
-    "stdstring.h",
-    "tsclosure.h",
-    "map.h",
-    "set.h",
-    "iterable.h",
-    "tuple.h",
-  ];
+
   private generatedContent: string[] = [];
 
   private readonly INSTANTIATED_FUNCTIONS_FILE: string;
@@ -395,7 +387,7 @@ export class TemplateInstantiator {
   }
 
   private arrayNodeVisitor(node: ts.Node) {
-    if (ts.isImportDeclaration(node) || node.kind === ts.SyntaxKind.EndOfFileToken) {
+    if (this.shouldSkipNode(node)) {
       return;
     }
 
@@ -473,10 +465,6 @@ export class TemplateInstantiator {
   private handleInstantiated(source: string) {
     this.generatedContent = this.generatedContent.filter((s, idx) => this.generatedContent.indexOf(s) === idx);
 
-    for (const stdInclude of this.stdIncludes) {
-      this.generatedContent.unshift(`#include <${stdInclude}>`);
-    }
-
     const includes = flatten(this.includeDirs.map((dir: string) => this.getIncludes(dir)));
     for (const include of includes) {
       this.generatedContent.unshift(`#include "${include}"`);
@@ -488,7 +476,7 @@ export class TemplateInstantiator {
   }
 
   mapNodeVisitor(node: ts.Node) {
-    if (ts.isImportDeclaration(node) || node.kind === ts.SyntaxKind.EndOfFileToken) {
+    if (this.shouldSkipNode(node)) {
       return;
     }
 
@@ -512,7 +500,7 @@ export class TemplateInstantiator {
   }
 
   setNodeVisitor(node: ts.Node) {
-    if (ts.isImportDeclaration(node) || node.kind === ts.SyntaxKind.EndOfFileToken) {
+    if (this.shouldSkipNode(node)) {
       return;
     }
 
@@ -536,14 +524,21 @@ export class TemplateInstantiator {
   }
 
   tupleNodeVisitor(node: ts.Node) {
-    if (ts.isImportDeclaration(node) || node.kind === ts.SyntaxKind.EndOfFileToken) {
+    if (this.shouldSkipNode(node)) {
       return;
     }
 
-    if (ts.isVariableDeclaration(node.parent) && node.parent.type && ts.isTupleTypeNode(node.parent.type)) {
-      const tupleType = node.parent.type! as ts.TupleTypeNode;
+    if (TSTuple.isTupleFromVariableDeclaration(node)) {
+      const tupleType = (node.parent as ts.VariableDeclaration).type! as ts.TupleTypeNode;
       const types = tupleType.elementTypes.map((type: ts.TypeNode) =>
         this.generator.ts.checker.getTypeFromTypeNode(type)
+      );
+
+      const templateInstance = `template class Tuple<${types.map((type) => type.toCppType()).join(",")}>;`;
+      this.generatedContent.push(templateInstance);
+    } else if (TSTuple.isTupleFromAssignment(node)) {
+      const types = (node as ts.ArrayLiteralExpression).elements.map((e) =>
+        this.generator.ts.checker.getTypeAtLocation(e)
       );
 
       const templateInstance = `template class Tuple<${types.map((type) => type.toCppType()).join(",")}>;`;
@@ -551,6 +546,14 @@ export class TemplateInstantiator {
     } else {
       ts.forEachChild(node, this.tupleNodeVisitor.bind(this));
     }
+  }
+
+  private shouldSkipNode(node: ts.Node) {
+    return (
+      ts.isImportDeclaration(node) ||
+      node.kind === ts.SyntaxKind.EndOfFileToken ||
+      (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name))
+    );
   }
 
   instantiateClasses() {

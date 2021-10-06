@@ -10,7 +10,7 @@
  */
 
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
-import { LLVMStructType } from "../../llvm/type";
+import { LLVMStructType, LLVMType } from "../../llvm/type";
 import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
@@ -24,7 +24,14 @@ export class VariableHandler extends AbstractNodeHandler {
         this.handleVariables(node as VariableLike, parentScope, env);
         return true;
       case ts.SyntaxKind.VariableDeclaration:
-        this.handleVariableDeclaration(node as ts.VariableDeclaration, parentScope, env);
+        const variableDeclaration = node as ts.VariableDeclaration;
+
+        if (ts.isArrayBindingPattern(variableDeclaration.name)) {
+          this.handleArrayBindingPattern(variableDeclaration, parentScope, env);
+          return true;
+        }
+
+        this.handleVariableDeclaration(variableDeclaration, parentScope, env);
         return true;
     }
 
@@ -90,7 +97,7 @@ export class VariableHandler extends AbstractNodeHandler {
       ? statement.declarationList.declarations
       : statement.declarations;
     declarations.forEach((declaration) => {
-      this.handleVariableDeclaration(declaration, parentScope, env);
+      this.generator.handleNode(declaration, parentScope, env);
     });
   }
 
@@ -129,5 +136,56 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     return initializer;
+  }
+
+  private handleArrayBindingPattern(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment) {
+    if (!declaration.initializer) {
+      throw new Error(`Expected initializer at '${declaration.getText()}'`);
+    }
+
+    const bindingPattern = declaration.name as ts.ArrayBindingPattern;
+
+    const identifiers: ts.Identifier[] = [];
+    bindingPattern.elements.forEach((element) => {
+      if (!ts.isBindingElement(element) || element.initializer) {
+        throw new Error("Array destructuring is not support omitting nor default initializers.");
+      }
+
+      if (!ts.isIdentifier(element.name)) {
+        throw new Error(
+          `Array destructuring is not support non-identifiers, got '${
+            ts.SyntaxKind[element.kind]
+          }' at '${element.getText()}'`
+        );
+      }
+
+      identifiers.push(element.name);
+    });
+
+    const arrayInitializer = this.generator.handleExpression(declaration.initializer, env);
+    const arrayUntyped = this.generator.builder.asVoidStar(arrayInitializer);
+    const arrayType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
+    let elementType = arrayType.getTypeGenericArguments()[0];
+    if (elementType.isFunction()) {
+      elementType = this.generator.tsclosure.getTSType();
+    }
+
+    const subscription = this.generator.ts.array.createSubscription(arrayType);
+
+    identifiers.forEach((identifier, index) => {
+      const name = identifier.getText();
+      const llvmIntegralIndex = LLVMConstantInt.get(this.generator, index);
+      const llvmDoubleIndex = this.generator.builder.createSIToFP(
+        llvmIntegralIndex,
+        LLVMType.getDoubleType(this.generator)
+      );
+      const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
+        arrayUntyped,
+        llvmDoubleIndex,
+      ]);
+      const destructedValue = this.generator.builder.createBitCast(destructedValueUntyped, elementType.getLLVMType());
+
+      parentScope.set(name, destructedValue);
+    });
   }
 }

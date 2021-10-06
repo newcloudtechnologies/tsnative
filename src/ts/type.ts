@@ -621,10 +621,6 @@ export class TSType {
     return unionType;
   }
 
-  getTupleElementTypes() {
-    return (this.checker.unwrap().typeToTypeNode(this.type)! as ts.TupleTypeNode).elementTypes;
-  }
-
   getLLVMReturnType() {
     const llvmReturnType = this.getLLVMType();
 

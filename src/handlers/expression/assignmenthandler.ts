@@ -11,8 +11,9 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment } from "../../scope";
+import { Environment, HeapVariableDeclaration, Scope } from "../../scope";
 import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
+import { LLVMType } from "../../llvm/type";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -50,6 +51,10 @@ export class AssignmentHandler extends AbstractExpressionHandler {
 
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
+          if (ts.isArrayLiteralExpression(left) && ts.isArrayLiteralExpression(right)) {
+            return this.handleTupleDestructuring(left, right, env);
+          }
+
           const lhs = this.generator.handleExpression(left, env);
           let rhs;
 
@@ -84,5 +89,62 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     }
 
     return;
+  }
+
+  private handleTupleDestructuring(lhs: ts.ArrayLiteralExpression, rhs: ts.ArrayLiteralExpression, env?: Environment) {
+    const identifiers: ts.Identifier[] = [];
+    lhs.elements.forEach((e) => {
+      if (!ts.isIdentifier(e)) {
+        throw new Error(
+          `Expected identifier in destructing binding, got '${ts.SyntaxKind[e.kind]}' at '${e.getText()}'`
+        );
+      }
+
+      identifiers.push(e);
+    });
+
+    const tupleInitializer = this.generator.handleExpression(rhs, env);
+
+    const tupleUntyped = this.generator.builder.asVoidStar(tupleInitializer);
+    const tupleType = this.generator.ts.checker.getTypeAtLocation(rhs);
+    const elementTypes = rhs.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
+
+    const subscription = this.generator.ts.tuple.createSubscription(tupleType);
+
+    identifiers.forEach((identifier, index) => {
+      const llvmIntegralIndex = LLVMConstantInt.get(this.generator, index);
+      const llvmDoubleIndex = this.generator.builder.createSIToFP(
+        llvmIntegralIndex,
+        LLVMType.getDoubleType(this.generator)
+      );
+      const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
+        tupleUntyped,
+        llvmDoubleIndex,
+      ]);
+      const destructedValue = this.generator.builder.createBitCast(
+        destructedValueUntyped,
+        elementTypes[index].getLLVMType()
+      );
+
+      const currentScope = this.generator.symbolTable.currentScope;
+      const name = identifier.getText();
+      let valueToOverwrite = currentScope.tryGetThroughParentChain(name);
+      if (!valueToOverwrite) {
+        throw new Error(`Identifier '${name}' is not found in scope chain.`);
+      }
+
+      if (valueToOverwrite instanceof Scope) {
+        throw new Error(`'${name}' is Scope unexpectedly.`);
+      }
+
+      if (valueToOverwrite instanceof HeapVariableDeclaration) {
+        valueToOverwrite = valueToOverwrite.allocated;
+      }
+
+      valueToOverwrite.makeAssignment(destructedValue);
+    });
+
+    // Have to return something.
+    return LLVMConstantInt.getFalse(this.generator);
   }
 }

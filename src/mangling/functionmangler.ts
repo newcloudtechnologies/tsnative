@@ -26,7 +26,7 @@ export class FunctionMangler {
   ): { isExternalSymbol: boolean; qualifiedName: string } {
     const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
       declaration,
-      expression as ts.CallExpression | ts.NewExpression,
+      expression as ts.CallExpression | ts.NewExpression | undefined,
       argumentTypes,
       thisType,
       generator,

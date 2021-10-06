@@ -10,9 +10,10 @@
  */
 
 import { LLVMGenerator } from "../generator";
-import * as ts from "typescript";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMType } from "../llvm/type";
+import { TSType } from "./type";
+import * as ts from "typescript";
 
 export class TSTuple {
   private readonly generator: LLVMGenerator;
@@ -21,8 +22,7 @@ export class TSTuple {
     this.generator = generator;
   }
 
-  createSubscription(expression: ts.ElementAccessExpression) {
-    const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+  createSubscription(tupleType: TSType) {
     const valueDeclaration = tupleType.getSymbol().valueDeclaration;
     if (!valueDeclaration) {
       throw new Error("No declaration for Tuple found");
@@ -31,7 +31,7 @@ export class TSTuple {
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       declaration,
-      expression,
+      undefined,
       tupleType,
       [], // @todo?
       this.generator
@@ -50,5 +50,20 @@ export class TSTuple {
     );
 
     return subscript;
+  }
+
+  // Actually a better place for this method is in ts.Node's wrapper which is yet not written
+  static isTupleFromVariableDeclaration(node: ts.Node) {
+    return Boolean(ts.isVariableDeclaration(node.parent) && node.parent.type && ts.isTupleTypeNode(node.parent.type));
+  }
+
+  // Actually a better place for this method is in ts.Node's wrapper which is yet not written
+  static isTupleFromAssignment(node: ts.Node) {
+    return Boolean(
+      ts.isArrayLiteralExpression(node) &&
+        ts.isBinaryExpression(node.parent) &&
+        node.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        ts.isArrayLiteralExpression(node.parent.left)
+    );
   }
 }

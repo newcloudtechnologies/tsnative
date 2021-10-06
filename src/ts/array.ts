@@ -143,9 +143,7 @@ export class TSArray {
     return push;
   }
 
-  createSubscription(expression: ts.ElementAccessExpression) {
-    const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
-
+  createSubscription(arrayType: TSType) {
     const valueDeclaration = arrayType.getSymbol().valueDeclaration;
     if (!valueDeclaration) {
       throw new Error("No declaration for Array[] found");
@@ -154,7 +152,7 @@ export class TSArray {
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       declaration,
-      expression,
+      undefined,
       arrayType,
       [this.generator.ts.checker.getTypeFromTypeNode(declaration.parameters[0].type!)],
       this.generator
