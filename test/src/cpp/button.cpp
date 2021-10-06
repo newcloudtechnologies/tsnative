@@ -1,5 +1,5 @@
 #include "button.h"
-// #include "point.h"
+#include "point.h"
 
 Button::Button() {}
 

@@ -21,14 +21,6 @@ find_package(StdLib REQUIRED)
 include(FeatureSummary)
 include(GNUInstallDirs) # provides CMAKE_INSTALL_* variables
 
-get_filename_component(STDLIB_INCLUDE_DIR
-                       "${StdLib_INCLUDE_DIR}/../.."
-                       ABSOLUTE)
-
-include_directories(
-    ${STDLIB_INCLUDE_DIR}
-)
-
 set(INCLUDES
     button.h
     point.h
@@ -59,4 +51,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 target_link_libraries(${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PUBLIC
+    ${StdLib_INCLUDE_DIR}
+)
 

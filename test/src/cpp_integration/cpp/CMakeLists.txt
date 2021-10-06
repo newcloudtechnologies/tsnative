@@ -21,13 +21,7 @@ find_package(StdLib REQUIRED)
 include(FeatureSummary)
 include(GNUInstallDirs) # provides CMAKE_INSTALL_* variables
 
-get_filename_component(STDLIB_INCLUDE_DIR
-                       "${StdLib_INCLUDE_DIR}/../.."
-                       ABSOLUTE)
-
-include_directories(
-    ${STDLIB_INCLUDE_DIR}
-)
+include_directories(${StdLib_INCLUDE_DIR})
 
 set(INCLUDES
     aggregate.h

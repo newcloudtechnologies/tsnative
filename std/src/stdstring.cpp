@@ -8,9 +8,11 @@
 #include <sstream>
 #include <vector>
 
-#include "array.h"
-#include "gc.h"
-#include "stdstring.h"
+#include "std/array.h"
+#include "std/gc.h"
+#include "std/stdstring.h"
+
+#include "std/iterators/stringiterator.h"
 
 string::string()
 {
@@ -370,9 +372,22 @@ string* string::operator+(const string& other) const
     return concat(other);
 }
 
+string* string::operator[](double index) const
+{
+    std::string character = {string_.at(static_cast<size_t>(index))};
+    return GC::createHeapAllocated<string>(character);
+}
+
+IterableIterator<string*>* string::iterator()
+{
+    auto it = new StringIterator<string*>(this);
+    return GC::track(it);
+}
+
 std::string string::cpp_str() const
 {
     return string_;
 }
 
 template class Array<string*>;
+template class IteratorResult<string*>;

@@ -63,7 +63,8 @@ export class ExternalSymbolsProvider {
     argumentTypes: TSType[],
     thisType: TSType | undefined,
     generator: LLVMGenerator,
-    knownMethodName?: string
+    knownMethodName?: string,
+    knownGenericTypes?: TSType[]
   ) {
     this.generator = generator;
     const namespace = declaration.getNamespace().join("::");
@@ -72,17 +73,23 @@ export class ExternalSymbolsProvider {
     if (thisType) {
       this.thisTypeName = thisType.getTypename();
 
-      const typeArguments = thisType.getTypeGenericArguments();
+      if (!knownGenericTypes) {
+        const typeArguments = thisType.getTypeGenericArguments();
 
-      this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
-        typeArguments.map((type) => {
-          if (type.isTypeParameter() && !type.isSupported()) {
-            type = this.generator.symbolTable.currentScope.typeMapper.get(type.toString())!;
-          }
+        this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
+          typeArguments.map((type) => {
+            if (type.isTypeParameter() && !type.isSupported()) {
+              type = this.generator.symbolTable.currentScope.typeMapper.get(type.toString())!;
+            }
 
-          return type.toCppType();
-        })
-      );
+            return type.toCppType();
+          })
+        );
+      } else {
+        this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
+          knownGenericTypes.map((type) => type.toCppType())
+        );
+      }
     }
 
     const parameterTypes = declaration.parameters.map((parameter) => generator.ts.checker.getTypeAtLocation(parameter));

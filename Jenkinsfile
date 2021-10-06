@@ -36,6 +36,8 @@ pipeline {
                                         sh "npm -v"
                                         sh "node -v"
 
+                                        sh "npm cache clean -f"
+
                                         npm_login_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
 
                                         sh "npm install --unsafe-perm"
@@ -107,6 +109,8 @@ pipeline {
 
                                         sh "npm -v"
                                         sh "node -v"
+
+                                        sh "npm cache clean -f"
 
                                         npm_login_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
 

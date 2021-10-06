@@ -22,6 +22,10 @@ declare class Array<T> {
 
   keys(): ArrayIterator<number>;
   values(): ArrayIterator<T>;
+
+  // @ts-ignore
+  @MapsTo("iterator")
+  [Symbol.iterator](): ArrayIterator<T>;
 }
 
 declare class Tuple {
@@ -51,6 +55,10 @@ declare class Map<K, V> {
   keys(): ArrayIterator<K>;
   values(): ArrayIterator<V>;
 
+  // @ts-ignore
+  @MapsTo("iterator")
+  [Symbol.iterator](): MapIterator<[K, V]>;
+
   get size(): number;
 }
 
@@ -69,6 +77,10 @@ declare class Set<T> {
   // @todo: entries(): lacks tuples support
   keys(): ArrayIterator<T>;
   values(): ArrayIterator<T>;
+
+  // @ts-ignore
+  @MapsTo("iterator")
+  [Symbol.iterator](): SetIterator<T>;
 
   get size(): number;
 }
@@ -107,6 +119,10 @@ declare class String {
 
   lastIndexOf(pattern: string): number;
   lastIndexOf(pattern: string, start: number): number;
+
+  // @ts-ignore
+  @MapsTo("iterator")
+  [Symbol.iterator](): StringIterator<string>;
 
   get length(): number;
 

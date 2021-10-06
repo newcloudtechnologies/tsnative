@@ -239,4 +239,37 @@ export class TSArray {
 
     return toString;
   }
+
+  createIterator(expression: ts.ArrayLiteralExpression) {
+    const arrayType = this.getType(expression);
+
+    const symbol = arrayType.getProperty("iterator")!;
+    const declaration = symbol.valueDeclaration;
+
+    if (!declaration) {
+      throw new Error("No declaration for Array.concat found");
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      declaration,
+      expression,
+      arrayType,
+      [arrayType],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Array 'iterator' for type '${arrayType.toString()}' not found`);
+    }
+
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer(); // void*; caller have to perform cast
+
+    const { fn: concat } = this.generator.llvm.function.create(
+      llvmReturnType,
+      [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
+      qualifiedName
+    );
+
+    return concat;
+  }
 }

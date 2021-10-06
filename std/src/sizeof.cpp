@@ -1,8 +1,8 @@
-#include "sizeof.h"
+#include "std/sizeof.h"
 
-#include "array.h"
-#include "stdstring.h"
-#include "tsclosure.h"
+#include "std/array.h"
+#include "std/stdstring.h"
+#include "std/tsclosure.h"
 
 uint32_t SizeOf::array()
 {

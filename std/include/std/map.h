@@ -3,11 +3,14 @@
 #include "array.h"
 #include "gc.h"
 #include "iterable.h"
-#include "orderedmap.h"
 #include "tsclosure.h"
+#include "tuple.h"
+
+#include "datatypes/orderedmap.h"
+#include "iterators/mapiterator.h"
 
 template <typename K, typename V>
-class Map : public Iterable<V> // @todo: Iterable<[K, V]>, MapIterator<[K, V]>
+class Map : public Iterable<Tuple<K, V>*>
 {
 public:
     Map();
@@ -21,7 +24,11 @@ public:
     double size() const;
 
     IterableIterator<V>* values();
-    IterableIterator<V>* iterator() override;
+
+    using KPointer = typename std::conditional<std::is_pointer<K>::value, K, typename std::add_pointer<K>::type>::type;
+    using VPointer = typename std::conditional<std::is_pointer<V>::value, V, typename std::add_pointer<V>::type>::type;
+
+    IterableIterator<Tuple<K, V>*>* iterator() override;
     IterableIterator<K>* keys();
 
 private:
@@ -124,9 +131,18 @@ IterableIterator<V>* Map<K, V>::values()
 }
 
 template <typename K, typename V>
-IterableIterator<V>* Map<K, V>::iterator()
+IterableIterator<Tuple<K, V>*>* Map<K, V>::iterator()
 {
-    return values();
+    auto keys = _map.orderedKeys();
+    auto zipped = new Array<Tuple<K, V>*>();
+
+    for (const K& key : keys) {
+        auto tuple = new Tuple<K, V>{key, get(key)};
+        zipped->push(GC::track(tuple));
+    }
+
+    auto it = new MapIterator<Tuple<K, V>*>(zipped);
+    return GC::track(it);
 }
 
 template <typename K, typename V>

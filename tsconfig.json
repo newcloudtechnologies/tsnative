@@ -10,7 +10,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "pretty": true
+    "pretty": true,
+    "downlevelIteration": true
   },
   "include": [
     "src/*",

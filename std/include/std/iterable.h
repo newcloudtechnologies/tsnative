@@ -1,5 +1,9 @@
 #pragma once
 
+#include "gc.h"
+
+#include <type_traits>
+
 template <typename T>
 class IteratorResult
 {
@@ -7,9 +11,22 @@ public:
     IteratorResult(bool done, T value);
 
     bool done() const;
-    T value() const;
+
+    typename std::conditional<std::is_pointer<T>::value, T, T*>::type value() const;
 
 private:
+    template <typename U = T>
+    typename std::enable_if<std::is_pointer<U>::value, U>::type getPointerToValue() const
+    {
+        return _value;
+    }
+
+    template <typename U = T>
+    typename std::enable_if<!std::is_pointer<U>::value, U>::type* getPointerToValue() const
+    {
+        return GC::createHeapAllocated<U>(_value);
+    }
+
     bool _done;
     T _value;
 };
@@ -28,9 +45,9 @@ bool IteratorResult<T>::done() const
 }
 
 template <typename T>
-T IteratorResult<T>::value() const
+typename std::conditional<std::is_pointer<T>::value, T, T*>::type IteratorResult<T>::value() const
 {
-    return _value;
+    return getPointerToValue();
 }
 
 template <typename T>

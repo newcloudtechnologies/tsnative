@@ -1,8 +1,8 @@
 #pragma once
 
 #include "point.h"
-#include <std/include/array.h>
-#include <std/include/stdstring.h>
+#include <std/array.h>
+#include <std/stdstring.h>
 
 namespace cpp {
 

@@ -17,7 +17,7 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 
 find_path(
     StdLib_INCLUDE_DIR
-    NAMES gc.h array.h stdstring.h tsclosure.h console.h map.h set.h
+    NAMES std/gc.h std/array.h std/stdstring.h std/tsclosure.h std/console.h std/map.h std/set.h
     PATHS ${CMAKE_CURRENT_LIST_DIR}/../include)
 
 find_library(StdLib_LIBRARY

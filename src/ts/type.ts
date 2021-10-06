@@ -94,6 +94,8 @@ export class TSType {
       // ts.TypeChecker.getSymbol won't return symbol for declaration placed in *.d.ts (https://github.com/Microsoft/TypeScript/issues/5218)
       // Actually 'symbol' property exists, so try hard to get it.
       symbol = (this.checker.generator.tuple.getDeclaration().unwrapped as any).symbol;
+    } else if (this.isString()) {
+      symbol = (this.checker.generator.builtinString.getDeclaration().unwrapped as any).symbol;
     }
 
     if (!symbol) {
@@ -708,6 +710,10 @@ export class TSType {
       return LLVMType.getInt8Type(this.checker.generator);
     }
 
+    if (this.isTuple()) {
+      return this.checker.generator.tuple.getLLVMType();
+    }
+
     throw new Error(`Unhandled type: '${this.toString()}'`);
   }
 
@@ -765,6 +771,21 @@ export class TSType {
       }
 
       return `Set<${cppTypeParameters.join(",")}>*`;
+    }
+
+    if (this.isTuple()) {
+      const typeParameters = this.getTypeGenericArguments();
+      const cppTypeParameters = [];
+      for (const type of typeParameters) {
+        let cppType = type.toCppType();
+        if (type.isClassOrInterface()) {
+          cppType = "void*";
+        }
+
+        cppTypeParameters.push(cppType);
+      }
+
+      return `Tuple<${cppTypeParameters.join(",")}>*`;
     }
 
     let typename = this.toString();

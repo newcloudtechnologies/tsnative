@@ -1,5 +1,3 @@
-#include <std/include/gc.h>
-
 #include "aggregate.h"
 
 using namespace cpp;

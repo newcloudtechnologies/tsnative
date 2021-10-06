@@ -399,3 +399,69 @@ export class BuiltinString extends Builtin {
     return equals;
   }
 }
+
+export class BuiltinIteratorResult extends Builtin {
+  private readonly llvmType: LLVMType;
+
+  constructor(declaration: Declaration, generator: LLVMGenerator) {
+    super(declaration.type.mangle(), generator);
+
+    this.llvmType = declaration.type.getLLVMType();
+  }
+
+  getLLVMType() {
+    return this.llvmType;
+  }
+
+  getValueGetter(type: TSType) {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+
+    const nextDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "value")!;
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      nextDeclaration,
+      undefined,
+      thisType,
+      [],
+      this.generator,
+      [type]
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`External symbol for 'value' is not found at '${declaration.getText()}'`);
+    }
+
+    const llvmReturnType = type.getLLVMType();
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+    const { fn: valueGetter } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return valueGetter;
+  }
+
+  getDoneGetter(type: TSType) {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+
+    const doneDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "done")!;
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      doneDeclaration,
+      undefined,
+      thisType,
+      [],
+      this.generator,
+      [type]
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`External symbol for 'value' is not found at '${declaration.getText()}'`);
+    }
+
+    const llvmReturnType = LLVMType.getIntNType(1, this.generator);
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+    const { fn: doneGetter } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return doneGetter;
+  }
+}

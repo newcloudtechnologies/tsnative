@@ -14,9 +14,17 @@ import { NodeHandlerChain } from "../handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined, addClassScope } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { BuiltinString, BuiltinInt8, BuiltinUInt32, GC, BuiltinTSClosure, BuiltinTSTuple } from "../tsbuiltins";
+import {
+  BuiltinString,
+  BuiltinInt8,
+  BuiltinUInt32,
+  GC,
+  BuiltinTSClosure,
+  BuiltinTSTuple,
+  BuiltinIteratorResult,
+} from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { DEFINITIONS, GC_DEFINITION, UTILITY_DEFINITIONS } from "../../std/constants";
+import { DEFINITIONS, GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -53,6 +61,8 @@ export class LLVMGenerator {
   private builtinTSTuple: BuiltinTSTuple | undefined;
   private builtinTSClosure: BuiltinTSClosure | undefined;
   private garbageCollector: GC | undefined;
+
+  private builtinIteratorResult: BuiltinIteratorResult | undefined;
 
   readonly sizeOf: SizeOf;
   readonly llvm: LLVM;
@@ -173,6 +183,26 @@ export class LLVMGenerator {
     }
   }
 
+  initIteratorResult() {
+    const iterabledefs = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === ITERABLE);
+    if (!iterabledefs) {
+      throw new Error("No iterable definitions source file found");
+    }
+    iterabledefs.forEachChild((node) => {
+      if (ts.isClassDeclaration(node)) {
+        const clazz = Declaration.create(node as ts.ClassDeclaration, this);
+        const clazzName = clazz.type.getSymbol().escapedName;
+        if (clazzName === "IteratorResult") {
+          this.builtinIteratorResult = new BuiltinIteratorResult(clazz, this);
+          addClassScope(node, this.symbolTable.globalScope, this);
+        }
+      }
+    });
+    if (!this.builtinIteratorResult) {
+      throw new Error("IteratorResult declaration not found");
+    }
+  }
+
   withLocalBuilder<R>(action: () => R): R {
     const builder = this.builder;
     this.irBuilder = new Builder(this, this.currentFunction.getEntryBlock());
@@ -259,6 +289,14 @@ export class LLVMGenerator {
     }
 
     return this.builtinTSClosure!;
+  }
+
+  get iteratorResult() {
+    if (!this.builtinIteratorResult) {
+      this.initIteratorResult();
+    }
+
+    return this.builtinIteratorResult!;
   }
 
   get randomString() {

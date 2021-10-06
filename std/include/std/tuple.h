@@ -49,10 +49,14 @@ template <typename... Ts>
 class Tuple
 {
 public:
+    Tuple() = default;
     Tuple(Ts... initializers);
 
     double length() const;
     void* operator[](double index);
+
+    template <typename... Us>
+    friend std::ostream& operator<<(std::ostream& os, Tuple<Us...>* tuple);
 
 private:
     std::tuple<Ts...>* _tuple = nullptr;
@@ -75,4 +79,34 @@ void* Tuple<Ts...>::operator[](double index)
 {
     return typeless_tuple_element<sizeof...(Ts), typename std::remove_pointer<decltype(_tuple)>::type>::get(
         *_tuple, static_cast<size_t>(index));
+}
+
+template<typename Type, unsigned N, unsigned Last>
+struct tuple_printer {
+
+    static void print(std::ostream& out, const Type& value) {
+        out << std::get<N>(value) << ", ";
+        tuple_printer<Type, N + 1, Last>::print(out, value);
+    }
+};
+
+template<typename Type, unsigned N>
+struct tuple_printer<Type, N, N> {
+
+    static void print(std::ostream& out, const Type& value) {
+        out << std::get<N>(value);
+    }
+
+};
+
+template <typename... Ts>
+inline std::ostream& operator<<(std::ostream& os, Tuple<Ts...>* tuple)
+{
+    os << std::boolalpha;
+    os << "[ ";
+
+    tuple_printer<std::tuple<Ts...>, 0, sizeof...(Ts) - 1>::print(os, *(tuple->_tuple));
+
+    os << " ]";
+    return os;
 }

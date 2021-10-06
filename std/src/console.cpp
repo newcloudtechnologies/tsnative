@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "console.h"
+#include "std/console.h"
 
 template <>
 void console::log(bool value)

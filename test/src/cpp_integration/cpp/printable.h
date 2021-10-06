@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#include <std/include/stdstring.h>
+#include <std/stdstring.h>
 
 namespace cpp {
 

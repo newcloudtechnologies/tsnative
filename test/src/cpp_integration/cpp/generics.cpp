@@ -1,7 +1,7 @@
 #include <cstdint>
 
-#include <std/include/gc.h>
-#include <std/include/stdstring.h>
+#include <std/gc.h>
+#include <std/stdstring.h>
 
 template <typename T, typename R> R sum(T op1, T op2) { return op1 + op2; }
 

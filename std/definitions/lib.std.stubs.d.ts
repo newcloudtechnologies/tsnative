@@ -19,3 +19,7 @@ interface CallableFunction {
   bind<T, AX, R>(this: (this: T, ...args: AX[]) => R, thisArg: T, ...args: AX[]): (...args: AX[]) => R;
 }
 interface NewableFunction { }
+
+declare class Symbol {
+  static readonly iterator: unique symbol;
+}

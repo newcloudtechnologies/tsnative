@@ -1,6 +1,6 @@
 #include "inheritance.h"
 
-#include <std/include/gc.h>
+#include <std/gc.h>
 
 using namespace cpp;
 

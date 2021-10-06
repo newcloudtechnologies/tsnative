@@ -1,4 +1,4 @@
-#include "tsclosure.h"
+#include "std/tsclosure.h"
 
 TSClosure::TSClosure(void* fn, void** env, int numArgs)
     : fn(fn)

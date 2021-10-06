@@ -1,12 +1,14 @@
 #pragma once
 
+#include "iterable.h"
+
 #include <iostream>
 #include <string>
 
 template <typename T>
 class Array;
 
-class string
+class string : public Iterable<string*>
 {
 public:
     string();
@@ -52,7 +54,11 @@ public:
     bool operator==(string* other) const;
     string* operator+(const string& other) const;
 
+    string* operator[](double index) const;
+
     std::string cpp_str() const;
+
+    IterableIterator<string*>* iterator() override;
 
     friend std::ostream& operator<<(std::ostream& os, const string& s);
     friend std::ostream& operator<<(std::ostream& os, string* s);
@@ -92,4 +98,5 @@ struct equal_to<::string*>
         return *lhs == *rhs;
     }
 };
+
 } // namespace std

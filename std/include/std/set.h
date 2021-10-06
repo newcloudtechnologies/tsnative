@@ -3,13 +3,15 @@
 #include "array.h"
 #include "gc.h"
 #include "iterable.h"
-#include "orderedset.h"
 #include "tsclosure.h"
+
+#include "iterators/setiterator.h"
+#include "datatypes/orderedset.h"
 
 #include <utility>
 
 template <typename V>
-class Set : public Iterable<V> // @todo: SetIterator
+class Set : public Iterable<V>
 {
 public:
     Set();
@@ -106,7 +108,7 @@ template <typename V>
 IterableIterator<V>* Set<V>::values()
 {
     auto values = Array<V>::fromStdVector(_set.ordered());
-    auto it = new ArrayIterator<V>(values);
+    auto it = new SetIterator<V>(values);
     return GC::track(it);
 }
 

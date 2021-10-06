@@ -15,6 +15,8 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { last } from "lodash";
+import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
+import { LLVMType } from "../../llvm/type";
 
 export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -24,6 +26,9 @@ export class LoopHandler extends AbstractNodeHandler {
         return true;
       case ts.SyntaxKind.ForStatement:
         this.handleForStatement(node as ts.ForStatement, env);
+        return true;
+      case ts.SyntaxKind.ForOfStatement:
+        this.handleForOfStatement(node as ts.ForOfStatement, env);
         return true;
       case ts.SyntaxKind.ContinueStatement:
         this.handleContinueStatement(node as ts.ContinueStatement);
@@ -147,6 +152,142 @@ export class LoopHandler extends AbstractNodeHandler {
         this.generator.handleExpression(statement.initializer as ts.Expression, env);
       }
       handlerImpl();
+    }
+  }
+
+  private handleForOfStatement(statement: ts.ForOfStatement, env?: Environment): void {
+    if (statement.awaitModifier) {
+      throw new Error(`'await' currently is not supported in for..of, '${statement.getText()}'`);
+    }
+
+    const { builder, context, symbolTable, currentFunction } = this.generator;
+
+    if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
+      if (statement.initializer.declarations.length > 1) {
+        throw new Error(`Expected only variable declaration in for..of at '${statement.getText()}'`);
+      }
+
+      const initializer = statement.initializer.declarations[0];
+
+      const isTupleInitializer = () => ts.isArrayBindingPattern(initializer.name);
+      const isSingleVariableInitializer = () => ts.isIdentifier(initializer.name);
+
+      if (!isTupleInitializer() && !isSingleVariableInitializer()) {
+        throw new Error(`Allowed initializers in for..of are identifiers and tuples (at '${initializer.getText()}')`);
+      }
+
+      const updateScope = (updated: LLVMValue) => {
+        if (isSingleVariableInitializer()) {
+          const name = initializer.name.getText();
+          this.generator.symbolTable.currentScope.set(name, updated);
+        } else if (isTupleInitializer()) {
+          const bindingPattern = initializer.name as ts.ArrayBindingPattern;
+
+          const identifiers: ts.Identifier[] = [];
+          bindingPattern.elements.forEach((element) => {
+            if (!ts.isBindingElement(element) || element.initializer) {
+              throw new Error("Array destructuring is not support omitting nor default initializers.");
+            }
+
+            if (!ts.isIdentifier(element.name)) {
+              throw new Error(
+                `Array destructuring is not support non-identifiers, got '${
+                  ts.SyntaxKind[element.kind]
+                }' at '${element.getText()}'`
+              );
+            }
+
+            identifiers.push(element.name);
+          });
+
+          const elementTypes = bindingPattern.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
+
+          const subscription = this.generator.ts.tuple.createSubscription(variableType);
+          updated = this.generator.builder.asVoidStar(updated);
+
+          for (let i = 0; i < identifiers.length; ++i) {
+            const llvmIntegralIndex = LLVMConstantInt.get(this.generator, i);
+            const llvmDoubleIndex = this.generator.builder.createSIToFP(
+              llvmIntegralIndex,
+              LLVMType.getDoubleType(this.generator)
+            );
+
+            const elementType = elementTypes[i];
+
+            const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
+              updated,
+              llvmDoubleIndex,
+            ]);
+            const destructedValue = this.generator.builder.createBitCast(
+              destructedValueUntyped,
+              elementType.getLLVMType()
+            );
+
+            this.generator.symbolTable.currentScope.set(identifiers[i].getText(), destructedValue);
+          }
+        } else {
+          // Unreachable
+          throw new Error(`Unexpected initializer in for..of: '${initializer.getText()}'`);
+        }
+      };
+
+      const variableType = this.generator.ts.checker.getTypeAtLocation(initializer.name);
+
+      const iterable = this.generator.handleExpression(statement.expression, env);
+      const iterableTypeless = this.generator.builder.asVoidStar(iterable);
+
+      const forOfHandlerImpl = () => {
+        const condition = BasicBlock.create(context, "for_of.condition");
+        const incrementor = BasicBlock.create(context, "for_of.incrementor");
+        const body = BasicBlock.create(context, "for_of.body");
+        const exiting = BasicBlock.create(context, "for_of.exiting");
+        const end = BasicBlock.create(context, "for_of.end");
+
+        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(statement.expression);
+        const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [iterableTypeless]);
+        const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
+
+        const iteratorNextMethod = this.generator.ts.iterator.getNext(statement.expression, variableType);
+
+        builder.createBr(condition);
+        currentFunction.addBasicBlock(condition);
+        builder.setInsertionPoint(condition);
+
+        const next = this.generator.builder.createSafeCall(iteratorNextMethod, [iteratorTypeless]);
+        const nextTypeless = this.generator.builder.asVoidStar(next);
+
+        const doneFn = this.generator.iteratorResult.getDoneGetter(variableType);
+        const done = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
+
+        const isDone = this.generator.createLoadIfNecessary(done);
+        builder.createCondBr(isDone, exiting, incrementor);
+
+        currentFunction.addBasicBlock(incrementor);
+        builder.setInsertionPoint(incrementor);
+
+        const valueFn = this.generator.iteratorResult.getValueGetter(variableType);
+        const value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
+
+        updateScope(value);
+
+        builder.createBr(body);
+
+        currentFunction.addBasicBlock(body);
+        builder.setInsertionPoint(body);
+        this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
+        builder.createBr(condition);
+
+        currentFunction.addBasicBlock(exiting);
+        builder.setInsertionPoint(exiting);
+        builder.createBr(end);
+
+        currentFunction.addBasicBlock(end);
+        builder.setInsertionPoint(end);
+      };
+
+      this.generator.symbolTable.withLocalScope(forOfHandlerImpl, this.generator.symbolTable.currentScope);
+    } else {
+      throw new Error(`Unsupported for..of initializer: '${statement.initializer.getText()}'`);
     }
   }
 

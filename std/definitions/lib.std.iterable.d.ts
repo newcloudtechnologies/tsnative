@@ -21,3 +21,15 @@ declare class IterableIterator<T> extends Iterator<T> {
 declare class ArrayIterator<T> extends IterableIterator<T> {
     next(): IteratorResult<T>;
 }
+
+declare class StringIterator<T> extends IterableIterator<T> {
+    next(): IteratorResult<T>;
+}
+
+declare class SetIterator<T> extends IterableIterator<T> {
+    next(): IteratorResult<T>;
+}
+
+declare class MapIterator<T> extends IterableIterator<T> {
+    next(): IteratorResult<T>;
+}

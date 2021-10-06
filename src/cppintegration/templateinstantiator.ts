@@ -489,10 +489,22 @@ export class TemplateInstantiator {
         const tsType = this.generator.ts.checker.getTypeAtLocation(node);
         const templateInstance = `template class ${tsType.toPlainCppType()};`;
 
-        const elementType = tsType.getTypeGenericArguments()[0]!;
-        const iteratorResultInstance = `template class IteratorResult<${elementType.toCppType()}>;`;
+        const keyElementType = tsType.getTypeGenericArguments()[0]!;
+        const keyIteratorResultInstance = `template class IteratorResult<${keyElementType.toCppType()}>;`;
 
-        this.generatedContent.push(templateInstance, iteratorResultInstance);
+        const valueElementType = tsType.getTypeGenericArguments()[1]!;
+        const valueIteratorResultInstance = `template class IteratorResult<${valueElementType.toCppType()}>;`;
+
+        const entriesIteratorResultInstance = `template class IteratorResult<Tuple<${keyElementType.toCppType()},${valueElementType.toCppType()}>*>;`;
+        const entriesTupleInstance = `template class Tuple<${keyElementType.toCppType()},${valueElementType.toCppType()}>;`;
+
+        this.generatedContent.push(
+          templateInstance,
+          keyIteratorResultInstance,
+          valueIteratorResultInstance,
+          entriesIteratorResultInstance,
+          entriesTupleInstance
+        );
       }
     } else {
       ts.forEachChild(node, this.mapNodeVisitor.bind(this));
