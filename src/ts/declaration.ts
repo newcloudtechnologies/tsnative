@@ -165,6 +165,10 @@ export class Declaration {
     return this.isClass() || this.isInterface();
   }
 
+  isEnum() {
+    return ts.isEnumDeclaration(this.declaration);
+  }
+
   isEnumMember() {
     return ts.isEnumMember(this.declaration);
   }

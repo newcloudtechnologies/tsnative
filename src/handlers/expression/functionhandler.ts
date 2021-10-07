@@ -1054,7 +1054,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
       thisVal = this.generator.handleExpression(propertyAccess.expression, outerEnv);
-      thisVal = thisVal.adjustToType(llvmThisType!);
+
+      if (thisVal.type.isPointerToStruct() && llvmThisType!.isPointerToStruct()) {
+        // Hopefully it is a call through inheritance chain, e.g. base class method.
+        // @todo: extra checks
+        thisVal = this.generator.builder.asVoidStar(thisVal);
+        thisVal = this.generator.builder.createBitCast(thisVal, llvmThisType!);
+      } else {
+        thisVal.adjustToType(llvmThisType!);
+      }
     }
 
     const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {

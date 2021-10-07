@@ -647,9 +647,16 @@ export class TSType {
     }
 
     if (this.isEnum()) {
-      const declaration = this.getSymbol().valueDeclaration!;
-      if (!declaration || !declaration.isEnumMember()) {
-        throw new Error("No declaration for enum found or declaration is not a enum member");
+      const declaration = this.getSymbol().declarations[0];
+      if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
+        console.log(declaration.getText());
+        throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
+      }
+
+      if (declaration.isEnum()) {
+        // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
+        // Pretend it is a numeric enum for now.
+        return LLVMType.getDoubleType(this.checker.generator).getPointer();
       }
 
       if (!declaration.initializer) {

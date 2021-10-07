@@ -386,3 +386,32 @@
   const x = new X;
   console.assert(x.i === 42 && x.n === 22, "Inherited and own properties test failed");
 }
+
+{
+  class RxWidget {
+    __selfWidget: number = 555;
+  }
+
+  class RxComponent extends RxWidget {
+    updateState() {
+      return 22;
+    }
+  }
+
+  class MyComponent extends RxComponent {
+  }
+
+  {
+    const obj: RxComponent = new MyComponent();
+    const value = obj.updateState();
+
+    console.assert(value === 22, "Casted to base class method call");
+  }
+
+  {
+    const obj: RxWidget = new MyComponent();
+    const value = obj.__selfWidget;
+
+    console.assert(value === 555, "Casted to base class property access");
+  }
+}
