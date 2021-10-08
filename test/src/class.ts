@@ -431,3 +431,36 @@
   const obj = new RxComponent2();
   console.assert(obj.__vptr_render() === "wow", "Self references in constructors are allowed")
 }
+
+{
+  class RxWidget {
+    _selfWidget: string = "wow";
+  }
+
+  {
+    class RxComponent extends RxWidget {
+      protected __vptr_render: number = 555;
+
+      render(): RxWidget {
+        return new RxComponent();
+      }
+    }
+
+    const w: RxWidget = new RxComponent().render();
+    console.assert(w._selfWidget === "wow", "Immediate upcast in return statement");
+  }
+
+  {
+    class RxComponent extends RxWidget {
+      protected __vptr_render: number = 555;
+
+      render(): RxWidget {
+        const v: RxWidget = new RxComponent();
+        return v;
+      }
+    }
+
+    const w: RxWidget = new RxComponent().render();
+    console.assert(w._selfWidget === "wow", "Upcast in variable initialization");
+  }
+}

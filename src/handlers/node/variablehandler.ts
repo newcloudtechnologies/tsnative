@@ -65,6 +65,10 @@ export class VariableHandler extends AbstractNodeHandler {
       const nullIntersection = LLVMIntersection.createNullValue(llvmIntersectionType, this.generator);
       initializer = nullIntersection.initialize(initializer);
     } else if (type.isClassOrInterface()) {
+      if (!declaration.initializer) {
+        throw new Error(`Expected initializer at variable declaration '${declaration.getText()}'`);
+      }
+
       const initializerNakedType = initializer.type.unwrapPointer();
       if (!initializerNakedType.isStructType()) {
         throw new Error(`Expected initializer to be of StructType`);
@@ -73,7 +77,10 @@ export class VariableHandler extends AbstractNodeHandler {
       const declarationLLVMType = type.getLLVMType().unwrapPointer() as LLVMStructType;
 
       if (!initializerNakedType.equals(declarationLLVMType)) {
-        if (initializerNakedType.numElements === declarationLLVMType.numElements) {
+        const initializerType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
+        if (initializerType.isUpcastableTo(type)) {
+          initializer = this.generator.builder.createBitCast(initializer, type.getLLVMType());
+        } else if (initializerNakedType.numElements === declarationLLVMType.numElements) {
           const allocated = this.generator.gc.allocate(declarationLLVMType);
           for (let i = 0; i < initializerNakedType.numElements; ++i) {
             const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);

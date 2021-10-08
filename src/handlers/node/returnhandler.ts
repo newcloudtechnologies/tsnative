@@ -14,6 +14,7 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { LLVMType } from "../../llvm/type";
 import { LLVMUnion } from "../../llvm/value";
+import { Declaration } from "../../ts/declaration";
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -26,6 +27,17 @@ export class ReturnHandler extends AbstractNodeHandler {
         );
 
         if (!ret.type.equals(currentFunctionReturnType)) {
+          const signature = this.getSignatureOfFunctionThatReturns(node);
+          const declaratedReturnType = signature.getReturnType();
+          const typeOfReturn = this.generator.ts.checker.getTypeAtLocation(node.expression);
+
+          if (typeOfReturn.isUpcastableTo(declaratedReturnType)) {
+            ret = this.generator.builder.createBitCast(ret, declaratedReturnType.getLLVMType());
+            this.generator.builder.createSafeRet(ret);
+
+            return true;
+          }
+
           const retTypeUnwrapped = ret.type.unwrapPointer();
           if (
             (retTypeUnwrapped.isStructType() &&
@@ -51,5 +63,15 @@ export class ReturnHandler extends AbstractNodeHandler {
     }
 
     return false;
+  }
+
+  private getSignatureOfFunctionThatReturns(node: ts.Node) {
+    let parentFunction = node.parent;
+
+    while (!ts.isFunctionLike(parentFunction)) {
+      parentFunction = parentFunction.parent;
+    }
+
+    return this.generator.ts.checker.getSignatureFromDeclaration(Declaration.create(parentFunction, this.generator));
   }
 }

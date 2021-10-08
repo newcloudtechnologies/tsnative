@@ -291,6 +291,45 @@ export class TSType {
     return Boolean(this.type.flags & ts.TypeFlags.TypeParameter);
   }
 
+  isUpcastableTo(type: TSType) {
+    if (!this.isClassOrInterface()) {
+      return false;
+    }
+
+    if (!type.isClassOrInterface()) {
+      return false;
+    }
+
+    const symbol = this.getSymbol();
+    const declaration = symbol.valueDeclaration;
+
+    if (!declaration) {
+      return false;
+    }
+
+    const heritageClauses = declaration.heritageClauses;
+    if (!heritageClauses) {
+      return false;
+    }
+
+    const targetSymbol = type.getSymbol();
+
+    // Consider type is upcastable to other if it has the other's symbol among types in 'extends' clause.
+    const isUpcastable =
+      heritageClauses
+        .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+        .findIndex((extendsClause) => {
+          const baseIdx = extendsClause.types.findIndex((expressionWithTypeArgs) => {
+            const baseType = this.checker.getTypeAtLocation(expressionWithTypeArgs);
+            return baseType.getSymbol().unwrapped === targetSymbol.unwrapped;
+          });
+
+          return baseIdx !== -1;
+        }) !== -1;
+
+    return isUpcastable;
+  }
+
   getCallSignatures() {
     return this.type.getCallSignatures();
   }
