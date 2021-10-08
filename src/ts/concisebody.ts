@@ -48,7 +48,12 @@ export class ConciseBody {
     return vars.concat(varsStatic).filter((variable) => variable !== "undefined");
   }
 
-  private getFunctionEnvironmentVariables(signature: Signature, extendScope: Scope, externalVariables: string[] = []) {
+  private getFunctionEnvironmentVariables(
+    signature: Signature,
+    extendScope: Scope,
+    externalVariables: string[] = [],
+    handled: ts.ConciseBody[] = []
+  ) {
     return this.generator.withInsertBlockKeeping(() => {
       return this.generator.symbolTable.withLocalScope((bodyScope) => {
         const dummyBlock = llvm.BasicBlock.create(this.generator.context, "dummy", this.generator.currentFunction);
@@ -100,15 +105,20 @@ export class ConciseBody {
           }
 
           if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
-            const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(
-              Declaration.create(node, this.generator)
-            );
+            if (!handled.includes(node.body)) {
+              handled.push(node.body);
 
-            ConciseBody.create(node.body, this.generator).getFunctionEnvironmentVariables(
-              innerFunctionSignature,
-              extendScope,
-              externalVariables
-            );
+              const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(
+                Declaration.create(node, this.generator)
+              );
+
+              ConciseBody.create(node.body, this.generator).getFunctionEnvironmentVariables(
+                innerFunctionSignature,
+                extendScope,
+                externalVariables,
+                handled
+              );
+            }
           } else if (ts.isPropertyAccessExpression(node)) {
             const accessorType = Expression.create(node, this.generator).getAccessorType();
             if (accessorType) {
@@ -121,13 +131,15 @@ export class ConciseBody {
               }
 
               const declarationBody = declaration.isFunctionLike() && declaration.body;
-              if (declarationBody) {
-                const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration)!;
+              if (declarationBody && !handled.includes(declarationBody)) {
+                handled.push(declarationBody);
 
+                const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
                 ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
                   innerFunctionSignature,
                   extendScope,
-                  externalVariables
+                  externalVariables,
+                  handled
                 );
               }
             }
@@ -160,13 +172,15 @@ export class ConciseBody {
 
             const declarationBody = declaration.isFunctionLike() && declaration.body;
 
-            if (declarationBody) {
-              const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
+            if (declarationBody && !handled.includes(declarationBody)) {
+              handled.push(declarationBody);
 
+              const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
               ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
                 innerFunctionSignature,
                 extendScope,
-                externalVariables
+                externalVariables,
+                handled
               );
             }
           }

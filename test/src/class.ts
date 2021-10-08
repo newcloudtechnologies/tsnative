@@ -415,3 +415,19 @@
     console.assert(value === 555, "Casted to base class property access");
   }
 }
+
+{
+  class RxComponent2 {
+    __vptr_render: (() => string);
+
+    constructor() {
+      this.__vptr_render = (): string => {
+        new RxComponent2(); // Self-reference to ctor
+        return "wow";
+      };
+    }
+  }
+
+  const obj = new RxComponent2();
+  console.assert(obj.__vptr_render() === "wow", "Self references in constructors are allowed")
+}

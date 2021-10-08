@@ -141,7 +141,8 @@ export class TSType {
   }
 
   isTuple() {
-    return ts.isTupleTypeNode(this.checker.unwrap().typeToTypeNode(this.type)!);
+    const typeNode = this.checker.unwrap().typeToTypeNode(this.type);
+    return Boolean(typeNode && ts.isTupleTypeNode(typeNode));
   }
 
   isMap() {
