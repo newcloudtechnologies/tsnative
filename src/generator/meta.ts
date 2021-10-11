@@ -9,7 +9,7 @@
  *
  */
 
-import { Environment } from "../scope";
+import { Environment, Prototype } from "../scope";
 import * as crypto from "crypto";
 import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";
@@ -79,6 +79,10 @@ class ClosureEnvironmentStorage {
   readonly storage = new Map<LLVMValue, Environment>();
 }
 
+class ParameterPrototypeStorage {
+  readonly storage = new Map<string, Prototype>();
+}
+
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
   readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
@@ -87,6 +91,7 @@ export class MetaInfoStorage {
   readonly closureParametersMeta = new ClosureParametersMetaStorage();
   readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
   readonly closureEnvironment = new ClosureEnvironmentStorage();
+  readonly parameterPrototype = new ParameterPrototypeStorage();
 
   registerUnionMeta(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -189,6 +194,18 @@ export class MetaInfoStorage {
       throw new Error("No environment registered");
     }
     return environment;
+  }
+
+  registerParameterPrototype(parameter: string, prototype: Prototype) {
+    this.parameterPrototype.storage.set(parameter, prototype);
+  }
+
+  getParameterPrototype(parameter: string) {
+    const prototype = this.parameterPrototype.storage.get(parameter);
+    if (!prototype) {
+      throw new Error(`No prototype registered for '${parameter}'`);
+    }
+    return prototype;
   }
 
   try<A, T>(getter: (_: A) => T, arg: A) {

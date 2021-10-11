@@ -47,7 +47,7 @@ export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
           if (this.generator.ts.checker.nodeHasSymbol(location)) {
             const symbol = this.generator.ts.checker.getSymbolAtLocation(location);
 
-            if (symbol.declarations) {
+            if (symbol.declarations.length > 0) {
               const declaration = symbol.declarations[0];
 
               if (declaration && declaration.isParameter()) {

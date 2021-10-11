@@ -536,6 +536,15 @@ export function populateContext(
 
 export type ScopeValue = LLVMValue | HeapVariableDeclaration | Scope;
 
+export class Prototype {
+  readonly methods: Declaration[] = [];
+  readonly parentType: TSType;
+
+  constructor(parentType: TSType) {
+    this.parentType = parentType;
+  }
+}
+
 export interface ThisData {
   readonly declaration: Declaration | undefined;
   readonly llvmType: LLVMType;

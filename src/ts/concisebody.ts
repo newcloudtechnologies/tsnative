@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "../generator";
+import { LLVMGenerator, MetaInfoStorage } from "../generator";
 import { Scope, Environment, HeapVariableDeclaration } from "../scope";
 import * as llvm from "llvm-node";
 import { LLVMConstantInt, LLVMValue, LLVMConstant } from "../llvm/value";
@@ -145,43 +145,72 @@ export class ConciseBody {
             }
           } else if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
             const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
-            const symbol = type.getSymbol();
+            let declaration: Declaration | undefined;
 
-            // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead
-            // @todo: what about setters/getters?
-            let declaration = symbol.declarations[0];
-            if (ts.isNewExpression(node)) {
-              const classFileName = declaration.getSourceFile().fileName;
-              const classRootScope = this.generator.symbolTable.getScope(classFileName);
-              if (!classRootScope) {
-                throw new Error(`No scope '${classFileName}' found`);
+            if (
+              ts.isPropertyAccessExpression(node.expression) &&
+              this.generator.ts.checker.nodeHasSymbol(node.expression.expression)
+            ) {
+              const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(node.expression.expression);
+              const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
+              if (propertyAccessDeclaration?.isParameter()) {
+                const propertyAccess = node.expression;
+                const functionName = propertyAccess.name.getText();
+                const prototype = this.generator.meta.try(
+                  MetaInfoStorage.prototype.getParameterPrototype,
+                  propertyAccess.expression.getText()
+                );
+
+                if (prototype) {
+                  const methodD = prototype.methods.find((method) => method.name?.getText() === functionName);
+                  if (!methodD) {
+                    throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                  }
+
+                  declaration = methodD;
+                }
               }
+            } else {
+              const symbol = type.getSymbol();
 
-              if (!extendScope.get(classFileName)) {
-                extendScope.set(classFileName, classRootScope);
+              // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead
+              // @todo: what about setters/getters?
+              declaration = symbol.declarations[0];
+              if (ts.isNewExpression(node)) {
+                const classFileName = declaration.getSourceFile().fileName;
+                const classRootScope = this.generator.symbolTable.getScope(classFileName);
+                if (!classRootScope) {
+                  throw new Error(`No scope '${classFileName}' found`);
+                }
+
+                if (!extendScope.get(classFileName)) {
+                  extendScope.set(classFileName, classRootScope);
+                }
+
+                const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
+                if (!constructorDeclaration) {
+                  // unreachable if source is preprocessed correctly
+                  throw new Error(`No constructor provided: ${declaration.getText()}`);
+                }
+
+                declaration = constructorDeclaration;
               }
-
-              const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
-              if (!constructorDeclaration) {
-                // unreachable if source is preprocessed correctly
-                throw new Error(`No constructor provided: ${declaration.getText()}`);
-              }
-
-              declaration = constructorDeclaration;
             }
 
-            const declarationBody = declaration.isFunctionLike() && declaration.body;
+            if (declaration) {
+              const declarationBody = declaration.isFunctionLike() && declaration.body;
 
-            if (declarationBody && !handled.includes(declarationBody)) {
-              handled.push(declarationBody);
+              if (declarationBody && !handled.includes(declarationBody)) {
+                handled.push(declarationBody);
 
-              const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
-              ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
-                innerFunctionSignature,
-                extendScope,
-                externalVariables,
-                handled
-              );
+                const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
+                ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
+                  innerFunctionSignature,
+                  extendScope,
+                  externalVariables,
+                  handled
+                );
+              }
             }
           }
 

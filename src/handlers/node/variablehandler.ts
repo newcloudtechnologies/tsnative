@@ -11,7 +11,7 @@
 
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
 import { LLVMStructType, LLVMType } from "../../llvm/type";
-import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion } from "../../llvm/value";
+import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 
@@ -78,6 +78,7 @@ export class VariableHandler extends AbstractNodeHandler {
 
       if (!initializerNakedType.equals(declarationLLVMType)) {
         const initializerType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
+
         if (initializerType.isUpcastableTo(type)) {
           initializer = this.generator.builder.createBitCast(initializer, type.getLLVMType());
         } else if (initializerNakedType.numElements === declarationLLVMType.numElements) {
@@ -111,7 +112,7 @@ export class VariableHandler extends AbstractNodeHandler {
   private getInitializer(declaration: ts.VariableDeclaration, name: string, parentScope: Scope, env?: Environment) {
     addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
 
-    let initializer;
+    let initializer: LLVMValue | undefined;
     if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
       let declarationLLVMType;
       const typeReference = declaration.type as ts.TypeReferenceNode;
@@ -140,6 +141,19 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = undefined;
     } else {
       initializer = this.generator.handleExpression(declaration.initializer, env);
+    }
+
+    if (initializer && declaration.initializer) {
+      const initializerType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
+
+      if (initializerType.isClassOrInterface()) {
+        const initializerSymbol = initializerType.getSymbol();
+        const initializerDeclaration = initializerSymbol.valueDeclaration;
+        if (initializerDeclaration) {
+          const prototype = initializerDeclaration.getPrototype();
+          initializer.attachPrototype(prototype);
+        }
+      }
     }
 
     return initializer;

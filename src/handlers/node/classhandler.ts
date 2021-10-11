@@ -87,13 +87,6 @@ export class ClassHandler extends AbstractNodeHandler {
       staticProperties,
     });
 
-    for (const memberDecl of declaration.members) {
-      if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.type.isFunction()) {
-        const method = this.generator.handleExpression(memberDecl.initializer);
-        scope.set(memberDecl.name!.getText(), method);
-      }
-    }
-
     // @todo: this logic is required because of builtins
     if (parentScope.get(mangledTypename)) {
       parentScope.overwrite(mangledTypename, scope);

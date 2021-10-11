@@ -13,6 +13,7 @@ import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "./type";
+import { Prototype } from "../scope";
 
 export enum Conversion {
   Narrowing,
@@ -22,6 +23,7 @@ export enum Conversion {
 export class LLVMValue {
   protected readonly value: llvm.Value;
   protected readonly generator: LLVMGenerator;
+  protected prototype: Prototype | undefined;
 
   constructor(value: llvm.Value, generator: LLVMGenerator) {
     this.value = value;
@@ -49,6 +51,22 @@ export class LLVMValue {
 
   set name(name: string) {
     this.value.name = name;
+  }
+
+  attachPrototype(prototype: Prototype) {
+    this.prototype = prototype;
+  }
+
+  hasPrototype() {
+    return Boolean(this.prototype);
+  }
+
+  getPrototype() {
+    if (!this.hasPrototype()) {
+      throw new Error("LLVMValue: prototype non found. Consider call 'LLVMValue.hasPrototype' before 'getPrototype'");
+    }
+
+    return this.prototype!;
   }
 
   getTSObjectPropsFromName() {

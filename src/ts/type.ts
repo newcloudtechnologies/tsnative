@@ -851,11 +851,8 @@ export class TSType {
         return "void*";
       }
 
-      if (declaration.isClass()) {
-        const ambientDeclaration = !declaration.members.find((m) => m.isConstructor())?.body;
-        if (!ambientDeclaration) {
-          return "void*";
-        }
+      if (declaration.isClass() && !declaration.isAmbient()) {
+        return "void*";
       }
     }
 

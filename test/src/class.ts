@@ -464,3 +464,32 @@
     console.assert(w._selfWidget === "wow", "Upcast in variable initialization");
   }
 }
+
+{
+  const BASE_RET = 1;
+  const DERIVED_RET = 2;
+
+  class Base {
+    myFunc() {
+      return BASE_RET;
+    }
+  };
+
+  class Derived extends Base {
+    myFunc() {
+      return DERIVED_RET;
+    }
+  };
+
+  let obj0: Base = new Base();
+  console.assert(obj0.myFunc() === BASE_RET, "Base method result");
+  let obj1: Base = new Derived();
+  console.assert(obj1.myFunc() === DERIVED_RET, "Derived method result");
+
+  function fn(obj: Base) {
+    return obj.myFunc();
+  }
+
+  console.assert(fn(obj0) === BASE_RET, "Base as polymorphic argument");
+  console.assert(fn(obj1) === DERIVED_RET, "Derived as polymorphic argument");
+}

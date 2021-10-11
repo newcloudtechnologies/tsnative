@@ -13,6 +13,7 @@ import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMIntersection, LLVMValue } from "../llvm/value";
+import { Prototype } from "../scope";
 
 export class Builder {
   private readonly generator: LLVMGenerator;
@@ -223,8 +224,19 @@ export class Builder {
   }
 
   createBitCast(value: LLVMValue, destType: LLVMType, name?: string) {
+    let prototype: Prototype | undefined;
+    if (value.hasPrototype()) {
+      prototype = value.getPrototype();
+    }
+
     const casted = this.builder.createBitCast(value.unwrapped, destType.unwrapped, name);
-    return LLVMValue.create(casted, this.generator);
+    const castedLLVMValue = LLVMValue.create(casted, this.generator);
+
+    if (prototype) {
+      castedLLVMValue.attachPrototype(prototype);
+    }
+
+    return castedLLVMValue;
   }
 
   private withDoublesAsInts(

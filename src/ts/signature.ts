@@ -125,4 +125,8 @@ export class Signature {
 
     return typenameTypeMap;
   }
+
+  toString() {
+    return this.generator.ts.checker.unwrap().signatureToString(this.signature);
+  }
 }
