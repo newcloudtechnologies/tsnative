@@ -303,9 +303,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const types = withRestParameters
       ? args.map((arg) => arg.type)
       : resolvedSignature.getParameters().map((p) => {
-        const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
-        return tsType.getLLVMType();
-      });
+          const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
+          return tsType.getLLVMType();
+        });
 
     const mismatchArgs: { arg: LLVMValue; llvmArgType: LLVMType }[] = [];
 
@@ -559,8 +559,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const tsArgumentTypes = !declaration.typeParameters
       ? parameters.map((parameter) => {
-        return this.generator.ts.checker.getTypeAtLocation(parameter);
-      })
+          return this.generator.ts.checker.getTypeAtLocation(parameter);
+        })
       : [];
 
     const llvmArgumentTypes = tsArgumentTypes.map((argType) => {
@@ -614,17 +614,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return this.generator.tsclosure.lazyClosure.create(env.untyped);
     }
 
-    if (dummyArguments.some((arg) => arg.hasPrototype())) {
+    if (
+      !declaration.isExternalCallArgument() &&
+      (dummyArguments.some((arg) => arg.hasPrototype()) || llvmArgumentTypes.some((argType) => argType.isClosure()))
+    ) {
       return this.generator.tsclosure.lazyClosure.create(env.untyped);
-    }
-
-    if (llvmArgumentTypes.some((argType) => argType.isClosure())) {
-      if (
-        !ts.isCallExpression(declaration.parent) ||
-        !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.generator)
-      ) {
-        return this.generator.tsclosure.lazyClosure.create(env.untyped);
-      }
     }
 
     const tsReturnType = signature.getReturnType();
@@ -894,8 +888,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const tsArgumentTypes = !bindableValueDeclaration.typeParameters
       ? parameters.map((parameter) => {
-        return this.generator.ts.checker.getTypeAtLocation(parameter);
-      })
+          return this.generator.ts.checker.getTypeAtLocation(parameter);
+        })
       : [];
 
     const llvmArgumentTypes = tsArgumentTypes.map((argType) => {
@@ -1607,17 +1601,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return this.generator.tsclosure.lazyClosure.create(env.untyped);
     }
 
-    if (dummyArguments.some((arg) => arg.hasPrototype())) {
+    if (
+      !declaration.isExternalCallArgument() &&
+      (dummyArguments.some((arg) => arg.hasPrototype()) || llvmArgumentTypes.some((argType) => argType.isClosure()))
+    ) {
       return this.generator.tsclosure.lazyClosure.create(env.untyped);
-    }
-
-    if (llvmArgumentTypes.some((argType) => argType.isClosure())) {
-      if (
-        !ts.isCallExpression(declaration.parent) ||
-        !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.generator)
-      ) {
-        return this.generator.tsclosure.lazyClosure.create(env.untyped);
-      }
     }
 
     const tsReturnType = signature.getReturnType();

@@ -15,6 +15,7 @@ import { TSType } from "../ts/type";
 import * as ts from "typescript";
 import * as crypto from "crypto";
 import { flatten } from "lodash";
+import { FunctionMangler } from "../mangling";
 
 export class Declaration {
   private readonly declaration: ts.Declaration;
@@ -228,6 +229,13 @@ export class Declaration {
 
   isAmbient() {
     return this.declaration.getSourceFile().fileName.endsWith("d.ts");
+  }
+
+  isExternalCallArgument() {
+    return (
+      ts.isCallExpression(this.declaration.parent) &&
+      FunctionMangler.checkIfExternalSymbol(this.declaration.parent, this.generator)
+    );
   }
 
   getScope(thisType: TSType | undefined): Scope {

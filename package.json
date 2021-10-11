@@ -4,7 +4,7 @@
     "scripts": {
         "transpile": "tsc",
         "start": "playground/start.sh",
-        "test": "tsc && cd test && rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release -G \"Unix Makefiles\" .. && bash -x -exec \"make -j$(cat /proc/cpuinfo | grep \"processor\" | wc -l)\" && make test",
+        "test": "tsc && cd test && rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release -G \"Unix Makefiles\" .. && bash -x -exec \"make $JOBS\" && make test",
         "clean_test": "rm -rf test/build",
         "clean_playground": "rm -rf playground/build playground/extension",
         "lint": "tslint --project tsconfig.json",
@@ -34,7 +34,7 @@
         "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#wip/delay_load",
         "lodash": "^4.17.20",
         "npm-prebuilt-dependencies": "^0.0.1",
-        "pkg": "^5.0.0",
+        "pkg": "5.3.2",
         "prettier": "^2.0.5",
         "segfault-handler": "^1.0.1",
         "tslint": "^6.1.1",

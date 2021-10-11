@@ -53,10 +53,8 @@ pipeline {
                         }
                         stage("Run Tests") {
                             steps {
-                                // FIXME: KDM-836
-                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                                    sh "npm run test"
-                                }
+                                // FIXME: enable parallel build once KDM-836 is fixed
+                                sh "npm run test"
                             }
                         }
                         stage("Publish")
@@ -134,7 +132,7 @@ pipeline {
                         }
                         stage("Run Tests") {
                             steps {
-                                sh "npm test"
+                                sh "JOBS=-j4 npm test"
                             }
                         }
                         stage("Publish")
