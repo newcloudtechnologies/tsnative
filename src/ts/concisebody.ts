@@ -147,6 +147,12 @@ export class ConciseBody {
             const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
             let declaration: Declaration | undefined;
 
+            // @todo: less dirty solution
+            // For the property accesses to parameters with call, prototype existence is expected.
+            // But arrow function and function expressions with (even potentially with) polymorphic parameters are handled once called because actual argument type affects environment state.
+            // To make correct environment in such cases it's neccesary to skip calls to polymorphic parameters until actual arguments are became known.
+            let skip = false;
+
             if (
               ts.isPropertyAccessExpression(node.expression) &&
               this.generator.ts.checker.nodeHasSymbol(node.expression.expression)
@@ -154,6 +160,8 @@ export class ConciseBody {
               const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(node.expression.expression);
               const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
               if (propertyAccessDeclaration?.isParameter()) {
+                skip = true;
+
                 const propertyAccess = node.expression;
                 const functionName = propertyAccess.name.getText();
                 const prototype = this.generator.meta.try(
@@ -162,15 +170,17 @@ export class ConciseBody {
                 );
 
                 if (prototype) {
-                  const methodD = prototype.methods.find((method) => method.name?.getText() === functionName);
-                  if (!methodD) {
+                  const methodDeclaration = prototype.methods.find((method) => method.name?.getText() === functionName);
+                  if (!methodDeclaration) {
                     throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
                   }
 
-                  declaration = methodD;
+                  declaration = methodDeclaration;
                 }
               }
-            } else {
+            }
+
+            if (!skip) {
               const symbol = type.getSymbol();
 
               // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead

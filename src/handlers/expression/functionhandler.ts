@@ -1126,11 +1126,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const llvmThisType = parentScope.thisData?.llvmType;
 
     if (thisVal) {
-      if (thisVal.type.isPointerToStruct() && llvmThisType!.isPointerToStruct()) {
-        // Hopefully it is a call through inheritance chain, e.g. base class method.
-        // @todo: extra checks
-        thisVal = this.generator.builder.createBitCast(thisVal, llvmThisType!);
-      }
+      const bothPtrsToStruct = thisVal.type.isPointerToStruct() && llvmThisType!.isPointerToStruct();
+      thisVal = bothPtrsToStruct
+        ? this.generator.builder.createBitCast(thisVal, llvmThisType!)
+        : thisVal.adjustToType(llvmThisType!);
 
       if (!parentScope.get(this.generator.internalNames.This)) {
         parentScope.set(this.generator.internalNames.This, thisVal);
@@ -1236,11 +1235,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const args = contextThis ? expression.arguments.slice(1) : Array.from(expression.arguments);
+    const parameters = signature.getParameters();
 
     return args
       .map((argument, index) => {
         const value = this.generator.handleExpression(argument, outerEnv);
-        const parameterName = signature.getParameters()[index].escapedName.toString();
+        const parameterName = parameters[index].escapedName.toString();
 
         if (value.hasPrototype()) {
           this.generator.meta.registerParameterPrototype(parameterName, value.getPrototype());
