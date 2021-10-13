@@ -4,7 +4,7 @@
     "scripts": {
         "transpile": "tsc",
         "start": "playground/start.sh",
-        "test": "tsc && cd test && rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release -G \"Unix Makefiles\" .. && bash -x -exec \"make $JOBS\" && make test",
+        "test": "tsc && npm run build && cd test && rm -rf build && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=release -G \"Unix Makefiles\" .. && bash -x -exec \"make $JOBS\" && make test",
         "clean_test": "rm -rf test/build",
         "clean_playground": "rm -rf playground/build playground/extension",
         "lint": "tslint --project tsconfig.json",

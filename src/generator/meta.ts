@@ -9,12 +9,15 @@
  *
  */
 
-import { Environment, Prototype } from "../scope";
 import * as crypto from "crypto";
+import * as ts from "typescript";
+
+import { Environment, Prototype } from "../scope";
 import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
+import { TSSymbol } from "../ts/symbol";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -83,6 +86,10 @@ class ParameterPrototypeStorage {
   readonly storage = new Map<string, Prototype>();
 }
 
+class RemappedSymbolDeclarationsStorage {
+  readonly storage = new Map<ts.Symbol, Declaration>();
+}
+
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
   readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
@@ -92,6 +99,7 @@ export class MetaInfoStorage {
   readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
   readonly closureEnvironment = new ClosureEnvironmentStorage();
   readonly parameterPrototype = new ParameterPrototypeStorage();
+  readonly remappedSymbolDeclaration = new RemappedSymbolDeclarationsStorage();
 
   registerUnionMeta(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -206,6 +214,18 @@ export class MetaInfoStorage {
       throw new Error(`No prototype registered for '${parameter}'`);
     }
     return prototype;
+  }
+
+  registerRemappedSymbolDeclaration(symbol: TSSymbol, declaration: Declaration) {
+    this.remappedSymbolDeclaration.storage.set(symbol.unwrapped, declaration);
+  }
+
+  getRemappedSymbolDeclaration(symbol: TSSymbol) {
+    const declaration = this.remappedSymbolDeclaration.storage.get(symbol.unwrapped);
+    if (!declaration) {
+      throw new Error(`No prototype registered for '${symbol.escapedName}'`);
+    }
+    return declaration;
   }
 
   try<A, T>(getter: (_: A) => T, arg: A) {

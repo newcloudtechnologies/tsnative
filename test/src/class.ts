@@ -493,3 +493,51 @@
   console.assert(fn(obj0) === BASE_RET, "Base as polymorphic argument");
   console.assert(fn(obj1) === DERIVED_RET, "Derived as polymorphic argument");
 }
+
+{
+  const i = 4444
+
+  class Base {
+    n = 9909;
+
+    constructor() {
+      const r1 = this.render1;
+      console.assert(r1() === i, "Assign class method to variable in ctor (outer variable capturing)");
+
+      const r2 = this.render2;
+      console.assert(r2() === this.n, "Assign class method to variable in ctor (class variable capturing)");
+    }
+
+    render1(): number {
+      return i;
+    }
+
+    render2(): number {
+      return this.n;
+    }
+  }
+
+  class Derived extends Base {
+    m = 1000;
+
+    render2(): number {
+      return this.m;
+    }
+  }
+
+  const base = new Base();
+  const derived = new Derived();
+
+  function f(v: Base) {
+    const r1 = v.render1;
+    const r2 = v.render2;
+
+    return [r1(), r2()];
+  }
+
+  const baseResult = f(base);
+  console.assert(baseResult[0] === i && baseResult[1] === base.n, "Assign BASE class method to variable in function with polymorpic arguments");
+
+  const derivedResult = f(derived);
+  console.assert(derivedResult[0] === i && derivedResult[1] === derived.m, "Assign DERIVED class method to variable in function with polymorpic arguments");
+}

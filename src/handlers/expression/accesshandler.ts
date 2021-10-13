@@ -257,10 +257,19 @@ export class AccessHandler extends AbstractExpressionHandler {
       const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
 
       const inTSClassConstructor = () => Boolean(this.generator.currentFunction.name?.endsWith("__constructor"));
+      const isThisAccess = expression.getText() === this.generator.internalNames.This;
 
-      // In ts class constructor we cannot dereference 'this' pointer since the memory was just allocated and was not initialized.
-      // Dereferencing will lead to segfault.
-      return inTSClassConstructor() && expression.getText() === this.generator.internalNames.This
+      // Check if statement is initialization of 'this' value, e.g.
+      // this.v = 22
+      // ^^^^ expression
+      // ^^^^^^ expression.parent
+      // ^^^^^^^^^^^ expression.parent.parent
+      const isInitialization =
+        ts.isBinaryExpression(expression.parent.parent) &&
+        expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        expression.parent.parent.left === expression.parent;
+
+      return isThisAccess && isInitialization && inTSClassConstructor()
         ? elementPtr
         : this.generator.builder.createLoad(elementPtr);
     }

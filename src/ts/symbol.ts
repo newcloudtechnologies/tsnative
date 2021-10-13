@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator } from "../generator";
+import { LLVMGenerator, MetaInfoStorage } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "../ts/declaration";
 
@@ -39,6 +39,11 @@ export class TSSymbol {
   }
 
   get valueDeclaration() {
+    const declaration = this.generator.meta.try(MetaInfoStorage.prototype.getRemappedSymbolDeclaration, this);
+    if (declaration) {
+      return declaration;
+    }
+
     // However valueDeclaration is not marked optional in public API in fact it is.
     if (!this.symbol.valueDeclaration) {
       return undefined;

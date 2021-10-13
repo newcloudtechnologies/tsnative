@@ -9,43 +9,49 @@
  *
  */
 
-import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
+import { Scope, HeapVariableDeclaration, Environment, addClassScope, createEnvironment } from "../../scope";
 import { LLVMStructType, LLVMType } from "../../llvm/type";
 import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
+import { ConciseBody } from "../../ts/concisebody";
+import { MetaInfoStorage } from "../../generator";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
-  handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
+  handle(node: ts.Node, parentScope: Scope, outerEnv?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.VariableStatement:
       case ts.SyntaxKind.VariableDeclarationList:
-        this.handleVariables(node as VariableLike, parentScope, env);
+        this.handleVariables(node as VariableLike, parentScope, outerEnv);
         return true;
       case ts.SyntaxKind.VariableDeclaration:
         const variableDeclaration = node as ts.VariableDeclaration;
 
         if (ts.isArrayBindingPattern(variableDeclaration.name)) {
-          this.handleArrayBindingPattern(variableDeclaration, parentScope, env);
+          this.handleArrayBindingPattern(variableDeclaration, parentScope, outerEnv);
           return true;
         }
 
-        this.handleVariableDeclaration(variableDeclaration, parentScope, env);
+        this.handleVariableDeclaration(variableDeclaration, parentScope, outerEnv);
         return true;
     }
 
     if (this.next) {
-      return this.next.handle(node, parentScope, env);
+      return this.next.handle(node, parentScope, outerEnv);
     }
 
     return false;
   }
 
-  private handleVariableDeclaration(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment): void {
+  private handleVariableDeclaration(
+    declaration: ts.VariableDeclaration,
+    parentScope: Scope,
+    outerEnv?: Environment
+  ): void {
     const name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
 
-    let initializer = this.getInitializer(declaration, name, parentScope, env);
+    let initializer = this.getInitializer(declaration, name, parentScope, outerEnv);
     if (!initializer) {
       return;
     }
@@ -109,7 +115,12 @@ export class VariableHandler extends AbstractNodeHandler {
     });
   }
 
-  private getInitializer(declaration: ts.VariableDeclaration, name: string, parentScope: Scope, env?: Environment) {
+  private getInitializer(
+    declaration: ts.VariableDeclaration,
+    name: string,
+    parentScope: Scope,
+    outerEnv?: Environment
+  ) {
     addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
 
     let initializer: LLVMValue | undefined;
@@ -140,7 +151,11 @@ export class VariableHandler extends AbstractNodeHandler {
       parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
       initializer = undefined;
     } else {
-      initializer = this.generator.handleExpression(declaration.initializer, env);
+      initializer = this.tryHandleAssignmentFromMethod(declaration, outerEnv);
+
+      if (!initializer) {
+        initializer = this.generator.handleExpression(declaration.initializer, outerEnv);
+      }
     }
 
     if (initializer && declaration.initializer) {
@@ -159,7 +174,7 @@ export class VariableHandler extends AbstractNodeHandler {
     return initializer;
   }
 
-  private handleArrayBindingPattern(declaration: ts.VariableDeclaration, parentScope: Scope, env?: Environment) {
+  private handleArrayBindingPattern(declaration: ts.VariableDeclaration, parentScope: Scope, outerEnv?: Environment) {
     if (!declaration.initializer) {
       throw new Error(`Expected initializer at '${declaration.getText()}'`);
     }
@@ -183,7 +198,7 @@ export class VariableHandler extends AbstractNodeHandler {
       identifiers.push(element.name);
     });
 
-    const arrayInitializer = this.generator.handleExpression(declaration.initializer, env);
+    const arrayInitializer = this.generator.handleExpression(declaration.initializer, outerEnv);
     const arrayUntyped = this.generator.builder.asVoidStar(arrayInitializer);
     const arrayType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
     let elementType = arrayType.getTypeGenericArguments()[0];
@@ -208,5 +223,150 @@ export class VariableHandler extends AbstractNodeHandler {
 
       parentScope.set(name, destructedValue);
     });
+  }
+
+  private tryHandleAssignmentFromMethod(declaration: ts.VariableDeclaration, outerEnv?: Environment) {
+    if (!declaration.initializer) {
+      return;
+    }
+
+    if (!ts.isPropertyAccessExpression(declaration.initializer)) {
+      return;
+    }
+
+    const isPropertyAccessWithSymbol = this.generator.ts.checker.nodeHasSymbol(declaration.initializer);
+
+    if (!isPropertyAccessWithSymbol) {
+      return;
+    }
+
+    const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(declaration.initializer);
+    const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
+
+    if (
+      !propertyAccessDeclaration ||
+      !propertyAccessDeclaration.isFunctionLike() ||
+      !ts.isClassDeclaration(propertyAccessDeclaration.parent)
+    ) {
+      return;
+    }
+
+    const classType = this.generator.ts.checker.getTypeAtLocation(propertyAccessDeclaration.parent);
+    const classSymbol = classType.getSymbol();
+    const classDeclaration = classSymbol.valueDeclaration;
+
+    if (!classDeclaration) {
+      return;
+    }
+
+    const objectName = declaration.initializer.expression.getText(); // @todo: handle the only property access, e.g. 'clazz.a', 'clazz.a.b' is not supported
+
+    const maybePrototype = this.generator.meta.try(MetaInfoStorage.prototype.getParameterPrototype, objectName);
+    const prototype = maybePrototype || classDeclaration.getPrototype();
+
+    const functionName = declaration.initializer.name.getText();
+
+    const methodDeclaration = prototype.methods.find((method) => {
+      return method.name?.getText() === functionName;
+    });
+
+    if (!methodDeclaration) {
+      throw new Error(`Unable to find method '${functionName} in prototype of '${classType.toString()}''`);
+    }
+
+    const body = methodDeclaration.body;
+
+    if (!body) {
+      throw new Error(`Expected function body for '${functionName}' of type '${classType.toString()}'`);
+    }
+
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(methodDeclaration);
+    const parameters = signature.getDeclaredParameters();
+
+    const tsArgumentTypes = !methodDeclaration.typeParameters
+      ? parameters.map((parameter) => this.generator.ts.checker.getTypeAtLocation(parameter))
+      : [];
+
+    const llvmArgumentTypes = tsArgumentTypes.map((argType) => {
+      return argType.getLLVMType();
+    });
+
+    const scope = methodDeclaration.getScope(classType);
+
+    // these dummy arguments will be substituted by actual arguments once called
+    const dummyArguments = llvmArgumentTypes.map((t, index) => {
+      const nullArg = LLVMConstant.createNullValue(t.ensurePointer(), this.generator);
+      const tsType = tsArgumentTypes[index];
+      if (!tsType.isSymbolless()) {
+        const argSymbol = tsType.getSymbol();
+        const argDeclaration = argSymbol.valueDeclaration;
+        if (argDeclaration && !argDeclaration.isAmbient()) {
+          const argPrototype = argDeclaration.getPrototype();
+          nullArg.attachPrototype(argPrototype);
+        }
+      }
+
+      return nullArg;
+    });
+
+    // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
+    const environmentVariables = ConciseBody.create(body, this.generator).getEnvironmentVariables(
+      signature,
+      scope,
+      outerEnv
+    );
+
+    let env = createEnvironment(
+      scope,
+      environmentVariables,
+      this.generator,
+      {
+        args: dummyArguments,
+        signature,
+      },
+      outerEnv,
+      body
+    );
+
+    const objectIdx = env.getVariableIndex(objectName);
+    if (objectIdx === -1) {
+      throw new Error(`Cannot find '${objectName}' in environment at '${declaration.getText()}'`);
+    }
+
+    const objPtr = this.generator.builder.createSafeInBoundsGEP(env.typed, [0, objectIdx]);
+    const obj = this.generator.builder.createLoad(objPtr);
+
+    const thisEnvironmentType = LLVMStructType.get(this.generator, [obj.type]);
+
+    const thisEnvironmentAllocated = this.generator.gc.allocate(thisEnvironmentType);
+    const thisPtr = this.generator.builder.createSafeInBoundsGEP(thisEnvironmentAllocated, [0, 0]);
+    this.generator.builder.createSafeStore(obj, thisPtr);
+
+    const thisEnvironment = new Environment(
+      [this.generator.internalNames.This],
+      this.generator.builder.asVoidStar(thisEnvironmentAllocated),
+      thisEnvironmentType,
+      this.generator
+    );
+
+    env = Environment.merge(env, [thisEnvironment], this.generator);
+
+    const declarationType = this.generator.ts.checker.getTypeAtLocation(declaration);
+    const declarationSymbol = declarationType.getSymbol();
+
+    if (declarationSymbol.declarations.length === 0) {
+      return;
+    }
+
+    const declarationValueDeclaration = declarationSymbol.declarations[0];
+
+    this.generator.meta.registerRemappedSymbolDeclaration(declarationSymbol, methodDeclaration);
+    this.generator.meta.registerFunctionEnvironment(declarationValueDeclaration, env);
+
+    if (propertyAccessDeclaration.isParameter()) {
+      this.generator.meta.registerParameterPrototype(propertyAccessDeclaration.name!.getText(), prototype);
+    }
+
+    return this.generator.tsclosure.lazyClosure.create(env.untyped);
   }
 }

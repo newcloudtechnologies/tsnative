@@ -147,64 +147,75 @@ export class ConciseBody {
             const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
             let declaration: Declaration | undefined;
 
-            // @todo: less dirty solution
-            // For the property accesses to parameters with call, prototype existence is expected.
-            // But arrow function and function expressions with (even potentially with) polymorphic parameters are handled once called because actual argument type affects environment state.
-            // To make correct environment in such cases it's neccesary to skip calls to polymorphic parameters until actual arguments are became known.
-            let skip = false;
+            if (ts.isCallExpression(node)) {
+              // @todo: less dirty solution
+              // For the property accesses to parameters with call, prototype existence is expected.
+              // But arrow function and function expressions with (even potentially with) polymorphic parameters are handled once called because actual argument type affects environment state.
+              // To make correct environment in such cases it's neccesary to skip calls to polymorphic parameters until actual arguments are became known.
+              let skip = false;
 
-            if (
-              ts.isPropertyAccessExpression(node.expression) &&
-              this.generator.ts.checker.nodeHasSymbol(node.expression.expression)
-            ) {
-              const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(node.expression.expression);
-              const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
-              if (propertyAccessDeclaration?.isParameter()) {
-                skip = true;
+              if (
+                ts.isPropertyAccessExpression(node.expression) &&
+                this.generator.ts.checker.nodeHasSymbol(node.expression.expression)
+              ) {
+                const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(node.expression.expression);
+                const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
 
-                const propertyAccess = node.expression;
-                const functionName = propertyAccess.name.getText();
-                const prototype = this.generator.meta.try(
-                  MetaInfoStorage.prototype.getParameterPrototype,
-                  propertyAccess.expression.getText()
-                );
+                if (propertyAccessDeclaration?.isParameter()) {
+                  skip = true;
 
-                if (prototype) {
-                  const methodDeclaration = prototype.methods.find((method) => method.name?.getText() === functionName);
-                  if (!methodDeclaration) {
-                    throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                  const propertyAccess = node.expression;
+                  const functionName = propertyAccess.name.getText();
+                  const prototype = this.generator.meta.try(
+                    MetaInfoStorage.prototype.getParameterPrototype,
+                    propertyAccess.expression.getText()
+                  );
+
+                  if (prototype) {
+                    const methodDeclaration = prototype.methods.find(
+                      (method) => method.name?.getText() === functionName
+                    );
+                    if (!methodDeclaration) {
+                      throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                    }
+
+                    declaration = methodDeclaration;
                   }
-
-                  declaration = methodDeclaration;
                 }
               }
-            }
 
-            if (!skip) {
+              if (!skip) {
+                const symbol = type.getSymbol();
+                declaration = symbol.valueDeclaration;
+
+                if (node.expression.kind === ts.SyntaxKind.SuperKeyword) {
+                  declaration = declaration?.members.find((m) => m.isConstructor());
+                }
+              }
+            } else if (ts.isNewExpression(node)) {
               const symbol = type.getSymbol();
-
-              // For the arrow functions as parameters there is no valueDeclaration, so use first declaration instead
-              // @todo: what about setters/getters?
-              declaration = symbol.declarations[0];
-              if (ts.isNewExpression(node)) {
-                const classFileName = declaration.getSourceFile().fileName;
-                const classRootScope = this.generator.symbolTable.getScope(classFileName);
-                if (!classRootScope) {
-                  throw new Error(`No scope '${classFileName}' found`);
-                }
-
-                if (!extendScope.get(classFileName)) {
-                  extendScope.set(classFileName, classRootScope);
-                }
-
-                const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
-                if (!constructorDeclaration) {
-                  // unreachable if source is preprocessed correctly
-                  throw new Error(`No constructor provided: ${declaration.getText()}`);
-                }
-
-                declaration = constructorDeclaration;
+              declaration = symbol.valueDeclaration;
+              if (!declaration) {
+                throw new Error(`Unable to find valueDeclaration at '${node.getText()}'`);
               }
+
+              const classFileName = declaration.getSourceFile().fileName;
+              const classRootScope = this.generator.symbolTable.getScope(classFileName);
+              if (!classRootScope) {
+                throw new Error(`No scope '${classFileName}' found`);
+              }
+
+              if (!extendScope.get(classFileName)) {
+                extendScope.set(classFileName, classRootScope);
+              }
+
+              const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
+              if (!constructorDeclaration) {
+                // unreachable if source is preprocessed correctly
+                throw new Error(`No constructor provided: ${declaration.getText()}`);
+              }
+
+              declaration = constructorDeclaration;
             }
 
             if (declaration) {

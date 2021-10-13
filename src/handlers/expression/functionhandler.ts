@@ -948,10 +948,24 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     symbol = this.generator.ts.checker.getTypeAtLocation(expression.expression).getSymbol();
 
-    valueDeclaration =
-      symbol.declarations.find((value: Declaration) => {
-        return value.parameters.length === argumentTypes.length;
-      }) || symbol.declarations[0];
+    const maybeValueDeclaration = this.generator.meta.try(
+      MetaInfoStorage.prototype.getRemappedSymbolDeclaration,
+      symbol
+    );
+
+    const isCallOfRemappedSymbol = Boolean(maybeValueDeclaration);
+    if (isCallOfRemappedSymbol) {
+      valueDeclaration = maybeValueDeclaration!;
+      if (valueDeclaration.isMethod()) {
+        thisType = this.generator.ts.checker.getTypeAtLocation(valueDeclaration.parent);
+      }
+    } else {
+      valueDeclaration =
+        symbol.declarations.find((value: Declaration) => {
+          return value.parameters.length === argumentTypes.length;
+        }) || symbol.declarations[0];
+    }
+
     const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
 
     if (valueDeclaration.typeParameters) {
@@ -1124,6 +1138,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
 
     const llvmThisType = parentScope.thisData?.llvmType;
+
+    if (outerEnv && isCallOfRemappedSymbol) {
+      const thisIdx = outerEnv.getVariableIndex(this.generator.internalNames.This);
+      if (!thisVal && thisIdx !== -1) {
+        const outerEnvLoaded = this.generator.builder.createLoad(outerEnv.typed);
+        thisVal = this.generator.builder.createSafeExtractValue(outerEnvLoaded, [thisIdx]);
+      }
+    }
 
     if (thisVal) {
       const bothPtrsToStruct = thisVal.type.isPointerToStruct() && llvmThisType!.isPointerToStruct();
