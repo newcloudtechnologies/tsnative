@@ -91,3 +91,25 @@
     union = 22;
     console.assert(union === 22, "'string | number' union re-initialization with 'number' failed");
 }
+
+{
+    interface A {
+        a: number
+        b: string
+    }
+
+    {
+        let _union: A | null = { a: 12, b: "h" };
+        console.assert((_union as A).a === 12, "Cast and get from nullable union");
+        _union = null;
+        console.assert(!_union, "Assign null to nullable union");
+
+    }
+
+    {
+        let _union: A | undefined = { a: 12, b: "h" };
+        console.assert((_union as A).a === 12, "Cast and get from optional union");
+        _union = undefined;
+        console.assert(!_union, "Assign null to optional union");
+    }
+}

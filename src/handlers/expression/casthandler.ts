@@ -46,6 +46,9 @@ export class CastHandler extends AbstractExpressionHandler {
           const objectType = destinationType.getLLVMType();
           const allocated = this.generator.gc.allocate(objectType.unwrapPointer());
 
+          const isOptionalOrNullableUnion = value.type.isUnionWithNull() || value.type.isUnionWithUndefined();
+          const indexShifter = isOptionalOrNullableUnion ? 1 : 0;
+
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
             if (typeof valueIndex === "undefined") {
@@ -53,7 +56,7 @@ export class CastHandler extends AbstractExpressionHandler {
             }
 
             const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
-            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, valueIndex]);
+            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, valueIndex + indexShifter]);
             const propValue = this.generator.builder.createLoad(propValuePtr);
             this.generator.builder.createSafeStore(propValue, destinationPtr);
           }

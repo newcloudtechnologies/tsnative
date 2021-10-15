@@ -603,13 +603,20 @@ export class LLVMUnion extends LLVMValue {
       const unionMeta = this.generator.meta.getUnionMeta(unionName);
 
       const initializerValue = initializer.getValue();
+
+      const isOptionalOrNullableUnion = unionStructType.isUnionWithNull() || unionStructType.isUnionWithUndefined();
+      const indexShifter = isOptionalOrNullableUnion ? 1 : 0;
+
       propNames.forEach((name, index) => {
         const destinationIndex = unionMeta.propsMap.get(name);
         if (typeof destinationIndex === "undefined") {
           throw new Error(`Mapping not found for property ${name}`);
         }
 
-        const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, destinationIndex]);
+        const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [
+          0,
+          destinationIndex + indexShifter,
+        ]);
         this.generator.builder.createSafeStore(
           this.generator.builder.createSafeExtractValue(initializerValue, [index]),
           elementPtr
