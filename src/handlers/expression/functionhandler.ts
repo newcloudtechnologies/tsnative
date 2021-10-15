@@ -473,7 +473,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
   private handleSuperCall(expression: ts.CallExpression, outerEnv?: Environment) {
     const thisType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const symbol = thisType.getSymbol();
-    const valueDeclaration = symbol.declarations[0];
+    const valueDeclaration = symbol.valueDeclaration;
+
+    if (!valueDeclaration) {
+      throw new Error(`Unable to find valueDeclaration for type '${thisType.toString()}' at '${expression.getText()}'`);
+    }
 
     if (!valueDeclaration.isClass()) {
       throw new Error("Expected class declaration");

@@ -90,6 +90,10 @@ class RemappedSymbolDeclarationsStorage {
   readonly storage = new Map<ts.Symbol, Declaration>();
 }
 
+class ClassDeclarationTypeMapperStorage {
+  readonly storage = new Map<ts.Declaration, GenericTypeMapper>();
+}
+
 export class MetaInfoStorage {
   readonly unionMetaInfoStorage: UnionMeta[] = [];
   readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
@@ -100,6 +104,7 @@ export class MetaInfoStorage {
   readonly closureEnvironment = new ClosureEnvironmentStorage();
   readonly parameterPrototype = new ParameterPrototypeStorage();
   readonly remappedSymbolDeclaration = new RemappedSymbolDeclarationsStorage();
+  readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
 
   registerUnionMeta(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
     this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
@@ -223,9 +228,21 @@ export class MetaInfoStorage {
   getRemappedSymbolDeclaration(symbol: TSSymbol) {
     const declaration = this.remappedSymbolDeclaration.storage.get(symbol.unwrapped);
     if (!declaration) {
-      throw new Error(`No prototype registered for '${symbol.escapedName}'`);
+      throw new Error(`No declaration registered for '${symbol.escapedName}'`);
     }
     return declaration;
+  }
+
+  registerClassTypeMapper(declaration: Declaration, mapper: GenericTypeMapper) {
+    this.classDeclarationTypeMapper.storage.set(declaration.unwrapped, mapper);
+  }
+
+  getClassTypeMapper(declaration: Declaration) {
+    const mapper = this.classDeclarationTypeMapper.storage.get(declaration.unwrapped);
+    if (!mapper) {
+      throw new Error(`No type mapper registered for '${declaration.getText()}'`);
+    }
+    return mapper;
   }
 
   try<A, T>(getter: (_: A) => T, arg: A) {

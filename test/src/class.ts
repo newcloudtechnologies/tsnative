@@ -561,11 +561,54 @@
 
   {
     const obj = new RxComponent();
-    console.assert(obj.render() === "base" && obj.barfoo() === "base", ",d,d,d");
+    console.assert(obj.render() === "base" && obj.barfoo() === "base", "Base class 'virtual' method call");
   }
 
   {
     const obj: RxComponent = new MyComponent();
-    console.assert(obj.render() === "derived" && obj.barfoo() === "derived", ",d,d,1111d");
+    console.assert(obj.render() === "derived" && obj.barfoo() === "derived", "Derived class 'virtual' method call");
   }
+}
+
+{
+  class Base<StateT> {
+    _state: StateT
+
+    constructor(initialState: StateT) {
+      this._state = initialState;
+    }
+  }
+
+  interface MyState {
+    num: number;
+    str: string;
+  }
+
+  class MyDerived extends Base<MyState> {
+    constructor() {
+      const initialState: MyState = {
+        num: 555,
+        str: "777"
+      }
+      super(initialState);
+    }
+  }
+
+  console.assert(new MyDerived()._state.num === 555, "Derived from generic property access (1)");
+  console.assert(new MyDerived()._state.str === "777", "Derived from generic property access (2)");
+
+  interface MyAnotherState {
+    str: string;
+  }
+
+  class MyAnotherDerived extends Base<MyAnotherState> {
+    constructor() {
+      const initialState: MyAnotherState = {
+        str: "depressed"
+      }
+      super(initialState);
+    }
+  }
+
+  console.assert(new MyAnotherDerived()._state.str === "depressed", "Derived from generic property access (3)");
 }

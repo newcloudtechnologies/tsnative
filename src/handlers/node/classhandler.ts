@@ -12,14 +12,13 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
-import { LLVMGenerator } from "../../generator";
 import { LLVMValue } from "../../llvm/value";
 import { Declaration } from "../../ts/declaration";
 
 export class ClassHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isClassDeclaration(node)) {
-      this.handleClassDeclaration(Declaration.create(node, this.generator), parentScope, this.generator);
+      this.handleClassDeclaration(Declaration.create(node, this.generator), parentScope);
       return true;
     }
 
@@ -63,35 +62,91 @@ export class ClassHandler extends AbstractNodeHandler {
     return staticProperties;
   }
 
-  private handleClassDeclaration(declaration: Declaration, parentScope: Scope, generator: LLVMGenerator): void {
+  private handleClassDeclaration(declaration: Declaration, parentScope: Scope): void {
     if (declaration.typeParameters) {
-      // Generics will be handled once called to figure out actual generic arguments.
+      // Generics will be handled once constuctor called or class specialization appers in 'extends' clause to figure out actual generic arguments.
       return;
     }
 
     const name = declaration.name!.getText();
-    const thisType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
+    const thisType = declaration.type;
     const mangledTypename = thisType.mangle();
 
     if (thisType.isDeclared() && parentScope.get(mangledTypename)) {
       return;
     }
 
-    const llvmType = thisType.getLLVMType();
-    const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
+    this.generator.symbolTable.withLocalScope((localScope) => {
+      this.handleHeritageClauses(declaration, localScope, parentScope);
 
-    const scope = new Scope(name, mangledTypename, parentScope, {
-      declaration,
-      llvmType,
-      tsType: thisType,
-      staticProperties,
-    });
+      const llvmType = thisType.getLLVMType();
+      const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
 
-    // @todo: this logic is required because of builtins
-    if (parentScope.get(mangledTypename)) {
-      parentScope.overwrite(mangledTypename, scope);
-    } else {
-      parentScope.set(mangledTypename, scope);
+      const scope = new Scope(name, mangledTypename, parentScope, {
+        declaration,
+        llvmType,
+        tsType: thisType,
+        staticProperties,
+      });
+
+      // @todo: this logic is required because of builtins
+      if (parentScope.get(mangledTypename)) {
+        parentScope.overwrite(mangledTypename, scope);
+      } else {
+        parentScope.set(mangledTypename, scope);
+      }
+    }, parentScope);
+  }
+
+  private handleHeritageClauses(declaration: Declaration, localScope: Scope, parentScope: Scope) {
+    if (!declaration.heritageClauses) {
+      return;
+    }
+
+    for (const clause of declaration.heritageClauses) {
+      for (const type of clause.types) {
+        const typeArguments = type.typeArguments;
+        if (typeArguments) {
+          const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
+          const baseClassDeclaration = symbol.valueDeclaration;
+
+          if (!baseClassDeclaration) {
+            throw new Error(`Unable to find valueDeclaration at '${type.expression.getText()}'`);
+          }
+
+          const baseTypeParameters = baseClassDeclaration.typeParameters;
+          if (!baseTypeParameters) {
+            throw new Error(
+              `Expected '${baseClassDeclaration.name?.getText()}' to have type parameters. Required from '${type.getText()}'`
+            );
+          }
+
+          // Register map from generic parameters to actual types
+          baseTypeParameters.forEach((typeParameter, index) => {
+            localScope.typeMapper.register(
+              typeParameter.getText(),
+              this.generator.ts.checker.getTypeFromTypeNode(typeArguments[index])
+            );
+          });
+
+          // Register generic class specialization since actual types are known at this point
+          const thisType = baseClassDeclaration.type;
+          const mangledTypename = thisType.mangle();
+
+          const llvmType = thisType.getLLVMType();
+          const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
+
+          const scope = new Scope(undefined, mangledTypename, parentScope, {
+            declaration,
+            llvmType,
+            tsType: thisType,
+            staticProperties,
+          });
+
+          this.generator.meta.registerClassTypeMapper(baseClassDeclaration, localScope.typeMapper);
+          parentScope.set(mangledTypename, scope);
+        }
+      }
     }
   }
 }

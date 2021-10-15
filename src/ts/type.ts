@@ -420,6 +420,8 @@ export class TSType {
 
     let suffix = "";
 
+    let typeArguments: string[] = [];
+
     if (!this.isSymbolless()) {
       const symbol = this.getSymbol();
       let declaration = symbol.valueDeclaration || symbol.declarations[0];
@@ -440,10 +442,23 @@ export class TSType {
           suffix = "class";
           suffix += "__" + declaration.unique;
         }
+
+        if (declaration.isClass() && !declaration.isAmbient() && declaration.typeParameters) {
+          typeArguments = declaration.typeParameters.map((typeParameter) => {
+            let type = this.checker.getTypeAtLocation(typeParameter);
+            if (!type.isSupported()) {
+              const typeMapper = this.checker.generator.meta.getClassTypeMapper(declaration);
+              type = typeMapper.get(type.toString());
+            }
+            return type.mangle();
+          });
+        }
       }
     }
 
-    const typeArguments = this.getTypeGenericArguments().map((typeArgument) => typeArgument.mangle());
+    if (!typeArguments) {
+      typeArguments = this.getTypeGenericArguments().map((typeArgument) => typeArgument.mangle());
+    }
     return [this.getTypename(), ...typeArguments].concat(suffix || []).join("__");
   }
 
@@ -459,6 +474,7 @@ export class TSType {
     const getTypeAndNameFromProperty = (property: TSSymbol): { type: LLVMType; name: string } => {
       const declaration = property.declarations[0];
       const tsType = this.checker.getTypeAtLocation(declaration.unwrapped);
+
       const llvmType = tsType.getLLVMType();
       const valueType = property.valueDeclaration?.decorators?.some(
         (decorator) => decorator.getText() === "@ValueType"
@@ -750,7 +766,7 @@ export class TSType {
     }
 
     if (this.isObject()) {
-      return this.getStructType()!.getPointer();
+      return this.getStructType().getPointer();
     }
 
     if (this.isNull()) {
