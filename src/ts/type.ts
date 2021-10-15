@@ -908,6 +908,10 @@ export class TSType {
     }
   }
 
+  isSame(type: TSType) {
+    return this.type === type.unwrap();
+  }
+
   unwrap() {
     return this.type;
   }

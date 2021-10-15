@@ -21,13 +21,20 @@ import { Declaration } from "../ts/declaration";
 import { Signature } from "../ts/signature";
 
 export class Environment {
+  private readonly pThisPrototype: Prototype | undefined;
   private readonly pVariables: string[];
   private pAllocated: LLVMValue;
   private readonly pLLVMType: LLVMStructType;
   private readonly pGenerator: LLVMGenerator;
   private pFixedArgsCount: number = 0;
 
-  constructor(variables: string[], allocated: LLVMValue, llvmType: LLVMStructType, generator: LLVMGenerator) {
+  constructor(
+    variables: string[],
+    allocated: LLVMValue,
+    llvmType: LLVMStructType,
+    generator: LLVMGenerator,
+    thisPrototype?: Prototype
+  ) {
     if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
       throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
@@ -36,6 +43,7 @@ export class Environment {
     this.pAllocated = allocated;
     this.pLLVMType = llvmType;
     this.pGenerator = generator;
+    this.pThisPrototype = thisPrototype;
   }
 
   get untyped() {
@@ -76,6 +84,10 @@ export class Environment {
 
   set fixedArgsCount(count: number) {
     this.pFixedArgsCount = count;
+  }
+
+  get thisPrototype() {
+    return this.pThisPrototype;
   }
 
   static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
@@ -131,7 +143,8 @@ export class Environment {
       mergedVariableNames,
       generator.builder.asVoidStar(allocatedMergedEnvironment),
       mergedEnvironmentType,
-      generator
+      generator,
+      base.thisPrototype // @todo: is base's thisPrototype should be used?
     );
   }
 
@@ -269,7 +282,8 @@ export function createEnvironment(
   functionData?: { args: LLVMValue[]; signature: Signature },
   outerEnv?: Environment,
   functionBody?: ts.ConciseBody,
-  preferLocalThis?: boolean
+  preferLocalThis?: boolean,
+  thisPrototype?: Prototype
 ) {
   const map = new Map<string, { type: LLVMType; allocated: LLVMValue }>();
 
@@ -354,7 +368,13 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
-  let env = new Environment(names, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
+  let env = new Environment(
+    names,
+    generator.builder.asVoidStar(environmentAlloca),
+    environmentDataType,
+    generator,
+    thisPrototype
+  );
 
   if (functionBody) {
     const innerEnvironments = [];

@@ -541,3 +541,31 @@
   const derivedResult = f(derived);
   console.assert(derivedResult[0] === i && derivedResult[1] === derived.m, "Assign DERIVED class method to variable in function with polymorpic arguments");
 }
+
+{
+  class RxComponent {
+    barfoo() {
+      return this.render();
+    }
+
+    render(): string {
+      return "base";
+    }
+  }
+
+  class MyComponent extends RxComponent {
+    render(): string {
+      return "derived";
+    }
+  }
+
+  {
+    const obj = new RxComponent();
+    console.assert(obj.render() === "base" && obj.barfoo() === "base", ",d,d,d");
+  }
+
+  {
+    const obj: RxComponent = new MyComponent();
+    console.assert(obj.render() === "derived" && obj.barfoo() === "derived", ",d,d,1111d");
+  }
+}

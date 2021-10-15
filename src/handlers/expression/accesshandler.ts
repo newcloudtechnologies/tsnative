@@ -204,6 +204,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): LLVMValue {
     let llvmValue = this.generator.handleExpression(expression, env);
+
     if (!llvmValue.type.isPointer()) {
       throw new Error(`Expected pointer, got '${llvmValue.type}'`);
     }

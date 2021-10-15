@@ -325,7 +325,9 @@ export class VariableHandler extends AbstractNodeHandler {
         signature,
       },
       outerEnv,
-      body
+      body,
+      undefined,
+      prototype
     );
 
     const objectIdx = env.getVariableIndex(objectName);
@@ -346,7 +348,8 @@ export class VariableHandler extends AbstractNodeHandler {
       [this.generator.internalNames.This],
       this.generator.builder.asVoidStar(thisEnvironmentAllocated),
       thisEnvironmentType,
-      this.generator
+      this.generator,
+      prototype
     );
 
     env = Environment.merge(env, [thisEnvironment], this.generator);

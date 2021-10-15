@@ -416,7 +416,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator,
           { args: adjustedArgs, signature },
           outerEnv,
-          valueDeclaration.body
+          valueDeclaration.body,
+          undefined,
+          outerEnv.thisPrototype
         );
 
         const { fn } = this.generator.llvm.function.create(llvmReturnType, [e.voidStar], this.generator.randomString);
@@ -519,7 +521,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args, signature },
       outerEnv,
-      constructorDeclaration.body
+      constructorDeclaration.body,
+      undefined,
+      outerEnv?.thisPrototype
     );
 
     const llvmThisType = parentScope.thisData.llvmType;
@@ -606,7 +610,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args: dummyArguments, signature },
       outerEnv,
-      expression.body
+      expression.body,
+      undefined,
+      outerEnv?.thisPrototype
     );
     this.generator.meta.registerFunctionEnvironment(expressionDeclaration, env);
 
@@ -691,7 +697,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       undefined,
       outerEnv,
-      valueDeclaration.body
+      valueDeclaration.body,
+      undefined,
+      outerEnv?.thisPrototype
     );
 
     const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
@@ -781,7 +789,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args, signature },
       outerEnv,
-      valueDeclaration.body
+      valueDeclaration.body,
+      undefined,
+      outerEnv?.thisPrototype
     );
 
     const llvmArgumentTypes = [env.voidStar];
@@ -917,7 +927,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
         signature: bindableSignature,
       },
       outerEnv,
-      bindableValueDeclaration.body
+      bindableValueDeclaration.body,
+      undefined,
+      outerEnv?.thisPrototype
     );
     e.fixedArgsCount = fixesArgsCount;
 
@@ -1071,7 +1083,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
     let thisVal;
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
+
+      let propertyAccessRoot: ts.Expression = propertyAccess;
+      while (ts.isPropertyAccessExpression(propertyAccessRoot)) {
+        propertyAccessRoot = propertyAccessRoot.expression;
+      }
+
       thisVal = this.generator.handleExpression(propertyAccess.expression, outerEnv);
+      const propertyAccessRootType = this.generator.ts.checker.getTypeAtLocation(propertyAccessRoot);
+
+      if (outerEnv?.thisPrototype && thisType?.isSame(propertyAccessRootType)) {
+        thisVal.attachPrototype(outerEnv?.thisPrototype);
+      }
 
       if (this.generator.ts.checker.nodeHasSymbol(propertyAccess.expression)) {
         const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccess.expression);
@@ -1169,7 +1192,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       { args, signature },
       outerEnv,
       valueDeclaration.body,
-      isMethod
+      isMethod,
+      thisVal && thisVal.hasPrototype() ? thisVal.getPrototype() : undefined
     );
 
     if (args.some((arg) => arg.type.isClosure())) {
@@ -1540,7 +1564,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       { args, signature },
       outerEnv,
       constructorDeclaration.body,
-      /* prefer local this = */ true
+      /* prefer local this = */ true,
+      outerEnv?.thisPrototype
     );
 
     const { fn: constructor, existing } = this.generator.llvm.function.create(
@@ -1613,7 +1638,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
         signature,
       },
       outerEnv,
-      expression.body
+      expression.body,
+      undefined,
+      outerEnv?.thisPrototype
     );
 
     const expressionDeclaration = Declaration.create(expression, this.generator);
