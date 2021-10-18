@@ -340,18 +340,11 @@ export class TSType {
 
     const targetSymbol = type.getSymbol();
 
-    // Consider type is upcastable to other if it has the other's symbol among types in 'extends' clause.
+    // Consider type is upcastable to other if it has the other's symbol among types in 'extends' clause (recursively).
     const isUpcastable =
-      heritageClauses
-        .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
-        .findIndex((extendsClause) => {
-          const baseIdx = extendsClause.types.findIndex((expressionWithTypeArgs) => {
-            const baseType = this.checker.getTypeAtLocation(expressionWithTypeArgs);
-            return baseType.getSymbol().unwrapped === targetSymbol.unwrapped;
-          });
-
-          return baseIdx !== -1;
-        }) !== -1;
+      declaration.getBases().findIndex((base) => {
+        return base.type.getSymbol().unwrapped === targetSymbol.unwrapped;
+      }) !== -1;
 
     return isUpcastable;
   }

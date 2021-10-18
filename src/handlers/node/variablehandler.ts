@@ -170,6 +170,7 @@ export class VariableHandler extends AbstractNodeHandler {
       if (initializerType.isClassOrInterface()) {
         const initializerSymbol = initializerType.getSymbol();
         const initializerDeclaration = initializerSymbol.valueDeclaration;
+
         if (initializerDeclaration) {
           const prototype = initializerDeclaration.getPrototype();
           initializer.attachPrototype(prototype);

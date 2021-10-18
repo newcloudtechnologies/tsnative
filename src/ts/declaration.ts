@@ -271,27 +271,34 @@ export class Declaration {
     return namespace;
   }
 
+  getBases(): Declaration[] {
+    return flatten(
+      flatten(
+        (this.heritageClauses || [])
+          .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+          .map((clause) => {
+            return clause.types.map((expressionWithTypeArgs) => {
+              const baseType = this.generator.ts.checker.getTypeAtLocation(expressionWithTypeArgs);
+              const baseSymbol = baseType.getSymbol();
+              const baseDeclaration = baseSymbol.valueDeclaration;
+              if (!baseDeclaration) {
+                throw new Error(`Unable to find declaration for type '${baseType.toString()}'`);
+              }
+
+              const bases = baseDeclaration.getBases();
+              bases.unshift(baseDeclaration);
+              return bases;
+            });
+          })
+      )
+    );
+  }
+
   getPrototype() {
     const parentType = this.generator.ts.checker.getTypeAtLocation(this.declaration);
     const prototype = new Prototype(parentType);
 
-    const prototypeSources = flatten(
-      (this.heritageClauses || [])
-        .filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
-        .map((clause) => {
-          return clause.types.map((expressionWithTypeArgs) => {
-            const baseType = this.generator.ts.checker.getTypeAtLocation(expressionWithTypeArgs);
-            const baseSymbol = baseType.getSymbol();
-            const baseDeclaration = baseSymbol.valueDeclaration;
-            if (!baseDeclaration) {
-              throw new Error(`Unable to find declaration for type '${baseType.toString()}'`);
-            }
-
-            return baseDeclaration;
-          });
-        })
-    );
-
+    const prototypeSources = this.getBases();
     prototypeSources.unshift(this);
 
     for (const prototypeSource of prototypeSources) {

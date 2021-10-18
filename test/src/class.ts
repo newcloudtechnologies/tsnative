@@ -612,3 +612,48 @@
 
   console.assert(new MyAnotherDerived()._state.str === "depressed", "Derived from generic property access (3)");
 }
+
+{
+  class Base {
+    boo() {
+      return 0;
+    }
+  }
+
+  class Derived extends Base {
+    boo() {
+      return 1;
+    }
+  }
+
+  class DerivedOfDerived extends Derived {
+    boo() {
+      return 2;
+    }
+  }
+
+  {
+    let w0: Base = new Base;
+    console.assert(w0.boo() === 0, "Base 'virtual' method call");
+  }
+  {
+    let w1: Base = new Derived;
+    console.assert(w1.boo() === 1, "Derived casted to Base 'virtual' method call");
+  }
+  {
+    let w2: Derived = new Derived;
+    console.assert(w2.boo() === 1, "Derived 'virtual' method call");
+  }
+  {
+    let w3: Base = new DerivedOfDerived;
+    console.assert(w3.boo() === 2 && (w3 as Base).boo() === 2 && (w3 as Derived).boo() === 2 && (w3 as DerivedOfDerived).boo() === 2, "DerivedOfDerived casted to Base 'virtual' method call");
+  }
+  {
+    let w4: Derived = new DerivedOfDerived;
+    console.assert(w4.boo() === 2 && (w4 as Base).boo() === 2 && (w4 as Derived).boo() === 2 && (w4 as DerivedOfDerived).boo() === 2, "DerivedOfDerived casted to Derived 'virtual' method call");
+  }
+  {
+    let w5: DerivedOfDerived = new DerivedOfDerived;
+    console.assert(w5.boo() === 2 && (w5 as Base).boo() === 2 && (w5 as Derived).boo() === 2 && (w5 as DerivedOfDerived).boo() === 2, "DerivedOfDerived 'virtual' method call");
+  }
+}
