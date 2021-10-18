@@ -173,6 +173,32 @@ export class TSType {
     return this.type.isClassOrInterface();
   }
 
+  isClass() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    const declaration = this.getSymbol().valueDeclaration;
+    if (!declaration) {
+      return false;
+    }
+
+    return declaration.isClass();
+  }
+
+  isInterface() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    const declaration = this.getSymbol().valueDeclaration;
+    if (!declaration) {
+      return false;
+    }
+
+    return declaration.isInterface();
+  }
+
   isUnionOrIntersection(): this is ts.UnionOrIntersectionType {
     return this.isUnion() || this.isIntersection();
   }
@@ -604,6 +630,10 @@ export class TSType {
           return t.getIntersectionOrUnionTypeProperties();
         }
 
+        if (t.isPrimitive()) {
+          return { type: t.getLLVMType(), name: "primitive" };
+        }
+
         return t.getProperties().map((property) => {
           const declaration = property.declarations[0];
           const tsType = this.checker.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
@@ -670,6 +700,7 @@ export class TSType {
     unionType.setBody(elements);
 
     const allProperties = this.getIntersectionOrUnionTypeProperties();
+
     const props = allProperties.map((property) => property.name);
     const propsMap = allProperties.reduce((acc, symbol, index) => {
       return acc.set(symbol.name, index);
@@ -762,7 +793,7 @@ export class TSType {
     }
 
     if (this.isUndefined()) {
-      return LLVMType.getInt8Type(this.checker.generator);
+      return LLVMType.getInt8Type(this.checker.generator).getPointer();
     }
 
     if (this.isObject()) {
@@ -770,7 +801,7 @@ export class TSType {
     }
 
     if (this.isNull()) {
-      return LLVMType.getInt8Type(this.checker.generator);
+      return LLVMType.getInt8Type(this.checker.generator).getPointer();
     }
 
     if (this.isTuple()) {

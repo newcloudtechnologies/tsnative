@@ -31,5 +31,4 @@
 
     c = null;
     console.assert(!c, "Null union: Null assignment failed")
-
 }

@@ -176,7 +176,7 @@ export class Environment {
 }
 
 export function injectUndefined(scope: Scope, generator: LLVMGenerator) {
-  const declarationLLVMType = LLVMType.getInt8Type(generator);
+  const declarationLLVMType = LLVMType.getInt8Type(generator).getPointer();
   const undef = llvm.Constant.getNullValue(declarationLLVMType.unwrapped);
   scope.set("undefined", LLVMValue.create(undef, generator));
 }

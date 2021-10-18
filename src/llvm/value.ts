@@ -89,52 +89,59 @@ export class LLVMValue {
     let value = this as LLVMValue;
     if (value.type.equals(type) || value.type.isConvertibleTo(type)) {
       return value;
-    } else {
-      if (value.type.isDeeperPointerLevel(type)) {
-        value = this.generator.builder.createLoad(value);
-        return value.adjustToType(type);
-      } else if (value.type.isSamePointerLevel(type)) {
-        if (!value.type.equals(type)) {
-          if (value.type.isPointer() && value.type.getPointerElementType().isIntegerType(8)) {
+    }
+
+    if (value.isUnion() && value.containsType(type)) {
+      value = value.extract(type);
+      return value.adjustToType(type);
+    }
+
+    if (value.isIntersection()) {
+      value = value.extract(type);
+      return value.adjustToType(type);
+    }
+
+    if (value.type.isDeeperPointerLevel(type)) {
+      value = this.generator.builder.createLoad(value);
+
+      return value.adjustToType(type);
+    } else if (value.type.isSamePointerLevel(type)) {
+      if (!value.type.equals(type)) {
+        if (value.type.isPointer() && value.type.getPointerElementType().isIntegerType(8)) {
+          value = this.generator.builder.createBitCast(value, type);
+        } else if (
+          value.type.unwrapPointer().isStructType() &&
+          (value.type.unwrapPointer() as LLVMStructType).isSameStructs(type)
+        ) {
+          if (!value.type.isPointer() && !type.isPointer()) {
+            // allocate -> cast -> load
+            const allocated = this.generator.gc.allocate(value.type);
+            this.generator.builder.createSafeStore(value, allocated);
+
+            value = this.generator.builder.createBitCast(allocated, type.getPointer());
+            value = this.generator.builder.createLoad(value);
+          } else {
             value = this.generator.builder.createBitCast(value, type);
-          } else if (
-            value.type.unwrapPointer().isStructType() &&
-            (value.type.unwrapPointer() as LLVMStructType).isSameStructs(type)
-          ) {
-            if (!value.type.isPointer() && !type.isPointer()) {
-              // allocate -> cast -> load
-              const allocated = this.generator.gc.allocate(value.type);
-              this.generator.builder.createSafeStore(value, allocated);
-
-              value = this.generator.builder.createBitCast(allocated, type.getPointer());
-              value = this.generator.builder.createLoad(value);
-            } else {
-              value = this.generator.builder.createBitCast(value, type);
-            }
-          } else if (type.isUnion()) {
-            const nullUnion = LLVMUnion.createNullValue(type, this.generator);
-            value = nullUnion.initialize(value);
-          } else if (type.isIntersection()) {
-            const nullIntersection = LLVMIntersection.createNullValue(type, this.generator);
-            value = nullIntersection.initialize(value);
-          } else if (value.isUnion()) {
-            value = value.extract(type);
-          } else if (value.isIntersection()) {
-            value = value.extract(type);
           }
-
-          if (value.type.equals(type)) {
-            return value;
-          }
+        } else if (type.isUnion()) {
+          const nullUnion = LLVMUnion.createNullValue(type, this.generator);
+          value = nullUnion.initialize(value);
+        } else if (type.isIntersection()) {
+          const nullIntersection = LLVMIntersection.createNullValue(type, this.generator);
+          value = nullIntersection.initialize(value);
         }
 
-        throw new Error(`Cannot adjust '${value.type.toString()}' to '${type.toString()}'`);
-      } else {
-        const allocated = this.generator.gc.allocate(value.type);
-        this.generator.builder.createSafeStore(value, allocated);
-        return allocated.adjustToType(type);
+        if (value.type.equals(type)) {
+          return value;
+        }
       }
+
+      throw new Error(`Cannot adjust '${value.type.toString()}' to '${type.toString()}'`);
     }
+
+    const allocated = this.generator.gc.allocate(value.type);
+    this.generator.builder.createSafeStore(value, allocated);
+    return allocated.adjustToType(type);
   }
 
   isIntersection(): this is LLVMIntersection {
@@ -189,7 +196,8 @@ export class LLVMValue {
 
     if (value.isUnion()) {
       if (value.type.isUnionWithNull() || value.type.isUnionWithUndefined()) {
-        const marker = this.generator.builder.createSafeExtractValue(value, [0]);
+        let marker = this.generator.builder.createSafeExtractValue(value, [0]);
+        marker = this.generator.builder.createLoad(marker);
         return this.generator.builder.createICmpNE(marker, LLVMConstantInt.get(this.generator, -1, 8));
       }
 
@@ -538,13 +546,33 @@ export class LLVMUnion extends LLVMValue {
     return new LLVMUnion(value.unwrapped, generator);
   }
 
-  private findIndexOfType(types: LLVMType[], type: LLVMType) {
-    for (let i = 0; i < types.length; ++i) {
-      if (types[i].equals(type)) {
+  private indexOfType(type: LLVMType) {
+    if (type.isCppPrimitiveType()) {
+      type = type.getPointer();
+    }
+
+    const elementTypes = [];
+
+    const unionStructType = this.type.unwrapPointer();
+    if (!unionStructType.isStructType()) {
+      throw new Error("Union expected to be of StructType");
+    }
+
+    for (let i = 0; i < unionStructType.numElements; ++i) {
+      elementTypes.push(unionStructType.getElementType(i));
+    }
+
+    for (let i = 0; i < elementTypes.length; ++i) {
+      if (elementTypes[i].equals(type)) {
         return i;
       }
     }
+
     return -1;
+  }
+
+  containsType(type: LLVMType) {
+    return this.indexOfType(type) !== -1;
   }
 
   initialize(initializer: LLVMValue, runtimeIndex?: LLVMValue) {
@@ -567,6 +595,7 @@ export class LLVMUnion extends LLVMValue {
 
     if (
       !initializer.type.isString() &&
+      !initializer.type.isTSClass() &&
       !unionValue.isOptionalClosure() &&
       initializer.type.unwrapPointer().isStructType()
     ) {
@@ -592,6 +621,7 @@ export class LLVMUnion extends LLVMValue {
         if (!structMeta) {
           throw new Error(`Cannot find struct meta for '${typename}'`);
         }
+
         propNames.push(...structMeta.props);
       }
 
@@ -604,19 +634,13 @@ export class LLVMUnion extends LLVMValue {
 
       const initializerValue = initializer.getValue();
 
-      const isOptionalOrNullableUnion = unionStructType.isUnionWithNull() || unionStructType.isUnionWithUndefined();
-      const indexShifter = isOptionalOrNullableUnion ? 1 : 0;
-
       propNames.forEach((name, index) => {
         const destinationIndex = unionMeta.propsMap.get(name);
         if (typeof destinationIndex === "undefined") {
           throw new Error(`Mapping not found for property ${name}`);
         }
 
-        const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [
-          0,
-          destinationIndex + indexShifter,
-        ]);
+        const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, destinationIndex]);
         this.generator.builder.createSafeStore(
           this.generator.builder.createSafeExtractValue(initializerValue, [index]),
           elementPtr
@@ -659,19 +683,24 @@ export class LLVMUnion extends LLVMValue {
 
         this.generator.builder.createSafeStore(initializer, elementPtr);
       } else {
-        const elementTypes = [];
-
-        for (let i = 0; i < unionStructType.numElements; ++i) {
-          elementTypes.push(unionStructType.getElementType(i));
-        }
-
-        const activeIndex = this.findIndexOfType(elementTypes, initializer.type);
+        const activeIndex = this.indexOfType(initializer.type);
         if (activeIndex === -1) {
           throw new Error(`Cannot find type '${initializer.type.toString()}' in union type '${this.type.toString()}'`);
         }
 
-        if ((this.type.isUnionWithUndefined() || this.type.isUnionWithNull()) && activeIndex === 0) {
-          initializer = LLVMConstantInt.get(this.generator, -1, 8);
+        if (this.type.isUnionWithUndefined() || this.type.isUnionWithNull()) {
+          const isNullOrUndefinedNow = activeIndex === 0;
+          const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
+          const markerNumericValue = isNullOrUndefinedNow ? -1 : 0;
+          const markerValue = LLVMConstantInt.get(this.generator, markerNumericValue, 8);
+          this.generator.builder.createSafeStore(markerValue, allocatedMarker);
+
+          if (isNullOrUndefinedNow) {
+            initializer = allocatedMarker;
+          } else {
+            const markerPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, 0]);
+            this.generator.builder.createSafeStore(allocatedMarker, markerPtr);
+          }
         }
 
         const elementPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, activeIndex]);
@@ -686,7 +715,11 @@ export class LLVMUnion extends LLVMValue {
     const unionStructType = this.type.unwrapPointer() as LLVMStructType;
     const destinationValueType = type.unwrapPointer();
 
-    if (destinationValueType.isStructType() && !type.isString()) {
+    if (unionStructType.isSameStructs(destinationValueType)) {
+      return this;
+    }
+
+    if (destinationValueType.isStructType() && !type.isTSClass() && !type.isString()) {
       const unionMeta = this.generator.meta.getUnionMeta(unionStructType.name!);
       const objectMeta = this.generator.meta.getObjectMeta((destinationValueType as LLVMStructType).name!);
 
@@ -707,12 +740,7 @@ export class LLVMUnion extends LLVMValue {
       return allocated;
     }
 
-    const elementTypes = [];
-    for (let i = 0; i < unionStructType.numElements; ++i) {
-      elementTypes.push(unionStructType.getElementType(i));
-    }
-
-    const activeIndex = this.findIndexOfType(elementTypes, type);
+    const activeIndex = this.indexOfType(type);
 
     if (activeIndex === -1) {
       throw new Error(`Cannot find type '${type.toString()}' in union type '${unionStructType.toString()}'`);

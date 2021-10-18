@@ -40,14 +40,16 @@ export class CastHandler extends AbstractExpressionHandler {
         }
 
         const unionMeta = this.generator.meta.getUnionMeta(unionName);
+
         if (destinationType.isObject()) {
+          if (destinationType.isClass()) {
+            return value.extract(destinationType.getLLVMType());
+          }
+
           const typeProps = destinationType.getProperties();
           const propNames = typeProps.map((symbol) => symbol.name);
           const objectType = destinationType.getLLVMType();
           const allocated = this.generator.gc.allocate(objectType.unwrapPointer());
-
-          const isOptionalOrNullableUnion = value.type.isUnionWithNull() || value.type.isUnionWithUndefined();
-          const indexShifter = isOptionalOrNullableUnion ? 1 : 0;
 
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
@@ -56,10 +58,11 @@ export class CastHandler extends AbstractExpressionHandler {
             }
 
             const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
-            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, valueIndex + indexShifter]);
+            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, valueIndex]);
             const propValue = this.generator.builder.createLoad(propValuePtr);
             this.generator.builder.createSafeStore(propValue, destinationPtr);
           }
+
           return allocated;
         } else {
           const destinationStructType = destinationType.getLLVMType().unwrapPointer() as LLVMStructType;

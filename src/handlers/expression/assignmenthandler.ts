@@ -72,8 +72,13 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             }
 
             rhs = this.generator.gc.allocate(lhs.type.unwrapPointer());
-            const marker = this.generator.builder.createSafeInBoundsGEP(rhs, [0, 0]);
-            this.generator.builder.createSafeStore(LLVMConstantInt.get(this.generator, -1, 8), marker);
+            const markerPtr = this.generator.builder.createSafeInBoundsGEP(rhs, [0, 0]);
+
+            const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
+            const markerValue = LLVMConstantInt.get(this.generator, -1, 8);
+            this.generator.builder.createSafeStore(markerValue, allocatedMarker);
+
+            this.generator.builder.createSafeStore(allocatedMarker, markerPtr);
           } else {
             rhs = this.generator.handleExpression(right, env);
           }

@@ -115,6 +115,11 @@ export class LLVMType {
     return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Tuple__"));
   }
 
+  isTSClass() {
+    const nakedType = this.unwrapPointer().type;
+    return Boolean(nakedType.isStructTy() && nakedType.name?.includes("__class__"));
+  }
+
   isCppPrimitiveType() {
     return this.type.isIntegerTy() || this.type.isDoubleTy();
   }

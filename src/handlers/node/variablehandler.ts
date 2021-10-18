@@ -141,14 +141,20 @@ export class VariableHandler extends AbstractNodeHandler {
       }
       initializer = LLVMConstant.createNullValue(declarationLLVMType.unwrapPointer(), this.generator);
 
+      const allocated = this.generator.gc.allocate(declarationLLVMType.unwrapPointer());
+      this.generator.builder.createSafeStore(initializer, allocated);
+
       if (declarationLLVMType.isUnionWithUndefined() || declarationLLVMType.isUnionWithNull()) {
-        initializer = this.generator.builder.createSafeInsert(initializer, LLVMConstantInt.get(this.generator, -1, 8), [
-          0,
-        ]);
+        const markerPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, 0]);
+
+        const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
+        const markerValue = LLVMConstantInt.get(this.generator, -1, 8);
+        this.generator.builder.createSafeStore(markerValue, allocatedMarker);
+
+        this.generator.builder.createSafeStore(allocatedMarker, markerPtr);
       }
-      const alloca = this.generator.gc.allocate(declarationLLVMType.unwrapPointer());
-      this.generator.builder.createSafeStore(initializer, alloca);
-      parentScope.set(name, new HeapVariableDeclaration(alloca, initializer, name, declaration));
+
+      parentScope.set(name, new HeapVariableDeclaration(allocated, initializer, name, declaration));
       initializer = undefined;
     } else {
       initializer = this.tryHandleAssignmentFromMethod(declaration, outerEnv);

@@ -20,7 +20,6 @@
         d: string
     }
 
-    // @todo: more complex types, e.g. let union: number | A | B = { a: 12, b: "h" }
     let union: A | B = { a: 12, b: "h" };
 
     console.assert(union.a === 12, "Union object initialization failed");
@@ -30,6 +29,33 @@
 
     console.assert(union.c === 909, "Union object re-initialization failed");
     console.assert(union.d === "LAH", "Union object re-initialization failed");
+
+    {
+        interface A {
+            a: string
+            b: number
+        }
+
+        interface B {
+            c: string
+            d: number
+        }
+
+        let union: A | number | B | string = { a: "5", b: 7 };
+        console.assert((union as A).a === "5" && (union as A).b === 7, "Complex union initialization (1)");
+
+        union = 12;
+        console.assert(union === 12, "Complex union initialization (2)")
+
+        union = { c: "hell", d: 22 };
+        console.assert((union as B).c === "hell" && (union as B).d === 22, "Complex union initialization (3)");
+
+        union = "LALALALA";
+        console.assert(union === "LALALALA", "Complex union initialization (4)");
+
+        union = { a: "h", b: 12 };
+        console.assert((union as A).a === "h" && (union as A).b === 12, "Complex union reinitialization");
+    }
 }
 
 {
