@@ -657,3 +657,36 @@
     console.assert(w5.boo() === 2 && (w5 as Base).boo() === 2 && (w5 as Derived).boo() === 2 && (w5 as DerivedOfDerived).boo() === 2, "DerivedOfDerived 'virtual' method call");
   }
 }
+
+{
+  class MyWi<StateT> {
+    setState() {
+      return "Base";
+    }
+  }
+
+  const mywi_string = new MyWi<string>();
+  const mywi_number = new MyWi<number>();
+
+  console.assert(mywi_string.setState() === "Base", "Generic class with unused type argument (1)");
+  console.assert(mywi_number.setState() === "Base", "Generic class with unused type argument (2)");
+}
+
+{
+  class MyWi<StateT extends { toString(): string }> {
+    setState(wow: StateT) {
+      return wow.toString();
+    }
+  }
+
+  class Data {
+    toString() {
+      return "Data class data"
+    }
+  }
+
+  class Up extends MyWi<Data> {
+  }
+
+  console.assert((new Up).setState(new Data) === "Data class data", "Extend constrained generic class");
+}

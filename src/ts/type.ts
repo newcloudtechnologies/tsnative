@@ -588,8 +588,8 @@ export class TSType {
       this.getSymbol().declarations.find((decl) => decl.isInterface());
 
     if (declaration) {
-      const namespace = declaration.getNamespace();
-      const name = namespace.concat(this.mangle()).join("_");
+      const declarationNamespace = declaration.getNamespace();
+      const name = declarationNamespace.concat(this.mangle()).join("_");
 
       const knownStructType = this.checker.generator.module.getTypeByName(name);
 

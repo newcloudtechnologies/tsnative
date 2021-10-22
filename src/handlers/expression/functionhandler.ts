@@ -1523,7 +1523,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       throw new Error(`No constructor provided: ${expression.getText()}`);
     }
 
-    if (!thisType.isDeclared()) {
+    if ((!valueDeclaration.isAmbient() && valueDeclaration.typeParameters) || !thisType.isDeclared()) {
       addClassScope(expression, this.generator.symbolTable.currentScope, this.generator);
     }
 

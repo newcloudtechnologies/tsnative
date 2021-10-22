@@ -219,15 +219,6 @@ export function addClassScope(
     return;
   }
 
-  let mangledTypename = thisType.mangle();
-  const namespace = declaration.getNamespace();
-  mangledTypename = namespace.concat(mangledTypename).join(".");
-
-  const name = declaration.name!.getText();
-  if (parentScope.get(mangledTypename)) {
-    return;
-  }
-
   const llvmType = generator.symbolTable.withLocalScope((scope) => {
     if (declaration.typeParameters) {
       const declaredTypes = declaration.typeParameters.map((parameter) =>
@@ -238,6 +229,8 @@ export function addClassScope(
       declaredTypes.forEach((typename, index) => {
         scope.typeMapper.register(typename, actualTypes[index]);
       });
+
+      generator.meta.registerClassTypeMapper(declaration, scope.typeMapper);
     }
 
     return thisType.getLLVMType();
@@ -245,6 +238,15 @@ export function addClassScope(
 
   if (!llvmType.isPointer()) {
     throw new Error("Expected pointer");
+  }
+
+  let mangledTypename = thisType.mangle();
+  const declarationNamespace = declaration.getNamespace();
+  mangledTypename = declarationNamespace.concat(mangledTypename).join(".");
+
+  const name = declaration.name!.getText();
+  if (parentScope.get(mangledTypename)) {
+    return;
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);

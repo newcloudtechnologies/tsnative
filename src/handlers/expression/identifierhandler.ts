@@ -47,8 +47,8 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     let identifier = expression.getText();
     if (declaration && (declaration.isClass() || declaration.isInterface())) {
       const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
-      const namespace = declaration.getNamespace();
-      identifier = namespace.concat(type.mangle()).join(".");
+      const declarationNamespace = declaration.getNamespace();
+      identifier = declarationNamespace.concat(type.mangle()).join(".");
     }
 
     const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier);

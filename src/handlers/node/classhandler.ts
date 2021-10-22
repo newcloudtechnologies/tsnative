@@ -124,10 +124,12 @@ export class ClassHandler extends AbstractNodeHandler {
           // Register map from generic parameters to actual types
           baseTypeParameters.forEach((typeParameter, index) => {
             localScope.typeMapper.register(
-              typeParameter.getText(),
+              typeParameter.name.getText(),
               this.generator.ts.checker.getTypeFromTypeNode(typeArguments[index])
             );
           });
+
+          this.generator.meta.registerClassTypeMapper(baseClassDeclaration, localScope.typeMapper);
 
           // Register generic class specialization since actual types are known at this point
           const thisType = baseClassDeclaration.type;
@@ -143,7 +145,6 @@ export class ClassHandler extends AbstractNodeHandler {
             staticProperties,
           });
 
-          this.generator.meta.registerClassTypeMapper(baseClassDeclaration, localScope.typeMapper);
           parentScope.set(mangledTypename, scope);
         }
       }
