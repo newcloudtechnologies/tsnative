@@ -213,67 +213,79 @@ export class AccessHandler extends AbstractExpressionHandler {
       llvmValue = this.generator.builder.createLoad(llvmValue);
     }
 
-    if (llvmValue.isUnion()) {
-      const unionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
-      if (!unionName) {
-        throw new Error("Name required for UnionStruct");
+    if (llvmValue.isUnion() || llvmValue.isIntersection()) {
+      if (llvmValue.isUnion()) {
+        const unionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
+        if (!unionName) {
+          throw new Error("Name required for UnionStruct");
+        }
+
+        const unionMeta = this.generator.meta.getUnionMeta(unionName);
+        const index = unionMeta.propsMap.get(propertyName);
+        if (typeof index === "undefined") {
+          throw new Error(`Mapping not found for ${propertyName}`);
+        }
+
+        llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
+        if (!llvmValue.type.getPointerElementType().isCppPrimitiveType()) {
+          llvmValue = this.generator.builder.createLoad(llvmValue);
+        }
+      } else if (llvmValue.type.isIntersection()) {
+        const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
+        if (!intersectionName) {
+          throw new Error("Name required for IntersectionStruct");
+        }
+
+        const intersectionMeta = this.generator.meta.getIntersectionMeta(intersectionName);
+        const index = intersectionMeta.props.indexOf(propertyName);
+        if (index === -1) {
+          throw new Error(`Mapping not found for ${propertyName}`);
+        }
+
+        llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
+        if (!llvmValue.type.getPointerElementType().isCppPrimitiveType()) {
+          llvmValue = this.generator.builder.createLoad(llvmValue);
+        }
       }
 
-      const unionMeta = this.generator.meta.getUnionMeta(unionName);
-      const index = unionMeta.propsMap.get(propertyName);
-      if (typeof index === "undefined") {
-        throw new Error(`Mapping not found for ${propertyName}`);
+      if (!llvmValue.type.isTSClass() && !llvmValue.type.isTSInterface() && !llvmValue.type.isTSObject()) {
+        return llvmValue;
       }
-
-      return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]));
-    } else if (llvmValue.type.isIntersection()) {
-      const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
-      if (!intersectionName) {
-        throw new Error("Name required for IntersectionStruct");
-      }
-
-      const intersectionMeta = this.generator.meta.getIntersectionMeta(intersectionName);
-      const index = intersectionMeta.props.indexOf(propertyName);
-      if (index === -1) {
-        throw new Error(`Mapping not found for ${propertyName}`);
-      }
-
-      return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]));
-    } else {
-      let propertyIndex = -1;
-
-      if (!llvmValue.name || llvmValue.name === this.generator.internalNames.This) {
-        const type = this.generator.ts.checker.getTypeAtLocation(expression);
-        propertyIndex = type.indexOfProperty(propertyName);
-      } else {
-        // Object name is its properties names reduced to string, delimited with the dot ('.').
-        const propertyNames = llvmValue.getTSObjectPropsFromName();
-        propertyIndex = propertyNames.indexOf(propertyName);
-      }
-
-      if (propertyIndex === -1) {
-        throw new Error(`Property '${propertyName}' not found in '${expression.getText()}'`);
-      }
-
-      const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
-
-      const inTSClassConstructor = () => Boolean(this.generator.currentFunction.name?.endsWith("__constructor"));
-      const isThisAccess = expression.getText() === this.generator.internalNames.This;
-
-      // Check if statement is initialization of 'this' value, e.g.
-      // this.v = 22
-      // ^^^^ expression
-      // ^^^^^^ expression.parent
-      // ^^^^^^^^^^^ expression.parent.parent
-      const isInitialization =
-        ts.isBinaryExpression(expression.parent.parent) &&
-        expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-        expression.parent.parent.left === expression.parent;
-
-      return (isThisAccess && isInitialization && inTSClassConstructor()) ||
-        elementPtr.type.getPointerElementType().isCppPrimitiveType()
-        ? elementPtr
-        : this.generator.builder.createLoad(elementPtr);
     }
+
+    let propertyIndex = -1;
+
+    if (!llvmValue.name || llvmValue.name === this.generator.internalNames.This) {
+      const type = this.generator.ts.checker.getTypeAtLocation(expression);
+      propertyIndex = type.indexOfProperty(propertyName);
+    } else {
+      // Object name is its properties names reduced to string, delimited with the dot ('.').
+      const propertyNames = llvmValue.getTSObjectPropsFromName();
+      propertyIndex = propertyNames.indexOf(propertyName);
+    }
+
+    if (propertyIndex === -1) {
+      throw new Error(`Property '${propertyName}' not found in '${expression.getText()}'`);
+    }
+
+    const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
+
+    const inTSClassConstructor = () => Boolean(this.generator.currentFunction.name?.endsWith("__constructor"));
+    const isThisAccess = expression.getText() === this.generator.internalNames.This;
+
+    // Check if statement is initialization of 'this' value, e.g.
+    // this.v = 22
+    // ^^^^ expression
+    // ^^^^^^ expression.parent
+    // ^^^^^^^^^^^ expression.parent.parent
+    const isInitialization =
+      ts.isBinaryExpression(expression.parent.parent) &&
+      expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      expression.parent.parent.left === expression.parent;
+
+    return (isThisAccess && isInitialization && inTSClassConstructor()) ||
+      elementPtr.type.getPointerElementType().isCppPrimitiveType()
+      ? elementPtr
+      : this.generator.builder.createLoad(elementPtr);
   }
 }

@@ -40,6 +40,14 @@ enum InternalNames {
   This = "this",
 }
 
+class BoxedPrimitives {
+  private readonly names = ["String", "Number", "Boolean"];
+
+  includes(typename: string) {
+    return this.names.includes(typename);
+  }
+}
+
 export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
@@ -69,6 +77,7 @@ export class LLVMGenerator {
   readonly ts: TS;
 
   readonly internalNames = InternalNames;
+  readonly boxedPrimitives = new BoxedPrimitives();
 
   constructor(program: ts.Program) {
     this.program = program;

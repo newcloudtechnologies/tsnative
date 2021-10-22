@@ -24,14 +24,15 @@ export class CastHandler extends AbstractExpressionHandler {
 
         const destinationType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
 
-        if (!value.isUnion()) {
-          return this.generator.builder.createBitCast(value, destinationType.getLLVMType());
+        if (this.generator.boxedPrimitives.includes(asExpression.type.getText())) {
+          throw new Error(`
+          Casting primitives to boxed versions is not supported.
+          Error at: '${expression.getText()}'
+          `);
         }
 
-        if (!destinationType.isObject() && !destinationType.isUnion()) {
-          throw new Error(`Cast to non-object/union not supported; trying to cast
-          '${this.generator.ts.checker.getTypeAtLocation(asExpression.expression).toString()}'
-          to '${destinationType.toString()}'`);
+        if (!value.isUnion()) {
+          return this.generator.builder.createBitCast(value, destinationType.getLLVMType());
         }
 
         const unionName = (value.type.unwrapPointer() as LLVMStructType).name;
@@ -64,7 +65,7 @@ export class CastHandler extends AbstractExpressionHandler {
           }
 
           return allocated;
-        } else {
+        } else if (destinationType.isUnion()) {
           const destinationStructType = destinationType.getLLVMType().unwrapPointer() as LLVMStructType;
           const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
 
@@ -83,6 +84,8 @@ export class CastHandler extends AbstractExpressionHandler {
           });
 
           return allocated;
+        } else {
+          return value.extract(destinationType.getLLVMType());
         }
       default:
         break;

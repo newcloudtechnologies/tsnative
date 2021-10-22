@@ -319,16 +319,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const adjustedArgs = args.map((arg, index) => {
       const llvmArgType = types[index];
       if (!arg.type.equals(llvmArgType)) {
-        const argTypeUnwrapped = arg.type.unwrapPointer();
-
-        if (argTypeUnwrapped.isStructType() && !argTypeUnwrapped.isSameStructs(llvmArgType)) {
-          if (llvmArgType.isUnion()) {
-            const nullUnion = LLVMUnion.createNullValue(llvmArgType, this.generator);
-            arg = nullUnion.initialize(arg);
-          } else if (llvmArgType.isIntersection()) {
-            const nullIntersection = LLVMIntersection.createNullValue(llvmArgType, this.generator);
-            arg = nullIntersection.initialize(arg);
-          }
+        if (llvmArgType.isUnion()) {
+          const nullUnion = LLVMUnion.createNullValue(llvmArgType, this.generator);
+          arg = nullUnion.initialize(arg);
+        } else if (llvmArgType.isIntersection()) {
+          const nullIntersection = LLVMIntersection.createNullValue(llvmArgType, this.generator);
+          arg = nullIntersection.initialize(arg);
         }
       }
       return arg;

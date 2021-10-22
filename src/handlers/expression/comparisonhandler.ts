@@ -21,6 +21,11 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
+        case ts.SyntaxKind.EqualsEqualsToken:
+        case ts.SyntaxKind.ExclamationEqualsToken:
+          throw new Error(
+            `Comparison with implicit conversion is not supported. Use '===' or '!==' instead of weakened operators. Error at: '${binaryExpression.getText()}'`
+          );
         case ts.SyntaxKind.EqualsEqualsEqualsToken: {
           const lhs = this.generator.handleExpression(left, env);
           const rhs = this.generator.handleExpression(right, env);
@@ -139,7 +144,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       return this.generator.builder.createICmpEQ(lhsAddress, rhsAddress).createHeapAllocated();
     }
 
-    throw new Error(`Invalid operand types to strict equals ${lhsLLVMType.typeID} ${rhsLLVMType.typeID}`);
+    throw new Error(`Invalid operand types to strict equals: 
+                            lhs: ${lhsLLVMType.toString()} ${lhsLLVMType.typeIDName}
+                            rhs: ${rhsLLVMType.toString()} ${rhsLLVMType.typeIDName}`);
   }
 
   private handleStrictNotEquals(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -175,7 +182,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
         .createHeapAllocated();
     }
 
-    throw new Error("Invalid operand types to less than comparison");
+    throw new Error(`Invalid operand types to less than: 
+                            lhs: ${left.type.toString()} ${left.type.typeIDName}
+                            rhs: ${right.type.toString()} ${right.type.typeIDName}`);
   }
 
   private handleGreaterThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -202,7 +211,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
         .createHeapAllocated();
     }
 
-    throw new Error("Invalid operand types to greater than comparison");
+    throw new Error(`Invalid operand types to greater than: 
+                            lhs: ${left.type.toString()} ${left.type.typeIDName}
+                            rhs: ${right.type.toString()} ${right.type.typeIDName}`);
   }
 
   private handleLessEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -229,7 +240,9 @@ export class ComparisonHandler extends AbstractExpressionHandler {
         .createHeapAllocated();
     }
 
-    throw new Error("Invalid operand types to less equals than comparison");
+    throw new Error(`Invalid operand types to less equal than: 
+                            lhs: ${left.type.toString()} ${left.type.typeIDName}
+                            rhs: ${right.type.toString()} ${right.type.typeIDName}`);
   }
 
   private handleGreaterEqualsThan(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -256,6 +269,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
         .createHeapAllocated();
     }
 
-    throw new Error("Invalid operand types to less than comparison");
+    throw new Error(`Invalid operand types to greater equal than: 
+                            lhs: ${left.type.toString()} ${left.type.typeIDName}
+                            rhs: ${right.type.toString()} ${right.type.typeIDName}`);
   }
 }

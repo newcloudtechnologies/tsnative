@@ -77,6 +77,17 @@ export class LLVMType {
     return this.type.typeID;
   }
 
+  get typeIDName() {
+    const typeID = this.typeID;
+    for (const [name, id] of Object.entries(llvm.Type.TypeID)) {
+      if (id === typeID) {
+        return name;
+      }
+    }
+
+    throw new Error(`TypeID '${typeID}' is not a member of '${llvm.Type.TypeID}'`);
+  }
+
   getPointer(addressSpace?: number) {
     // @todo: isn't it possible to forward optional parameter to inner function call as is?
     const type = addressSpace ? this.type.getPointerTo(addressSpace) : this.type.getPointerTo();
@@ -133,6 +144,16 @@ export class LLVMType {
   isTSClass() {
     const nakedType = this.unwrapPointer().type;
     return Boolean(nakedType.isStructTy() && nakedType.name?.includes("__class__"));
+  }
+
+  isTSInterface() {
+    const nakedType = this.unwrapPointer().type;
+    return Boolean(nakedType.isStructTy() && nakedType.name?.includes("__interface__"));
+  }
+
+  isTSObject() {
+    const nakedType = this.unwrapPointer().type;
+    return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.Object));
   }
 
   isCppPrimitiveType() {

@@ -139,3 +139,30 @@
         console.assert(!_union, "Assign null to optional union");
     }
 }
+
+{
+    function whosThere(foo: number | null) {
+        console.assert((foo as number) === 574, "Union as primitive");
+    }
+
+    const stanger: number | null = 574;
+    whosThere(stanger);
+}
+
+{
+    class MyData {
+        str: string = "John Doe";
+    }
+
+    function whosThere(foo: MyData | null) {
+        if (foo) {
+            console.assert(foo.str === "John Doe", "Narrowed to class union property access");
+        } else {
+            console.assert(true, "...");
+        }
+    }
+
+    const stanger: MyData | null = new MyData;
+    whosThere(stanger);
+    whosThere(null);
+}
