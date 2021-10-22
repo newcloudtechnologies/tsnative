@@ -20,8 +20,13 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
         const parent = node.parent || this.utils.getParentFromOriginal(node);
 
         if (ts.isConstructorDeclaration(node) && node.body && parent) {
-          // @ts-ignore
-          const hasSuperCall = Boolean(parent.heritageClauses);
+          const hasSuperCall =
+            // @ts-ignore
+            parent.heritageClauses &&
+            // @ts-ignore
+            (parent.heritageClauses as ts.HeritageClause[]).some(
+              (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+            );
           const defaultPropertiesInitializers = [];
 
           // @ts-ignore

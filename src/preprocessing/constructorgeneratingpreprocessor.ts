@@ -19,7 +19,7 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
         if (ts.isClassDeclaration(node)) {
           const constructorDeclaration = node.members.find(ts.isConstructorDeclaration);
           if (!constructorDeclaration) {
-            const constructorStatements = [];
+            const constructorStatements: ts.ExpressionStatement[] = [];
             const parameters = [];
             const args = [];
             if (node.heritageClauses) {
@@ -40,12 +40,12 @@ export class ConstructorGeneratingPreprocessor extends AbstractPreprocessor {
 
                 parameters.push(...baseConstructor.parameters);
                 args.push(...parameters.map((parameter) => ts.createIdentifier(parameter.name.getText())));
-              }
 
-              const superExpression = ts.createSuper();
-              const superCall = ts.createCall(superExpression, undefined, args);
-              const superCallExpression = ts.createExpressionStatement(superCall);
-              constructorStatements.push(superCallExpression);
+                const superExpression = ts.createSuper();
+                const superCall = ts.createCall(superExpression, undefined, args);
+                const superCallExpression = ts.createExpressionStatement(superCall);
+                constructorStatements.push(superCallExpression);
+              }
             }
             const constructorBody = ts.createBlock(constructorStatements);
             const defaultConstructor = ts.createConstructor(undefined, undefined, parameters, constructorBody);

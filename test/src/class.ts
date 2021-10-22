@@ -709,3 +709,40 @@
   const win = new RxWindow();
   win.getTheWidget();
 }
+
+{
+  {
+    const expected = "Base.myFunc";
+
+    interface Basis {
+      myFunc(): void;
+    };
+
+    class Base implements Basis {
+      myFunc() {
+        return expected;
+      }
+    };
+
+    console.assert(new Base().myFunc() === expected, "Interface implementation without ctor declared");
+  }
+
+  {
+    const expected = "Base with ctor.myFunc";
+
+    interface Basis {
+      myFunc(): void;
+    };
+
+    class Base implements Basis {
+      constructor() {
+      }
+
+      myFunc() {
+        return expected;
+      }
+    };
+
+    console.assert(new Base().myFunc() === expected, "Interface implementation with empty ctor declared");
+  }
+}
