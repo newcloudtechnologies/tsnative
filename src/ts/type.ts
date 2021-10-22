@@ -384,10 +384,23 @@ export class TSType {
   }
 
   indexOfProperty(name: string): number {
-    const index = this.getProperties().findIndex((property) => property.name === name);
+    let index = this.getProperties().findIndex((property) => property.name === name);
     if (index < 0) {
       throw new Error(`No property '${name}' on type '${this.toString()}'`);
     }
+
+    if (this.isClass()) {
+      const symbol = this.getSymbol();
+      const declaration = symbol.valueDeclaration;
+      if (!declaration) {
+        throw new Error(`Unable to find value declaration for type '${this.toString()}'`);
+      }
+
+      if (declaration.withVTable()) {
+        index += 1;
+      }
+    }
+
     return index;
   }
 
@@ -590,10 +603,11 @@ export class TSType {
           const syntheticBody = structType.getSyntheticBody(knownSize);
           structType.setBody(syntheticBody);
         } else {
-          const structElements = elements.map((element) => element.type);
+          const structElements = elements.map((element) => element.type.correctCppPrimitiveType());
           if (declaration.withVTable()) {
             // vptr
-            structElements.unshift(LLVMType.getInt32Type(this.checker.generator).getPointer());
+            const vptrType = LLVMType.getVPtrType(this.checker.generator);
+            structElements.unshift(vptrType);
           }
           structType.setBody(structElements);
         }

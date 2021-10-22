@@ -63,6 +63,16 @@ export class LLVMType {
     return LLVMType.make(type, generator);
   }
 
+  static getVPtrType(generator: LLVMGenerator) {
+    const type = llvm.FunctionType.get(llvm.Type.getInt32Ty(generator.context), true);
+    return LLVMType.make(type, generator).getPointer().getPointer();
+  }
+
+  static getVirtualFunctionType(generator: LLVMGenerator) {
+    const type = llvm.FunctionType.get(llvm.Type.getInt32Ty(generator.context), true);
+    return LLVMType.make(type, generator).getPointer();
+  }
+
   get typeID() {
     return this.type.typeID;
   }
@@ -100,6 +110,11 @@ export class LLVMType {
     return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Array__"));
   }
 
+  isLLVMArray() {
+    const nakedType = this.unwrapPointer();
+    return nakedType.type.isArrayTy();
+  }
+
   isMap() {
     const nakedType = this.unwrapPointer();
     return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Map__"));
@@ -134,6 +149,10 @@ export class LLVMType {
 
   isPointerToStruct() {
     return this.type.isPointerTy() && this.getPointerElementType().isStructType();
+  }
+
+  isPointerToArray() {
+    return this.type.isPointerTy() && this.getPointerElementType().isLLVMArray();
   }
 
   isIntersection() {
@@ -368,5 +387,12 @@ export class LLVMArrayType extends LLVMType {
   static get(generator: LLVMGenerator, elementType: LLVMType, numElements: number) {
     const type = llvm.ArrayType.get(elementType.unwrapped, numElements);
     return LLVMType.make(type, generator) as LLVMArrayType;
+  }
+
+  get numElements() {
+    if (!this.type.isArrayTy()) {
+      throw new Error("Expected ArrayType");
+    }
+    return (this.type as llvm.ArrayType).numElements;
   }
 }

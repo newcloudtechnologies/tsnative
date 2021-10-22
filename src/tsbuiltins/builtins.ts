@@ -4,7 +4,7 @@ import { ThisData, Scope } from "../scope";
 import { FunctionMangler } from "../mangling";
 import { SIZEOF_STRING } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { LLVMConstantInt, LLVMValue } from "../llvm/value";
+import { LLVMConstant, LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
 
@@ -294,6 +294,10 @@ export class BuiltinTSClosure extends Builtin {
       LLVMConstantInt.get(this.generator, numArgs, 32),
     ]);
     return thisValue;
+  }
+
+  createNullValue() {
+    return LLVMConstant.createNullValue(this.llvmType, this.generator);
   }
 }
 

@@ -168,6 +168,8 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       return left.makeAssignment(newValue);
     }
 
-    throw new Error("Invalid operand types to compound assignment");
+    throw new Error(
+      `Invalid operand types to compound assignment: lhs of type '${oldValue.type.toString()}', rhs of type '${right.type.toString()}' at '${lhs.parent.getText()}'`
+    );
   }
 }

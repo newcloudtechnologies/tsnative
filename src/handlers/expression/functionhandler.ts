@@ -26,8 +26,15 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
 import { last } from "lodash";
 import { TSType } from "../../ts/type";
-import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
-import { LLVMStructType, LLVMType } from "../../llvm/type";
+import {
+  LLVMConstant,
+  LLVMConstantInt,
+  LLVMGlobalVariable,
+  LLVMIntersection,
+  LLVMUnion,
+  LLVMValue,
+} from "../../llvm/value";
+import { LLVMArrayType, LLVMStructType, LLVMType } from "../../llvm/type";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";
@@ -66,7 +73,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.CallExpression:
         const call = expression as ts.CallExpression;
         if (call.expression.kind === ts.SyntaxKind.SuperKeyword) {
-          return this.handleSuperCall(call, env);
+          return this.handleSuperCall(expression as ts.SuperCall, env);
         }
 
         if (this.isBindExpression(call)) {
@@ -470,7 +477,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return this.generator.builder.createBitCast(callResult, llvmReturnType);
   }
 
-  private handleSuperCall(expression: ts.CallExpression, outerEnv?: Environment) {
+  private handleSuperCall(expression: ts.SuperCall, outerEnv?: Environment) {
     const thisType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const symbol = thisType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
@@ -488,12 +495,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       throw new Error(`No constructor provided: ${expression.getText()}`);
     }
 
-    if (!constructorDeclaration.body) {
-      throw new Error("Constructor body required");
-    }
-
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
-    const { qualifiedName } = FunctionMangler.mangle(
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       constructorDeclaration,
       expression,
       thisType,
@@ -501,11 +504,24 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator
     );
 
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(constructorDeclaration)!;
     const parentScope = valueDeclaration.getScope(thisType);
     if (!parentScope.thisData) {
       throw new Error("This data required");
     }
+
+    if (isExternalSymbol) {
+      if (!outerEnv) {
+        throw new Error(`Expected outer environment to be provided at '${expression.getText()}'`);
+      }
+
+      return this.sysVFunctionHandler.handleNewExpression(expression, qualifiedName, outerEnv);
+    }
+
+    if (!constructorDeclaration.body) {
+      throw new Error("Constructor body required");
+    }
+
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(constructorDeclaration)!;
 
     const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
       return this.handleCallArguments(expression, constructorDeclaration, signature, localScope, outerEnv);
@@ -1585,7 +1601,120 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     this.generator.builder.createSafeCall(constructor, [env.untyped]);
 
+    this.patchVTable(valueDeclaration, parentScope, thisValue, env);
+
     return thisValue;
+  }
+
+  private patchVTable(valueDeclaration: Declaration, parentScope: Scope, thisValue: LLVMValue, outerEnv?: Environment) {
+    const overridenMethods = valueDeclaration.getOverriddenMethods();
+    const virtualMethods = valueDeclaration.getVirtualMethods();
+
+    overridenMethods.forEach((method) => {
+      if (!method.body) {
+        throw new Error(`Expected function body at '${method.getText()}'`);
+      }
+
+      if (!method.name) {
+        throw new Error(`Expected function name at '${method.getText()}'`);
+      }
+
+      const signature = this.generator.ts.checker.getSignatureFromDeclaration(method);
+
+      const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
+        signature,
+        parentScope,
+        outerEnv
+      );
+
+      const env = createEnvironment(
+        parentScope,
+        environmentVariables,
+        this.generator,
+        undefined,
+        outerEnv,
+        method.body,
+        undefined,
+        outerEnv?.thisPrototype
+      );
+
+      const tsReturnType = signature.getReturnType();
+      const llvmReturnType = tsReturnType.getLLVMReturnType();
+
+      const functionName = method.name.getText() + "__" + this.generator.randomString;
+
+      const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
+
+      this.handleFunctionBody(llvmReturnType, method, fn, env);
+      llvm.verifyFunction(fn.unwrapped as llvm.Function);
+
+      const closure = this.makeClosure(fn, method.type, env);
+
+      const nullInitializer = this.generator.tsclosure.createNullValue();
+      const closureGlobal = LLVMGlobalVariable.make(
+        this.generator,
+        closure.type,
+        false,
+        nullInitializer,
+        fn.name + this.generator.randomString
+      );
+      this.generator.builder.createSafeStore(closure, closureGlobal);
+
+      let { fn: virtualFn } = this.generator.llvm.function.create(llvmReturnType, [], this.generator.randomString);
+
+      this.generator.withInsertBlockKeeping(() => {
+        const entryBlock = llvm.BasicBlock.create(
+          this.generator.context,
+          "entry",
+          virtualFn.unwrapped as llvm.Function
+        );
+        this.generator.builder.setInsertionPoint(entryBlock);
+
+        const closureCall = this.generator.tsclosure.getLLVMCall();
+
+        let callResult = this.generator.builder.createSafeCall(closureCall, [
+          this.generator.builder.createLoad(closureGlobal),
+        ]);
+        if (!llvmReturnType.isVoid()) {
+          callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+          this.generator.builder.createSafeRet(callResult);
+        } else {
+          this.generator.builder.createRetVoid();
+        }
+      });
+
+      const virtualMethodClassDeclaration = virtualMethods.find(({ method: virtualMethod }) => {
+        return virtualMethod.name!.getText() === method.name!.getText();
+      })?.classDeclaration;
+
+      if (!virtualMethodClassDeclaration) {
+        throw new Error(`Unable to find virtual method's class declaration for '${method.name.getText()}'`);
+      }
+
+      const vtablePtr = this.generator.builder.createBitCast(
+        thisValue,
+        LLVMType.getVPtrType(this.generator).getPointer()
+      );
+      const vtableLoaded = this.generator.builder.createLoad(vtablePtr);
+      const vtableAsArray = this.generator.builder.createBitCast(
+        vtableLoaded,
+        LLVMArrayType.get(
+          this.generator,
+          LLVMType.getVirtualFunctionType(this.generator),
+          virtualMethodClassDeclaration.vtableSize
+        ).getPointer()
+      );
+
+      const vtableIdx = virtualMethods.findIndex((v) => v.method.name!.getText() === method.name!.getText());
+      const virtualDestructorsOffset = virtualMethodClassDeclaration.withVirtualDestructor ? 2 : 0;
+
+      const virtualFnPtr = this.generator.builder.createSafeInBoundsGEP(vtableAsArray, [
+        0,
+        virtualDestructorsOffset + vtableIdx,
+      ]);
+      virtualFn = this.generator.builder.createBitCast(virtualFn, LLVMType.getVirtualFunctionType(this.generator));
+      this.generator.builder.createSafeStore(virtualFn, virtualFnPtr);
+    });
   }
 
   private handleFunctionExpression(expression: ts.FunctionExpression, outerEnv?: Environment) {

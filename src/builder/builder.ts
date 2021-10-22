@@ -11,7 +11,7 @@
 
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMArrayType, LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMIntersection, LLVMValue } from "../llvm/value";
 import { Prototype } from "../scope";
 
@@ -54,6 +54,7 @@ export class Builder {
   }
 
   createSafeStore(value: LLVMValue, ptr: LLVMValue, isVolatile?: boolean) {
+    value = value.adjustToType(ptr.type.getPointerElementType());
     this.checkStore(value, ptr);
     return this.builder.createStore(value.unwrapped, ptr.unwrapped, isVolatile);
   }
@@ -78,25 +79,26 @@ export class Builder {
     if (!ptr.type.isPointer()) {
       throw new Error(`Expected ptr to be of PointerType, got '${ptr.type.toString()}'`);
     }
-    if (!ptr.type.isPointerToStruct()) {
-      throw new Error(`Expected ptr element to be of StructType, got '${ptr.type.toString()}'`);
+
+    if (!ptr.type.isPointerToStruct() && !ptr.type.isPointerToArray()) {
+      throw new Error(`Expected ptr element to be of StructType/ArrayType, got '${ptr.type.toString()}'`);
     }
 
-    if ((ptr.type.getPointerElementType() as LLVMStructType).numElements === 0) {
-      throw new Error(`Invalid GEP from empty struct`);
+    const pointerElementType: LLVMStructType | LLVMArrayType = ptr.type.getPointerElementType() as
+      | LLVMStructType
+      | LLVMArrayType;
+
+    if (pointerElementType.numElements === 0) {
+      throw new Error(`Invalid GEP from empty struct/array`);
     }
 
     for (const idx of idxList) {
-      if (idx > (ptr.type.getPointerElementType() as LLVMStructType).numElements - 1) {
-        throw new Error(
-          `GEP index out of bounds: ${idx}, upper bound: ${
-            (ptr.type.getPointerElementType() as LLVMStructType).numElements - 1
-          }`
-        );
-      }
-
       if (idx < 0) {
         throw new Error(`Invalid GEP index: -1`);
+      }
+
+      if (idx > pointerElementType.numElements - 1) {
+        throw new Error(`GEP index out of bounds: ${idx}, upper bound: ${pointerElementType.numElements - 1}`);
       }
     }
   }

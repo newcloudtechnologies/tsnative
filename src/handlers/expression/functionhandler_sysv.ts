@@ -8,14 +8,16 @@
  * at http://cloudtechlab.ru/#contacts
  *
  */
-
 import * as ts from "typescript";
+
 import { LLVMGenerator } from "../../generator";
 import { Environment } from "../../scope";
 import { TSType } from "../../ts/type";
-import { LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
+import { LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
+import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { Expression } from "../../ts/expression";
+import { ExternalSymbolsProvider } from "../../mangling";
+import { Declaration } from "../../ts/declaration";
 
 export class SysVFunctionHandler {
   private readonly generator: LLVMGenerator;
@@ -185,8 +187,12 @@ export class SysVFunctionHandler {
     return allocated;
   }
 
-  handleNewExpression(expression: ts.NewExpression, qualifiedName: string, env?: Environment): LLVMValue {
-    const thisType = this.generator.ts.checker.getTypeAtLocation(expression);
+  handleNewExpression(
+    expression: ts.NewExpression | ts.SuperCall,
+    qualifiedName: string,
+    outerEnv?: Environment
+  ): LLVMValue {
+    const thisType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const symbol = thisType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
     if (!valueDeclaration) {
@@ -231,7 +237,7 @@ export class SysVFunctionHandler {
 
     let args =
       expression.arguments?.map((argument) => {
-        const arg = this.generator.handleExpression(argument, env);
+        const arg = this.generator.handleExpression(argument, outerEnv);
         const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
         if (tsType.isObject() || tsType.isFunction()) {
           return this.generator.builder.asVoidStar(arg);
@@ -253,12 +259,70 @@ export class SysVFunctionHandler {
       qualifiedName
     );
 
-    const thisValue = this.generator.gc.allocate(llvmThisType.getPointerElementType());
+    let thisValue: LLVMValue | undefined;
+    if (outerEnv) {
+      const thisIdx = outerEnv.getVariableIndex(this.generator.internalNames.This);
+      if (thisIdx !== -1) {
+        const thisValuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, thisIdx]);
+        thisValue = this.generator.builder.createLoad(thisValuePtr);
+      }
+    }
+
+    if (!thisValue) {
+      thisValue = this.generator.gc.allocate(llvmThisType.getPointerElementType());
+    }
+
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
     args.unshift(thisValueUntyped);
 
     this.generator.builder.createSafeCall(constructor, args);
+
+    this.initVTable(valueDeclaration, thisValue);
+
     return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
+  }
+
+  private initVTable(valueDeclaration: Declaration, thisValue: LLVMValue) {
+    if (!valueDeclaration.withVTable()) {
+      return;
+    }
+
+    if (!valueDeclaration.name) {
+      throw new Error(`Expected named class declaration at '${valueDeclaration.getText()}'`);
+    }
+
+    const qualifiedClassName = valueDeclaration.getNamespace().concat(valueDeclaration.name.getText()).join("::");
+
+    const vtable = ExternalSymbolsProvider.getVTableSymbolFor(qualifiedClassName);
+    const vtableType = LLVMArrayType.get(
+      this.generator,
+      LLVMType.getInt8Type(this.generator).getPointer(),
+      valueDeclaration.vtableSize
+    );
+
+    const existing = this.generator.module.getGlobalVariable(vtable);
+    const vtableGlobal = existing
+      ? LLVMValue.create(existing, this.generator)
+      : LLVMGlobalVariable.make(this.generator, vtableType, true, undefined, vtable);
+
+    // vtables are stored in .rodata
+    // this makes it impossible to patch vtables that were directly stored into class' vptr
+    // make a copy, then store patchable version
+    const vtableGlobalToUse = this.generator.gc.allocate(vtableGlobal.type.unwrapPointer());
+    this.generator.builder.createSafeStore(this.generator.builder.createLoad(vtableGlobal), vtableGlobalToUse);
+
+    const typeinfoOffset = 2; // @todo: is this compiler dependant?
+    const vtableWithoutTypeinfo = this.generator.builder.createSafeInBoundsGEP(vtableGlobalToUse, [0, typeinfoOffset]);
+    const vtableStructCasted = this.generator.builder.createBitCast(
+      vtableWithoutTypeinfo,
+      LLVMType.getVPtrType(this.generator)
+    );
+
+    const classVTablePtr = this.generator.builder.createBitCast(
+      thisValue,
+      LLVMType.getVPtrType(this.generator).getPointer()
+    );
+    this.generator.builder.createSafeStore(vtableStructCasted, classVTablePtr);
   }
 
   private adjustParameters(parameters: LLVMValue[], tsTypes: TSType[], llvmTypes: LLVMType[]) {

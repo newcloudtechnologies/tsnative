@@ -57,6 +57,15 @@ export class ExternalSymbolsProvider {
   private readonly functionTemplateParametersPattern: string;
   private readonly generator: LLVMGenerator;
 
+  static getVTableSymbolFor(className: string) {
+    const vtableIdx = externalDemangledSymbolsTable.findIndex((symbolName) => symbolName === `vtable for ${className}`);
+    if (vtableIdx === -1) {
+      throw new Error(`Unable to find vtable for '${className}'`);
+    }
+
+    return externalMangledSymbolsTable[vtableIdx];
+  }
+
   constructor(
     declaration: Declaration,
     expression: ts.NewExpression | ts.CallExpression | undefined,
@@ -152,7 +161,9 @@ export class ExternalSymbolsProvider {
 
       // 2. It may be a method of some of base classes in case of implementation (A implements B, C)
       // (this is how C++ multiple inheritance represented in ts-declarations)
-      for (const clause of classDeclaration.heritageClauses || []) {
+      const implementsClauses =
+        classDeclaration.heritageClauses?.filter((clause) => clause.token === ts.SyntaxKind.ImplementsKeyword) || [];
+      for (const clause of implementsClauses) {
         for (const type of clause.types) {
           const classSymbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
           mangledName = tryGetFromDeclaration(classSymbol.declarations[0], classSymbol.escapedName.toString());

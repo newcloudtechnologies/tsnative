@@ -43,6 +43,7 @@ set(SOURCES
     printable.cpp
     dummy_base.cpp
     inheritance.cpp
+    component.cpp
 )
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

@@ -270,7 +270,8 @@ export class AccessHandler extends AbstractExpressionHandler {
         expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
         expression.parent.parent.left === expression.parent;
 
-      return isThisAccess && isInitialization && inTSClassConstructor()
+      return (isThisAccess && isInitialization && inTSClassConstructor()) ||
+        elementPtr.type.getPointerElementType().isCppPrimitiveType()
         ? elementPtr
         : this.generator.builder.createLoad(elementPtr);
     }

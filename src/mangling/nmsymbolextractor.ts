@@ -41,6 +41,9 @@ export class NmSymbolExtractor {
         return null;
       }
       const symbolType = symbolTypeMatches[0];
+      if (symbolType === "V" || symbolType === "R") {
+        return trimmed.split(` ${symbolType} `)[1];
+      }
       if (symbolType === "T" || symbolType === "W") {
         const signaturePattern = new RegExp(/(?<=(?<=\s)\w(?=\s)\s).*$/);
         const signatureMatches = trimmed.match(signaturePattern);

@@ -77,9 +77,9 @@ export class Declaration {
   }
 
   get heritageClauses() {
-    if (!ts.isClassDeclaration(this.declaration)) {
+    if (!ts.isClassDeclaration(this.declaration) && !ts.isInterfaceDeclaration(this.declaration)) {
       throw new Error(
-        `Expected 'heritageClauses' to be called on class declaration, called on '${
+        `Expected 'heritageClauses' to be called on class/interface declaration, called on '${
           ts.SyntaxKind[this.declaration.kind]
         }'`
       );
@@ -312,11 +312,85 @@ export class Declaration {
     return prototype;
   }
 
+  getMethods() {
+    const bases = this.getBases();
+    bases.unshift(this);
+
+    return flatten(
+      flatten(
+        bases.map((base, _, array) => {
+          return base.members.filter((member) => {
+            if (!member.isMethod()) {
+              return false;
+            }
+
+            if (!member.name) {
+              // @todo: Error?
+              return false;
+            }
+
+            const isUniq = array.findIndex((m) => m.name!.getText() === member.name!.getText()) === -1;
+            return isUniq;
+          });
+        })
+      )
+    );
+  }
+
+  getOverriddenMethods() {
+    return this.getMethods().filter((method) => method.isOverride());
+  }
+
+  getVirtualMethods() {
+    const bases = this.getBases();
+    bases.unshift(this);
+
+    if (!bases.some((base) => base.withVTable())) {
+      return [];
+    }
+
+    return flatten(
+      flatten(
+        bases.map((base, _, array) => {
+          if (!base.withVTable()) {
+            return [];
+          }
+
+          return base.members
+            .filter((member) => {
+              if (!member.isMethod()) {
+                return false;
+              }
+
+              if (!member.isVirtual()) {
+                return false;
+              }
+
+              if (!member.name) {
+                // @todo: Error?
+                return false;
+              }
+
+              const isUniq = array.findIndex((m) => m.name!.getText() === member.name!.getText()) === -1;
+              return isUniq;
+            })
+            .map((method) => {
+              return { classDeclaration: base, method };
+            });
+        })
+      )
+    );
+  }
+
   withVTable() {
     const withVTableDecorator = "VTable";
-    return Boolean(
+    const declaredWithVTable = Boolean(
       this.declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator)
     );
+
+    const haveVirtualBase = this.getBases().some((classDeclaration) => classDeclaration.withVTable());
+
+    return declaredWithVTable || haveVirtualBase;
   }
 
   get mapping() {
@@ -338,6 +412,59 @@ export class Declaration {
     }
 
     return;
+  }
+
+  get vtableSize() {
+    const vtableSizeDecorator = "VTableSize";
+    const vtableSize = this.declaration.decorators?.find((decorator) =>
+      decorator.expression.getText().startsWith(vtableSizeDecorator)
+    );
+
+    if (vtableSize) {
+      const pattern = new RegExp(`(?<=${vtableSizeDecorator}\\().*(?=\\))`);
+      const decoratorText = vtableSize.expression.getText();
+      const sizeMatch = decoratorText.match(pattern);
+
+      if (!sizeMatch) {
+        throw new Error(`@VTableSize in wrong format: ${vtableSize.getText()}, expected @VTableSize(<number>)`);
+      }
+
+      const size = parseInt(sizeMatch[0], 10);
+      if (isNaN(size)) {
+        throw new Error(`@VTableSize in wrong format: ${vtableSize.getText()}, cannot parse numeric value`);
+      }
+
+      return size;
+    }
+
+    return 0;
+  }
+
+  get withVirtualDestructor() {
+    const virtualDestructorDecorator = "VirtualDestructor";
+    const declaredWithVirtualDestructor = this.declaration.decorators?.find(
+      (decorator) => decorator.expression.getText() === virtualDestructorDecorator
+    );
+
+    return Boolean(declaredWithVirtualDestructor);
+  }
+
+  isVirtual() {
+    const virtualDecorator = "Virtual";
+    const declaredAsVirtual = this.declaration.decorators?.find(
+      (decorator) => decorator.expression.getText() === virtualDecorator
+    );
+
+    return Boolean(declaredAsVirtual);
+  }
+
+  isOverride() {
+    const overrideDecorator = "Override";
+    const declaredAsOverride = this.declaration.decorators?.find((decorator) =>
+      decorator.expression.getText().startsWith(overrideDecorator)
+    );
+
+    return Boolean(declaredAsOverride);
   }
 
   isStaticMethod(): boolean {

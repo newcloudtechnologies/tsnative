@@ -749,3 +749,28 @@ export class LLVMUnion extends LLVMValue {
     return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(this, [0, activeIndex]));
   }
 }
+
+export class LLVMGlobalVariable extends LLVMValue {
+  protected constructor(
+    generator: LLVMGenerator,
+    type: LLVMType,
+    constant: boolean,
+    initializer?: LLVMValue,
+    name?: string
+  ) {
+    const value = new llvm.GlobalVariable(
+      generator.module,
+      type.unwrapped,
+      constant,
+      llvm.LinkageTypes.ExternalLinkage,
+      initializer?.unwrapped as llvm.Constant,
+      name
+    );
+
+    super(value, generator);
+  }
+
+  static make(generator: LLVMGenerator, type: LLVMType, constant: boolean, initializer?: LLVMValue, name?: string) {
+    return new LLVMGlobalVariable(generator, type, constant, initializer, name);
+  }
+}
