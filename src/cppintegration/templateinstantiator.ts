@@ -202,7 +202,11 @@ export class TemplateInstantiator {
     if (ts.isVariableDeclaration(node)) {
       this.handleArrayFromVariableDeclaration(node);
     } else {
-      if (ts.isCallExpression(node.parent) && ts.isArrayLiteralExpression(node) && node.elements.length === 0) {
+      if (
+        (ts.isCallExpression(node.parent) || ts.isNewExpression(node.parent)) &&
+        ts.isArrayLiteralExpression(node) &&
+        node.elements.length === 0
+      ) {
         const typeFromParameterDeclaration = this.generator.ts.array.getArgumentArrayType(node);
         const arrayTemplateInstance = `template class ${typeFromParameterDeclaration.toPlainCppType()};`;
         this.generatedContent.push(

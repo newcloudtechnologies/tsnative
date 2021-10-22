@@ -25,23 +25,34 @@ export class TSArray {
   }
 
   getArgumentArrayType(expression: ts.ArrayLiteralExpression) {
-    if (!ts.isCallExpression(expression.parent)) {
+    if (!ts.isCallExpression(expression.parent) && !ts.isNewExpression(expression.parent)) {
       throw new Error(
-        `Expected expression parent to be of kind ts.CallExpression, got '${ts.SyntaxKind[expression.parent.kind]}'`
+        `Expected expression parent to be of kind ts.CallExpression or ts.NewExpression, got '${
+          ts.SyntaxKind[expression.parent.kind]
+        }'`
       );
     }
 
     const parentType = this.generator.ts.checker.getTypeAtLocation(expression.parent.expression);
-    const argumentIndex = expression.parent.arguments.findIndex((argument) => argument === expression);
-    if (argumentIndex === -1) {
+    const argumentIndex = expression.parent.arguments?.findIndex((argument) => argument === expression);
+    if (typeof argumentIndex === "undefined" || argumentIndex === -1) {
       throw new Error(`Argument '${expression.getText()}' not found`); // unreachable
     }
 
-    const parentDeclaration = parentType.getSymbol().valueDeclaration;
+    let parentDeclaration = parentType.getSymbol().valueDeclaration;
     if (!parentDeclaration) {
       throw new Error(
         `getArgumentArrayType: No parent declaration found at '${expression.parent.expression.getText()}'`
       );
+    }
+
+    if (parentDeclaration.isClass()) {
+      const constructorDeclaration = parentDeclaration.members.find((member) => member.isConstructor());
+      if (!constructorDeclaration) {
+        throw new Error(`Unable to find constructor declaration at '${parentDeclaration.getText()}'`);
+      }
+
+      parentDeclaration = constructorDeclaration;
     }
 
     return this.generator.ts.checker.getTypeAtLocation(parentDeclaration.parameters[argumentIndex]);
@@ -52,7 +63,7 @@ export class TSArray {
     if (expression.elements.length === 0) {
       if (ts.isVariableDeclaration(expression.parent)) {
         arrayType = this.generator.ts.checker.getTypeAtLocation(expression.parent);
-      } else if (ts.isCallExpression(expression.parent)) {
+      } else if (ts.isCallExpression(expression.parent) || ts.isNewExpression(expression.parent)) {
         arrayType = this.getArgumentArrayType(expression);
       } else if (ts.isBinaryExpression(expression.parent)) {
         arrayType = this.generator.ts.checker.getTypeAtLocation(expression.parent.left);

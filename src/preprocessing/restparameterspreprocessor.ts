@@ -93,7 +93,7 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
           }
         }
 
-        if (!this.utils.isSyntheticNode(node) && ts.isCallExpression(node)) {
+        if (!this.utils.isSyntheticNode(node) && (ts.isCallExpression(node) || ts.isNewExpression(node))) {
           const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
 
           if (!type.isSymbolless()) {
@@ -110,22 +110,38 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
               declaration = symbol.declarations[0];
             }
 
-            if (declaration.isFunctionLike() && declaration.body) {
-              // Skip declarations since they are used for C++ integration
-              // @todo: is there a better way to check if declaration is declared in ambient context?
+            if (declaration.isClass()) {
+              const constructorDeclaration = declaration.members.find((member) => member.isConstructor());
+              if (!constructorDeclaration) {
+                throw new Error(`No constructor declaration found for class '${declaration.name?.getText()}'`);
+              }
 
+              declaration = constructorDeclaration;
+            }
+
+            if (
+              !this.utils.isSyntheticNode(declaration.unwrapped) &&
+              declaration.isFunctionLike() &&
+              !declaration.isAmbient()
+            ) {
               const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration)!;
               const lastParameter = last(signature.getParameters());
 
               if (lastParameter && this.isRestParameters(lastParameter.declarations[0])) {
                 const nonRestParametersCount = signature.getParameters().length - 1;
-                const restArguments = node.arguments.slice(nonRestParametersCount);
+                const restArguments = node.arguments?.slice(nonRestParametersCount);
                 const restArgumentsArray = ts.createArrayLiteral(restArguments);
 
-                const updatedCall = ts.updateCall(node, node.expression, node.typeArguments, [
-                  ...node.arguments.slice(0, nonRestParametersCount),
-                  restArgumentsArray,
-                ]);
+                const updatedArguments = ts.isCallExpression(node)
+                  ? [...node.arguments.slice(0, nonRestParametersCount), restArgumentsArray]
+                  : node.arguments
+                  ? [...node.arguments.slice(0, nonRestParametersCount), restArgumentsArray]
+                  : [];
+
+                const updatedCall = ts.isCallExpression(node)
+                  ? ts.updateCall(node, node.expression, node.typeArguments, updatedArguments)
+                  : ts.updateNew(node, node.expression, node.typeArguments, updatedArguments);
+
                 ts.addSyntheticLeadingComment(
                   updatedCall,
                   ts.SyntaxKind.SingleLineCommentTrivia,

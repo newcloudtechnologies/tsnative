@@ -51,3 +51,20 @@
     const empty = dummyWithNonRestParameters("test ya");
     console.assert(empty.length === 0, "Function with non-rest parameters without arguments provided test failed");
 }
+
+{
+    class TheWidget { }
+
+    class TheContainer_t {
+        constructor(_: string, expectedLength: number, ...children: TheWidget[]) {
+            console.assert(children.length === expectedLength, "Constructor rest parameters");
+        }
+    }
+
+    new TheContainer_t("How much is the fish:", 0);
+    new TheContainer_t("How much is the fish:", 3,
+        new TheWidget,
+        new TheWidget,
+        new TheWidget,
+    )
+}
