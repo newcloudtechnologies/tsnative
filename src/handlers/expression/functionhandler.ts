@@ -1108,8 +1108,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
       thisVal = this.generator.handleExpression(propertyAccess.expression, outerEnv);
       const propertyAccessRootType = this.generator.ts.checker.getTypeAtLocation(propertyAccessRoot);
 
-      if (outerEnv?.thisPrototype && thisType?.isSame(propertyAccessRootType)) {
-        thisVal.attachPrototype(outerEnv?.thisPrototype);
+      // @todo: this implementation have to be revised
+      if (!thisVal.hasPrototype() && thisType?.isSame(propertyAccessRootType)) {
+        if (outerEnv?.thisPrototype) {
+          thisVal.attachPrototype(outerEnv?.thisPrototype);
+        }
       }
 
       if (this.generator.ts.checker.nodeHasSymbol(propertyAccess.expression)) {

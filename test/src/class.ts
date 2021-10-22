@@ -690,3 +690,22 @@
 
   console.assert((new Up).setState(new Data) === "Data class data", "Extend constrained generic class");
 }
+
+{
+  const question = "What have you done?";
+  class ExtraWidget {
+    lol() {
+      return question;
+    }
+  }
+
+  class RxWindow {
+    getTheWidget() {
+      const retVal = new ExtraWidget();
+      console.assert(retVal.lol() === question, "Correct prototype when called inside method");
+    }
+  }
+
+  const win = new RxWindow();
+  win.getTheWidget();
+}
