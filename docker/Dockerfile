@@ -1,4 +1,4 @@
-# docreg.devos.club/typescript-environment:1.5
+# docreg.devos.club/typescript-environment:1.6
 
 FROM docreg.devos.club/ubuntu-cmake:1.9
 
@@ -26,10 +26,12 @@ RUN apt-get update && apt-get install -y \
     gcc-9 \
     g++-9
 
-RUN mkdir llvm && cd /llvm && wget https://apt.llvm.org/llvm.sh
-RUN chmod +x /llvm/llvm.sh
-RUN /llvm/llvm.sh 11
-RUN rm -rf /llvm
+# llvm.sh installs 11.1.0 and we're not ready for it yet
+# RUN mkdir llvm && cd /llvm && wget https://apt.llvm.org/llvm.sh
+# RUN chmod +x /llvm/llvm.sh
+# RUN /llvm/llvm.sh 11
+# RUN rm -rf /llvm
+RUN apt-get install -y llvm-11 libclang-11-dev
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 60

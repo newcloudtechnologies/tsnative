@@ -1,5 +1,19 @@
 gitea_creds = 'jenkins_gitea'
 
+// NPM private repository
+NPM_PRIVATE_REPO_ALL_URL = 'https://nexus.devos.club/repository/antiq_npm'
+NPM_PRIVATE_REPO_PUBLIC_URL = 'https://nexus.devos.club/repository/antiq_npm_local'
+NPM_PRIVATE_REPO_AUTH_STR = '//nexus.devos.club/repository/'
+NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID = 'nexus_npm_user_antiq_NpmToken'
+
+def get_source_branch() {
+    if (env.BRANCH_NAME.startsWith('PR')) {
+        return "${env.CHANGE_BRANCH}"
+    } else {
+        return "${env.BRANCH_NAME}"
+    }
+}
+
 pipeline {
     agent none
     parameters {
@@ -11,15 +25,18 @@ pipeline {
                 stage('Linux x86_64') {
                     agent {
                         docker {
-                            image "docreg.devos.club/typescript-environment:1.5"
+                            image "docreg.devos.club/typescript-environment:1.6"
                             args "--user root"
                             registryUrl 'https://docreg.devos.club'
                             registryCredentialsId 'docker_kos'
                             alwaysPull true
                         }
                     }
+                    environment {
+                        CI = 'true'
+                    }
                     stages {
-                        stage("Build") {
+                        stage("Setup Env") {
                             steps {
                                 script {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
@@ -30,19 +47,40 @@ pipeline {
                                         ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
                                         ssh_user(SSH_KEY, "root", "/root")
 
+                                        // clear NPM config user and in clone repo for local build
+                                        sh "rm -f \$(npm config get userconfig)"
+                                        sh "rm -f .npmrc"
+
+                                        // enable unsafe-perm since running as a root for install npm-prebuilt-dependencies
+                                        // work from root for all script execute
+                                        sh "npm config set unsafe-perm true"
+
+                                        // login private repo
+                                        npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
                                         // stick to version 6 since 7 one is flawed a lot
                                         sh "npm install -g npm@6"
 
+                                        // check version
                                         sh "npm -v"
                                         sh "node -v"
 
+                                        // clean cache
                                         sh "npm cache clean -f"
 
-                                        npm_login_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
+                                        // install deps
+                                        sh "npm install"
 
-                                        sh "npm install --unsafe-perm"
-                                        sh "npm run build"
+                                        // logout private repo
+                                        npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                                     }
+                                }
+                            }
+                        }
+                        stage("Build") {
+                            steps {
+                                script {
+                                    sh "npm run build"
                                 }
                             }
                         }
@@ -60,21 +98,31 @@ pipeline {
                         stage("Publish")
                         {
                             when {
-                                expression { params.PublishWithoutIncrement }
+                                expression { params.PublishWithoutIncrement || (get_source_branch() == "master") }
                             }
                             steps {
                                 // login to private registry
-                                npm_login_registry_for_publish("https://nexus.devos.club/repository/antiq_npm_local", "nexus_npm_user_antiq_NpmToken")
-                                // publish artifact
-                                sh "npm run publishToLocalRegistry --registry=https://nexus.devos.club/repository/antiq_npm_local"
+                                npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                sh "npm run publishToLocalRegistry"
+
+                                // logout to private registry
+                                npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                             }
                         }
                     }
                     post {
+                        cleanup {
+                            // custom clean workdir from bug cleanWs()
+                            sh 'rm -rf ./* ~/.ssh'
+                        }
+
                         always {
+                            // disable unsafe-perm since running as a root for install npm-prebuilt-dependencies
+                            sh "npm config set unsafe-perm true"
                             // always logout
-                            npm_logout_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
-                            npm_logout_registry_for_publish("https://nexus.devos.club/repository/antiq_npm_local", "nexus_npm_user_antiq_NpmToken")
+                            npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                            npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                             // always clean work dir
                             cleanWs()
                         }
@@ -85,10 +133,11 @@ pipeline {
                         label 'winsrv19'
                     }
                     environment {
-                         PATH = "/usr/bin:${env.PATH}"
+                        CI = 'true'
+                        PATH = "/usr/bin:${env.PATH}"
                     }
                     stages {
-                        stage("Build") {
+                        stage("Setup Env") {
                             steps {
                                 script {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
@@ -102,24 +151,40 @@ pipeline {
                                             echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
                                         """
 
-                                        // stick to version 6 since 7 one is flawed a lot
-                                        sh "npm install -g npm@6"
+                                        // clear NPM config user and in clone repo for local build
+                                        sh "rm -f \$(npm config get userconfig)"
+                                        sh "rm -f .npmrc"
 
-                                        sh "npm -v"
-                                        sh "node -v"
-
-                                        sh "npm cache clean -f"
-
-                                        npm_login_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
+                                        // login in registry private repo
+                                        npm_login_registry("https://nexus.devos.club/repository/antiq_npm",  "//nexus.devos.club/repository/", "nexus_npm_user_antiq_NpmToken")
 
                                         // hack: explicitly set python path on windows
                                         sh "npm config set python \"C:\\Python39\\python\""
                                         sh "npm config list"
 
-                                        // reorder paths so that npm uses msys' git instead one from windows
+                                        // stick to version 6 since 7 one is flawed a lot
+                                        sh "npm install -g npm@6"
+
+                                        // check version
+                                        sh "npm -v"
+                                        sh "node -v"
+
+                                        // clean cache
+                                        sh "npm cache clean -f"
+
+                                        // install deps
                                         sh "npm install"
-                                        sh "npm run build"
+
+                                        // logout from registry private repo
+                                        npm_logout_registry("https://nexus.devos.club/repository/antiq_npm",  "//nexus.devos.club/repository/", "nexus_npm_user_antiq_NpmToken")
                                     }
+                                }
+                            }
+                        }
+                        stage("Build") {
+                            steps {
+                                script {
+                                    sh "npm run build"
                                 }
                             }
                         }
@@ -132,27 +197,35 @@ pipeline {
                         }
                         stage("Run Tests") {
                             steps {
-                                sh "JOBS=-j4 npm test"
+                                // FIXME: enable parallel build once KDM-836 is fixed
+                                sh "npm test"
                             }
                         }
-                        stage("Publish")
-                        {
+                        stage("Publish") {
                             when {
-                                expression { params.PublishWithoutIncrement }
+                                expression { params.PublishWithoutIncrement || (get_source_branch() == "master") }
                             }
                             steps {
                                 // login to private registry
-                                npm_login_registry_for_publish("https://nexus.devos.club/repository/antiq_npm_local", "nexus_npm_user_antiq_NpmToken")
-                                // publish artifact
-                                sh "npm run publishToLocalRegistry --registry=https://nexus.devos.club/repository/antiq_npm_local"
+                                npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                sh "npm run publishToLocalRegistry"
+
+                                // logout to private registry
+                                npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                             }
                         }
                     }
                     post {
+                        cleanup {
+                            // custom clean work dir from bug cleanWs()
+                            sh 'rm -rf ./* ~/.ssh'
+                        }
+
                         always {
                             // always logout
-                            npm_logout_registry("https://nexus.devos.club/repository/antiq_npm", "nexus_npm_user_antiq_NpmToken")
-                            npm_logout_registry_for_publish("https://nexus.devos.club/repository/antiq_npm_local", "nexus_npm_user_antiq_NpmToken")
+                            npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                            npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                             // always clean work dir
                             cleanWs()
                         }
@@ -201,27 +274,27 @@ void ssh_user(String ssh_key, String user_name, String home_dir)
 }
 
 // авторизуемся в репозитории для получения зависимостей
-void npm_login_registry(String registry_url, String npm_auth_token_credentials_id)
+void npm_login_registry(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
 {
    withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
         // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
         // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_URL=${registry_url}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
+        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
              sh 'npm config set always-auth true'
              sh "npm config set registry ${registry_url}"
-             sh 'npm config set $LOCAL_REGISTRY_URL:_authToken $LOCAL_NPM_AUTH_TOKEN'
+             sh 'npm config set $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
              sh "npm config list"
         }
    }
 }
 
-void npm_logout_registry(String registry_url, String npm_auth_token_credentials_id)
+void npm_logout_registry(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
 {
    withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
         // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
         // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_URL=${registry_url}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
-             sh 'npm config delete $LOCAL_REGISTRY_URL:_authToken $LOCAL_NPM_AUTH_TOKEN'
+        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
+             sh 'npm config delete $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
              sh "npm config delete registry ${registry_url}"
              sh 'npm config delete always-auth true'
              sh "npm config list"
@@ -230,29 +303,29 @@ void npm_logout_registry(String registry_url, String npm_auth_token_credentials_
 }
 
 // авторизуемся в репозитории для публикации артефакта
-void npm_login_registry_for_publish(String registry_url, String npm_auth_token_credentials_id)
+void npm_login_registry_for_publish(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
 {
    withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
         // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
         // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_URL=${registry_url}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
+        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
              sh 'npm config set private true'
              sh 'npm config set always-auth true'
              sh "npm config set registry ${registry_url}"
              sh "npm config set publishConfig.registry ${registry_url}"
-             sh 'npm config set $LOCAL_REGISTRY_URL:_authToken $LOCAL_NPM_AUTH_TOKEN'
+             sh 'npm config set $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
              sh "npm config list"
         }
    }
 }
 
-void npm_logout_registry_for_publish(String registry_url, String npm_auth_token_credentials_id)
+void npm_logout_registry_for_publish(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
 {
    withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
         // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
         // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_URL=${registry_url}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
-             sh 'npm config delete $LOCAL_REGISTRY_URL:_authToken $LOCAL_NPM_AUTH_TOKEN'
+        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
+             sh 'npm config delete $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
              sh "npm config delete publishConfig.registry ${registry_url}"
              sh "npm config delete registry ${registry_url}"
              sh 'npm config delete always-auth true'
