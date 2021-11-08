@@ -259,17 +259,22 @@ export class SysVFunctionHandler {
       qualifiedName
     );
 
-    let thisValue: LLVMValue | undefined;
-    if (outerEnv) {
-      const thisIdx = outerEnv.getVariableIndex(this.generator.internalNames.This);
-      if (thisIdx !== -1) {
-        const thisValuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, thisIdx]);
-        thisValue = this.generator.builder.createLoad(thisValuePtr);
-      }
-    }
+    let thisValue: LLVMValue;
 
-    if (!thisValue) {
+    if (ts.isNewExpression(expression)) {
       thisValue = this.generator.gc.allocate(llvmThisType.getPointerElementType());
+    } else {
+      if (!outerEnv) {
+        throw new Error(`Expected environment to be provided for call: '${expression.getText()}'`);
+      }
+
+      const thisIdx = outerEnv.getVariableIndex(this.generator.internalNames.This);
+      if (thisIdx === -1) {
+        throw new Error(`Expected 'this' to be provided by outer environment for call: '${expression.getText()}'`);
+      }
+
+      const thisValuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, thisIdx]);
+      thisValue = this.generator.builder.createLoad(thisValuePtr);
     }
 
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
