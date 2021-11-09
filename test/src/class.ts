@@ -746,3 +746,50 @@
     console.assert(new Base().myFunc() === expected, "Interface implementation with empty ctor declared");
   }
 }
+
+{
+  class Base<StateT> {
+    _state: StateT
+
+    constructor(initialState: StateT) {
+      this._state = initialState;
+    }
+  }
+
+  interface MyState {
+    num: number;
+    str: string;
+  }
+
+  class MyDerived extends Base<MyState> {
+    constructor() {
+      let initialState: MyState = {
+        num: 555,
+        str: "777"
+      }
+      super(initialState);
+    }
+  }
+
+  const a = new MyDerived();
+
+  console.assert(a._state.num === 555, "Derived from generic instance property access (1)");
+  console.assert(a._state.str === "777", "Derived from generic instance property access (2)");
+
+  interface MyAnotherState {
+    str: string;
+  }
+
+  class MyAnotherDerived extends Base<MyAnotherState> {
+    constructor() {
+      const initialState: MyAnotherState = {
+        str: "depressed"
+      }
+      super(initialState);
+    }
+  }
+
+  const b = new MyAnotherDerived();
+
+  console.assert(b._state.str === "depressed", "Derived from generic instance property access (3)");
+}

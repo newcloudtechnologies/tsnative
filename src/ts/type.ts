@@ -505,7 +505,19 @@ export class TSType {
 
     const getTypeAndNameFromProperty = (property: TSSymbol): { type: LLVMType; name: string } => {
       const declaration = property.declarations[0];
-      const tsType = this.checker.getTypeAtLocation(declaration.unwrapped);
+      let tsType = this.checker.getTypeAtLocation(declaration.unwrapped);
+
+      if (!tsType.isSupported()) {
+        if (!ts.isClassDeclaration(declaration.parent)) {
+          throw new Error(
+            `Generic-typed properties are allowed only for classes. Error at: '${declaration.parent.getText()}'`
+          );
+        }
+
+        const classDeclaration = Declaration.create(declaration.parent, this.checker.generator);
+        const typeMapper = this.checker.generator.meta.getClassTypeMapper(classDeclaration);
+        tsType = typeMapper.get(tsType.toString());
+      }
 
       const llvmType = tsType.getLLVMType();
       const valueType = property.valueDeclaration?.decorators?.some(
