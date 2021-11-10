@@ -793,3 +793,19 @@
 
   console.assert(b._state.str === "depressed", "Derived from generic instance property access (3)");
 }
+
+{
+  class Base2 {
+    good: string = "777"
+    nice?: string
+  }
+
+  const b = new Base2();
+  console.assert(!b.nice, "Optional property default initializer");
+
+  b.nice = "nice";
+  console.assert((b.nice as string) === "nice", "Optional property assignment (1)");
+
+  b.nice = undefined;
+  console.assert(!b.nice, "Optional property assignment (2)");
+}

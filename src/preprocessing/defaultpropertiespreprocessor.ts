@@ -31,11 +31,12 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
 
           // @ts-ignore
           for (const member of parent.members.filter(ts.isPropertyDeclaration)) {
-            if (!member.initializer) {
+            const memberDeclaration = Declaration.create(member, this.generator);
+            if (!memberDeclaration.initializer && !memberDeclaration.isOptional()) {
               continue;
             }
 
-            if (Declaration.create(member, this.generator).isStaticProperty()) {
+            if (memberDeclaration.isStaticProperty()) {
               continue;
             }
 
@@ -45,7 +46,9 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
 
             const thisExpression = ts.createThis();
             const propertyAccess = ts.createPropertyAccess(thisExpression, member.name);
-            const assignment = ts.createAssignment(propertyAccess, member.initializer);
+
+            const initializer = memberDeclaration.isOptional() ? ts.createIdentifier("undefined") : member.initializer;
+            const assignment = ts.createAssignment(propertyAccess, initializer);
             const assigmentStatement = ts.createStatement(assignment);
 
             defaultPropertiesInitializers.push(assigmentStatement);

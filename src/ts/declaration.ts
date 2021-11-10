@@ -48,6 +48,11 @@ export class Declaration {
     return this.declaration.members.map((member) => Declaration.create(member, this.generator));
   }
 
+  isOptional() {
+    // @ts-ignore
+    return Boolean(this.declaration.questionToken);
+  }
+
   get kind() {
     return this.declaration.kind;
   }
