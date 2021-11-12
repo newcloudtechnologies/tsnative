@@ -218,6 +218,7 @@ export class TSType {
 
     return (
       Boolean(this.getSymbol().flags & ts.SymbolFlags.Function) ||
+      Boolean(this.getSymbol().flags & ts.SymbolFlags.Method) ||
       Boolean(this.getSymbol().members?.get(ts.InternalSymbolName.Call))
     );
   }
@@ -375,7 +376,12 @@ export class TSType {
       properties.push(...flatten(inheritedProps));
     }
 
-    properties.push(...this.checker.getPropertiesOfType(this.type).filter((property) => property.isProperty()));
+    properties.push(
+      ...this.checker
+        .getPropertiesOfType(this.type)
+        .filter((property) => property.isProperty() || property.isOptionalMethod())
+    );
+
     return properties;
   }
 

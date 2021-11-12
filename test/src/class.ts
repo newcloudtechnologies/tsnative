@@ -809,3 +809,37 @@
   b.nice = undefined;
   console.assert(!b.nice, "Optional property assignment (2)");
 }
+
+{
+  class Base {
+    static value = "nope";
+
+    protected woo?(): string;
+
+    public fooliche(): string {
+      return this.woo ? this.woo() : Base.value;
+    }
+  }
+
+  class Derived1 extends Base {
+    static value = "derived1";
+
+    public woo(): string {
+      return Derived1.value;
+    }
+  }
+
+  class Derived2 extends Base {
+    static value = "derived2 nope";
+
+    public barletto(): string {
+      return this.woo ? this.woo() : Derived2.value;
+    }
+  }
+
+  const a: Derived1 = new Derived1();
+  console.assert(a.woo() === Derived1.value && a.fooliche() === Derived1.value, "Optional method overload (1)");
+
+  const b: Derived2 = new Derived2();
+  console.assert(b.fooliche() === Base.value && b.barletto() === Derived2.value, "Optional method overload (2)");
+}

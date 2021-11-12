@@ -30,24 +30,51 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
           const defaultPropertiesInitializers = [];
 
           // @ts-ignore
-          for (const member of parent.members.filter(ts.isPropertyDeclaration)) {
+          for (const member of parent.members.filter((m) => ts.isPropertyDeclaration(m) || ts.isMethodDeclaration(m))) {
             const memberDeclaration = Declaration.create(member, this.generator);
-            if (!memberDeclaration.initializer && !memberDeclaration.isOptional()) {
-              continue;
-            }
 
-            if (memberDeclaration.isStaticProperty()) {
-              continue;
+            if (memberDeclaration.isProperty()) {
+              if (!memberDeclaration.initializer && !memberDeclaration.isOptional()) {
+                continue;
+              }
+
+              if (memberDeclaration.isStaticProperty()) {
+                continue;
+              }
             }
 
             if (!ts.isIdentifier(member.name)) {
               throw new Error(`Expected identifier at '${member.name.getText()}'`);
             }
 
+            let initializer = memberDeclaration.isOptional() ? ts.createIdentifier("undefined") : member.initializer;
+
+            if (memberDeclaration.isMethod() && memberDeclaration.body) {
+              const parentClassDeclaration = Declaration.create(parent as ts.ClassDeclaration, this.generator);
+              const methods = parentClassDeclaration.getMethods();
+
+              const overrideOfOptionalMethod = methods.some(
+                (m) => m.isOptional() && m.name?.getText() === member.name?.getText()
+              );
+
+              if (!overrideOfOptionalMethod) {
+                continue;
+              }
+
+              initializer = ts.createFunctionExpression(
+                undefined,
+                member.asteriskToken,
+                undefined,
+                member.typeParameters,
+                member.parameters,
+                member.type,
+                member.body
+              );
+            }
+
             const thisExpression = ts.createThis();
             const propertyAccess = ts.createPropertyAccess(thisExpression, member.name);
 
-            const initializer = memberDeclaration.isOptional() ? ts.createIdentifier("undefined") : member.initializer;
             const assignment = ts.createAssignment(propertyAccess, initializer);
             const assigmentStatement = ts.createStatement(assignment);
 

@@ -1030,8 +1030,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     if (ts.isPropertyAccessExpression(expression.expression)) {
       const propertySymbol = this.generator.ts.checker.getSymbolAtLocation(expression.expression.name);
 
-      const isProperty = propertySymbol.isProperty();
-      if (isProperty) {
+      if (propertySymbol.isProperty() || propertySymbol.isOptionalMethod()) {
         const callable = this.generator.handleExpression(expression.expression, outerEnv);
 
         if (callable.type.isClosure()) {
@@ -1041,6 +1040,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
           const args = handledArgs.map((value) => value.value);
 
           return this.handleTSClosureCall(expression, signature, args, callable, undefined, outerEnv);
+        } else if (callable.isOptionalClosure()) {
+          const handledArgs = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
+            return this.handleCallArguments(expression, valueDeclaration!, signature, localScope, outerEnv);
+          }, this.generator.symbolTable.currentScope);
+          const args = handledArgs.map((value) => value.value);
+
+          const closurePtrPtr = this.generator.builder.createSafeInBoundsGEP(callable, [0, 1]);
+          const closurePtr = this.generator.builder.createLoad(closurePtrPtr);
+          return this.handleTSClosureCall(expression, signature, args, closurePtr, valueDeclaration, outerEnv);
         } else if (this.generator.tsclosure.lazyClosure.isLazyClosure(callable)) {
           const initializer = propertySymbol.valueDeclaration?.initializer;
           if (!initializer) {

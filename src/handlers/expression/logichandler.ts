@@ -10,6 +10,8 @@
  */
 
 import * as ts from "typescript";
+import * as llvm from "llvm-node";
+
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
@@ -31,19 +33,42 @@ export class LogicHandler extends AbstractExpressionHandler {
     }
 
     if (ts.isConditionalExpression(expression)) {
-      const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(expression.whenTrue, env));
-      const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(expression.whenFalse, env));
-
       const conditionValue = this.generator.createLoadIfNecessary(
         this.generator.handleExpression(expression.condition, env)
       );
       const condition = conditionValue.makeBoolean();
 
-      return this.generator.builder.createSelect(
-        condition,
-        this.generator.builder.asVoidStar(left),
-        this.generator.builder.asVoidStar(right)
-      );
+      const resultType = this.generator.ts.checker.getTypeAtLocation(expression);
+      const result = this.generator.gc.allocate(resultType.getLLVMType().unwrapPointer());
+
+      const trueBlock = llvm.BasicBlock.create(this.generator.context, "trueTernary", this.generator.currentFunction);
+      const falseBlock = llvm.BasicBlock.create(this.generator.context, "falseTernary", this.generator.currentFunction);
+      const endBlock = llvm.BasicBlock.create(this.generator.context, "endTernary", this.generator.currentFunction);
+      this.generator.builder.createCondBr(condition, trueBlock, falseBlock);
+
+      this.generator.builder.setInsertionPoint(trueBlock);
+      let thenResult = this.generator.handleExpression(expression.whenTrue, env);
+
+      if (result.isUnion()) {
+        thenResult = result.initialize(thenResult);
+      }
+
+      this.generator.builder.createSafeStore(thenResult, result);
+      this.generator.builder.createBr(endBlock);
+
+      this.generator.builder.setInsertionPoint(falseBlock);
+      let elseResult = this.generator.handleExpression(expression.whenFalse, env);
+
+      if (result.isUnion()) {
+        elseResult = result.initialize(elseResult);
+      }
+
+      this.generator.builder.createSafeStore(elseResult, result);
+      this.generator.builder.createBr(endBlock);
+
+      this.generator.builder.setInsertionPoint(endBlock);
+
+      return result;
     }
 
     if (this.next) {
