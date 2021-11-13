@@ -370,7 +370,15 @@ export class LLVMStructType extends LLVMType {
     }
 
     for (let i = 0; i < lhs.numElements; ++i) {
-      if (!lhs.getElementType(i).equals(rhs.getElementType(i))) {
+      const lhsElementType = lhs.getElementType(i);
+      const rhsElementType = rhs.getElementType(i);
+      if (
+        !lhsElementType.equals(rhsElementType) &&
+        !(
+          lhsElementType.isPointerToStruct() &&
+          (lhsElementType.unwrapPointer() as LLVMStructType).isSameStructs(rhsElementType)
+        )
+      ) {
         return false;
       }
     }

@@ -526,9 +526,17 @@ export class TSType {
       }
 
       const llvmType = tsType.getLLVMType();
-      const valueType = property.valueDeclaration?.decorators?.some(
+
+      const hasValueTypeDecorator = property.valueDeclaration?.decorators?.some(
         (decorator) => decorator.getText() === "@ValueType"
       );
+
+      const isCppClassPrimitiveMember =
+        ts.isClassDeclaration(declaration.parent) &&
+        Declaration.create(declaration.parent, this.checker.generator).isAmbient() &&
+        llvmType.unwrapPointer().isCppPrimitiveType();
+
+      const valueType = hasValueTypeDecorator || isCppClassPrimitiveMember;
 
       return { type: valueType ? llvmType.unwrapPointer() : llvmType, name: property.name };
     };
@@ -621,7 +629,8 @@ export class TSType {
           const syntheticBody = structType.getSyntheticBody(knownSize);
           structType.setBody(syntheticBody);
         } else {
-          const structElements = elements.map((element) => element.type.correctCppPrimitiveType());
+          const structElements = elements.map((element) => element.type);
+
           if (declaration.withVTable()) {
             // vptr
             const vptrType = LLVMType.getVPtrType(this.checker.generator);
