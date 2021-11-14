@@ -808,7 +808,9 @@ export class TSType {
     if (this.isFunction()) {
       const symbol = this.getSymbol();
       const declaration = symbol.declarations[0];
-      const signature = this.checker.getSignatureFromDeclaration(declaration);
+      const signature = this.checker.getSignatureFromDeclaration(
+        declaration.isInterface() ? declaration.members[0] : declaration
+      );
       const withFunargs = signature.getParameters().some((parameter) => {
         const symbolType = this.checker.getTypeOfSymbolAtLocation(parameter, declaration.unwrapped);
         return symbolType.isFunction();
