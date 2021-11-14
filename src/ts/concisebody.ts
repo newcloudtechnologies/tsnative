@@ -238,7 +238,7 @@ export class ConciseBody {
           node.forEachChild(visitor);
         };
 
-        this.body.forEachChild((node) => {
+        const fakeVariablesCreator = (node: ts.Node) => {
           if (ts.isVariableStatement(node)) {
             node.declarationList.declarations.forEach((declaration) => {
               bodyScope.set(
@@ -251,7 +251,11 @@ export class ConciseBody {
               );
             });
           }
-        });
+
+          node.forEachChild(fakeVariablesCreator);
+        };
+
+        this.body.forEachChild(fakeVariablesCreator);
 
         ts.forEachChild(this.body, visitor);
 
