@@ -1110,18 +1110,21 @@ export class FunctionHandler extends AbstractExpressionHandler {
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
 
-      let propertyAccessRoot: ts.Expression = propertyAccess;
-      while (ts.isPropertyAccessExpression(propertyAccessRoot)) {
-        propertyAccessRoot = propertyAccessRoot.expression;
-      }
-
       thisVal = this.generator.handleExpression(propertyAccess.expression, outerEnv);
-      const propertyAccessRootType = this.generator.ts.checker.getTypeAtLocation(propertyAccessRoot);
 
-      // @todo: this implementation have to be revised
-      if (!thisVal.hasPrototype() && thisType?.isSame(propertyAccessRootType)) {
-        if (outerEnv?.thisPrototype) {
-          thisVal.attachPrototype(outerEnv?.thisPrototype);
+      if (!thisVal.hasPrototype() && thisType && outerEnv?.thisPrototype) {
+        let propertyAccessRoot: ts.Expression = propertyAccess;
+        while (ts.isPropertyAccessExpression(propertyAccessRoot)) {
+          propertyAccessRoot = propertyAccessRoot.expression;
+        }
+        const propertyAccessRootType = this.generator.ts.checker.getTypeAtLocation(propertyAccessRoot);
+
+        if (thisType.isSame(propertyAccessRootType)) {
+          const outerPrototype = outerEnv.thisPrototype;
+
+          if (thisVal.type.equals(outerPrototype.parentType.getLLVMType())) {
+            thisVal.attachPrototype(outerPrototype);
+          }
         }
       }
 

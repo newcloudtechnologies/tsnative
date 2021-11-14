@@ -888,3 +888,24 @@
   obj.state = otherState;
   console.assert(obj.state.num1 === otherState.num1 && obj.state.str0 === otherState.str0, "Generic class' setter");
 }
+
+{
+  const value = "this_clicko";
+
+  class RxIconButton {
+    onClicked(handler: string): void {
+      const tmp = handler;
+      console.assert(tmp === value, "Correct prototype when method is called for immediately invoked constructor inside method declaration");
+    }
+  }
+
+
+  class MyComponent {
+    createButn(): void {
+      (new RxIconButton()).onClicked(value);
+    }
+  }
+
+  const obj = new MyComponent();
+  obj.createButn()
+}
