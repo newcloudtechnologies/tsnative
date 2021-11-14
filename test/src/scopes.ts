@@ -47,14 +47,14 @@
         console.assert(a.a === 5, "Scopes test failed(4)");
     }
     */
-    
+
     console.assert(a.a === "22", "Scopes test failed(5)");
 }
 {
     class A { a: number = 22 }
     const a = new A;
     a.a += 2;
-    
+
     console.assert(a.a === 24, "Scopes test failed(6)");
 }
 
@@ -88,4 +88,34 @@
 
     const fn = f(() => "hello");
     console.assert(fn() === "hello", "Scopes test failed(10)");
+}
+
+{
+    class MyComponent {
+        _isStateChanged = false;
+        _renderCounter = 0;
+
+        setState(reducer: ((state: string) => void)): void {
+            { // Sub-scope is quite important
+                const quiteImportantUnusedVar = "some text";
+                reducer("prev data2");
+                this._isStateChanged = true;
+                this.render();
+            }
+        }
+
+        protected render() {
+            this._renderCounter += 1;
+
+            const _ = ((): void => {
+                this.setState((_: string): void => { });
+            });
+        }
+    }
+
+    const obj = new MyComponent();
+    obj.setState((_: string): void => { });
+
+    console.assert(obj._renderCounter === 1, "Function scoped locals (1)");
+    console.assert(obj._isStateChanged === true, "Function scoped locals (2)");
 }
