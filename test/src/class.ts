@@ -843,3 +843,48 @@
   const b: Derived2 = new Derived2();
   console.assert(b.fooliche() === Base.value && b.barletto() === Derived2.value, "Optional method overload (2)");
 }
+
+{
+  class RxComponent2<StateT> {
+    private _state: StateT
+
+    constructor(initialState: StateT) {
+      this._state = initialState;
+    }
+
+    get state(): StateT {
+      return this._state;
+    }
+
+    set state(state: StateT) {
+      this._state = state;
+    }
+  }
+
+  interface MyState {
+    str0: string;
+    num1: number;
+  }
+
+  const stateInitializer: MyState = {
+    str0: "777",
+    num1: 555,
+  };
+
+  class MyComponent extends RxComponent2<MyState> {
+    constructor() {
+      super(stateInitializer);
+    }
+  }
+
+  const obj: RxComponent2<MyState> = new MyComponent();
+  console.assert(obj.state.num1 === stateInitializer.num1 && obj.state.str0 === stateInitializer.str0, "Generic class' getter");
+
+  const otherState: MyState = {
+    str0: "774",
+    num1: 324,
+  };
+
+  obj.state = otherState;
+  console.assert(obj.state.num1 === otherState.num1 && obj.state.str0 === otherState.str0, "Generic class' setter");
+}

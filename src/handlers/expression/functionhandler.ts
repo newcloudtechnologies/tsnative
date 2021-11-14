@@ -723,7 +723,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const llvmArgumentTypes = [env.voidStar];
     if (llvmThisType) {
-      llvmArgumentTypes.push(llvmThisType);
+      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
     }
 
     const { fn, existing } = this.generator.llvm.function.create(
@@ -740,7 +740,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
         throw new Error("'this' is not an LLVMValue");
       }
 
-      callArgs.push(thisValue);
+      const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
+      callArgs.push(thisValueUntyped);
     }
 
     if (!existing) {
@@ -812,7 +813,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const llvmArgumentTypes = [env.voidStar];
     if (llvmThisType) {
-      llvmArgumentTypes.push(llvmThisType);
+      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
 
       const thisValue = this.generator.handleExpression(expression.expression, env);
       if (!parentScope.get(this.generator.internalNames.This)) {
@@ -839,7 +840,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
         throw new Error("'this' is not an LLVMValue");
       }
 
-      callArgs.push(thisValue);
+      const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
+      callArgs.push(thisValueUntyped);
     }
 
     if (!existing) {
