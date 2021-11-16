@@ -20,6 +20,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 find_package(StdLib REQUIRED)
 find_package(Tsvmc REQUIRED)
 
+set(TS_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../tsconfig.json")
+
 # utils.cmake from tsvmc compiler
 include(${Tsvmc_CMAKE_UTILS})
 

@@ -197,8 +197,7 @@ pipeline {
                         }
                         stage("Run Tests") {
                             steps {
-                                // FIXME: enable parallel build once KDM-836 is fixed
-                                sh "npm test"
+                                sh "JOBS=-j8 npm test"
                             }
                         }
                         stage("Publish") {
