@@ -161,6 +161,23 @@ export class ConciseBody {
                 const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(node.expression.expression);
                 const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
 
+                if (node.expression.expression.kind === ts.SyntaxKind.ThisKeyword) {
+                  const thisVal = extendScope.get("this");
+
+                  if (thisVal instanceof LLVMValue && thisVal.hasPrototype()) {
+                    const propertyAccess = node.expression;
+                    const functionName = propertyAccess.name.getText();
+                    const methodDeclaration = thisVal
+                      .getPrototype()
+                      .methods.find((member) => member.name?.getText() === functionName);
+
+                    if (methodDeclaration) {
+                      declaration = methodDeclaration;
+                      skip = true;
+                    }
+                  }
+                }
+
                 if (propertyAccessDeclaration?.isParameter()) {
                   skip = true;
 

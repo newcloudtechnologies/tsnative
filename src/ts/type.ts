@@ -862,6 +862,7 @@ export class TSType {
     if (this.isFunction()) {
       return "TSClosure*";
     }
+
     if (this.isArray()) {
       const elementType = this.getTypeGenericArguments()[0]!;
       let cppElementType = elementType.toCppType();
@@ -933,6 +934,10 @@ export class TSType {
       }
 
       if (declaration.isClass() && !declaration.isAmbient()) {
+        return "void*";
+      }
+
+      if (this.isObject() && !declaration.isAmbient()) {
         return "void*";
       }
     }

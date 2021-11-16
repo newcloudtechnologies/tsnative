@@ -899,7 +899,6 @@
     }
   }
 
-
   class MyComponent {
     createButn(): void {
       (new RxIconButton()).onClicked(value);
@@ -931,4 +930,43 @@
 
   new C(new A, "A");
   new C(new B, "B");
+}
+
+{
+  const baseValue = "BASE";
+  class Base {
+      setState() {
+          return this.update();
+      }
+
+      protected render() { return baseValue; }
+
+      private update() {
+          return this.render();
+      }
+  }
+
+  const value = "12";
+  function f() { return value; }
+
+  class Derived extends Base {
+      render() {
+          return f();
+      }
+  }
+
+  {
+      const v = new Base;
+      console.assert(v.setState() === baseValue, "Base call");
+  }
+
+  {
+      const v = new Derived;
+      console.assert(v.setState() === value, "Derived call");
+  }
+
+  {
+      const v: Base = new Derived;
+      console.assert(v.setState() === value, "Casted to base derived call");
+  }
 }

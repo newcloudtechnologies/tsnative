@@ -339,3 +339,60 @@ const is_equal = function (a: number[], b: number[]): boolean {
   console.assert(is_equal(array, expected), "Array.push with spread elements test failed");
 }
 
+{
+  type MyType = {
+    a: string
+    b: string
+  }
+
+  {
+    const initializer: MyType = { a: 'q', b: 'q' };
+    const arr = [initializer];
+
+    console.assert(arr[0] === initializer, "Custom-typed array element (1)");
+  }
+
+  {
+    const aInitializer = "q";
+    const bInitializer = "p";
+
+    const arr: MyType[] = [{ a: aInitializer, b: bInitializer }];
+
+    console.assert(arr[0].a === aInitializer && arr[0].b === bInitializer, "Custom-typed array element (2)");
+  }
+
+  {
+    const arr: MyType[] = [];
+
+    console.assert(arr.length === 0, "Empty custom-typed array");
+  }
+}
+
+{
+  interface MyInterface {
+    a: string
+    b: string
+  }
+
+  {
+    const initializer: MyInterface = { a: 'q', b: 'q' };
+    const arr = [initializer];
+
+    console.assert(arr[0] === initializer, "Interface-typed array element (1)");
+  }
+
+  {
+    const aInitializer = "q";
+    const bInitializer = "p";
+
+    const arr: MyInterface[] = [{ a: aInitializer, b: bInitializer }];
+
+    console.assert(arr[0].a === aInitializer && arr[0].b === bInitializer, "Interface-typed array element (2)");
+  }
+
+  {
+    const arr: MyInterface[] = [];
+
+    console.assert(arr.length === 0, "Empty interface-typed array");
+  }
+}
