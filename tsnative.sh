@@ -9,9 +9,8 @@
 # at http://ncloudtech.com/contact.html
 #
 
-echo "Start..."
-
-CURRENT_DIR=$(cd `dirname $0` && pwd)
+echo "start tsnative..."
+echo "arguments passed: $@"
 
 while [[ $# -gt 0 ]]
 do
@@ -65,24 +64,20 @@ case $key in
 esac
 done
 
-PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/..)
-
+CURRENT_DIR=$(cd `dirname $0` && pwd)
+PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/../..)
+CMAKE_DIR=$(readlink -f ${CURRENT_DIR}/../tsnative/cmake)
 STAGE_DIR=$(dirname "${SOURCE}")
-
-if [ -n "${EXTENSION+x}" ]; then
-    ln -sr ${EXTENSION} ${CURRENT_DIR}/extension
-    ln -sr ${EXTENSION}/../node_modules ${CURRENT_DIR}/node_modules
-fi
 
 if [ -z "$BUILD" ]
 then
-    mkdir -p ${CURRENT_DIR}/build
-    BUILD=${CURRENT_DIR}/build
+    mkdir -p ${PROJECT_DIR}/build
+    BUILD=${PROJECT_DIR}/build
 fi
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD} \
-    -S ${CURRENT_DIR} \
+    -S ${CMAKE_DIR} \
     -DCMAKE_BUILD_TYPE=release \
     -DPROJECT_DIR=${PROJECT_DIR} \
     -DSOURCE=${SOURCE} \
@@ -95,6 +90,5 @@ cmake -G "Unix Makefiles" \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 cd ${BUILD} && make -j$(expr 2 \* $(cat /proc/cpuinfo | grep "processor" | wc -l))
-
 
 

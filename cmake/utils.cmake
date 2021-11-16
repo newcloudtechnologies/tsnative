@@ -25,7 +25,11 @@ endif()
 function(makeOutputDir target dep_target source output_dir)
     getBinaryName(${source} binary_name)
 
-    set(dir "${CMAKE_CURRENT_BINARY_DIR}/${binary_name}.dir")
+    if("${BUILD}" STREQUAL "")
+        set(dir "${CMAKE_CURRENT_BINARY_DIR}/${binary_name}.dir")
+    else()
+        set(dir "${BUILD}/${binary_name}.dir")
+    endif()
 
     add_custom_command(
         OUTPUT ${dir}
@@ -44,9 +48,26 @@ function(makeOutputDir target dep_target source output_dir)
 endfunction()
 
 function(getBinaryName source binaryName)
-    get_filename_component(source_fn "${source}" NAME)
-    string(REPLACE ".ts" "" binary_fn "${source_fn}")
-    set(${binaryName} ${binary_fn} PARENT_SCOPE)
+    if("${OUTPUT_BINARY}" STREQUAL "")
+        get_filename_component(source_fn ${source} NAME)
+        string(REPLACE ".ts" "" binary_name "${source_fn}")
+    else()
+        get_filename_component(source_fn "${OUTPUT_BINARY}" NAME)
+        set(binary_name ${source_fn})
+    endif()
+
+    set(${binaryName} ${binary_name} PARENT_SCOPE)
+endfunction()
+
+function(getBinaryPath binaryPath)
+    if("${OUTPUT_BINARY}" STREQUAL "")
+        set(binary_path "${STAGE_DIR}")
+    else()
+        get_filename_component(source_path "${OUTPUT_BINARY}" DIRECTORY)
+        set(binary_path ${source_path})
+    endif()
+
+    set(${binaryPath} ${binary_path} PARENT_SCOPE)
 endfunction()
 
 function(extractSymbols target dep_target dependencies output_dir demangledList mangledList)
@@ -116,10 +137,10 @@ function(instantiate_classes target dep_target includes source output_dir classe
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${source}
-        WORKING_DIRECTORY ${SRCDIR}
+        WORKING_DIRECTORY ${PROJECT_DIR}
         COMMAND echo "Instantiate classes..."
         COMMAND ${Tsvmc_COMPILER}
-        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateClasses ${INCLUDE_DIRS} --templatesOutputDir ${output_dir}
+        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateClasses ${INCLUDE_DIRS} --templatesOutputDir ${output_dir} --build ${output_dir}
     )
 
     add_custom_target(${target}
@@ -146,10 +167,10 @@ endif()
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${source}
-        WORKING_DIRECTORY ${SRCDIR}
+        WORKING_DIRECTORY ${PROJECT_DIR}
         COMMAND echo "Instantiate functions..."
         COMMAND ${Tsvmc_COMPILER}
-        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateFunctions ${INCLUDE_DIRS} --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --templatesOutputDir ${output_dir}
+        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateFunctions ${INCLUDE_DIRS} --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --templatesOutputDir ${output_dir} --build ${output_dir}
     )
 
     add_custom_target(${target}
@@ -163,16 +184,7 @@ endfunction()
 function(compile_cpp target dep_target includes definitions source output_dir compiled)
     string(REPLACE ".cpp" ".o" output "${source}")
 
-    set(INCLUDES )
-    list(APPEND INCLUDES "${SRCDIR}/node_modules")
-    list(APPEND INCLUDES "${SRCDIR}/../node_modules")
-    list(APPEND INCLUDES "${SRCDIR}/..")
-
-    if (NOT "${includes}" STREQUAL "")
-        list(APPEND INCLUDES "${includes}")
-    endif()
-
-    list(TRANSFORM INCLUDES PREPEND "-I")
+    list(TRANSFORM includes PREPEND "-I")
 
     add_custom_command(
         OUTPUT ${output}
@@ -180,7 +192,7 @@ function(compile_cpp target dep_target includes definitions source output_dir co
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compile cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${INCLUDES} ${definitions} ${source}
+        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${source}
     )
 
     add_custom_target(${target}
@@ -209,8 +221,10 @@ function(compile_ts target dep_target source demangledList mangledList output_di
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${source} "${demangledList}" "${mangledList}"
+        WORKING_DIRECTORY ${PROJECT_DIR}
         COMMAND echo "Run tsvmc..."
-        COMMAND cd ${SRCDIR} && ${Tsvmc_COMPILER} ${source} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --output ${output}
+        COMMAND ${Tsvmc_COMPILER}
+        ARGS ${source} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --build ${output_dir}
     )
 
     add_custom_target(${target}
@@ -242,8 +256,9 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
 endfunction()
 
 function(link target dep_target seed_src compiled_source dependencies extra_dependencies)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${STAGE_DIR}")
-
+    getBinaryPath(binaryPath)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${binaryPath}")
+    
     add_executable(${${target}} WIN32
         ${seed_src})
 

@@ -22,7 +22,7 @@ argv
   .option("--processTemplateFunctions", "instantiate template functions")
   .option("--templatesOutputDir [value]", "specify path to instantiated templates", "")
   .option("--target [value]", "generate code for the given target")
-  .option("--output [value]", "specify output file for final executable")
+  .option("--build [value]", "specify build dir")
   .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "..", "tsconfig.json"))
   .option("--demangledTables <items>", "specify demangled symbol files (comma separated list)", (value: string) => {
     return value.split(",");
@@ -84,7 +84,7 @@ async function main() {
   options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
 
   const host = ts.createCompilerHost(options);
-  const preprocessor = new Preprocessor(files, options, host);
+  const preprocessor = new Preprocessor(files, options, host, argv.build);
   const program = preprocessor.program;
 
   const diagnostics = ts.getPreEmitDiagnostics(program);

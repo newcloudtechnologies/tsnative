@@ -13,12 +13,15 @@ export class Build {
 
   private getOutputBaseName(program: ts.Program): string {
     const fileNames = program.getRootFileNames();
-    return fileNames.length === 1 ? path.basename(fileNames[0], ".ts") : "main";
+
+    // entry file is last item in the list
+    return path.basename(fileNames[fileNames.length - 1], ".ts");
   }
 
   writeIRToFile(module: llvm.Module, program: ts.Program, argv: CommanderStatic): string {
     const basename = this.replaceOrAddExtension(this.getOutputBaseName(program), ".ll");
-    const outputFile = argv.output || basename;
+
+    const outputFile = argv.build ? path.join(argv.build, path.sep, basename) : basename;
 
     fs.writeFileSync(outputFile, module.print());
     console.log(`${outputFile} written`);

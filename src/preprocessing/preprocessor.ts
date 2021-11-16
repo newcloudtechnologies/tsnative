@@ -29,7 +29,7 @@ export class Preprocessor {
   private readonly parts: AbstractPreprocessor[] = [];
   private readonly cleanupFunction: () => void;
 
-  constructor(files: string[], options: ts.CompilerOptions, host: ts.CompilerHost) {
+  constructor(files: string[], options: ts.CompilerOptions, host: ts.CompilerHost, outputDir: string = "") {
     const program = ts.createProgram(files, options, host);
 
     const generator = new LLVMGenerator(program);
@@ -42,7 +42,11 @@ export class Preprocessor {
       new RestParametersPreprocessor(generator)
     );
 
-    const outputDir = path.join(process.cwd(), path.sep, generator.randomString + "_generated");
+    outputDir =
+      outputDir !== ""
+        ? path.join(outputDir, path.sep, "compiler")
+        : path.join(process.cwd(), path.sep, generator.randomString + "_generated");
+
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir);
     }
