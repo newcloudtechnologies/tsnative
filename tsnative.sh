@@ -23,7 +23,7 @@ case $key in
     shift # past value
     ;;
     --source)
-    SOURCE="$2"
+    ENTRY="$2"
     shift # past argument
     shift # past value
     ;;
@@ -67,7 +67,7 @@ done
 CURRENT_DIR=$(cd `dirname $0` && pwd)
 PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/../..)
 CMAKE_DIR=$(readlink -f ${CURRENT_DIR}/../tsnative/cmake)
-STAGE_DIR=$(dirname "${SOURCE}")
+STAGE_DIR=$(dirname "${ENTRY}")
 
 if [ -z "$BUILD" ]
 then
@@ -80,7 +80,7 @@ cmake -G "Unix Makefiles" \
     -S ${CMAKE_DIR} \
     -DCMAKE_BUILD_TYPE=release \
     -DPROJECT_DIR=${PROJECT_DIR} \
-    -DSOURCE=${SOURCE} \
+    -DENTRY=${ENTRY} \
     -DTS_CONFIG=${TS_CONFIG} \
     -DSTAGE_DIR=${STAGE_DIR} \
     -DEXTENSION=${EXTENSION} \

@@ -68,6 +68,8 @@ list(APPEND DEPENDENCIES
     "${LIBRARY_DEPENDENCIES}"
     "${StdLib_LIBRARY}")
 
-build(binary_target ${TS_EXTENSION_TARGET} "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
+getProjectFiles("${ENTRY}" sources)
+
+build(binary_target ${TS_EXTENSION_TARGET} "${ENTRY}" "${sources}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
 
 add_dependencies(build_anyway ${binary_target})

@@ -9,7 +9,9 @@
 # at http://ncloudtech.com/contact.html
 #
 
-echo "Start..."
+echo "Start playground..."
+
+echo "Args: $@"
 
 CURRENT_DIR=$(cd `dirname $0` && pwd)
 
@@ -24,7 +26,7 @@ case $key in
     shift # past value
     ;;
     --source)
-    SOURCE="$2"
+    ENTRY="$2"
     shift # past argument
     shift # past value
     ;;
@@ -67,7 +69,7 @@ done
 
 PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/..)
 
-STAGE_DIR=$(dirname "${SOURCE}")
+STAGE_DIR=$(dirname "${ENTRY}")
 
 if [ -n "${EXTENSION+x}" ]; then
     ln -sr ${EXTENSION} ${CURRENT_DIR}/extension
@@ -85,7 +87,7 @@ cmake -G "Unix Makefiles" \
     -S ${CURRENT_DIR} \
     -DCMAKE_BUILD_TYPE=release \
     -DPROJECT_DIR=${PROJECT_DIR} \
-    -DSOURCE=${SOURCE} \
+    -DENTRY=${ENTRY} \
     -DTS_CONFIG=${TS_CONFIG} \
     -DSTAGE_DIR=${STAGE_DIR} \
     -DEXTENSION=${EXTENSION} \

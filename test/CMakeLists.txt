@@ -44,9 +44,9 @@ add_custom_target(build_anyway ALL)
 list(LENGTH SOURCES count)
 set(index 0)
 while(index LESS ${count})
-    list (GET SOURCES ${index} SOURCE)
+    list (GET SOURCES ${index} ENTRY)
 
-    if (SOURCE STREQUAL "src/cpp_closures.ts")
+    if (ENTRY STREQUAL "src/cpp_closures.ts")
         if (NOT TARGET cpp_exts)
             add_subdirectory(src/cpp EXCLUDE_FROM_ALL)
         endif()
@@ -65,10 +65,10 @@ while(index LESS ${count})
         list(APPEND INCLUDES
             "${StdLib_INCLUDE_DIR}")
 
-        build(binary_target${index} cpp_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
+        build(binary_target${index} cpp_exts "${ENTRY}" "${SOURCES}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
-    elseif(SOURCE MATCHES "^src/cpp_integration/")
+    elseif(ENTRY MATCHES "^src/cpp_integration/")
         if (NOT TARGET cpp_integration_exts)
             add_subdirectory(src/cpp_integration/cpp EXCLUDE_FROM_ALL)
         endif()
@@ -89,7 +89,7 @@ while(index LESS ${count})
         list(APPEND INCLUDES
             "${StdLib_INCLUDE_DIR}")
 
-        build(binary_target${index} cpp_integration_exts "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
+        build(binary_target${index} cpp_integration_exts "${ENTRY}" "${SOURCES}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
 
     else()
@@ -105,7 +105,7 @@ while(index LESS ${count})
         list(APPEND INCLUDES
             "${StdLib_INCLUDE_DIR}")
 
-        build(binary_target${index} init_target "${SOURCE}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
+        build(binary_target${index} init_target "${ENTRY}" "${SOURCES}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" TRUE FALSE)
         add_dependencies(build_anyway "${binary_target${index}}")
     endif()
 

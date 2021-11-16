@@ -22,8 +22,8 @@ if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 11)
 endif()
 
-function(makeOutputDir target dep_target source output_dir)
-    getBinaryName(${source} binary_name)
+function(makeOutputDir target dep_target entry output_dir)
+    getBinaryName(${entry} binary_name)
 
     if("${BUILD}" STREQUAL "")
         set(dir "${CMAKE_CURRENT_BINARY_DIR}/${binary_name}.dir")
@@ -33,7 +33,7 @@ function(makeOutputDir target dep_target source output_dir)
 
     add_custom_command(
         OUTPUT ${dir}
-        DEPENDS ${source}
+        DEPENDS ${entry}
         COMMAND echo "Creating output dir..."
         COMMAND mkdir -p "${dir}"
     )
@@ -47,13 +47,13 @@ function(makeOutputDir target dep_target source output_dir)
     set(${output_dir} ${dir} PARENT_SCOPE)
 endfunction()
 
-function(getBinaryName source binaryName)
+function(getBinaryName entry binaryName)
     if("${OUTPUT_BINARY}" STREQUAL "")
-        get_filename_component(source_fn ${source} NAME)
-        string(REPLACE ".ts" "" binary_name "${source_fn}")
+        get_filename_component(entry_fn ${entry} NAME)
+        string(REPLACE ".ts" "" binary_name "${entry_fn}")
     else()
-        get_filename_component(source_fn "${OUTPUT_BINARY}" NAME)
-        set(binary_name ${source_fn})
+        get_filename_component(entry_fn "${OUTPUT_BINARY}" NAME)
+        set(binary_name ${entry_fn})
     endif()
 
     set(${binaryName} ${binary_name} PARENT_SCOPE)
@@ -68,6 +68,49 @@ function(getBinaryPath binaryPath)
     endif()
 
     set(${binaryPath} ${binary_path} PARENT_SCOPE)
+endfunction()
+
+function(getProjectPath entry projectPath)
+    set(found_file )
+    set(current_path )
+    set(project_path )
+
+    get_filename_component(current_path "${entry}" DIRECTORY)
+
+    while("${found_file}" STREQUAL "")
+        file(GLOB found_file ${current_path}/package.json)
+
+        if(NOT "${found_file}" STREQUAL "")
+            set(project_path ${current_path})
+            break()
+        else()
+            get_filename_component(parent_path "${current_path}/.." ABSOLUTE)
+
+            if("${parent_path}" STREQUAL "/")
+                break()
+            endif()
+
+            set(current_path ${parent_path})
+        endif()
+    endwhile()
+
+    set(${projectPath} ${project_path} PARENT_SCOPE)
+endfunction()
+
+function(getProjectFiles entry projectFiles)
+    getProjectPath("${entry}" projectPath)
+
+    get_filename_component(entry_fn ${entry} NAME)
+
+    file(GLOB_RECURSE project_files ${projectPath}/*.ts)
+
+    # filter node_modules
+    list(FILTER project_files EXCLUDE REGEX ".*/node_modules/.*")
+
+    # filter entry
+    list(FILTER project_files EXCLUDE REGEX ".*/${entry_fn}")
+
+    set(${projectFiles} ${project_files} PARENT_SCOPE)
 endfunction()
 
 function(extractSymbols target dep_target dependencies output_dir demangledList mangledList)
@@ -123,7 +166,7 @@ function(generateSeed target dep_target output_dir seed_src)
     set(${seed_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_classes target dep_target includes source output_dir classes_src)
+function(instantiate_classes target dep_target entry sources includes output_dir classes_src)
     set(output
         "${output_dir}/instantiated_classes.cpp")
 
@@ -136,11 +179,11 @@ function(instantiate_classes target dep_target includes source output_dir classe
 
     add_custom_command(
         OUTPUT ${output}
-        DEPENDS ${source}
+        DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${PROJECT_DIR}
         COMMAND echo "Instantiate classes..."
         COMMAND ${Tsvmc_COMPILER}
-        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateClasses ${INCLUDE_DIRS} --templatesOutputDir ${output_dir} --build ${output_dir}
+        ARGS ${entry} --tsconfig ${TS_CONFIG} --processTemplateClasses ${INCLUDE_DIRS} --templatesOutputDir ${output_dir} --build ${output_dir}
     )
 
     add_custom_target(${target}
@@ -151,7 +194,7 @@ function(instantiate_classes target dep_target includes source output_dir classe
     set(${classes_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_functions target dep_target includes source output_dir demangledList mangledList functions_src)
+function(instantiate_functions target dep_target entry sources includes output_dir demangledList mangledList functions_src)
     set(output
         "${output_dir}/instantiated_functions.cpp")
 
@@ -166,11 +209,11 @@ endif()
 
     add_custom_command(
         OUTPUT ${output}
-        DEPENDS ${source}
+        DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${PROJECT_DIR}
         COMMAND echo "Instantiate functions..."
         COMMAND ${Tsvmc_COMPILER}
-        ARGS ${source} --tsconfig ${TS_CONFIG} --processTemplateFunctions ${INCLUDE_DIRS} --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --templatesOutputDir ${output_dir} --build ${output_dir}
+        ARGS ${entry} --tsconfig ${TS_CONFIG} --processTemplateFunctions ${INCLUDE_DIRS} --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --templatesOutputDir ${output_dir} --build ${output_dir}
     )
 
     add_custom_target(${target}
@@ -181,18 +224,18 @@ endif()
     set(${functions_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(compile_cpp target dep_target includes definitions source output_dir compiled)
-    string(REPLACE ".cpp" ".o" output "${source}")
+function(compile_cpp target dep_target includes definitions entry output_dir compiled)
+    string(REPLACE ".cpp" ".o" output "${entry}")
 
     list(TRANSFORM includes PREPEND "-I")
 
     add_custom_command(
         OUTPUT ${output}
-        DEPENDS ${source}
+        DEPENDS ${entry}
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compile cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${source}
+        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
     )
 
     add_custom_target(${target}
@@ -204,10 +247,10 @@ function(compile_cpp target dep_target includes definitions source output_dir co
     set(${compiled} ${output} PARENT_SCOPE)
 endfunction()
 
-function(compile_ts target dep_target source demangledList mangledList output_dir is_printIr ll_bytecode)
-    get_filename_component(source_fn "${source}" NAME)
-    string(REPLACE ".ts" ".ll" OUTPUT_FN "${source_fn}")
+function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr ll_bytecode)
+    get_filename_component(entry_fn "${entry}" NAME)
 
+    string(REPLACE ".ts" ".ll" OUTPUT_FN "${entry_fn}")
     string(REPLACE ";" ", " DEMANGLED "${demangledList}")
     string(REPLACE ";" ", " MANGLED "${mangledList}")
 
@@ -220,11 +263,11 @@ function(compile_ts target dep_target source demangledList mangledList output_di
 
     add_custom_command(
         OUTPUT ${output}
-        DEPENDS ${source} "${demangledList}" "${mangledList}"
+        DEPENDS ${entry} "${sources}" "${demangledList}" "${mangledList}"
         WORKING_DIRECTORY ${PROJECT_DIR}
         COMMAND echo "Run tsvmc..."
         COMMAND ${Tsvmc_COMPILER}
-        ARGS ${source} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --build ${output_dir}
+        ARGS ${entry} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --build ${output_dir}
     )
 
     add_custom_target(${target}
@@ -278,19 +321,17 @@ function(link target dep_target seed_src compiled_source dependencies extra_depe
     add_dependencies(${${target}} ${dep_target})
 endfunction()
 
-function(build target dep_target source includes dependencies extra_dependencies definitions optimization_level is_test is_printIr)
+function(build target dep_target entry sources includes dependencies extra_dependencies definitions optimization_level is_test is_printIr)
+    getBinaryName("${entry}" binary_name)
+    makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${entry}" output_dir)
 
-    getBinaryName("${source}" binary_name)
-
-    makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${source}" output_dir)
-
-    instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${includes}" "${source}" "${output_dir}" CLASSES_SRC)
+    instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" CLASSES_SRC)
 
     compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${definitions}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
 
     extractSymbols(extract_classes_symbols_${binary_name} compile_classes_${binary_name} "${COMPILED_CLASSES}" "${output_dir}" COMPILED_CLASSES_DEMANGLED_NAMES COMPILED_CLASSES_MANGLED_NAMES)
 
-    instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${includes}" "${source}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} FUNCTIONS_SRC)
+    instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} FUNCTIONS_SRC)
 
     compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${definitions}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
 
@@ -298,7 +339,7 @@ function(build target dep_target source includes dependencies extra_dependencies
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 
-    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${source}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" LL_BYTECODE)
+    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${entry}" "${sources}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" LL_BYTECODE)
 
     compile_ll(compile_ll_${binary_name} compile_ts_${binary_name} "${LL_BYTECODE}" "${optimization_level}" "${output_dir}" COMPILED_SOURCE)
 
