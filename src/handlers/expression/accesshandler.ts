@@ -270,7 +270,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
     const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
 
-    const inTSClassConstructor = () => Boolean(this.generator.currentFunction.name?.endsWith("__constructor"));
+    const inTSClassConstructor = Boolean(this.generator.currentFunction.name?.includes("__constructor"));
     const isThisAccess = expression.getText() === this.generator.internalNames.This;
 
     // Check if statement is initialization of 'this' value, e.g.
@@ -283,7 +283,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       expression.parent.parent.left === expression.parent;
 
-    return (isThisAccess && isInitialization && inTSClassConstructor()) ||
+    return (isThisAccess && isInitialization && inTSClassConstructor) ||
       elementPtr.type.getPointerElementType().isCppPrimitiveType()
       ? elementPtr
       : this.generator.builder.createLoad(elementPtr);

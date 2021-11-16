@@ -907,5 +907,28 @@
   }
 
   const obj = new MyComponent();
-  obj.createButn()
+  obj.createButn();
+}
+
+{
+  class A {
+    f() {
+      return "A";
+    }
+  }
+
+  class B extends A {
+    f() {
+      return "B";
+    }
+  }
+
+  class C {
+    constructor(v: A, expected: string) {
+      console.assert(v.f() === expected, "Polymorphic ctor");
+    }
+  }
+
+  new C(new A, "A");
+  new C(new B, "B");
 }

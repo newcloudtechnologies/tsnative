@@ -1266,14 +1266,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvmArgumentTypes.push(llvmThisType);
     }
 
-    let functionName =
-      qualifiedName + "__" + valueDeclaration.unique + (valueDeclaration.isStaticMethod() ? "__static" : "");
-    if (args.some((arg) => arg.hasPrototype())) {
+    let functionName = qualifiedName + "__" + valueDeclaration.unique;
+    if (handledArgs.some((value) => value.generated) || args.some((arg) => arg.hasPrototype())) {
       functionName += "__" + this.generator.randomString;
+    }
+    if (valueDeclaration.isStaticMethod()) {
+      functionName += "__" + "static";
     }
 
     const creationResult = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, functionName);
-    let { fn } = creationResult;
+    const { fn } = creationResult;
     const { existing } = creationResult;
 
     // All the actual arguments are passing by typeless environment.
@@ -1283,16 +1285,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     if (!existing) {
-      this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, env);
-      setLLVMFunctionScope(fn, parentScope, this.generator);
-    }
-
-    if (handledArgs.some((value) => value.generated)) {
-      fn = this.generator.llvm.function.create(
-        llvmReturnType,
-        llvmArgumentTypes,
-        this.generator.randomString // use random string to unconditionally create higher-order function
-      ).fn;
       this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, env);
       setLLVMFunctionScope(fn, parentScope, this.generator);
     }
@@ -1545,13 +1537,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
 
-    const { isExternalSymbol, qualifiedName } = FunctionMangler.mangle(
+    const manglingResult = FunctionMangler.mangle(
       constructorDeclaration,
       expression,
       thisType,
       argumentTypes,
       this.generator
     );
+
+    const { isExternalSymbol } = manglingResult;
+    let { qualifiedName } = manglingResult;
 
     if (isExternalSymbol) {
       return this.sysVFunctionHandler.handleNewExpression(expression, qualifiedName, outerEnv);
@@ -1599,6 +1594,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
       /* prefer local this = */ true,
       outerEnv?.thisPrototype
     );
+
+    if (handledArgs.some((value) => value.generated) || args.some((arg) => arg.hasPrototype())) {
+      qualifiedName += this.generator.randomString;
+    }
 
     const { fn: constructor, existing } = this.generator.llvm.function.create(
       LLVMType.getVoidType(this.generator),
