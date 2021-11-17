@@ -970,3 +970,52 @@
       console.assert(v.setState() === value, "Casted to base derived call");
   }
 }
+
+{
+  class MyClass<TemplateType> {
+      _items: TemplateType[];
+
+      constructor(items: TemplateType[]) {
+          this._items = items;
+      }
+  }
+
+  {
+      class FMButtonTable_t extends MyClass<number> {
+          constructor(items: number[]) {
+              super(items);
+          }
+      }
+
+      const initializer: number[] = [1, 3, 3, 5]
+      const table = new FMButtonTable_t(initializer)
+
+      console.assert(table._items === initializer, "Generic-typed array property (1)");
+  }
+
+  {
+      class FMButtonTable_s extends MyClass<string> {
+          constructor(items: string[]) {
+              super(items);
+          }
+      }
+
+      const initializer = ["hell", "o"];
+      const table = new FMButtonTable_s(initializer);
+
+      console.assert(table._items === initializer, "Generic-typed array property (2)");
+  }
+
+  {
+      class FMButtonTable_g extends MyClass<number> {
+          constructor(items: number[]) {
+              super(items);
+          }
+      }
+
+      const initializer = [1, 1, 1];
+      const table = new FMButtonTable_g(initializer);
+      
+      console.assert(table._items === initializer, "Generic-typed array property (3)");
+  }
+}

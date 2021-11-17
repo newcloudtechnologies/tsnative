@@ -1620,6 +1620,30 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
 
     if (!existing) {
+      if (valueDeclaration.heritageClauses) {
+        for (const clause of valueDeclaration.heritageClauses) {
+          for (const baseType of clause.types) {
+            const typeArguments = baseType.typeArguments;
+            if (typeArguments) {
+              const baseSymbol = this.generator.ts.checker.getSymbolAtLocation(baseType.expression);
+              const baseClassDeclaration = baseSymbol.valueDeclaration;
+
+              if (!baseClassDeclaration) {
+                throw new Error(`Unable to find base class declaration at '${baseType.expression.getText()}'`);
+              }
+
+              const typeMapper = this.generator.meta.try(
+                MetaInfoStorage.prototype.getClassTypeMapper,
+                baseClassDeclaration
+              );
+              if (typeMapper) {
+                typeMapper.mergeTo(this.generator.symbolTable.currentScope.typeMapper);
+              }
+            }
+          }
+        }
+      }
+
       this.handleConstructorBody(constructorDeclaration, constructor, env);
       setLLVMFunctionScope(constructor, parentScope, this.generator);
     }

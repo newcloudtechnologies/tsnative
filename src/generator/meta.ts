@@ -282,4 +282,10 @@ export class GenericTypeMapper {
 
     return type;
   }
+
+  mergeTo(base: GenericTypeMapper) {
+    for (const [key, value] of this.genericTypenameTypeMap) {
+      base.genericTypenameTypeMap.set(key, value);
+    }
+  }
 }

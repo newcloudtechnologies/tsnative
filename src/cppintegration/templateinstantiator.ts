@@ -218,11 +218,19 @@ export class TemplateInstantiator {
 
         if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
           tsType = this.generator.ts.checker.getTypeAtLocation(node.left);
+          const elementType = tsType.getTypeGenericArguments()[0];
+          if (!elementType.isSupported()) {
+            return;
+          }
         } else {
           tsType = this.generator.ts.checker.getTypeAtLocation(node);
           const elementType = tsType.getTypeGenericArguments()[0];
 
           if (elementType.isTypeParameter() && !elementType.isSupported()) {
+            if (ts.isPropertyDeclaration(node)) {
+              return;
+            }
+
             const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, TSType>) => {
               const concreteElementType = typesMap.get(elementType.toString())!;
               const elementTypename = concreteElementType.toCppType();
@@ -412,6 +420,13 @@ export class TemplateInstantiator {
     let genericTypesProvider = node.parent;
     while (!ts.isFunctionLike(genericTypesProvider)) {
       genericTypesProvider = genericTypesProvider.parent;
+    }
+
+    if (ts.isConstructorDeclaration(genericTypesProvider)) {
+      // dummy visitor
+      // ignore empty block
+      // tslint:disable-next-line
+      return (_: ts.Node) => { };
     }
 
     const typesProviderType = this.generator.ts.checker.getTypeAtLocation(genericTypesProvider);

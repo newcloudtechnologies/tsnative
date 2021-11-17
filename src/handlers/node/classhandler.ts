@@ -135,17 +135,19 @@ export class ClassHandler extends AbstractNodeHandler {
           const thisType = baseClassDeclaration.type;
           const mangledTypename = thisType.mangle();
 
-          const llvmType = thisType.getLLVMType();
-          const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
+          if (!parentScope.get(mangledTypename)) {
+            const llvmType = thisType.getLLVMType();
+            const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
 
-          const scope = new Scope(undefined, mangledTypename, parentScope, {
-            declaration,
-            llvmType,
-            tsType: thisType,
-            staticProperties,
-          });
+            const scope = new Scope(undefined, mangledTypename, parentScope, {
+              declaration,
+              llvmType,
+              tsType: thisType,
+              staticProperties,
+            });
 
-          parentScope.set(mangledTypename, scope);
+            parentScope.set(mangledTypename, scope);
+          }
         }
       }
     }

@@ -581,7 +581,7 @@ export class Scope {
   readonly mangledName: string | undefined;
   readonly thisData: ThisData | undefined;
   readonly parent: Scope | undefined;
-  readonly typeMapper: GenericTypeMapper;
+  typeMapper: GenericTypeMapper;
 
   constructor(name: string | undefined, mangledName: string | undefined, parent?: Scope, data?: ThisData) {
     this.map = new Map<string, ScopeValue>();
