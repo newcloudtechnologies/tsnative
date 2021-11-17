@@ -98,7 +98,6 @@ export class ConciseBody {
             !bodyScope.get(nodeText) &&
             nodeText !== this.generator.internalNames.This &&
             !externalVariables.includes(nodeText) &&
-            !ts.isPropertyAssignment(node.parent) &&
             !isStaticProperty(node)
           ) {
             externalVariables.push(nodeText);

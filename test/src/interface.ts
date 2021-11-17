@@ -9,55 +9,105 @@
  *
  */
 
-const aInitializer = 5;
-const sInitializer = "via";
-const fooRet = "Foo";
+{
+    const aInitializer = 5;
+    const sInitializer = "via";
+    const fooRet = "Foo";
 
-class Wow_t {
-    constructor(a: number, s: string) {
-        console.assert(a === aInitializer && s === sInitializer, "Wow_t constructor");
+    class Wow_t {
+        constructor(a: number, s: string) {
+            console.assert(a === aInitializer && s === sInitializer, "Wow_t constructor");
+        }
+
+        foo() {
+            return fooRet;
+        }
     }
 
-    foo() {
-        return fooRet;
+    interface Wow_args {
+        a: number,
+        s: string
     }
-}
 
-interface Wow_args {
-    a: number,
-    s: string
-}
-
-function Wow(args: Wow_args) {
-    return new Wow_t(args.a, args.s);
-}
-
-const fooResult = Wow({
-    a: aInitializer,
-    s: sInitializer
-}).foo();
-
-console.assert(fooResult === fooRet, "Call on class instance initialized by interface-typed object");
-
-const wInitializer = 10;
-const hInitializer = 15;
-
-interface MySize {
-    w: number,
-    h: number,
-}
-
-interface MySidePanel_args {
-    size: MySize,
-}
-
-function create(args: MySidePanel_args) {
-    console.assert(args.size.w === wInitializer && args.size.h === hInitializer, "Complex object argument to interface-typed parameter");
-}
-
-create({
-    size: {
-        w: wInitializer,
-        h: hInitializer
+    function Wow(args: Wow_args) {
+        return new Wow_t(args.a, args.s);
     }
-})
+
+    const fooResult = Wow({
+        a: aInitializer,
+        s: sInitializer
+    }).foo();
+
+    console.assert(fooResult === fooRet, "Call on class instance initialized by interface-typed object");
+
+    const wInitializer = 10;
+    const hInitializer = 15;
+
+    interface MySize {
+        w: number,
+        h: number,
+    }
+
+    interface MySidePanel_args {
+        size: MySize,
+    }
+
+    function create(args: MySidePanel_args) {
+        console.assert(args.size.w === wInitializer && args.size.h === hInitializer, "Complex object argument to interface-typed parameter");
+    }
+
+    create({
+        size: {
+            w: wInitializer,
+            h: hInitializer
+        }
+    });
+}
+
+{
+    interface MyState {
+        num: number;
+        str: string;
+    }
+
+    const numInitializer = 555;
+    const strInitializer = "777";
+
+    function setState(reducer: ((state: MyState) => MyState)) {
+        return reducer({ num: numInitializer, str: strInitializer });
+    }
+
+    const v = setState((state: MyState): MyState => {
+        let next: MyState = ({
+            num: state.num,
+            str: state.str
+        });
+
+        return next;
+    });
+
+    console.assert(v.num === numInitializer && v.str === strInitializer, "Interface return (1)");
+}
+
+{
+    interface MyState {
+        num: number;
+        str: string;
+    }
+
+    const numInitializer = 564;
+    const strInitializer = "2222";
+
+    function setState(reducer: ((state: MyState) => MyState)) {
+        return reducer({ num: numInitializer, str: strInitializer });
+    }
+
+    const v = setState((state: MyState): MyState => {
+        return {
+            num: state.num + 5,
+            str: state.str + "a"
+        }
+    });
+
+    console.assert(v.num === numInitializer + 5 && v.str === strInitializer + "a", "Interface return (2)");
+}
