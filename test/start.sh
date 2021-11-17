@@ -29,6 +29,5 @@ cmake -G "Unix Makefiles" \
     -DBUILD=${CURRENT_DIR}/build
 
 cd build
-make $JOBS
-make test
+make $JOBS && make test
 
