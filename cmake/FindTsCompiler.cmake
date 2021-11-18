@@ -12,20 +12,20 @@ cmake_minimum_required(VERSION 3.10)
 
 include(FindPackageHandleStandardArgs)
 
-get_filename_component(Tsvmc_DIR
+get_filename_component(TS_COMPILER_DIR
                        "${CMAKE_CURRENT_LIST_DIR}/../pkg"
                        ABSOLUTE)
 
-get_filename_component(Tsvmc_CMAKE_DIR
+get_filename_component(TS_COMPILER_CMAKE_DIR
                        "${CMAKE_CURRENT_LIST_DIR}/../cmake"
                        ABSOLUTE)
 
-set(Tsvmc_COMPILER "${Tsvmc_DIR}/compiler${CMAKE_EXECUTABLE_SUFFIX}")
+set(TS_COMPILER "${TS_COMPILER_DIR}/compiler${CMAKE_EXECUTABLE_SUFFIX}")
 
-set(Tsvmc_CMAKE_UTILS "${Tsvmc_CMAKE_DIR}/utils.cmake")
+set(TS_COMPILER_CMAKE_UTILS "${TS_COMPILER_CMAKE_DIR}/utils.cmake")
 
-find_package_handle_standard_args(Tsvmc DEFAULT_MSG
-  Tsvmc_COMPILER Tsvmc_CMAKE_UTILS)
+find_package_handle_standard_args(TsCompiler DEFAULT_MSG
+  TS_COMPILER TS_COMPILER_CMAKE_UTILS)
 
 
 

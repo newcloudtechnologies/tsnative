@@ -1,3 +1,31 @@
 #!/bin/sh
+#
+# Copyright (c) New Cloud Technologies, Ltd., 2013-2021
+#
+# You can not use the contents of the file in any way without
+# New Cloud Technologies, Ltd. written permission.
+#
+# To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+# at http://ncloudtech.com/contact.html
+#
 
-mkdir -p $(dirname "$0")/lib && cd $(dirname "$0")/lib && cmake -G "Unix Makefiles" .. && make;
+echo "Building std..."
+
+CURRENT_DIR=$(cd `dirname $0` && pwd)
+BUILD_DIR="${CURRENT_DIR}/../out/libtsnative-std/build"
+OUTPUT_DIR="${CURRENT_DIR}/lib"
+
+mkdir -p ${BUILD_DIR}
+mkdir -p ${OUTPUT_DIR}
+
+BUILD_DIR=$(readlink -f ${BUILD_DIR})
+OUTPUT_DIR=$(readlink -f ${OUTPUT_DIR})
+
+cmake -G "Unix Makefiles" \
+    -B ${BUILD_DIR} \
+    -S ${CURRENT_DIR} \
+    -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${OUTPUT_DIR} \
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
+
+cd ${BUILD_DIR} && make -j$(expr $(nproc) + 1)
+

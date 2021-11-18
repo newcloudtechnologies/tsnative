@@ -5,7 +5,7 @@
     "experimentalDecorators": true,
     "baseUrl": ".",
     "module": "commonjs",
-    "outDir": "build",
+    "outDir": "out",
     "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,

@@ -10,7 +10,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-if (NOT Tsvmc_FOUND)
+if (NOT TsCompiler_FOUND)
     message(FATAL_ERROR "utils.cmake isn't included")
 endif()
 
@@ -181,8 +181,8 @@ function(instantiate_classes target dep_target entry sources includes output_dir
         OUTPUT ${output}
         DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${PROJECT_DIR}
-        COMMAND echo "Instantiate classes..."
-        COMMAND ${Tsvmc_COMPILER}
+        COMMAND echo "Instantiating classes..."
+        COMMAND ${TS_COMPILER}
         ARGS ${entry} --tsconfig ${TS_CONFIG} --processTemplateClasses ${INCLUDE_DIRS} --templatesOutputDir ${output_dir} --build ${output_dir}
     )
 
@@ -211,8 +211,8 @@ endif()
         OUTPUT ${output}
         DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${PROJECT_DIR}
-        COMMAND echo "Instantiate functions..."
-        COMMAND ${Tsvmc_COMPILER}
+        COMMAND echo "Instantiating functions..."
+        COMMAND ${TS_COMPILER}
         ARGS ${entry} --tsconfig ${TS_CONFIG} --processTemplateFunctions ${INCLUDE_DIRS} --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --templatesOutputDir ${output_dir} --build ${output_dir}
     )
 
@@ -233,7 +233,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
         OUTPUT ${output}
         DEPENDS ${entry}
         WORKING_DIRECTORY ${output_dir}
-        COMMAND echo "Compile cpp..."
+        COMMAND echo "Compiling cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
         ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
     )
@@ -265,8 +265,8 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
         OUTPUT ${output}
         DEPENDS ${entry} "${sources}" "${demangledList}" "${mangledList}"
         WORKING_DIRECTORY ${PROJECT_DIR}
-        COMMAND echo "Run tsvmc..."
-        COMMAND ${Tsvmc_COMPILER}
+        COMMAND echo "Running TS compiler..."
+        COMMAND ${TS_COMPILER}
         ARGS ${entry} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --build ${output_dir}
     )
 
@@ -286,7 +286,7 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${ll_bytecode}
-        COMMAND echo "Run llc..."
+        COMMAND echo "Running llc..."
         COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX} ${optimizationLevel} -relocation-model=pic -filetype=obj ${ll_bytecode} -o ${output}
     )
 

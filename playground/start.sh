@@ -9,7 +9,7 @@
 # at http://ncloudtech.com/contact.html
 #
 
-echo "Start playground..."
+echo "Starting playground..."
 
 echo "Args: $@"
 
@@ -68,7 +68,6 @@ esac
 done
 
 PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/..)
-
 STAGE_DIR=$(dirname "${ENTRY}")
 
 if [ -n "${EXTENSION+x}" ]; then
@@ -78,9 +77,12 @@ fi
 
 if [ -z "$BUILD" ]
 then
-    mkdir -p ${CURRENT_DIR}/build
-    BUILD=${CURRENT_DIR}/build
+    BUILD="${CURRENT_DIR}/../out/playground/build"
 fi
+
+rm -rf ${BUILD}
+mkdir -p ${BUILD}
+BUILD=$(readlink -f ${BUILD})
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD} \
@@ -96,7 +98,7 @@ cmake -G "Unix Makefiles" \
     -DPRINT_IR=${PRINT_IR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD} && make -j$(expr 2 \* $(cat /proc/cpuinfo | grep "processor" | wc -l))
+cd ${BUILD} && make -j$(expr $(nproc) + 1)
 
 
 

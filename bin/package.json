@@ -9,9 +9,9 @@
     "pkg": {
         "assets": [
             "../tsconfig.json",
-            "../build/*",
-            "../build/**/*",
-            "../build/**/**/*",
+            "../out/std/*",
+            "../out/src/*",
+            "../out/src/**/*",
             "../node_modules/llvm-node/build/Release/llvm-node.node",
             "../node_modules/segfault-handler/build/Release/segfault-handler.node",
             "../std/*",

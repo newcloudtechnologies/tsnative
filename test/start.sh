@@ -9,25 +9,25 @@
 # at http://ncloudtech.com/contact.html
 #
 
-echo "Start test..."
+echo "Starting test..."
 
 CURRENT_DIR=$(cd `dirname $0` && pwd)
+BUILD_DIR="${CURRENT_DIR}/../out/test/build"
 
-cd ${CURRENT_DIR}
-rm -rf build
-mkdir build
+rm -rf ${BUILD_DIR}
+mkdir -p ${BUILD_DIR}
+
+BUILD_DIR=$(readlink -f ${BUILD_DIR})
 
 tsc
 npm run build
 
 cmake -G "Unix Makefiles" \
-    -B ${CURRENT_DIR}/build \
+    -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
     -DCMAKE_BUILD_TYPE=release \
     -DPROJECT_DIR=${CURRENT_DIR} \
-    -DSTAGE_DIR=${CURRENT_DIR}/build \
-    -DBUILD=${CURRENT_DIR}/build
+    -DSTAGE_DIR=${BUILD_DIR} \
+    -DBUILD=${BUILD_DIR}
 
-cd build
-make $JOBS && make test
-
+cd ${BUILD_DIR} && make $JOBS && make test

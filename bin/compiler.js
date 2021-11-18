@@ -9,6 +9,5 @@ function getArguments() {
     return args;
 }
 
-execSync(`node ${join(__dirname, "..", "build", "src", "main.js")} ${getArguments().map((value) => value.startsWith("--") ? value : `"${value}"`).join(" ")}`, { stdio: 'inherit' });
-
+execSync(`node ${join(__dirname, "..", "out", "src", "main.js")} ${getArguments().map((value) => value.startsWith("--") ? value : `"${value}"`).join(" ")}`, { stdio: 'inherit' });
 

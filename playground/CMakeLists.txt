@@ -16,10 +16,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
 find_package(StdLib REQUIRED)
-find_package(Tsvmc REQUIRED)
+find_package(TsCompiler REQUIRED)
 
-# utils.cmake from tsvmc compiler
-include(${Tsvmc_CMAKE_UTILS})
+# utils.cmake from TS compiler
+include(${TS_COMPILER_CMAKE_UTILS})
 
 set(OPTIMIZATION_LEVEL "-O3")
 set(EXTRA_DEPENDENCIES "")
