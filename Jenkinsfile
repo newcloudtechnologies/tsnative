@@ -133,7 +133,10 @@ pipeline {
                         label 'winsrv19'
                     }
                     environment {
+                        // CI enable for NodeJS
+                        // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-final-deliver-stage-to-your-pipeline
                         CI = 'true'
+                        // Force using GIT from MSYS
                         PATH = "/usr/bin:${env.PATH}"
                     }
                     stages {
@@ -156,7 +159,7 @@ pipeline {
                                         sh "rm -f .npmrc"
 
                                         // login in registry private repo
-                                        npm_login_registry("https://nexus.devos.club/repository/antiq_npm",  "//nexus.devos.club/repository/", "nexus_npm_user_antiq_NpmToken")
+                                        npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
 
                                         // hack: explicitly set python path on windows
                                         sh "npm config set python \"C:\\Python39\\python\""
@@ -176,7 +179,7 @@ pipeline {
                                         sh "npm install"
 
                                         // logout from registry private repo
-                                        npm_logout_registry("https://nexus.devos.club/repository/antiq_npm",  "//nexus.devos.club/repository/", "nexus_npm_user_antiq_NpmToken")
+                                        npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                                     }
                                 }
                             }
@@ -197,7 +200,7 @@ pipeline {
                         }
                         stage("Run Tests") {
                             steps {
-                                sh "JOBS=-j8 npm test"
+                                sh 'JOBS=-j$(nproc) npm test'
                             }
                         }
                         stage("Publish") {
