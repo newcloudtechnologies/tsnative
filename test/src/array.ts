@@ -9,7 +9,7 @@
  *
  */
 
-const is_equal = function (a: number[], b: number[]): boolean {
+const is_equal = function <T>(a: T[], b: T[]): boolean {
   let result = false;
 
   if (a.length === b.length) {
@@ -395,4 +395,28 @@ const is_equal = function (a: number[], b: number[]): boolean {
 
     console.assert(arr.length === 0, "Empty interface-typed array");
   }
+}
+
+{
+  type FileInfo_t = {
+    _path: string;
+    _type: string,
+    _name: string
+  };
+
+  const items: FileInfo_t[] = [
+    { _path: "/home", _type: "", _name: "Home" },
+    { _path: "/home/Desktop", _type: "", _name: "Desktop" },
+    { _path: "/home/Documents", _type: "", _name: "Documents" },
+    { _path: "/home/Downloads", _type: "", _name: "Downloads" },
+    { _path: "/home/Music", _type: "", _name: "Music" }
+  ];
+
+  const paths: string[] = items.map((item: FileInfo_t): string => {
+    return item._path;
+  });
+
+  const expected = ["/home", "/home/Desktop", "/home/Documents", "/home/Downloads", "/home/Music"];
+
+  console.assert(is_equal(paths, expected), "Array `map` with custom transformed type");
 }

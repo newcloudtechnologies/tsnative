@@ -281,7 +281,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
             closure->setEnvironmentElement(const_cast<Array<T>*>(this), 2);
         }
 
-        U transformed = getValue(closure->operator()());
+        U transformed = getValue<U>(closure->operator()());
         transformedArray.push(transformed);
     }
 
