@@ -111,3 +111,20 @@
 
     console.assert(v.num === numInitializer + 5 && v.str === strInitializer + "a", "Interface return (2)");
 }
+
+{
+    interface MyClassData {
+        first: string
+        second: number
+    }
+
+    const firstInitializer = "222";
+    const secondInitializer = -1;
+
+    const value: MyClassData = {
+        second: secondInitializer,
+        first: firstInitializer
+    }
+
+    console.assert(value.first === firstInitializer && value.second === secondInitializer, "Interface-typed variable out-of-order initialization");
+}

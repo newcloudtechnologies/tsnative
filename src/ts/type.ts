@@ -191,7 +191,8 @@ export class TSType {
       return false;
     }
 
-    const declaration = this.getSymbol().valueDeclaration;
+    const symbol = this.getSymbol();
+    const declaration = symbol.valueDeclaration || symbol.declarations[0];
     if (!declaration) {
       return false;
     }

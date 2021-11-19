@@ -107,7 +107,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           if (!propertyValue.type.isPointer()) {
             throw new Error(`Expected spread initializer to be of PointerType, got ${propertyValue.type.toString()}`);
           }
-          if (!propertyValue.type.getPointerElementType().isStructType()) {
+          if (!propertyValue.type.isPointerToStruct()) {
             throw new Error(
               `Expected spread initializer element type to be of StructType, got ${propertyValue.type
                 .getPointerElementType()
@@ -147,6 +147,8 @@ export class LiteralHandler extends AbstractExpressionHandler {
       }
     });
 
+    this.correctInterfacePropertiesOrder(expression, llvmValues);
+
     const types = Array.from(llvmValues.values()).map((value) => value.type);
     const objectType = LLVMStructType.get(this.generator, types);
     const object = this.generator.gc.allocate(objectType);
@@ -159,6 +161,44 @@ export class LiteralHandler extends AbstractExpressionHandler {
     object.name = this.createTSObjectName(Array.from(llvmValues.keys()));
 
     return object;
+  }
+
+  private correctInterfacePropertiesOrder(expression: ts.Node, llvmValues: Map<string, LLVMValue>) {
+    const isAssignment =
+      ts.isBinaryExpression(expression.parent) && expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+    const isVariableDeclaration = ts.isVariableDeclaration(expression.parent);
+
+    if (isAssignment || isVariableDeclaration) {
+      const variableType = isAssignment
+        ? this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.BinaryExpression).left)
+        : this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.VariableDeclaration).name);
+
+      if (variableType.isInterface()) {
+        const interfaceSymbol = variableType.getSymbol();
+        const interfaceDeclaration = interfaceSymbol.valueDeclaration || interfaceSymbol.declarations[0];
+
+        if (!interfaceDeclaration) {
+          throw new Error(`Unable to find declaration for type: '${variableType.toString()}'`);
+        }
+
+        if (interfaceDeclaration.members.some((m) => !m.name)) {
+          throw new Error(`Expected all interface members to be named. Error at: '${interfaceDeclaration.getText()}'`);
+        }
+
+        const propNames = interfaceDeclaration.members.map((m) => m.name!.getText());
+
+        const llvmValuesCopy = new Map(llvmValues);
+        llvmValues.clear();
+
+        for (const name of propNames) {
+          const value = llvmValuesCopy.get(name);
+          if (!value) {
+            throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
+          }
+          llvmValues.set(name, value);
+        }
+      }
+    }
   }
 
   private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): LLVMValue {
