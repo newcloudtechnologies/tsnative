@@ -255,6 +255,10 @@ export class ConciseBody {
         };
 
         const fakeVariablesCreator = (node: ts.Node) => {
+          if (ts.isFunctionLike(node)) {
+            return;
+          }
+
           if (ts.isVariableStatement(node)) {
             node.declarationList.declarations.forEach((declaration) => {
               bodyScope.set(

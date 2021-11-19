@@ -119,3 +119,21 @@
     console.assert(obj._renderCounter === 1, "Function scoped locals (1)");
     console.assert(obj._isStateChanged === true, "Function scoped locals (2)");
 }
+
+{
+    class Wow {
+        foo(): boolean {
+            let bar = (): string => {
+                let unused = "lol";
+                return unused;
+            }
+
+            return bar() === (() => {
+                let unused = "lol";
+                return unused;
+            })();
+        }
+    }
+
+    console.assert((new Wow).foo(), "Duplicate names in function scopes shouldn't populate scope locals");
+}
