@@ -67,6 +67,12 @@ export class TSArray {
         arrayType = this.getArgumentArrayType(expression);
       } else if (ts.isBinaryExpression(expression.parent)) {
         arrayType = this.generator.ts.checker.getTypeAtLocation(expression.parent.left);
+      } else if (ts.isParameter(expression.parent)) {
+        if (!expression.parent.type) {
+          throw new Error(`Type is required for default argument at '${expression.parent.getText()}'`);
+        }
+
+        arrayType = this.generator.ts.checker.getTypeAtLocation(expression.parent.type);
       }
     }
 

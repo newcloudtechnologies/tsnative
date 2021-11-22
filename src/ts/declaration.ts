@@ -136,7 +136,8 @@ export class Declaration {
     if (
       ts.isPropertyAssignment(this.declaration) ||
       ts.isPropertyDeclaration(this.declaration) ||
-      ts.isEnumMember(this.declaration)
+      ts.isEnumMember(this.declaration) ||
+      ts.isParameter(this.declaration)
     ) {
       return this.declaration.initializer;
     }
@@ -150,6 +151,13 @@ export class Declaration {
 
   get modifiers() {
     return this.declaration.modifiers;
+  }
+
+  get dotDotDotToken() {
+    if (!ts.isParameter(this.declaration)) {
+      return false;
+    }
+    return Boolean(this.declaration.dotDotDotToken);
   }
 
   getText() {

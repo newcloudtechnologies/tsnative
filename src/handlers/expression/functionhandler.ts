@@ -862,7 +862,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return this.generator.builder.createSafeCall(fn, callArgs);
   }
 
-  isBindExpression(expression: ts.CallExpression) {
+  isBindExpression(expression: ts.Expression) {
+    if (!ts.isCallExpression(expression)) {
+      return false;
+    }
+
     const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const symbol = type.getSymbol();
     const valueDeclaration = symbol.declarations[0];
@@ -1165,13 +1169,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         const prototype = thisVal.getPrototype();
 
         const functionName = propertyAccess.name.getText();
-        const functionDeclaration = prototype.methods
-          .filter((m) => {
-            return m.name?.getText() === functionName;
-          })
-          .find((value: Declaration) => {
-            return value.parameters.length === argumentTypes.length;
-          });
+        const functionDeclaration = prototype.methods.find((m) => m.name?.getText() === functionName);
 
         if (!functionDeclaration) {
           throw new Error(`Unable to find '${functionName}' in prototype of '${thisVal.type.toString()}'`);
@@ -1314,32 +1312,37 @@ export class FunctionHandler extends AbstractExpressionHandler {
     outerEnv?: Environment,
     contextThis?: boolean
   ) {
-    if (!expression.arguments) {
-      return [];
+    const args: ts.Expression[] = [];
+    if (expression.arguments) {
+      const argsList = contextThis ? expression.arguments.slice(1) : Array.from(expression.arguments);
+      args.push(...argsList);
     }
 
-    const args = contextThis ? expression.arguments.slice(1) : Array.from(expression.arguments);
     const parameters = signature.getParameters();
 
-    return args
+    const registerPrototype = (argumentNode: ts.Node, value: LLVMValue, parameterName: string) => {
+      if (value.hasPrototype()) {
+        this.generator.meta.registerParameterPrototype(parameterName, value.getPrototype());
+      } else {
+        const type = this.generator.ts.checker.getTypeAtLocation(argumentNode);
+        if (type.isClassOrInterface()) {
+          const symbol = type.getSymbol();
+          const declaration = symbol.valueDeclaration;
+          if (declaration) {
+            const prototype = declaration.getPrototype();
+            this.generator.meta.registerParameterPrototype(parameterName, prototype);
+            value.attachPrototype(prototype);
+          }
+        }
+      }
+    };
+
+    const handledArgs = args
       .map((argument, index) => {
         const value = this.generator.handleExpression(argument, outerEnv);
         const parameterName = parameters[index].escapedName.toString();
 
-        if (value.hasPrototype()) {
-          this.generator.meta.registerParameterPrototype(parameterName, value.getPrototype());
-        } else {
-          const type = this.generator.ts.checker.getTypeAtLocation(argument);
-          if (type.isClassOrInterface()) {
-            const symbol = type.getSymbol();
-            const declaration = symbol.valueDeclaration;
-            if (declaration) {
-              const prototype = declaration.getPrototype();
-              this.generator.meta.registerParameterPrototype(parameterName, prototype);
-              value.attachPrototype(prototype);
-            }
-          }
-        }
+        registerPrototype(argument, value, parameterName);
 
         scope.set(parameterName, value);
 
@@ -1373,6 +1376,33 @@ export class FunctionHandler extends AbstractExpressionHandler {
           index
         );
       });
+
+    const withRestParameters = parameters.some((parameter) => parameter.valueDeclaration?.dotDotDotToken);
+
+    if (handledArgs.length !== parameters.length && !withRestParameters && !this.isBindExpression(expression)) {
+      for (let i = handledArgs.length; i < parameters.length; ++i) {
+        const parameterSymbol = parameters[i];
+        const parameterDeclaration = parameterSymbol.valueDeclaration;
+        if (!parameterDeclaration) {
+          throw new Error(`Unable to find declaration for parameter '${parameterSymbol.escapedName}'`);
+        }
+
+        const defaultInitializer = parameterDeclaration.initializer;
+        if (!defaultInitializer) {
+          throw new Error(`Expected default initializer for parameter '${parameterSymbol.escapedName}'`);
+        }
+
+        const handledDefaultParameter = this.generator.handleExpression(defaultInitializer, outerEnv);
+
+        const parameterName = parameters[i].escapedName.toString();
+        registerPrototype(parameterDeclaration.unwrapped, handledDefaultParameter, parameterName);
+
+        scope.set(parameterName, handledDefaultParameter);
+        handledArgs.push({ value: handledDefaultParameter, generated: false });
+      }
+    }
+
+    return handledArgs;
   }
 
   private handleClosureArgument(
