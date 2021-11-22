@@ -48,6 +48,8 @@ export class ReturnHandler extends AbstractNodeHandler {
           } else if (currentFunctionReturnType.isUnion()) {
             const nullUnion = LLVMUnion.createNullValue(currentFunctionReturnType, this.generator);
             ret = nullUnion.initialize(ret);
+          } else {
+            ret = ret.adjustToType(currentFunctionReturnType);
           }
         }
 

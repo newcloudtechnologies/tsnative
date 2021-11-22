@@ -765,7 +765,7 @@ export class TSType {
     }
 
     if (this.isCppIntegralType()) {
-      return this.getIntegralType()!;
+      return this.getIntegralType();
     }
 
     if (this.isEnum()) {
@@ -866,23 +866,14 @@ export class TSType {
 
     if (this.isArray()) {
       const elementType = this.getTypeGenericArguments()[0]!;
-      let cppElementType = elementType.toCppType();
-      if (elementType.isClassOrInterface()) {
-        cppElementType = "void*";
-      }
-      return `Array<${cppElementType}>*`;
+      return `Array<${elementType.toCppType()}>*`;
     }
 
     if (this.isMap()) {
       const typeParameters = this.getTypeGenericArguments();
       const cppTypeParameters = [];
       for (const type of typeParameters) {
-        let cppType = type.toCppType();
-        if (type.isClassOrInterface()) {
-          cppType = "void*";
-        }
-
-        cppTypeParameters.push(cppType);
+        cppTypeParameters.push(type.toCppType());
       }
 
       return `Map<${cppTypeParameters.join(",")}>*`;
@@ -892,12 +883,7 @@ export class TSType {
       const typeParameters = this.getTypeGenericArguments();
       const cppTypeParameters = [];
       for (const type of typeParameters) {
-        let cppType = type.toCppType();
-        if (type.isClassOrInterface()) {
-          cppType = "void*";
-        }
-
-        cppTypeParameters.push(cppType);
+        cppTypeParameters.push(type.toCppType());
       }
 
       return `Set<${cppTypeParameters.join(",")}>*`;
@@ -907,12 +893,7 @@ export class TSType {
       const typeParameters = this.getTypeGenericArguments();
       const cppTypeParameters = [];
       for (const type of typeParameters) {
-        let cppType = type.toCppType();
-        if (type.isClassOrInterface()) {
-          cppType = "void*";
-        }
-
-        cppTypeParameters.push(cppType);
+        cppTypeParameters.push(type.toCppType());
       }
 
       return `Tuple<${cppTypeParameters.join(",")}>*`;

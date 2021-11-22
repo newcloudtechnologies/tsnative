@@ -6,6 +6,8 @@ declare module "cpp" {
 
         getSquare(): number;
 
+        getDiagonal(): Point[];
+
         @ValueType
         private topLeft: Point;
         @ValueType
