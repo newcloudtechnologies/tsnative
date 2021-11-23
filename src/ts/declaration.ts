@@ -36,9 +36,7 @@ export class Declaration {
 
   get members() {
     if (!ts.isClassDeclaration(this.declaration) && !ts.isInterfaceDeclaration(this.declaration)) {
-      throw new Error(
-        `Expected 'members' to be called on class declaration, called on '${ts.SyntaxKind[this.declaration.kind]}'`
-      );
+      return [];
     }
 
     if (ts.isClassDeclaration(this.declaration)) {
@@ -83,11 +81,7 @@ export class Declaration {
 
   get heritageClauses() {
     if (!ts.isClassDeclaration(this.declaration) && !ts.isInterfaceDeclaration(this.declaration)) {
-      throw new Error(
-        `Expected 'heritageClauses' to be called on class/interface declaration, called on '${
-          ts.SyntaxKind[this.declaration.kind]
-        }'`
-      );
+      return;
     }
     return this.declaration.heritageClauses;
   }
