@@ -51,7 +51,7 @@ export class ConciseBody {
   private getFunctionEnvironmentVariables(
     signature: Signature,
     extendScope: Scope,
-    externalVariables: string[] = [],
+    environmentVariables: string[] = [],
     handled: ts.ConciseBody[] = []
   ) {
     return this.generator.withInsertBlockKeeping(() => {
@@ -59,49 +59,43 @@ export class ConciseBody {
         const dummyBlock = llvm.BasicBlock.create(this.generator.context, "dummy", this.generator.currentFunction);
         this.generator.builder.setInsertionPoint(dummyBlock);
 
-        const visitor = (node: ts.Node) => {
+        const isStaticProperty = (node: ts.Node): boolean => {
+          let result = false;
+
+          if (!this.generator.ts.checker.nodeHasSymbol(node)) {
+            return result;
+          }
+
+          const symbol = this.generator.ts.checker.getSymbolAtLocation(node);
+
+          if (symbol.valueDeclaration?.kind === ts.SyntaxKind.PropertyDeclaration) {
+            const propertyDeclaration = symbol.valueDeclaration;
+
+            result = propertyDeclaration.isStaticProperty();
+          } else {
+            result = false;
+          }
+
+          return result;
+        };
+
+        const addNonLocalVariableIfNeeded = (node: ts.Node) => {
           const nodeText = node.getText();
 
-          const isStaticProperty = (n: ts.Node): boolean => {
-            let result = false;
-            const symbol = this.generator.ts.checker.getSymbolAtLocation(n);
+          const isNonThisPropertyAccess =
+            ts.isPropertyAccessExpression(node) && !node.getText().startsWith(this.generator.internalNames.This);
+          const isIdentifier = ts.isIdentifier(node);
+          const isLocal = bodyScope.get(nodeText);
+          const isKnown = environmentVariables.includes(nodeText);
+          const isThis = nodeText === this.generator.internalNames.This;
 
-            if (symbol && symbol.valueDeclaration?.kind === ts.SyntaxKind.PropertyDeclaration) {
-              const propertyDeclaration = symbol.valueDeclaration;
-
-              result = propertyDeclaration.isStaticProperty();
-            } else {
-              result = false;
-            }
-
-            return result;
-          };
-
-          const isCall = (expression: ts.PropertyAccessExpression) => {
-            let parent = expression.parent;
-            while (parent && !ts.isExpressionStatement(parent)) {
-              if (ts.isCallExpression(parent)) {
-                return !parent.arguments.includes(expression) || !ts.isPropertyAccessExpression(parent.parent);
-              }
-
-              parent = parent.parent;
-            }
-
-            return false;
-          };
-
-          if (
-            ((ts.isPropertyAccessExpression(node) &&
-              !isCall(node) &&
-              !node.getText().startsWith(this.generator.internalNames.This)) ||
-              ts.isIdentifier(node)) &&
-            !bodyScope.get(nodeText) &&
-            nodeText !== this.generator.internalNames.This &&
-            !externalVariables.includes(nodeText) &&
-            !isStaticProperty(node)
-          ) {
-            externalVariables.push(nodeText);
+          if ((isNonThisPropertyAccess || isIdentifier) && !isLocal && !isKnown && !isThis && !isStaticProperty(node)) {
+            environmentVariables.push(nodeText);
           }
+        };
+
+        const visitor = (node: ts.Node) => {
+          addNonLocalVariableIfNeeded(node);
 
           if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
             if (!handled.includes(node.body)) {
@@ -114,7 +108,7 @@ export class ConciseBody {
               ConciseBody.create(node.body, this.generator).getFunctionEnvironmentVariables(
                 innerFunctionSignature,
                 extendScope,
-                externalVariables,
+                environmentVariables,
                 handled
               );
             }
@@ -137,7 +131,7 @@ export class ConciseBody {
                 ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
                   innerFunctionSignature,
                   extendScope,
-                  externalVariables,
+                  environmentVariables,
                   handled
                 );
               }
@@ -244,7 +238,7 @@ export class ConciseBody {
                 ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
                   innerFunctionSignature,
                   extendScope,
-                  externalVariables,
+                  environmentVariables,
                   handled
                 );
               }
@@ -281,14 +275,14 @@ export class ConciseBody {
 
         dummyBlock.eraseFromParent();
         // @todo: check arguments usage too
-        externalVariables.push(
+        environmentVariables.push(
           ...signature
             .getParameters()
             .map((p) => p.escapedName.toString())
-            .filter((name) => !externalVariables.includes(name))
+            .filter((name) => !environmentVariables.includes(name))
         );
 
-        return externalVariables;
+        return environmentVariables;
       }, this.generator.symbolTable.currentScope);
     });
   }
