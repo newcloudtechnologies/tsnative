@@ -12,14 +12,12 @@ cmake_minimum_required(VERSION 3.10)
 
 include(FindPackageHandleStandardArgs)
 
-get_filename_component(TS_COMPILER_DIR
+get_filename_component(TS_VERIFIER_DIR
                        "${CMAKE_CURRENT_LIST_DIR}/../bin"
                        ABSOLUTE)
 
-set(TS_COMPILER "${TS_COMPILER_DIR}/compiler${CMAKE_EXECUTABLE_SUFFIX}")
+set(TS_VERIFIER "${TS_VERIFIER_DIR}/verifier${CMAKE_EXECUTABLE_SUFFIX}")
 
-find_package_handle_standard_args(TsCompiler DEFAULT_MSG
-  TS_COMPILER)
-
-
+find_package_handle_standard_args(TsVerifier DEFAULT_MSG
+  TS_VERIFIER)
 

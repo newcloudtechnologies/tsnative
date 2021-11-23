@@ -1,10 +1,10 @@
 #include <algorithm>
-#include <limits>
 #include <climits>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -106,13 +106,6 @@ bool string::endsWith(const string& other, double startIndex) const
     }
 
     return result;
-}
-
-Array<string*>* string::split() const
-{
-    Array<string*> result;
-    result.push(GC::createHeapAllocated<string>(string_));
-    return GC::createHeapAllocated<Array<string*>>(result);
 }
 
 Array<string*>* string::split(const string& pattern) const
@@ -253,7 +246,8 @@ string* string::substring(double startIndex, double endIndex) const
     int n1 = static_cast<int>(startIndex);
     int n2 = static_cast<int>(endIndex);
 
-    auto normalize = [this](int index) {
+    auto normalize = [this](int index)
+    {
         int length = this->length();
 
         if (index <= 0)

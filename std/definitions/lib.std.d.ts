@@ -96,7 +96,6 @@ declare class String {
   endsWith(string: string): boolean;
   endsWith(string: string, start: number): boolean;
 
-  split(): string[];
   split(pattern: string): string[];
   split(pattern: string, limit: number): string[];
 

@@ -1,0 +1,19 @@
+{
+    "name": "verifier",
+    "bin": {
+	   "verifier": "verifier.js"
+    },
+    "publishConfig": {
+        "registry": "https://nexus.devos.club/repository/antiq_npm_local/"
+    },
+    "pkg": {
+        "assets": [
+            "../tsconfig.json",
+            "../node_modules/typescript/*",
+            "../node_modules/typescript/**/*"
+        ]
+    },
+    "dependencies": {
+        "typescript": "^3.8.3"
+    }
+}

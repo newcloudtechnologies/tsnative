@@ -15,11 +15,7 @@ project(builder LANGUAGES CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
-find_package(StdLib REQUIRED)
-find_package(TsCompiler REQUIRED)
-
-# utils.cmake from TS compiler
-include(${TS_COMPILER_CMAKE_UTILS})
+include("${CMAKE_CURRENT_LIST_DIR}/utils.cmake")
 
 set(OPTIMIZATION_LEVEL "-O3")
 set(EXTRA_DEPENDENCIES "")
@@ -68,8 +64,8 @@ list(APPEND DEPENDENCIES
     "${LIBRARY_DEPENDENCIES}"
     "${StdLib_LIBRARY}")
 
-getProjectFiles("${ENTRY}" sources)
+getProjectFiles("${ENTRY}" SOURCES)
 
-build(binary_target ${TS_EXTENSION_TARGET} "${ENTRY}" "${sources}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
+build(binary_target ${TS_EXTENSION_TARGET} "${ENTRY}" "${SOURCES}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
 
 add_dependencies(build_anyway ${binary_target})

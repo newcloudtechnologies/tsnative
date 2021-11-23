@@ -10,12 +10,20 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-if (NOT TsCompiler_FOUND)
-    message(FATAL_ERROR "utils.cmake isn't included")
-endif()
+find_package(StdLib REQUIRED)
+find_package(TsCompiler REQUIRED)
+find_package(TsVerifier REQUIRED)
 
 if (NOT StdLib_FOUND)
     message(FATAL_ERROR "stdlib not included")
+endif()
+
+if (NOT TsCompiler_FOUND)
+    message(FATAL_ERROR "TS compiler is not found")
+endif()
+
+if (NOT TsVerifier_FOUND)
+    message(FATAL_ERROR "TS verifier is not found")
 endif()
 
 if (NOT CMAKE_CXX_STANDARD)
@@ -140,7 +148,8 @@ function(extractSymbols target dep_target dependencies output_dir demangledList 
     endforeach()
 
     add_custom_target(${target}
-        DEPENDS ${output_demangledList} ${output_mangledList})
+        DEPENDS ${output_demangledList} ${output_mangledList}
+    )
 
     add_dependencies(${target} ${dep_target})
 
@@ -247,6 +256,30 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
     set(${compiled} ${output} PARENT_SCOPE)
 endfunction()
 
+function(verify_ts target dep_target entry sources output_dir)
+    get_filename_component(entry_fn "${entry}" NAME)
+
+    string(REPLACE ".ts" ".js" OUTPUT_FN "${entry_fn}")
+    set(output "${output_dir}/${OUTPUT_FN}")
+
+    set(baseDir "${CMAKE_CURRENT_LIST_DIR}/..")
+
+    add_custom_command(
+        OUTPUT ${output}
+        DEPENDS "${entry}" "${sources}"
+        WORKING_DIRECTORY ${PROJECT_DIR}
+        COMMAND echo "Running TS verifier: ${entry}"
+        COMMAND ${TS_VERIFIER}
+        ARGS ${entry} --alwaysStrict --target es6 --experimentalDecorators --moduleResolution node --baseUrl ${baseDir} --outDir ${output_dir}
+    )
+
+    add_custom_target(${target}
+        DEPENDS ${output}
+    )
+
+    add_dependencies(${target} ${dep_target})
+endfunction()
+
 function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr ll_bytecode)
     get_filename_component(entry_fn "${entry}" NAME)
 
@@ -263,9 +296,9 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
 
     add_custom_command(
         OUTPUT ${output}
-        DEPENDS ${entry} "${sources}" "${demangledList}" "${mangledList}"
+        DEPENDS "${entry}" "${sources}" "${demangledList}" "${mangledList}"
         WORKING_DIRECTORY ${PROJECT_DIR}
-        COMMAND echo "Running TS compiler..."
+        COMMAND echo "Running TS compiler: ${entry}"
         COMMAND ${TS_COMPILER}
         ARGS ${entry} --tsconfig ${TS_CONFIG} ${PRINT_IR} --emitIR --demangledTables ${DEMANGLED} --mangledTables ${MANGLED} --build ${output_dir}
     )
@@ -291,7 +324,8 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
     )
 
     add_custom_target(${target}
-        DEPENDS ${output})
+        DEPENDS ${output}
+    )
 
     add_dependencies(${target} ${dep_target})
 
@@ -310,12 +344,14 @@ function(link target dep_target seed_src compiled_source dependencies extra_depe
             PRIVATE
                 ${compiled_source}
                 ${dependencies}
-                ${extra_dependencies})
+                ${extra_dependencies}
+        )
     else()
         target_link_libraries(${${target}}
             PRIVATE
                 ${compiled_source}
-                ${dependencies})
+                ${dependencies}
+        )
     endif()
 
     add_dependencies(${${target}} ${dep_target})
@@ -323,9 +359,12 @@ endfunction()
 
 function(build target dep_target entry sources includes dependencies extra_dependencies definitions optimization_level is_test is_printIr)
     getBinaryName("${entry}" binary_name)
+
     makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${entry}" output_dir)
 
-    instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" CLASSES_SRC)
+    verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${output_dir}")
+
+    instantiate_classes(instantiate_classes_${binary_name} verify_ts_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" CLASSES_SRC)
 
     compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${definitions}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
 

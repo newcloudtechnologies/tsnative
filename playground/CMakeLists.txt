@@ -12,14 +12,10 @@ cmake_minimum_required(VERSION 3.10)
 
 project(tests LANGUAGES CXX)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
-find_package(StdLib REQUIRED)
-find_package(TsCompiler REQUIRED)
-
-# utils.cmake from TS compiler
-include(${TS_COMPILER_CMAKE_UTILS})
+include("${CMAKE_CURRENT_LIST_DIR}/../cmake/utils.cmake")
 
 set(OPTIMIZATION_LEVEL "-O3")
 set(EXTRA_DEPENDENCIES "")

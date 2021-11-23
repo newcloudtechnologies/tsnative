@@ -5,12 +5,12 @@
         "transpile": "tsc",
         "start": "playground/start.sh",
         "test": "bash -x -exec 'test/start.sh'",
-        "clean": "rm -rf out std/lib pkg",
+        "clean": "rm -rf out std/lib bin",
         "lint": "tslint --project tsconfig.json",
         "format": "tslint --project tsconfig.json --fix",
         "build": "sh std/build.sh && tsc && npm run pkg",
         "prepack": "npm run build",
-        "pkg": "pkg bin --output pkg/compiler",
+        "pkg": "pkg compiler --output bin/compiler && pkg verifier --output bin/verifier",
         "publishToLocalRegistry": "npm-prebuilt-dependencies publish"
     },
     "bin": {
@@ -48,7 +48,7 @@
         "std/definitions/*",
         "std/lib/libtsnative-std.a",
         "cmake/*",
-        "pkg/*",
+        "bin/*",
         "tsnative.sh"
     ]
 }

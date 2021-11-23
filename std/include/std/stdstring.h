@@ -26,7 +26,6 @@ public:
     bool endsWith(const string& other) const;
     bool endsWith(const string& other, double startIndex) const;
 
-    Array<string*>* split() const;
     Array<string*>* split(const string& pattern) const;
     Array<string*>* split(const string& pattern, double limit) const;
 

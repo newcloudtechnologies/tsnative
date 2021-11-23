@@ -126,17 +126,13 @@
   var empty1: string[] = "".split("");
   console.assert(empty1.length === 0, "String: ''.split('') failed");
 
-  var empty_str: string[] = "".split();
-  console.assert(empty_str.length === 1 && empty_str[0] === "", "String: ''.split() failed");
+  var empty_str: string[] = [];
 
   empty_str = "".split("x");
   console.assert(empty_str.length === 1 && empty_str[0] === "", "String: ''.split('x') failed");
 
   empty_str = "".split("x", 6);
   console.assert(empty_str.length === 1 && empty_str[0] === "", "String: ''.split('x', 6) failed");
-
-  let full_str = str.split();
-  console.assert(full_str.length === 1 && full_str[0] === str, "String: str.split() failed");
 
   let tokens = str.split(" ");
 
@@ -185,7 +181,7 @@
 
   console.assert(indexOfFirst1 === 40, "String: indexOf('dog')#1: failed");
 
-  let indexOfFirst2 = str.indexOf(searchTerm, (indexOfFirst1 + 1) );
+  let indexOfFirst2 = str.indexOf(searchTerm, (indexOfFirst1 + 1));
 
   console.assert(indexOfFirst2 === 52, "String: indexOf('dog')#2: failed");
 
@@ -216,7 +212,7 @@
   console.assert(indexOfFirst1 === 52, "String: lastIndexOf('dog')#1: failed");
 
   let indexOfFirst2 = str.lastIndexOf(searchTerm, (indexOfFirst1 - 1));
-  
+
   console.assert(indexOfFirst2 === 40, "String: lastIndexOf('dog')#2: failed");
 
   let indexOfFirst3: number = str.lastIndexOf("bla");

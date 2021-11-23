@@ -19,11 +19,11 @@ if (!!f) {
     console.assert(true, "Function double negation failed");
 }
 
-type VoidFunction = () => void;
+type VoidFunctionT = () => void;
 
 let callCounter = 0;
 
-const onceNull = function (fn: VoidFunction | null) {
+const onceNull = function (fn: VoidFunctionT | null) {
     return function (): void {
         if (fn) {
             fn();
@@ -33,7 +33,7 @@ const onceNull = function (fn: VoidFunction | null) {
     }
 }
 
-const onceUndefined = function (fn: VoidFunction | undefined) {
+const onceUndefined = function (fn: VoidFunctionT | undefined) {
     return function (): void {
         if (fn) {
             fn();

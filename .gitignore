@@ -4,7 +4,7 @@ out/
 *.log
 .idea/
 .vscode/
-pkg/
+bin/
 std/lib
 
 # ignore lock file since prebuilt packages are used

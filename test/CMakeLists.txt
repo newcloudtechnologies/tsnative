@@ -14,26 +14,20 @@ project(tests LANGUAGES CXX)
 
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
-find_package(StdLib REQUIRED)
-find_package(TsCompiler REQUIRED)
-
-set(TS_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../tsconfig.json")
-
-# utils.cmake from TS compiler
-include(${TS_COMPILER_CMAKE_UTILS})
+include("${CMAKE_CURRENT_LIST_DIR}/../cmake/utils.cmake")
 
 if (NOT DEFINED SOURCES)
     # looking for all test cases
-    file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.ts")
+    file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.ts")
     list(FILTER SOURCES EXCLUDE REGEX ".*[.]d.ts$")
 endif()
 
 if (NOT DEFINED SRCDIR)
     set(SRCDIR
-        ${CMAKE_CURRENT_SOURCE_DIR})
+        ${CMAKE_CURRENT_LIST_DIR})
 endif()
 
 set(OPTIMIZATION_LEVEL "-O3")
