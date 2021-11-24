@@ -420,3 +420,17 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
   console.assert(is_equal(paths, expected), "Array `map` with custom transformed type");
 }
+
+{
+  // Just test buildability
+  (() => {
+    class MyType {
+      str: string = "Lol"
+    }
+    let arr: MyType[] = [
+      new MyType(),
+      new MyType(),
+      new MyType(),
+    ];
+  })();
+}

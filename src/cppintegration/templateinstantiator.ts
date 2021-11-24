@@ -208,6 +208,11 @@ export class TemplateInstantiator {
         node.elements.length === 0
       ) {
         const typeFromParameterDeclaration = this.generator.ts.array.getArgumentArrayType(node);
+        const elementType = typeFromParameterDeclaration.getTypeGenericArguments()[0];
+        if (!elementType.isSupported()) {
+          return;
+        }
+
         const arrayTemplateInstance = `template class ${typeFromParameterDeclaration.toPlainCppType()};`;
         this.generatedContent.push(
           arrayTemplateInstance,
@@ -407,12 +412,12 @@ export class TemplateInstantiator {
       node.arguments.forEach((arg) => ts.forEachChild(arg, this.arrayNodeVisitor.bind(this)));
     } else if (ts.isExpressionStatement(node) && ts.isCallExpression(node.expression)) {
       node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.arrayNodeVisitor.bind(this)));
+    }
+
+    if (this.generator.ts.checker.getTypeAtLocation(node).isArray()) {
+      this.handleArray(node);
     } else {
-      if (this.generator.ts.checker.getTypeAtLocation(node).isArray()) {
-        this.handleArray(node);
-      } else {
-        ts.forEachChild(node, this.arrayNodeVisitor.bind(this));
-      }
+      ts.forEachChild(node, this.arrayNodeVisitor.bind(this));
     }
   }
 
