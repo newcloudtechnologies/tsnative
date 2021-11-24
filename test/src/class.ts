@@ -935,88 +935,88 @@
 {
   const baseValue = "BASE";
   class Base {
-      setState() {
-          return this.update();
-      }
+    setState() {
+      return this.update();
+    }
 
-      protected render() { return baseValue; }
+    protected render() { return baseValue; }
 
-      private update() {
-          return this.render();
-      }
+    private update() {
+      return this.render();
+    }
   }
 
   const value = "12";
   function f() { return value; }
 
   class Derived extends Base {
-      render() {
-          return f();
-      }
+    render() {
+      return f();
+    }
   }
 
   {
-      const v = new Base;
-      console.assert(v.setState() === baseValue, "Base call");
+    const v = new Base;
+    console.assert(v.setState() === baseValue, "Base call");
   }
 
   {
-      const v = new Derived;
-      console.assert(v.setState() === value, "Derived call");
+    const v = new Derived;
+    console.assert(v.setState() === value, "Derived call");
   }
 
   {
-      const v: Base = new Derived;
-      console.assert(v.setState() === value, "Casted to base derived call");
+    const v: Base = new Derived;
+    console.assert(v.setState() === value, "Casted to base derived call");
   }
 }
 
 {
   class MyClass<TemplateType> {
-      _items: TemplateType[];
+    _items: TemplateType[];
 
-      constructor(items: TemplateType[]) {
-          this._items = items;
-      }
+    constructor(items: TemplateType[]) {
+      this._items = items;
+    }
   }
 
   {
-      class FMButtonTable_t extends MyClass<number> {
-          constructor(items: number[]) {
-              super(items);
-          }
+    class FMButtonTable_t extends MyClass<number> {
+      constructor(items: number[]) {
+        super(items);
       }
+    }
 
-      const initializer: number[] = [1, 3, 3, 5]
-      const table = new FMButtonTable_t(initializer)
+    const initializer: number[] = [1, 3, 3, 5]
+    const table = new FMButtonTable_t(initializer)
 
-      console.assert(table._items === initializer, "Generic-typed array property (1)");
+    console.assert(table._items === initializer, "Generic-typed array property (1)");
   }
 
   {
-      class FMButtonTable_s extends MyClass<string> {
-          constructor(items: string[]) {
-              super(items);
-          }
+    class FMButtonTable_s extends MyClass<string> {
+      constructor(items: string[]) {
+        super(items);
       }
+    }
 
-      const initializer = ["hell", "o"];
-      const table = new FMButtonTable_s(initializer);
+    const initializer = ["hell", "o"];
+    const table = new FMButtonTable_s(initializer);
 
-      console.assert(table._items === initializer, "Generic-typed array property (2)");
+    console.assert(table._items === initializer, "Generic-typed array property (2)");
   }
 
   {
-      class FMButtonTable_g extends MyClass<number> {
-          constructor(items: number[]) {
-              super(items);
-          }
+    class FMButtonTable_g extends MyClass<number> {
+      constructor(items: number[]) {
+        super(items);
       }
+    }
 
-      const initializer = [1, 1, 1];
-      const table = new FMButtonTable_g(initializer);
-      
-      console.assert(table._items === initializer, "Generic-typed array property (3)");
+    const initializer = [1, 1, 1];
+    const table = new FMButtonTable_g(initializer);
+
+    console.assert(table._items === initializer, "Generic-typed array property (3)");
   }
 }
 
@@ -1062,4 +1062,49 @@
 
   const moose = new JumpyAnimal()
   console.assert(moose.moveLength() === 500, "Base method call in 'virtual' methods case");
+}
+
+{
+  class DeclarativeOverlay {
+    private constructor() { }
+
+    static with() {
+      return new DeclarativeOverlay;
+    }
+
+    show() { return this; }
+  }
+
+  class Dialog {
+    name: string;
+
+    constructor() {
+      this.name = this.getName();
+    }
+
+    getName() {
+      return "Base";
+    }
+  }
+
+  class FileDialog extends Dialog {
+    overlay: DeclarativeOverlay;
+
+    constructor() {
+      super();
+
+      this.overlay = DeclarativeOverlay
+        .with()
+        .show();
+
+      this.overlay.show().show().show();
+      this.name = this.getName();
+    }
+
+    getName() {
+      return "Derived";
+    }
+  }
+
+  console.assert(new FileDialog().name === "Derived", "Polymorphic 'this' method");
 }

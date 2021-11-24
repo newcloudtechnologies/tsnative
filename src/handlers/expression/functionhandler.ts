@@ -1141,8 +1141,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
         if (thisType.isSame(propertyAccessRootType)) {
           const outerPrototype = outerEnv.thisPrototype;
           const inTSClassConstructor = Boolean(this.generator.currentFunction.name?.includes("__constructor"));
+          const isThisMethodCall = expression.getText().startsWith("this") && ts.isCallExpression(expression.parent);
 
-          if (thisVal.type.equals(outerPrototype.parentType.getLLVMType()) || inTSClassConstructor) {
+          if (
+            thisVal.type.equals(outerPrototype.parentType.getLLVMType()) ||
+            (inTSClassConstructor && isThisMethodCall)
+          ) {
             thisVal.attachPrototype(outerPrototype);
           }
         }
