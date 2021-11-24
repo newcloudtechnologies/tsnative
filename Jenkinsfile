@@ -25,7 +25,7 @@ pipeline {
                 stage('Linux x86_64') {
                     agent {
                         docker {
-                            image "docreg.devos.club/typescript-environment:1.6"
+                            image "docreg.devos.club/typescript-environment:1.7"
                             args "--user root"
                             registryUrl 'https://docreg.devos.club'
                             registryCredentialsId 'docker_kos'

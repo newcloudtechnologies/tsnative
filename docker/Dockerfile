@@ -1,6 +1,6 @@
-# docreg.devos.club/typescript-environment:1.6
+# docreg.devos.club/typescript-environment:1.7
 
-FROM docreg.devos.club/ubuntu-cmake:1.9
+FROM docreg.devos.club/ubuntu-cmake:1.10
 
 LABEL TSNative environment image
 
