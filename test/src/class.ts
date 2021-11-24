@@ -1046,3 +1046,20 @@
   console.assert(new Base().lol === "base", "Base 'virtual' method call from ctor");
   console.assert(new Derived().lol === "derived", "Derived 'virtual' method call from ctor");
 }
+
+{
+  class BaseAnimal {
+    moveLength() {
+      return 5;
+    }
+  }
+
+  class JumpyAnimal extends BaseAnimal {
+    moveLength() {
+      return super.moveLength() * 100;
+    }
+  }
+
+  const moose = new JumpyAnimal()
+  console.assert(moose.moveLength() === 500, "Base method call in 'virtual' methods case");
+}

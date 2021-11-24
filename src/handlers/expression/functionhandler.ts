@@ -1175,14 +1175,27 @@ export class FunctionHandler extends AbstractExpressionHandler {
         const prototype = thisVal.getPrototype();
 
         const functionName = propertyAccess.name.getText();
-        const functionDeclaration = prototype.methods.find((m) => m.name?.getText() === functionName);
 
-        if (!functionDeclaration) {
+        const candidates = prototype.methods.filter((m) => m.name?.getText() === functionName);
+        if (candidates.length === 0) {
           throw new Error(`Unable to find '${functionName}' in prototype of '${thisVal.type.toString()}'`);
         }
 
+        const isSuperAccess = propertyAccess.expression.kind === ts.SyntaxKind.SuperKeyword;
+        if (isSuperAccess && candidates.length < 2) {
+          throw new Error(
+            `Unable to find '${functionName}' in prototype of '${thisVal.type.toString()}' for base class`
+          );
+        }
+
+        // methods in prototype are in order from derived to base, so in case of 'super' access take previous one declaration
+        const methodIndex = isSuperAccess ? 1 : 0;
+        const functionDeclaration = candidates[methodIndex];
+
         valueDeclaration = functionDeclaration;
-        thisType = prototype.parentType;
+        thisType = isSuperAccess
+          ? this.generator.ts.checker.getTypeAtLocation(functionDeclaration.parent)
+          : prototype.parentType;
 
         qualifiedName = FunctionMangler.mangle(
           valueDeclaration,

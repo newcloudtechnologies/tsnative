@@ -20,6 +20,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.Identifier:
         return this.handleIdentifier(expression as ts.Identifier, env);
       case ts.SyntaxKind.ThisKeyword:
+      case ts.SyntaxKind.SuperKeyword:
         return this.handleThis(env);
       default:
         break;

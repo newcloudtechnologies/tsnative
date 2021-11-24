@@ -125,7 +125,11 @@ export class TSType {
   getTypeGenericArguments() {
     if (this.type.flags & ts.TypeFlags.Object) {
       if ((this.type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) {
-        return (this.type as ts.TypeReference).typeArguments?.map((type) => TSType.create(type, this.checker)) || [];
+        return (
+          (this.type as ts.TypeReference).typeArguments
+            ?.map((type) => TSType.create(type, this.checker))
+            .filter((type) => type.toString() !== "this") || []
+        );
       }
     }
 
