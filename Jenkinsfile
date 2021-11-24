@@ -200,7 +200,8 @@ pipeline {
                         }
                         stage("Run Tests") {
                             steps {
-                                sh 'JOBS=-j$(nproc) npm test'
+                                // FIXME: enable parallel build once KDM-836 (???) is fixed
+                                sh 'npm test'
                             }
                         }
                         stage("Publish") {
