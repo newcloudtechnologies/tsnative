@@ -1019,3 +1019,30 @@
       console.assert(table._items === initializer, "Generic-typed array property (3)");
   }
 }
+
+{
+  class Base {
+    lol: string;
+
+    getVal(): string {
+      return "base"
+    }
+
+    constructor() {
+      this.lol = this.getVal();
+    }
+  }
+
+  class Derived extends Base {
+    constructor() {
+      super();
+    }
+
+    getVal(): string {
+      return "derived"
+    }
+  }
+
+  console.assert(new Base().lol === "base", "Base 'virtual' method call from ctor");
+  console.assert(new Derived().lol === "derived", "Derived 'virtual' method call from ctor");
+}

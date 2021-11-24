@@ -492,13 +492,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
-    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+    const manglingResult = FunctionMangler.mangle(
       constructorDeclaration,
       expression,
       thisType,
       argumentTypes,
       this.generator
     );
+
+    const { isExternalSymbol } = manglingResult;
+    let { qualifiedName } = manglingResult;
 
     const parentScope = valueDeclaration.getScope(thisType);
     if (!parentScope.thisData) {
@@ -542,19 +545,21 @@ export class FunctionHandler extends AbstractExpressionHandler {
       outerEnv?.thisPrototype
     );
 
-    const llvmThisType = parentScope.thisData.llvmType;
-    const { fn: constructor, existing } = this.generator.llvm.function.create(
+    // mkrv: @todo: extra checks required. in fact unique suffix should be added only if there is (in)direct polymorphic calls inside constructor body
+    qualifiedName += "__" + this.generator.randomString;
+
+    const { fn: constructor } = this.generator.llvm.function.create(
       LLVMType.getVoidType(this.generator),
       [env.voidStar],
       qualifiedName
     );
 
-    if (!existing) {
-      this.handleConstructorBody(constructorDeclaration, constructor, env);
-      setLLVMFunctionScope(constructor, parentScope, this.generator);
-    }
+    this.handleConstructorBody(constructorDeclaration, constructor, env);
+    setLLVMFunctionScope(constructor, parentScope, this.generator);
 
     this.generator.builder.createSafeCall(constructor, [env.untyped]);
+
+    const llvmThisType = parentScope.thisData.llvmType;
 
     return this.generator.builder.createBitCast(
       this.generator.builder.createSafeInBoundsGEP(env.typed, [
@@ -1135,8 +1140,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
         if (thisType.isSame(propertyAccessRootType)) {
           const outerPrototype = outerEnv.thisPrototype;
+          const inTSClassConstructor = Boolean(this.generator.currentFunction.name?.includes("__constructor"));
 
-          if (thisVal.type.equals(outerPrototype.parentType.getLLVMType())) {
+          if (thisVal.type.equals(outerPrototype.parentType.getLLVMType()) || inTSClassConstructor) {
             thisVal.attachPrototype(outerPrototype);
           }
         }
@@ -1636,7 +1642,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       outerEnv,
       constructorDeclaration.body,
       /* prefer local this = */ true,
-      outerEnv?.thisPrototype
+      valueDeclaration.getPrototype()
     );
 
     if (handledArgs.some((value) => value.generated) || args.some((arg) => arg.hasPrototype())) {
