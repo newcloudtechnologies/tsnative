@@ -23,6 +23,7 @@ if (NOT DEFINED SOURCES)
     # looking for all test cases
     file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.ts")
     list(FILTER SOURCES EXCLUDE REGEX ".*[.]d.ts$")
+    list(FILTER SOURCES EXCLUDE REGEX ".*runtime_test.ts$")
 endif()
 
 if (NOT DEFINED SRCDIR)
@@ -40,9 +41,9 @@ set(index 0)
 while(index LESS ${count})
     list (GET SOURCES ${index} ENTRY)
 
-    if (ENTRY STREQUAL "src/cpp_closures.ts")
+    if (ENTRY STREQUAL "src/cpp_closures/cpp_closures.ts")
         if (NOT TARGET cpp_exts)
-            add_subdirectory(src/cpp EXCLUDE_FROM_ALL)
+            add_subdirectory("src/cpp_closures/cpp" EXCLUDE_FROM_ALL)
         endif()
 
         get_target_property(cpp_exts_INCLUDES cpp_exts INCLUDES)
@@ -64,7 +65,7 @@ while(index LESS ${count})
 
     elseif(ENTRY MATCHES "^src/cpp_integration/")
         if (NOT TARGET cpp_integration_exts)
-            add_subdirectory(src/cpp_integration/cpp EXCLUDE_FROM_ALL)
+            add_subdirectory("src/cpp_integration/cpp" EXCLUDE_FROM_ALL)
         endif()
 
         set(DEFINITIONS )

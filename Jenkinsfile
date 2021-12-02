@@ -93,6 +93,7 @@ pipeline {
                             steps {
                                 // FIXME: enable parallel build once KDM-836 is fixed
                                 sh "npm run test"
+                                sh "npm run runtime_test"
                             }
                         }
                         stage("Publish")
@@ -202,6 +203,7 @@ pipeline {
                             steps {
                                 // FIXME: enable parallel build once KDM-836 (???) is fixed
                                 sh 'npm test'
+                                sh 'npm run runtime_test'
                             }
                         }
                         stage("Publish") {

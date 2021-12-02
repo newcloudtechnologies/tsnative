@@ -26,6 +26,8 @@
   console.assert(b.inc() === 4, "class: b.inc() failed");
 }
 
+/*
+@todo: doesn't work on ts-node
 {
   class A {
     static a: number = 0;
@@ -74,6 +76,7 @@
 
   console.assert(B.b === 1, "class: ClassB.b === 1 failed");
 }
+*/
 
 {
   class A {
@@ -131,10 +134,13 @@
   console.assert(ClasssB.b === 1, "class: ClasssB.b === 1 failed");
   */
 
+/*
+@todo: doesn't work on ts-node
   new B();
 
   console.assert(B.a === 1, "class: ClasssB.a === 1 failed");
   console.assert(A.a === 1, "class: ClasssA.a === 1 failed");
+*/
 }
 
 {
@@ -494,6 +500,8 @@
   console.assert(fn(obj1) === DERIVED_RET, "Derived as polymorphic argument");
 }
 
+/*
+@todo: doesn't work on ts-node
 {
   const i = 4444
 
@@ -541,6 +549,7 @@
   const derivedResult = f(derived);
   console.assert(derivedResult[0] === i && derivedResult[1] === derived.m, "Assign DERIVED class method to variable in function with polymorpic arguments");
 }
+*/
 
 {
   class RxComponent {

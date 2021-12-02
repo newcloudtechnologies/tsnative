@@ -5,6 +5,7 @@
         "transpile": "tsc",
         "start": "playground/start.sh",
         "test": "bash -x -exec 'test/start.sh'",
+        "runtime_test": "ts-node test/runtime_test.ts",
         "clean": "rm -rf out std/lib bin",
         "lint": "tslint --project tsconfig.json",
         "format": "tslint --project tsconfig.json --fix",
@@ -39,7 +40,9 @@
         "tslint": "^6.1.1",
         "tslint-config-prettier": "^1.18.0",
         "tslint-plugin-prettier": "^2.3.0",
-        "typescript": "^3.8.3"
+        "typescript": "^3.8.3",
+        "ts-node": "^10.4.0",
+        "chalk": "^4.1.2"
     },
     "files": [
         "std/include/*",

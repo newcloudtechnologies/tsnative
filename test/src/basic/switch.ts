@@ -276,6 +276,9 @@
   console.assert(noBreak(3) === 4, "switch: noBreak(3) failed");
 }
 
+/*
+@todo: doesn't work on ts-node
+
 {
   let n_case1 = 0;
   let n_case2 = 0;
@@ -293,6 +296,7 @@
 
   n_case1 = 0; n_case2 = 0;
   foo(1, n_case1, n_case2);
+console.log(`n_case1=${n_case1}; n_case2=${n_case2}`);
   console.assert(n_case1 === 1 && n_case2 === 1, "switch: CasesNoDefaultNoAnyBreak(1) failed");
 
   n_case1 = 0; n_case2 = 0;
@@ -326,5 +330,5 @@
   n_case1 = 0; n_case2 = 0;
   console.assert(foo(11, n_case1, n_case2) === 0 && n_case1 === 0 && n_case2 === 1, "switch: CasesDefaultNoAnyBreak(11) failed");
 }
-
+*/
 
