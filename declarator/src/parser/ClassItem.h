@@ -1,0 +1,53 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
+#pragma once
+
+#include "ContainerItem.h"
+#include "MethodItem.h"
+
+#include <clang/AST/Decl.h>
+#include <clang/AST/DeclCXX.h>
+#include <clang/AST/DeclTemplate.h>
+
+#include <string>
+#include <vector>
+
+namespace parser
+{
+
+class ClassItem : public ContainerItem
+{
+    friend class AbstractItem;
+
+private:
+    const clang::CXXRecordDecl* m_decl;
+
+private:
+    ClassItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
+
+protected:
+    ClassItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::ClassTemplateDecl* decl);
+
+public:
+    std::vector<MethodItem> methods() const;
+    std::vector<clang::CXXBaseSpecifier> bases() const;
+    int size() const;
+    bool hasVirtualDestructor() const;
+    bool hasVTable() const;
+    int getVTableSize() const;
+    const clang::CXXRecordDecl* decl() const;
+};
+
+using class_item_t = item_t<ClassItem>;
+using const_class_item_t = item_t<const ClassItem>;
+
+} //  namespace parser

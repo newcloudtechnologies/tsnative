@@ -1,0 +1,85 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
+#include "ContainerBlock.h"
+
+#include <algorithm>
+
+namespace generator
+{
+
+namespace ts
+{
+
+ContainerBlock::ContainerBlock(Type type, const std::string& name)
+    : AbstractBlock(type, name)
+{
+}
+
+void ContainerBlock::add(abstract_block_t block)
+{
+    m_children.push_back(block);
+}
+
+void ContainerBlock::add_before(const std::string& siblingName, abstract_block_t block)
+{
+    auto it = std::find_if(
+        m_children.begin(), m_children.end(), [siblingName](auto it) { return it->name() == siblingName; });
+
+    if (it != m_children.end())
+    {
+        m_children.insert(it, block);
+    }
+    else
+    {
+        m_children.push_back(block);
+    }
+}
+
+std::vector<abstract_block_t> ContainerBlock::children() const
+{
+    return m_children;
+}
+
+void ContainerBlock::printChildImpl(int index,
+                                    int size,
+                                    const_abstract_block_t child,
+                                    generator::print::printer_t printer) const
+{
+    child->print(printer);
+
+    // don't print new line after last child
+    if (index < size - 1)
+    {
+        printer->enter();
+    }
+}
+
+void ContainerBlock::printBodyImpl(generator::print::printer_t printer) const
+{
+    for (auto i = 0; i < m_children.size(); i++)
+    {
+        printChildImpl(i, m_children.size(), m_children.at(i), printer);
+    }
+}
+
+void ContainerBlock::printBody(generator::print::printer_t printer) const
+{
+    printer->tab();
+
+    printBodyImpl(printer);
+
+    printer->backspace();
+}
+
+} // namespace ts
+
+} // namespace generator

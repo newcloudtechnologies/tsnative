@@ -9,7 +9,7 @@
         "clean": "rm -rf out std/lib bin",
         "lint": "tslint --project tsconfig.json",
         "format": "tslint --project tsconfig.json --fix",
-        "build": "sh std/build.sh && tsc && npm run pkg",
+        "build": "sh std/build.sh && sh declarator/build.sh && tsc && npm run pkg",
         "prepack": "npm run build",
         "pkg": "pkg compiler --output bin/compiler && pkg verifier --output bin/verifier",
         "publishToLocalRegistry": "npm-prebuilt-dependencies publish"
@@ -50,6 +50,7 @@
         "std/decorators/*",
         "std/definitions/*",
         "std/lib/libtsnative-std.a",
+        "declarator/include/*",
         "cmake/*",
         "bin/*",
         "tsnative.sh"
