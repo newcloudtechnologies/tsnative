@@ -500,20 +500,25 @@
   console.assert(fn(obj1) === DERIVED_RET, "Derived as polymorphic argument");
 }
 
-/*
-@todo: doesn't work on ts-node
 {
   const i = 4444
+  const nInitilizer = 9909;
 
   class Base {
-    n = 9909;
+    n = nInitilizer;
 
     constructor() {
-      const r1 = this.render1;
+      const r1 = this.render1.bind(this);
       console.assert(r1() === i, "Assign class method to variable in ctor (outer variable capturing)");
 
-      const r2 = this.render2;
+      /*
+
+      mkrv: @todo
+       TS is not support polymorphic 'this' in 'super()' context, but we do. Have to fix this behaviour
+
+      const r2 = this.render2.bind(this);
       console.assert(r2() === this.n, "Assign class method to variable in ctor (class variable capturing)");
+      */
     }
 
     render1(): number {
@@ -528,6 +533,18 @@
   class Derived extends Base {
     m = 1000;
 
+    constructor() {
+      super();
+
+      const r1 = this.render1.bind(this);
+      console.assert(r1() === i, "Assign class method to variable in ctor (outer variable capturing)");
+
+      const r2 = this.render2.bind(this);
+      console.assert(r2() === this.m, "Assign class method to variable in ctor (class variable capturing)");
+
+      console.assert(this.n === nInitilizer, "'Super' property from derived class ctor");
+    }
+
     render2(): number {
       return this.m;
     }
@@ -537,8 +554,8 @@
   const derived = new Derived();
 
   function f(v: Base) {
-    const r1 = v.render1;
-    const r2 = v.render2;
+    const r1 = v.render1.bind(v);
+    const r2 = v.render2.bind(v);
 
     return [r1(), r2()];
   }
@@ -549,7 +566,6 @@
   const derivedResult = f(derived);
   console.assert(derivedResult[0] === i && derivedResult[1] === derived.m, "Assign DERIVED class method to variable in function with polymorpic arguments");
 }
-*/
 
 {
   class RxComponent {
@@ -1116,4 +1132,23 @@
   }
 
   console.assert(new FileDialog().name === "Derived", "Polymorphic 'this' method");
+}
+
+{
+  const outerVariable = "A";
+
+  class MyComponent {
+    fofo(handler: () => string) {
+      const tmp = handler;
+      return tmp;
+    }
+
+    inFofoArg() { return outerVariable; }
+
+    render() {
+      return this.fofo(this.inFofoArg.bind(this));
+    }
+  }
+
+  console.assert(new MyComponent().render()() === outerVariable, "Bound method as argument");
 }

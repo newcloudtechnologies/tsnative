@@ -151,45 +151,66 @@ export class ConciseBody {
                 ts.isPropertyAccessExpression(node.expression) &&
                 this.generator.ts.checker.nodeHasSymbol(node.expression.expression)
               ) {
-                const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(node.expression.expression);
-                const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
+                let propertyAccessRoot: ts.Expression = node.expression;
+                let functionName = node.expression.name.getText();
 
-                if (node.expression.expression.kind === ts.SyntaxKind.ThisKeyword) {
-                  const thisVal = extendScope.get("this");
-
-                  if (thisVal instanceof LLVMValue && thisVal.hasPrototype()) {
-                    const propertyAccess = node.expression;
-                    const functionName = propertyAccess.name.getText();
-                    const methodDeclaration = thisVal
-                      .getPrototype()
-                      .methods.find((member) => member.name?.getText() === functionName);
-
-                    if (methodDeclaration) {
-                      declaration = methodDeclaration;
-                      skip = true;
-                    }
-                  }
+                while (ts.isPropertyAccessExpression(propertyAccessRoot)) {
+                  functionName = propertyAccessRoot.name.getText();
+                  propertyAccessRoot = propertyAccessRoot.expression;
                 }
 
-                if (propertyAccessDeclaration?.isParameter()) {
-                  skip = true;
+                const propertyAccessRootSymbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccessRoot);
+                const propertyAccessDeclaration = propertyAccessRootSymbol.valueDeclaration;
 
-                  const propertyAccess = node.expression;
-                  const functionName = propertyAccess.name.getText();
-                  const prototype = this.generator.meta.try(
-                    MetaInfoStorage.prototype.getParameterPrototype,
-                    propertyAccess.expression.getText()
-                  );
+                if (propertyAccessRoot.kind === ts.SyntaxKind.ThisKeyword) {
+                  const thisVal = extendScope.get("this");
 
-                  if (prototype) {
-                    const methodDeclaration = prototype.methods.find(
-                      (method) => method.name?.getText() === functionName
-                    );
-                    if (!methodDeclaration) {
-                      throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                  if (thisVal instanceof LLVMValue) {
+                    if (thisVal.hasPrototype()) {
+                      const methodDeclaration = thisVal
+                        .getPrototype()
+                        .methods.find((member) => member.name?.getText() === functionName);
+
+                      if (methodDeclaration) {
+                        declaration = methodDeclaration;
+                        skip = true;
+                      }
+                    } else {
+                      if (!propertyAccessDeclaration?.isClassOrInterface()) {
+                        throw new Error(
+                          `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
+                        );
+                      }
+
+                      const methodDeclaration = propertyAccessDeclaration.members.find(
+                        (m) => m.name?.getText() === functionName
+                      );
+                      if (methodDeclaration) {
+                        declaration = methodDeclaration;
+                        skip = true;
+                      }
                     }
+                  }
+                } else {
+                  // mkrv: @todo: duplicate functionality
+                  if (propertyAccessDeclaration?.isParameter()) {
+                    skip = true;
 
-                    declaration = methodDeclaration;
+                    const prototype = this.generator.meta.try(
+                      MetaInfoStorage.prototype.getParameterPrototype,
+                      propertyAccessRoot.getText()
+                    );
+
+                    if (prototype) {
+                      const methodDeclaration = prototype.methods.find(
+                        (method) => method.name?.getText() === functionName
+                      );
+                      if (!methodDeclaration) {
+                        throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                      }
+
+                      declaration = methodDeclaration;
+                    }
                   }
                 }
               }

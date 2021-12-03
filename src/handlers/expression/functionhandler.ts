@@ -897,12 +897,54 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return value.parameters.length === argumentTypes.length;
     });
 
+    // mkrv: @todo: duplicate functionality
+    if (ts.isPropertyAccessExpression(expression.expression)) {
+      const propertyAccess = expression.expression;
+
+      if (this.generator.ts.checker.nodeHasSymbol(propertyAccess.expression)) {
+        let propertyAccessRoot: ts.Expression = propertyAccess;
+        let functionName = propertyAccess.name.getText();
+
+        while (ts.isPropertyAccessExpression(propertyAccessRoot)) {
+          functionName = propertyAccessRoot.name.getText();
+          propertyAccessRoot = propertyAccessRoot.expression;
+        }
+
+        const propertyAccessRootSymbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccessRoot);
+        const propertyAccessDeclaration = propertyAccessRootSymbol.valueDeclaration;
+
+        if (propertyAccessDeclaration?.isParameter()) {
+          const prototype = this.generator.meta.getParameterPrototype(propertyAccessRoot.getText());
+
+          const candidates = prototype.methods.filter((m) => m.name?.getText() === functionName);
+          if (candidates.length === 0) {
+            throw new Error(
+              `Unable to find '${functionName}' in prototype of '${propertyAccessDeclaration.getText()}'`
+            );
+          }
+
+          const isSuperAccess = propertyAccessRoot.kind === ts.SyntaxKind.SuperKeyword;
+          if (isSuperAccess && candidates.length < 2) {
+            throw new Error(
+              `Unable to find '${functionName}' in prototype of '${propertyAccessDeclaration.getText()}' for base class`
+            );
+          }
+
+          // methods in prototype are in order from derived to base, so in case of 'super' access take previous one declaration
+          const methodIndex = isSuperAccess ? 1 : 0;
+          const functionDeclaration = candidates[methodIndex];
+
+          bindableValueDeclaration = functionDeclaration;
+        }
+      }
+    }
+
     if (!bindableValueDeclaration) {
       bindableValueDeclaration = bindableSymbol.declarations[0];
     }
 
     if (!bindableValueDeclaration.body) {
-      throw new Error("No function declaration body found");
+      throw new Error(`No function declaration body found at '${expression.getText()}'`);
     }
 
     const bindableSignature = this.generator.ts.checker.getSignatureFromDeclaration(bindableValueDeclaration)!;
@@ -1302,7 +1344,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     let functionName = qualifiedName + "__" + valueDeclaration.unique;
-    if (handledArgs.some((value) => value.generated) || args.some((arg) => arg.hasPrototype())) {
+
+    const haveGeneratedArgument = handledArgs.some((value) => value.generated);
+    const haveArgumentWithPrototype = args.some((arg) => arg.hasPrototype());
+    const haveLazyClosureArgument = args.some((arg) => this.generator.tsclosure.lazyClosure.isLazyClosure(arg));
+
+    if (haveGeneratedArgument || haveArgumentWithPrototype || haveLazyClosureArgument) {
       functionName += "__" + this.generator.randomString;
     }
     if (valueDeclaration.isStaticMethod()) {
@@ -1436,7 +1483,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
     effectiveArguments: LLVMValue[],
     index: number
   ) {
-    if (argumentDeclaration.parameters.length !== effectiveArguments.length) {
+    const withRestParameters = argumentDeclaration.parameters.some((parameter) => parameter.dotDotDotToken);
+
+    if (argumentDeclaration.parameters.length !== effectiveArguments.length && !withRestParameters) {
       throw new Error(
         `Expected ${argumentDeclaration.parameters.length} effective arguments, got ${effectiveArguments.length}`
       );
