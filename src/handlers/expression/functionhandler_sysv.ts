@@ -53,7 +53,10 @@ export class SysVFunctionHandler {
     );
     const body = valueDeclaration.body;
     if (body) {
-      throw new Error(`External symbol '${qualifiedName}' cannot have function body`);
+      const parentClass = valueDeclaration.parent as ts.ClassDeclaration;
+
+      throw new Error(`Name collision at '${expression.getText()}'.
+       Make sure there is no class '${parentClass.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
     const thisValue = this.generator.handleExpression(expression.expression, env);
@@ -158,7 +161,10 @@ export class SysVFunctionHandler {
     );
 
     if (valueDeclaration.body) {
-      throw new Error(`External symbol '${qualifiedName}' cannot have function body`);
+      const parentClass = valueDeclaration.parent as ts.ClassDeclaration;
+
+      throw new Error(`Name collision at '${expression.getText()}''.
+       Make sure there is no class '${parentClass.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
     if (thisValue) {
@@ -205,7 +211,8 @@ export class SysVFunctionHandler {
     }
 
     if (constructorDeclaration.body) {
-      throw new Error(`External symbol '${qualifiedName}' cannot have constructor body`);
+      throw new Error(`Name collision at ${expression.getText()}.
+       Make sure there is no class '${valueDeclaration.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
