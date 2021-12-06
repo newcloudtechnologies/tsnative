@@ -10,7 +10,7 @@
  */
 
 #include "ClassDetails.h"
-#include "TsSignature.h"
+#include "TsUtils.h"
 
 #include "generator/AbstractBlock.h"
 #include "generator/ElementAccessExpressionBlock.h"
@@ -153,11 +153,11 @@ generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_clas
     {
         if (annotations.exist("TS_SIGNATURE"))
         {
-            TsMethodSignature sig(annotations.value("TS_SIGNATURE"));
+            TsMethod signature(annotations.value("TS_SIGNATURE"));
 
-            method = AbstractBlock::make<MethodBlock>(sig.name(), sig.retType(), false);
+            method = AbstractBlock::make<MethodBlock>(signature.name(), signature.retType(), false);
 
-            for (const auto& it : sig.arguments())
+            for (const auto& it : signature.arguments())
             {
                 method->addArgument(it.name, it.type, it.isSpread);
             }

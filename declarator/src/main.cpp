@@ -10,10 +10,12 @@
  */
 
 #include "analyzer/Analyzer.h"
+#include "analyzer/TsUtils.h"
 #include "analyzer/TypeUtils.h"
 
 #include "generator/CommentBlock.h"
 #include "generator/FileBlock.h"
+#include "generator/ImportBlock.h"
 #include "generator/Printer.h"
 
 #include "parser/Collection.h"
@@ -30,11 +32,34 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
-#include <regex>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace
+{
+
+const std::string file_head =
+
+    "Copyright (c) New Cloud Technologies, Ltd., 2014-%d\n\n"
+
+    "You can not use the contents of the file in any way without\n"
+    "New Cloud Technologies, Ltd. written permission.\n\n"
+
+    "To obtain such a permit, you should contact New Cloud Technologies, Ltd.\n"
+    "at http://ncloudtech.com/contact.html\n\n"
+
+    "This file is created automatically.\n"
+    "Don't edit this file.\n";
+
+const std::string stdImportSignatures =
+
+    R"(import { int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, pointer } from "tsnative/std/definitions/lib.std.numeric";)"
+    R"(import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators";)"
+    R"(import { TSClosure } from "tsnative/std/definitions/lib.std.utils";)";
+
+} //  namespace
 
 std::string getEnv(const std::string& env)
 {
@@ -138,20 +163,7 @@ generator::ts::block_t<generator::ts::File> makeFile()
     std::tm* now = std::localtime(&t);
     int current_year = now->tm_year + 1900;
 
-    std::string template_head =
-
-        "Copyright (c) New Cloud Technologies, Ltd., 2014-%d\n\n"
-
-        "You can not use the contents of the file in any way without\n"
-        "New Cloud Technologies, Ltd. written permission.\n\n"
-
-        "To obtain such a permit, you should contact New Cloud Technologies, Ltd.\n"
-        "at http://ncloudtech.com/contact.html\n\n"
-
-        "This file is created automatically.\n"
-        "Don't edit this file.\n";
-
-    std::string head = strprintf(template_head.c_str(), current_year);
+    std::string head = strprintf(file_head.c_str(), current_year);
 
     auto file = AbstractBlock::make<File>();
 
@@ -162,26 +174,23 @@ generator::ts::block_t<generator::ts::File> makeFile()
     return file;
 }
 
-std::vector<std::pair<std::string, std::string>> getImports()
+std::vector<generator::ts::import_block_t> getImports(const std::string& signatures,
+                                                      std::vector<generator::ts::import_block_t> imports = {})
 {
     using namespace utils;
+    using namespace analyzer;
+    using namespace generator::ts;
 
-    std::vector<std::pair<std::string, std::string>> result;
-
-    std::string DECLARATOR_IMPORT = getEnv("DECLARATOR_IMPORT");
-
-    if (!DECLARATOR_IMPORT.empty())
+    for (const auto& it : split(signatures, ";"))
     {
-        for (const auto& it : split(DECLARATOR_IMPORT, ","))
+        if (!it.empty())
         {
-            std::vector<std::string> parts = split(it, ":");
-            _ASSERT(parts.size() == 2);
-
-            result.push_back(std::make_pair(parts.at(0), parts.at(1)));
+            TsImport signature(it);
+            imports.push_back(AbstractBlock::make<ImportBlock>(signature.path(), signature.entities()));
         }
     }
 
-    return result;
+    return imports;
 }
 
 generator::print::printer_t makePrinter(const std::string& filename)
@@ -257,11 +266,12 @@ int main(int argc, char** argv)
 
         abstract_block_t file = makeFile();
 
-        auto imports = getImports();
+        auto importBlocks = getImports(stdImportSignatures);
+        importBlocks = getImports(getEnv("DECLARATOR_IMPORT"), importBlocks);
 
         for (const auto& it : getSuitableItems(Collection::get()))
         {
-            file = analyze(it, typeMapper, imports, file);
+            file = analyze(it, typeMapper, importBlocks, file);
         }
 
         file->print(printer);

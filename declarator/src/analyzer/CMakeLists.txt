@@ -19,7 +19,7 @@ set(INCLUDES
     MakeEnum.h
     MakeFunction.h
     TypeUtils.h
-    TsSignature.h
+    TsUtils.h
 )
 
 set(SOURCES
@@ -30,7 +30,7 @@ set(SOURCES
     MakeEnum.cpp
     MakeFunction.cpp
     TypeUtils.cpp
-    TsSignature.cpp
+    TsUtils.cpp
 )
 
 add_library(${PROJECT_NAME} OBJECT

@@ -14,6 +14,7 @@
 #include "AbstractBlock.h"
 
 #include <string>
+#include <vector>
 
 namespace generator
 {
@@ -25,15 +26,18 @@ class ImportBlock : public AbstractBlock
 {
     friend class AbstractBlock;
 
-    std::string m_entity;
     std::string m_path;
+    std::vector<std::string> m_entityList;
 
 protected:
     void printBody(generator::print::printer_t printer) const override;
 
 private:
-    // TODO: support multiple import
-    ImportBlock(const std::string& entity, const std::string& path);
+    ImportBlock(const std::string& path, const std::vector<std::string>& entities = {});
+
+public:
+    std::string path() const;
+    void addEntity(const std::string& entity);
 };
 
 using import_block_t = block_t<ImportBlock>;

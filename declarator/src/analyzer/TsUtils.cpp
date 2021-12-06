@@ -9,14 +9,14 @@
  *
  */
 
-#include "TsSignature.h"
+#include "TsUtils.h"
 
 #include "utils/Exception.h"
 
 namespace analyzer
 {
 
-void TsMethodSignature::parseFunction(const std::string& sig)
+void TsMethod::parse(const std::string& sig)
 {
     std::regex regexp(R"(([a-zA-Z0-9_\<\>]+)\((.*)\)\s*\:\s*([a-zA-Z0-9\[\]\_]+))");
 
@@ -24,7 +24,7 @@ void TsMethodSignature::parseFunction(const std::string& sig)
 
     if (!std::regex_search(sig.begin(), sig.end(), match, regexp))
     {
-        throw utils::Exception(R"(invalid function signature: "%s")", sig.c_str());
+        throw utils::Exception(R"(invalid method signature: "%s")", sig.c_str());
     }
 
     m_name = match[1];
@@ -34,7 +34,7 @@ void TsMethodSignature::parseFunction(const std::string& sig)
     parseArgumentList(args);
 }
 
-void TsMethodSignature::parseArgumentList(const std::string& args)
+void TsMethod::parseArgumentList(const std::string& args)
 {
     std::regex regexp(
         R"(((\.\.\.)?[a-zA-Z0-9_]+\s*\:\s*)((\([^)]+\)\s*=>\s[a-zA-Z0-9\[\]\_]+)|((readonly)?\s*[a-zA-Z0-9\[\]\_]+)))");
@@ -51,7 +51,7 @@ void TsMethodSignature::parseArgumentList(const std::string& args)
     }
 }
 
-void TsMethodSignature::parseArgument(const std::string& arg)
+void TsMethod::parseArgument(const std::string& arg)
 {
     std::regex regexp(R"((\.\.\.)?([a-zA-Z0-9_]+)\s*\:\s*((\([^)]+\)\s*=>\s*[a-zA-Z0-9\_]+)|([a-zA-Z0-9\_]+)))");
     std::smatch match;
@@ -68,24 +68,70 @@ void TsMethodSignature::parseArgument(const std::string& arg)
     m_arguments.push_back({name, type, (dots == "...") ? true : false});
 }
 
-TsMethodSignature::TsMethodSignature(const std::string& sig)
+TsMethod::TsMethod(const std::string& sig)
 {
-    parseFunction(sig);
+    parse(sig);
 }
 
-std::string TsMethodSignature::name() const
+std::string TsMethod::name() const
 {
     return m_name;
 }
 
-std::string TsMethodSignature::retType() const
+std::string TsMethod::retType() const
 {
     return m_retType;
 }
 
-std::vector<TsMethodSignature::Argument> TsMethodSignature::arguments() const
+std::vector<TsMethod::Argument> TsMethod::arguments() const
 {
     return m_arguments;
+}
+
+void TsImport::parse(const std::string& sig)
+{
+    std::regex regexp(R"(import\s*\{\s*([A-Za-z0-9_\s\,]*)\}\s*from\s*\"([A-Za-z\/\.\-\s]*)\")");
+
+    std::smatch match;
+
+    if (!std::regex_search(sig.begin(), sig.end(), match, regexp))
+    {
+        throw utils::Exception(R"(invalid import signature: "%s")", sig.c_str());
+    }
+
+    m_path = match[2];
+    std::string entities = match[1];
+
+    parseEntityList(entities);
+}
+
+void TsImport::parseEntityList(const std::string& sig)
+{
+    std::regex regexp(R"(([^,^\s]+))");
+
+    auto begin = std::sregex_iterator(sig.begin(), sig.end(), regexp);
+    auto end = std::sregex_iterator();
+
+    for (auto it = begin; it != end; ++it)
+    {
+        std::string entity = (*it).str();
+        m_entities.push_back(entity);
+    }
+}
+
+TsImport::TsImport(const std::string& sig)
+{
+    parse(sig);
+}
+
+std::string TsImport::path() const
+{
+    return m_path;
+}
+
+std::vector<std::string> TsImport::entities() const
+{
+    return m_entities;
 }
 
 } // namespace analyzer

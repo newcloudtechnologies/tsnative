@@ -21,6 +21,25 @@ namespace analyzer
 
 class TypeMapper
 {
+    const std::map<std::string, std::string> STD_TABLE = {
+        {"char", "--"},
+        {"wchar_t", "--"},
+        {"unsigned char", "uint8_t"},
+        {"int", "int32_t"},
+        {"unsigned int", "uint32_t"},
+        {"short", "int16_t"},
+        {"unsigned short", "uint16_t"},
+        {"long", "int64_t"},
+        {"unsigned long", "uint64_t"},
+        {"long long", "--"},
+        {"unsigned long long", "--"},
+        {"float", "--"},
+        {"double", "number"},
+        {"long double", "--"},
+        {"bool", "boolean"},
+        {"void", "void"},
+    };
+
     std::map<std::string, std::string> m_table;
 
 private:

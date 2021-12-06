@@ -16,7 +16,7 @@
 namespace analyzer
 {
 
-class TsMethodSignature
+class TsMethod
 {
 public:
     struct Argument
@@ -32,16 +32,32 @@ private:
     std::string m_retType;
 
 private:
-    void parseFunction(const std::string& sig);
+    void parse(const std::string& sig);
     void parseArgumentList(const std::string& args);
     void parseArgument(const std::string& arg);
 
 public:
-    TsMethodSignature(const std::string& sig);
+    TsMethod(const std::string& sig);
 
     std::string name() const;
     std::string retType() const;
     std::vector<Argument> arguments() const;
+};
+
+class TsImport
+{
+private:
+    std::string m_path;
+    std::vector<std::string> m_entities;
+
+private:
+    void parse(const std::string& sig);
+    void parseEntityList(const std::string& sig);
+
+public:
+    TsImport(const std::string& sig);
+    std::string path() const;
+    std::vector<std::string> entities() const;
 };
 
 } // namespace analyzer

@@ -17,22 +17,14 @@
 #include <clang/AST/DeclCXX.h>
 #include <clang/AST/PrettyPrinter.h>
 
+#include <exception>
+
 namespace analyzer
 {
 
 TypeMapper::TypeMapper(const std::map<std::string, std::string>& table)
 {
-    // standard types
-    m_table = {
-
-        {"bool", "boolean"},
-        {"int", "int32_t"},
-        {"unsigned int", "uint32_t"},
-        {"unsigned", "uint32_t"},
-        {"double", "number"},
-        {"float", "number"},
-    };
-
+    m_table.insert(STD_TABLE.begin(), STD_TABLE.end());
     m_table.insert(table.begin(), table.end());
 }
 
@@ -83,6 +75,28 @@ std::string TypeMapper::getTSType(const std::string& cppType) const
 
     if (m_table.find(result) != m_table.end())
         result = m_table.at(result);
+
+    if (result == "--")
+    {
+        std::string availableTypes;
+        for (const auto& it : STD_TABLE)
+        {
+            if (it.second != "--")
+            {
+                if (availableTypes.empty())
+                {
+                    availableTypes += it.first;
+                }
+                else
+                {
+                    availableTypes += (", " + it.first);
+                }
+            }
+        }
+
+        throw std::runtime_error(utils::strprintf(
+            R"(type "%s" is not supported, available types: [%s])", cppType.c_str(), availableTypes.c_str()));
+    }
 
     return result;
 }

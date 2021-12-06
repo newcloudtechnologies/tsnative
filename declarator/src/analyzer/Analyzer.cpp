@@ -174,7 +174,7 @@ analyzer::TypeMapper makeTypeMapper(const parser::Collection& collection)
 
 generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
                                         const TypeMapper& typeMapper,
-                                        const std::vector<std::pair<std::string, std::string>>& imports,
+                                        const std::vector<generator::ts::import_block_t>& importBlocks,
                                         generator::ts::abstract_block_t file)
 {
     using namespace generator::ts;
@@ -183,7 +183,7 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
 
     auto root = std::static_pointer_cast<File>(file);
 
-    auto find_or_create = [root, imports](container_block_t parent, const std::string& name)
+    auto find_or_create = [root, importBlocks](container_block_t parent, const std::string& name)
     {
         abstract_block_t result;
         block_list_t containers;
@@ -211,9 +211,9 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
             {
                 result = AbstractBlock::make<ModuleBlock>(name);
 
-                for (const auto& [entity, path] : imports)
+                for (const auto& it : importBlocks)
                 {
-                    std::static_pointer_cast<ModuleBlock>(result)->add(AbstractBlock::make<ImportBlock>(entity, path));
+                    std::static_pointer_cast<ModuleBlock>(result)->add(it);
                 }
 
                 parent->add(result);
