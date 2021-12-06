@@ -127,4 +127,15 @@
     }
 
     console.assert(value.first === firstInitializer && value.second === secondInitializer, "Interface-typed variable out-of-order initialization");
+
+    function doit(args: MyClassData): MyClassData {
+        return args;
+    }
+
+    const res = doit({
+        second: secondInitializer,
+        first: firstInitializer
+    });
+
+    console.assert(res.first === firstInitializer && res.second === secondInitializer, "Interface-typed variable out-of-order initialization");
 }

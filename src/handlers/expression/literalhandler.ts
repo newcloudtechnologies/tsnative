@@ -4,6 +4,7 @@ import { Environment, HeapVariableDeclaration } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
 import { LLVMStructType, LLVMType } from "../../llvm/type";
 import { TSTuple } from "../../ts/tuple";
+import { TSType } from "../../ts/type";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -163,40 +164,66 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return object;
   }
 
-  private correctInterfacePropertiesOrder(expression: ts.Node, llvmValues: Map<string, LLVMValue>) {
+  private correctInterfacePropertiesOrder(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
     const isAssignment =
       ts.isBinaryExpression(expression.parent) && expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
     const isVariableDeclaration = ts.isVariableDeclaration(expression.parent);
+    const isArgument = ts.isCallExpression(expression.parent);
 
-    if (isAssignment || isVariableDeclaration) {
-      const variableType = isAssignment
-        ? this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.BinaryExpression).left)
-        : this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.VariableDeclaration).name);
+    if (!isAssignment && !isVariableDeclaration && !isArgument) {
+      return;
+    }
 
-      if (variableType.isInterface()) {
-        const interfaceSymbol = variableType.getSymbol();
-        const interfaceDeclaration = interfaceSymbol.valueDeclaration || interfaceSymbol.declarations[0];
+    let variableType: TSType;
+    if (isAssignment) {
+      variableType = this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.BinaryExpression).left);
+    } else if (isVariableDeclaration) {
+      variableType = this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.VariableDeclaration).name);
+    } else if (isArgument) {
+      const parentFunction = expression.parent as ts.CallExpression;
 
-        if (!interfaceDeclaration) {
-          throw new Error(`Unable to find declaration for type: '${variableType.toString()}'`);
+      const argumentIndex = parentFunction.arguments.indexOf(expression);
+      if (argumentIndex === -1) {
+        throw new Error(`Unable to find argument '${expression.getText()}' in call '${parentFunction.getText()}'`);
+      }
+
+      const parentFunctionType = this.generator.ts.checker.getTypeAtLocation(parentFunction.expression);
+      const parentFunctionSymbol = parentFunctionType.getSymbol();
+
+      const parentFunctionDeclaration = parentFunctionSymbol.valueDeclaration || parentFunctionSymbol.declarations[0];
+
+      const parentFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(parentFunctionDeclaration);
+      const declaredParameter = parentFunctionSignature.getDeclaredParameters()[argumentIndex];
+      const declaredParameterType = this.generator.ts.checker.getTypeAtLocation(declaredParameter);
+
+      variableType = declaredParameterType;
+    } else {
+      throw new Error("Unreachable in interface properties order correction");
+    }
+
+    if (variableType.isInterface()) {
+      const interfaceSymbol = variableType.getSymbol();
+      const interfaceDeclaration = interfaceSymbol.valueDeclaration || interfaceSymbol.declarations[0];
+
+      if (!interfaceDeclaration) {
+        throw new Error(`Unable to find declaration for type: '${variableType.toString()}'`);
+      }
+
+      if (interfaceDeclaration.members.some((m) => !m.name)) {
+        throw new Error(`Expected all interface members to be named. Error at: '${interfaceDeclaration.getText()}'`);
+      }
+
+      const propNames = interfaceDeclaration.members.map((m) => m.name!.getText());
+
+      const llvmValuesCopy = new Map(llvmValues);
+      llvmValues.clear();
+
+      for (const name of propNames) {
+        const value = llvmValuesCopy.get(name);
+        if (!value) {
+          throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
         }
-
-        if (interfaceDeclaration.members.some((m) => !m.name)) {
-          throw new Error(`Expected all interface members to be named. Error at: '${interfaceDeclaration.getText()}'`);
-        }
-
-        const propNames = interfaceDeclaration.members.map((m) => m.name!.getText());
-
-        const llvmValuesCopy = new Map(llvmValues);
-        llvmValues.clear();
-
-        for (const name of propNames) {
-          const value = llvmValuesCopy.get(name);
-          if (!value) {
-            throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
-          }
-          llvmValues.set(name, value);
-        }
+        llvmValues.set(name, value);
       }
     }
   }
