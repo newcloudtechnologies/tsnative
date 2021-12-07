@@ -625,9 +625,11 @@ export class TSType {
     const elements = this.getObjectPropsLLVMTypesNames();
 
     let structType: LLVMStructType;
+    const declarations = this.getSymbol().declarations;
     const declaration =
-      this.getSymbol().declarations.find((decl) => decl.isClass()) ||
-      this.getSymbol().declarations.find((decl) => decl.isInterface());
+      declarations.find((decl) => decl.isClass()) ||
+      declarations.find((decl) => decl.isInterface()) ||
+      declarations.find((decl) => decl.isTypeLiteral());
 
     if (declaration) {
       const declarationNamespace = declaration.getNamespace();

@@ -174,6 +174,10 @@ export class Declaration {
     return this.isClass() || this.isInterface();
   }
 
+  isTypeLiteral() {
+    return ts.isTypeLiteralNode(this.declaration);
+  }
+
   isEnum() {
     return ts.isEnumDeclaration(this.declaration);
   }

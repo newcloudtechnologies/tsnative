@@ -78,28 +78,43 @@
 }
 
 {
-  const getObject = function (name: string, length: number, height: number, width: number) {
-    const obj = {
-      name: name,
-      length: length,
-      height: height,
-      width: width
-    };
+    const getObject = function (name: string, length: number, height: number, width: number) {
+        const obj = {
+            name: name,
+            length: length,
+            height: height,
+            width: width
+        };
 
-    return obj;
-  }
+        return obj;
+    }
 
-  const obj1 = getObject("Box", 10, 16, 14);
+    const obj1 = getObject("Box", 10, 16, 14);
 
-  console.assert(obj1.name === "Box", "object: obj1.name failed");
-  console.assert(obj1.length === 10, "object: obj1.length failed");
-  console.assert(obj1.height === 16, "object: obj1.height failed");
-  console.assert(obj1.width === 14, "object: obj1.width failed");
+    console.assert(obj1.name === "Box", "object: obj1.name failed");
+    console.assert(obj1.length === 10, "object: obj1.length failed");
+    console.assert(obj1.height === 16, "object: obj1.height failed");
+    console.assert(obj1.width === 14, "object: obj1.width failed");
 
-  const obj2 = getObject("Cylinder", 20, 6, 6);
+    const obj2 = getObject("Cylinder", 20, 6, 6);
 
-  console.assert(obj2.name === "Cylinder", "object: obj2.name failed");
-  console.assert(obj2.length === 20, "object: obj2.length failed");
-  console.assert(obj2.height === 6, "object: obj2.height failed");
-  console.assert(obj2.width === 6, "object: obj2.width failed");
+    console.assert(obj2.name === "Cylinder", "object: obj2.name failed");
+    console.assert(obj2.length === 20, "object: obj2.length failed");
+    console.assert(obj2.height === 6, "object: obj2.height failed");
+    console.assert(obj2.width === 6, "object: obj2.width failed");
+}
+
+{
+    type AuthState_t = {
+        answer: string,
+    }
+
+    function f(state: AuthState_t, arg: string): AuthState_t {
+        return { ...state, answer: arg }
+    }
+
+    const state = { answer: 'aaa' }
+
+    const state2 = f(state, 'bbb')
+    console.assert(state2.answer === "bbb", "Spread from type-alias-typed parameter");
 }
