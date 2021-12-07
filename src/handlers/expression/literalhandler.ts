@@ -180,17 +180,37 @@ export class LiteralHandler extends AbstractExpressionHandler {
     } else if (isVariableDeclaration) {
       variableType = this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.VariableDeclaration).name);
     } else if (isArgument) {
-      const parentFunction = expression.parent as ts.CallExpression;
+      const parentFunction = expression.parent as ts.CallExpression | ts.NewExpression;
 
-      const argumentIndex = parentFunction.arguments.indexOf(expression);
-      if (argumentIndex === -1) {
+      const argumentIndex = parentFunction.arguments?.indexOf(expression);
+      if (typeof argumentIndex === "undefined" || argumentIndex === -1) {
         throw new Error(`Unable to find argument '${expression.getText()}' in call '${parentFunction.getText()}'`);
       }
 
-      const parentFunctionType = this.generator.ts.checker.getTypeAtLocation(parentFunction.expression);
-      const parentFunctionSymbol = parentFunctionType.getSymbol();
+      const parentType = this.generator.ts.checker.getTypeAtLocation(parentFunction.expression);
+      const parentSymbol = parentType.getSymbol();
 
-      const parentFunctionDeclaration = parentFunctionSymbol.valueDeclaration || parentFunctionSymbol.declarations[0];
+      let parentFunctionDeclaration;
+
+      if (parentFunction.expression.kind === ts.SyntaxKind.SuperKeyword || ts.isNewExpression(parentFunction)) {
+        const classDeclaration = parentSymbol.valueDeclaration;
+        if (!classDeclaration) {
+          throw new Error(
+            `Unable to find value declaration for class of type '${parentType.toString()}'. Error at '${parentFunction.getText()}'`
+          );
+        }
+
+        const constructorDeclaration = classDeclaration.members.find((m) => m.isConstructor());
+        if (!constructorDeclaration) {
+          throw new Error(
+            `Unable to find constructor at '${classDeclaration.getText()}'. Error at '${parentFunction.getText()}'`
+          );
+        }
+
+        parentFunctionDeclaration = constructorDeclaration;
+      } else {
+        parentFunctionDeclaration = parentSymbol.valueDeclaration || parentSymbol.declarations[0];
+      }
 
       const parentFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(parentFunctionDeclaration);
       const declaredParameter = parentFunctionSignature.getDeclaredParameters()[argumentIndex];

@@ -31,7 +31,7 @@ export class ReturnHandler extends AbstractNodeHandler {
           const declaratedReturnType = signature.getReturnType();
           const typeOfReturn = this.generator.ts.checker.getTypeAtLocation(node.expression);
 
-          if (typeOfReturn.isUpcastableTo(declaratedReturnType)) {
+          if (typeOfReturn.isUpcastableTo(declaratedReturnType) || typeOfReturn.isThisType()) {
             ret = this.generator.builder.createBitCast(ret, declaratedReturnType.getLLVMType());
             this.generator.builder.createSafeRet(ret);
 

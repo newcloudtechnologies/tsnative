@@ -320,8 +320,7 @@ export class TSType {
   }
 
   isTypeParameter() {
-    const isThis = this.toString() === "this";
-    if (isThis) {
+    if (this.isThisType()) {
       // For some reason type flags for 'this' includes ts.TypeFlags.TypeParameter (TS 3.9.10)
       // Typically this method is used to check if type have to be resolved using Scope's TypeMapper (a map 'string: TSType' where a key is a generic typename).
       // Without this guard the check will fail with error: 'Generic type 'this' is not registered'.
@@ -331,12 +330,16 @@ export class TSType {
     return Boolean(this.type.flags & ts.TypeFlags.TypeParameter);
   }
 
+  isThisType() {
+    return this.toString() === "this";
+  }
+
   isUpcastableTo(type: TSType) {
-    if (!this.isClassOrInterface()) {
+    if (!this.isClassOrInterface() && !this.isThisType()) {
       return false;
     }
 
-    if (!type.isClassOrInterface()) {
+    if (!type.isClassOrInterface() && !type.isThisType()) {
       return false;
     }
 

@@ -134,13 +134,13 @@
   console.assert(ClasssB.b === 1, "class: ClasssB.b === 1 failed");
   */
 
-/*
-@todo: doesn't work on ts-node
-  new B();
-
-  console.assert(B.a === 1, "class: ClasssB.a === 1 failed");
-  console.assert(A.a === 1, "class: ClasssA.a === 1 failed");
-*/
+  /*
+  @todo: doesn't work on ts-node
+    new B();
+  
+    console.assert(B.a === 1, "class: ClasssB.a === 1 failed");
+    console.assert(A.a === 1, "class: ClasssA.a === 1 failed");
+  */
 }
 
 {
@@ -1151,4 +1151,45 @@
   }
 
   console.assert(new MyComponent().render()() === outerVariable, "Bound method as argument");
+}
+
+{
+  class MyBase {
+    str1: string = "one";
+
+    lol(): MyBase {
+      return this;
+    }
+  }
+
+  class MyDerived extends MyBase {
+    str2: string = "two";
+  }
+
+  const obj = new MyDerived().lol();
+  console.assert(obj.str1 === "one", "'this' cast in return");
+  console.assert((obj as MyDerived).str2 === "two", "Cast it back");
+}
+
+{
+  // only test buildability
+  interface MyState {
+    str: string;
+  }
+
+  class RxComponent_t {
+    constructor(initialState: MyState) {
+      let unused = initialState;
+    }
+  }
+
+  class MyStatum_t extends RxComponent_t {
+    constructor() {
+      super({
+        str: "_str"
+      });
+    }
+  }
+
+  let id_statum = new MyStatum_t();
 }
