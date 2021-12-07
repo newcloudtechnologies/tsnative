@@ -290,9 +290,11 @@ export function createEnvironment(
   const map = new Map<string, { type: LLVMType; allocated: LLVMValue }>();
 
   if (functionData) {
-    const argsTypes = functionData.args.map((arg) => {
+    const argsTypes = functionData.args.map((arg, index) => {
       if (!arg.type.isPointer()) {
-        throw new Error(`Argument expected to be of PointerType, got '${arg.type.toString()}'`);
+        throw new Error(
+          `Argument at index ${index} expected to be of PointerType, got '${arg.type.toString()}' (signature: ${functionData.signature.toString()}))`
+        );
       }
       return arg.type;
     });

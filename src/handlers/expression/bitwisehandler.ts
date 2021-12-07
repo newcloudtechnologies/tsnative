@@ -22,17 +22,17 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandToken:
-          return this.handleBitwiseAnd(left, right, env);
+          return this.handleBitwiseAnd(left, right, env).createHeapAllocated();
         case ts.SyntaxKind.BarToken:
-          return this.handleBitwiseOr(left, right, env);
+          return this.handleBitwiseOr(left, right, env).createHeapAllocated();
         case ts.SyntaxKind.CaretToken:
-          return this.handleBitwiseXor(left, right, env);
+          return this.handleBitwiseXor(left, right, env).createHeapAllocated();
         case ts.SyntaxKind.LessThanLessThanToken:
-          return this.handleLeftShift(left, right, env);
+          return this.handleLeftShift(left, right, env).createHeapAllocated();
         case ts.SyntaxKind.GreaterThanGreaterThanToken:
-          return this.handleRightShift(left, right, env);
+          return this.handleRightShift(left, right, env).createHeapAllocated();
         case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
-          return this.handleLogicalRightShift(left, right, env);
+          return this.handleLogicalRightShift(left, right, env).createHeapAllocated();
         default:
           break;
       }

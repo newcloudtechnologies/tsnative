@@ -208,6 +208,10 @@ export class LLVMValue {
       return LLVMConstantInt.getTrue(this.generator);
     }
 
+    if (value.type.isPointer()) {
+      return LLVMConstantInt.getTrue(this.generator);
+    }
+
     throw new Error(`Unable to convert operand of type ${value.type.toString()} to boolean value`);
   }
 

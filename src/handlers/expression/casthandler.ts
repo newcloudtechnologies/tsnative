@@ -18,8 +18,9 @@ import { LLVMStructType } from "../../llvm/type";
 export class CastHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
+      case ts.SyntaxKind.TypeAssertionExpression:
       case ts.SyntaxKind.AsExpression:
-        const asExpression = expression as ts.AsExpression;
+        const asExpression = expression as ts.AsExpression | ts.TypeAssertion;
         const value = this.generator.handleExpression(asExpression.expression, env);
 
         const destinationType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);

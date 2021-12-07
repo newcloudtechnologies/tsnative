@@ -784,25 +784,7 @@ export class TSType {
     }
 
     if (this.isEnum()) {
-      const declaration = this.getSymbol().declarations[0];
-      if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
-        console.log(declaration.getText());
-        throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
-      }
-
-      if (declaration.isEnum()) {
-        // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
-        // Pretend it is a numeric enum for now.
-        return LLVMType.getDoubleType(this.checker.generator).getPointer();
-      }
-
-      if (!declaration.initializer) {
-        // initializer absence indicates that it is numeric enum
-        return LLVMType.getDoubleType(this.checker.generator).getPointer();
-      }
-
-      const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
-      return initializerType.getLLVMType();
+      return this.getEnumElementType();
     }
 
     if (this.isBoolean()) {
@@ -930,12 +912,18 @@ export class TSType {
         return "void*";
       }
 
-      if (declaration.isClass() && !declaration.isAmbient()) {
-        return "void*";
-      }
+      if (!declaration.isAmbient()) {
+        if (declaration.isClass()) {
+          return "void*";
+        }
 
-      if (this.isObject() && !declaration.isAmbient()) {
-        return "void*";
+        if (this.isObject()) {
+          return "void*";
+        }
+
+        if (this.isEnum()) {
+          return this.getEnumElementCppType();
+        }
       }
     }
 
@@ -997,5 +985,47 @@ export class TSType {
 
   unwrap() {
     return this.type;
+  }
+
+  protected getEnumElementType() {
+    const declaration = this.getSymbol().declarations[0];
+    if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
+      throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
+    }
+
+    if (declaration.isEnum()) {
+      // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
+      // Pretend it is a numeric enum for now.
+      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+    }
+
+    if (!declaration.initializer) {
+      // initializer absence indicates that it is numeric enum
+      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+    }
+
+    const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
+    return initializerType.getLLVMType();
+  }
+
+  protected getEnumElementCppType() {
+    const declaration = this.getSymbol().declarations[0];
+    if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
+      throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
+    }
+
+    if (declaration.isEnum()) {
+      // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
+      // Pretend it is a numeric enum for now.
+      return "double";
+    }
+
+    if (!declaration.initializer) {
+      // initializer absence indicates that it is numeric enum
+      return "double";
+    }
+
+    const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
+    return initializerType.toCppType();
   }
 }
