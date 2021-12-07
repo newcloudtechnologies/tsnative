@@ -23,6 +23,7 @@ const terminatedDefaultClause = function () {
 
 const implicitlyTerminated = function () {
     if (false) {
+        // @ts-ignore (skip unreachable code check)
         return 1;
     }
 }

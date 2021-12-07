@@ -81,6 +81,11 @@ async function main() {
     options.experimentalDecorators = true;
   }
 
+  if (!options.allowUnreachableCode) {
+    console.warn("It seems like unreachable code is not forbidden by tsconfig.json. It will be enforced by compiler.");
+    options.allowUnreachableCode = false;
+  }
+
   options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
 
   const host = ts.createCompilerHost(options);

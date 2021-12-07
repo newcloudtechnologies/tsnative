@@ -124,6 +124,7 @@
         return -1;
     }
 
+    // @ts-ignore (skip unreachable code check)
     return 100;
   }
 

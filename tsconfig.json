@@ -11,7 +11,8 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "pretty": true,
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "allowUnreachableCode": false
   },
   "include": [
     "src/*",

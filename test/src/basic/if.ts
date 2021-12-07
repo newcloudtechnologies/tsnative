@@ -26,6 +26,7 @@
       return "else_branch"
     }
 
+    // @ts-ignore (skip unreachable code check)
     return "passed_by_if";
   }
 
