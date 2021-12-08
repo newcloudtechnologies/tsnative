@@ -1437,6 +1437,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
           signature.getParameters()[index].escapedName.toString()
         );
 
+        const isFunargCalled = effectiveArguments.length > 0;
+        if (!isFunargCalled) {
+          return { value: pair.value, generated: false };
+        }
+
         return this.handleClosureArgument(
           pair.value,
           pair.argument,

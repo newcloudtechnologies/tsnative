@@ -110,7 +110,21 @@ export class TSType {
   }
 
   getTypename() {
-    return this.isPrimitive() ? this.checker.getBaseTypeOfLiteralType(this.type).toString() : this.getSymbol().name;
+    if (this.isPrimitive()) {
+      return this.checker.getBaseTypeOfLiteralType(this.type).toString();
+    }
+
+    const symbol = this.getSymbol();
+    const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+    if (declaration.isTypeLiteral()) {
+      const declarationParent = declaration.parent;
+      if (ts.isTypeAliasDeclaration(declarationParent)) {
+        return declarationParent.name.escapedText.toString();
+      }
+    }
+
+    return symbol.name;
   }
 
   getNamespace() {
@@ -494,6 +508,8 @@ export class TSType {
           suffix += "__" + declaration.unique;
         } else if (declaration.isClass()) {
           suffix = "class";
+          suffix += "__" + declaration.unique;
+        } else if (declaration.isTypeLiteral()) {
           suffix += "__" + declaration.unique;
         }
 
