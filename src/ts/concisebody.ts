@@ -303,6 +303,12 @@ export class ConciseBody {
             .filter((name) => !environmentVariables.includes(name))
         );
 
+        const declaredParameters = signature.getDeclaredParameters();
+        const defaultParameters = declaredParameters
+          .filter((param) => param.initializer)
+          .map((param) => param.initializer!.getText());
+        environmentVariables.push(...defaultParameters.filter((name) => !environmentVariables.includes(name)));
+
         return environmentVariables;
       }, this.generator.symbolTable.currentScope);
     });

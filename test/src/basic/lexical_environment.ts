@@ -127,3 +127,25 @@
 
     console.assert(v.fun(10) === 111, "More complex funarg capturing failed");
 }
+
+{
+    enum MyLayoutMode {
+        Auto = 0,
+        Manual,
+    }
+
+    class RxWidget_t {
+        addChild3(mode: MyLayoutMode = MyLayoutMode.Auto) {
+            return mode;
+        }
+    }
+
+    class RxVStack_t extends RxWidget_t {
+        constructor() {
+            super();
+            console.assert(this.addChild3() === MyLayoutMode.Auto, "Default parameter captured in environment");
+        }
+    }
+
+    new RxVStack_t();
+}
