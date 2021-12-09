@@ -40,6 +40,7 @@ import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";
 import { Signature } from "../../ts/signature";
 import { TSSymbol } from "../../ts/symbol";
+import { LLVMFunction } from "../../llvm/function";
 
 export class FunctionHandler extends AbstractExpressionHandler {
   private readonly sysVFunctionHandler: SysVFunctionHandler;
@@ -426,7 +427,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
         const { fn } = this.generator.llvm.function.create(llvmReturnType, [e.voidStar], this.generator.randomString);
         this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, e);
-        llvm.verifyFunction(fn.unwrapped as llvm.Function);
+        LLVMFunction.verify(fn, expression);
 
         const functionType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
         closure = this.makeClosure(fn, functionType, e);
@@ -555,7 +556,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
 
     this.handleConstructorBody(constructorDeclaration, constructor, env);
-    setLLVMFunctionScope(constructor, parentScope, this.generator);
+    setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
 
     this.generator.builder.createSafeCall(constructor, [env.untyped]);
 
@@ -654,7 +655,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], this.generator.randomString);
 
     this.handleFunctionBody(llvmReturnType, expressionDeclaration, fn, env);
-    llvm.verifyFunction(fn.unwrapped as llvm.Function);
+    LLVMFunction.verify(fn, expression);
 
     const functionType = this.generator.ts.checker.getTypeAtLocation(expression);
     return this.makeClosure(fn, functionType, env);
@@ -754,7 +755,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (!existing) {
       this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, env);
-      setLLVMFunctionScope(fn, parentScope, this.generator);
+      setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
 
     return this.generator.builder.createSafeCall(fn, callArgs);
@@ -861,7 +862,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (!existing) {
       this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, env);
-      setLLVMFunctionScope(fn, parentScope, this.generator);
+      setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
 
     return this.generator.builder.createSafeCall(fn, callArgs);
@@ -1018,7 +1019,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const { fn } = this.generator.llvm.function.create(llvmReturnType, [e.voidStar], this.generator.randomString);
 
     this.handleFunctionBody(llvmReturnType, bindableValueDeclaration, fn, e);
-    llvm.verifyFunction(fn.unwrapped as llvm.Function);
+    LLVMFunction.verify(fn, expression);
 
     const functionType = this.generator.ts.checker.getTypeAtLocation(bindable);
     return this.makeClosure(fn, functionType, e);
@@ -1294,18 +1295,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
       )
     );
 
+    const isInFunction = this.isInFunction(expression);
+
     let env = createEnvironment(
       parentScope,
       environmentVariables,
       this.generator,
       { args, signature },
       outerEnv,
-      valueDeclaration.body,
+      !isInFunction ? valueDeclaration.body : undefined,
       isMethod,
       thisVal && thisVal.hasPrototype() ? thisVal.getPrototype() : undefined
     );
 
-    if (args.some((arg) => arg.type.isClosure())) {
+    if (!isInFunction && args.some((arg) => arg.type.isClosure())) {
       const indexesOfClosureArguments = args.reduce((indexes, arg, index) => {
         if (arg.type.isClosure()) {
           indexes.push(index);
@@ -1368,7 +1371,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (!existing) {
       this.handleFunctionBody(llvmReturnType, valueDeclaration, fn, env);
-      setLLVMFunctionScope(fn, parentScope, this.generator);
+      setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
 
     return this.generator.builder.createSafeCall(fn, callArgs);
@@ -1613,8 +1616,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
         this.generator.randomString
       );
       this.handleFunctionBody(returnType, argument.declaration, fn, generatedEnvironment);
+      LLVMFunction.verify(fn, argument.expression);
 
-      llvm.verifyFunction(fn.unwrapped as llvm.Function);
       this.generator.symbolTable.currentScope.overwrite(fnScopeName, fn);
 
       const functionType = this.generator.ts.checker.getTypeAtLocation(
@@ -1752,7 +1755,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       }
 
       this.handleConstructorBody(constructorDeclaration, constructor, env);
-      setLLVMFunctionScope(constructor, parentScope, this.generator);
+      setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
     }
 
     this.generator.builder.createSafeCall(constructor, [env.untyped]);
@@ -1802,7 +1805,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
 
       this.handleFunctionBody(llvmReturnType, method, fn, env);
-      llvm.verifyFunction(fn.unwrapped as llvm.Function);
+      LLVMFunction.verify(fn, valueDeclaration);
 
       const closure = this.makeClosure(fn, method.type, env);
 
@@ -1955,7 +1958,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
 
     this.handleFunctionBody(llvmReturnType, expressionDeclaration, fn, env);
-    llvm.verifyFunction(fn.unwrapped as llvm.Function);
+    LLVMFunction.verify(fn, expression);
 
     const functionType = this.generator.ts.checker.getTypeAtLocation(expression);
     return this.makeClosure(fn, functionType, env);
@@ -2108,5 +2111,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
     parameters.forEach((parameter) => {
       addClassScope(parameter, this.generator.symbolTable.globalScope, this.generator);
     });
+  }
+
+  private isInFunction(expression: ts.Expression) {
+    let parentFunction = expression.parent;
+
+    while (parentFunction && !ts.isFunctionLike(parentFunction)) {
+      parentFunction = parentFunction.parent;
+    }
+
+    return Boolean(parentFunction);
   }
 }

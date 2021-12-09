@@ -124,3 +124,22 @@
   const FMStore = createStore2(MyReducer)
   FMStore.dispatch({ type: 123 })
 }
+
+{
+  // Test only buildability
+  function createStore<S, A>(reducer: (state: S, action: A) => S, initialState: S): S {
+    let state = initialState;
+    let unused = reducer;
+    return state;
+  }
+
+  function FMReducer(state: string, action: number): string {
+    return state;
+  }
+
+  const createFMStore = (state: string) => {
+    createStore(FMReducer, state);
+  }
+
+  createFMStore("");
+}

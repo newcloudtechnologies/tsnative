@@ -19,6 +19,7 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { Signature } from "../ts/signature";
+import { LLVMFunction } from "../llvm/function";
 
 export class Environment {
   private readonly pThisPrototype: Prototype | undefined;
@@ -181,8 +182,13 @@ export function injectUndefined(scope: Scope, generator: LLVMGenerator) {
   scope.set("undefined", LLVMValue.create(undef, generator));
 }
 
-export function setLLVMFunctionScope(fn: LLVMValue, scope: Scope, generator: LLVMGenerator) {
-  llvm.verifyFunction(fn.unwrapped as llvm.Function);
+export function setLLVMFunctionScope(
+  fn: LLVMValue,
+  scope: Scope,
+  generator: LLVMGenerator,
+  source: ts.Expression | Declaration
+) {
+  LLVMFunction.verify(fn, source);
 
   // Function declaration may be in scope with same name.
   // @todo: overwrite?
@@ -269,11 +275,12 @@ export class HeapVariableDeclaration {
   }
 }
 
-function getInnerEnvironmentFromExpression(expression: ts.CallExpression, generator: LLVMGenerator) {
-  const type = generator.ts.checker.getTypeAtLocation(expression.expression);
+function getInnerEnvironmentFromExpression(expression: ts.Expression, generator: LLVMGenerator) {
+  const type = generator.ts.checker.getTypeAtLocation(expression);
   const symbol = type.getSymbol();
 
   const declaration = symbol.declarations[0];
+
   return generator.meta.try(MetaInfoStorage.prototype.getFunctionEnvironment, declaration);
 }
 
@@ -381,30 +388,66 @@ export function createEnvironment(
   );
 
   if (functionBody) {
-    const innerEnvironments = [];
-    if (ts.isBlock(functionBody)) {
-      functionBody.forEachChild((node) => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-          if (generator.symbolTable.currentScope.get(node.expression.getText())) {
+    const innerEnvironments: Environment[] = [];
+
+    const visitor = (node: ts.Node) => {
+      node.forEachChild(visitor);
+
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+        const isLocal = generator.symbolTable.currentScope.get(node.expression.getText());
+        if (!isLocal) {
+          const type = generator.ts.checker.getTypeAtLocation(node.expression);
+          if (type.isSymbolless()) {
             return;
           }
 
-          const innerEnvironment = getInnerEnvironmentFromExpression(node, generator);
+          const symbol = type.getSymbol();
+          const declaration = symbol.valueDeclaration;
+
+          if (!declaration) {
+            return;
+          }
+
+          if (!declaration.isFunctionLike()) {
+            return;
+          }
+
+          declaration.body?.forEachChild(visitor);
+          const innerEnvironment = getInnerEnvironmentFromExpression(node.expression, generator);
+
           if (innerEnvironment) {
             innerEnvironments.push(innerEnvironment);
           }
-        }
-      });
-    } else {
-      if (ts.isCallExpression(functionBody) && ts.isIdentifier(functionBody.expression)) {
-        if (!generator.symbolTable.currentScope.get(functionBody.expression.getText())) {
-          const innerEnvironment = getInnerEnvironmentFromExpression(functionBody, generator);
-          if (innerEnvironment) {
-            innerEnvironments.push(innerEnvironment);
-          }
+
+          node.arguments.forEach((arg) => {
+            const argType = generator.ts.checker.getTypeAtLocation(arg);
+            if (argType.isSymbolless()) {
+              return;
+            }
+
+            const argSymbol = argType.getSymbol();
+            const argDeclaration = argSymbol.valueDeclaration;
+
+            if (!argDeclaration) {
+              return;
+            }
+
+            if (!argDeclaration.isFunctionLike()) {
+              return;
+            }
+
+            argDeclaration.body?.forEachChild(visitor);
+
+            const argInnerEnvironment = getInnerEnvironmentFromExpression(arg, generator);
+            if (argInnerEnvironment) {
+              innerEnvironments.push(argInnerEnvironment);
+            }
+          });
         }
       }
-    }
+    };
+
+    functionBody.forEachChild(visitor);
 
     if (innerEnvironments.length > 0) {
       env = Environment.merge(env, innerEnvironments, generator);

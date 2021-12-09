@@ -10,6 +10,8 @@
  */
 
 import * as llvm from "llvm-node";
+import { Declaration } from "../ts/declaration";
+import * as ts from "typescript";
 
 import { LLVMGenerator } from "../generator";
 import { LLVMType } from "../llvm/type";
@@ -58,5 +60,14 @@ export class LLVMFunction {
       ),
       existing: false,
     };
+  }
+
+  static verify(fn: LLVMValue, source: ts.Expression | Declaration) {
+    try {
+      llvm.verifyFunction(fn.unwrapped as llvm.Function);
+    } catch (err) {
+      console.error(`Function verification failed at: '${source.getText()}'`);
+      throw err;
+    }
   }
 }
