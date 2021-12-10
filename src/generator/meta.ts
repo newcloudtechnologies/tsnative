@@ -17,7 +17,6 @@ import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
-import { TSSymbol } from "../ts/symbol";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -86,10 +85,6 @@ class ParameterPrototypeStorage {
   readonly storage = new Map<string, Prototype>();
 }
 
-class RemappedSymbolDeclarationsStorage {
-  readonly storage = new Map<ts.Symbol, Declaration>();
-}
-
 class ClassDeclarationTypeMapperStorage {
   readonly storage = new Map<ts.Declaration, GenericTypeMapper>();
 }
@@ -103,7 +98,6 @@ export class MetaInfoStorage {
   readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
   readonly closureEnvironment = new ClosureEnvironmentStorage();
   readonly parameterPrototype = new ParameterPrototypeStorage();
-  readonly remappedSymbolDeclaration = new RemappedSymbolDeclarationsStorage();
   readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
 
   registerUnionMeta(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
@@ -191,7 +185,7 @@ export class MetaInfoStorage {
     const hash = crypto.createHash("sha256").update(declaration.getText()).digest("hex");
     const stored = this.functionExpressionEnv.storage.get(hash);
     if (!stored) {
-      throw new Error(`No environment registered`);
+      throw new Error(`No environment registered for '${declaration.getText()}'`);
     }
 
     return stored;
@@ -219,18 +213,6 @@ export class MetaInfoStorage {
       throw new Error(`No prototype registered for '${parameter}'`);
     }
     return prototype;
-  }
-
-  registerRemappedSymbolDeclaration(symbol: TSSymbol, declaration: Declaration) {
-    this.remappedSymbolDeclaration.storage.set(symbol.unwrapped, declaration);
-  }
-
-  getRemappedSymbolDeclaration(symbol: TSSymbol) {
-    const declaration = this.remappedSymbolDeclaration.storage.get(symbol.unwrapped);
-    if (!declaration) {
-      throw new Error(`No declaration registered for '${symbol.escapedName}'`);
-    }
-    return declaration;
   }
 
   registerClassTypeMapper(declaration: Declaration, mapper: GenericTypeMapper) {

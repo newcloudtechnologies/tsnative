@@ -39,7 +39,6 @@ import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";
 import { Signature } from "../../ts/signature";
-import { TSSymbol } from "../../ts/symbol";
 import { LLVMFunction } from "../../llvm/function";
 
 export class FunctionHandler extends AbstractExpressionHandler {
@@ -420,7 +419,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator,
           { args: adjustedArgs, signature },
           outerEnv,
-          valueDeclaration.body,
           undefined,
           outerEnv.thisPrototype
         );
@@ -541,7 +539,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args, signature },
       outerEnv,
-      constructorDeclaration.body,
       undefined,
       outerEnv?.thisPrototype
     );
@@ -632,7 +629,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args: dummyArguments, signature },
       outerEnv,
-      expression.body,
       undefined,
       outerEnv?.thisPrototype
     );
@@ -722,7 +718,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       undefined,
       outerEnv,
-      valueDeclaration.body,
       undefined,
       outerEnv?.thisPrototype
     );
@@ -830,7 +825,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args, signature },
       outerEnv,
-      valueDeclaration.body,
       undefined,
       outerEnv?.thisPrototype
     );
@@ -1007,7 +1001,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
         signature: bindableSignature,
       },
       outerEnv,
-      bindableValueDeclaration.body,
       undefined,
       outerEnv?.thisPrototype
     );
@@ -1035,28 +1028,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
       thisType = this.generator.ts.checker.getTypeAtLocation(propertyAccess.expression);
     }
 
-    let symbol: TSSymbol;
-    let valueDeclaration: Declaration;
+    const symbol = this.generator.ts.checker.getTypeAtLocation(expression.expression).getSymbol();
 
-    symbol = this.generator.ts.checker.getTypeAtLocation(expression.expression).getSymbol();
-
-    const maybeValueDeclaration = this.generator.meta.try(
-      MetaInfoStorage.prototype.getRemappedSymbolDeclaration,
-      symbol
-    );
-
-    const isCallOfRemappedSymbol = Boolean(maybeValueDeclaration);
-    if (isCallOfRemappedSymbol) {
-      valueDeclaration = maybeValueDeclaration!;
-      if (valueDeclaration.isMethod()) {
-        thisType = this.generator.ts.checker.getTypeAtLocation(valueDeclaration.parent);
-      }
-    } else {
-      valueDeclaration =
-        symbol.declarations.find((value: Declaration) => {
-          return value.parameters.length === argumentTypes.length;
-        }) || symbol.declarations[0];
-    }
+    let valueDeclaration =
+      symbol.declarations.find((value: Declaration) => {
+        return value.parameters.length === argumentTypes.length;
+      }) || symbol.declarations[0];
 
     const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
 
@@ -1262,9 +1239,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const llvmThisType = parentScope.thisData?.llvmType;
 
-    if (outerEnv && isCallOfRemappedSymbol) {
+    if (!thisVal && isMethod && outerEnv) {
       const thisIdx = outerEnv.getVariableIndex(this.generator.internalNames.This);
-      if (!thisVal && thisIdx !== -1) {
+      if (thisIdx !== -1) {
         const outerEnvLoaded = this.generator.builder.createLoad(outerEnv.typed);
         thisVal = this.generator.builder.createSafeExtractValue(outerEnvLoaded, [thisIdx]);
       }
@@ -1295,20 +1272,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
       )
     );
 
-    const isInFunction = this.isInFunction(expression);
-
     let env = createEnvironment(
       parentScope,
       environmentVariables,
       this.generator,
       { args, signature },
       outerEnv,
-      !isInFunction ? valueDeclaration.body : undefined,
       isMethod,
       thisVal && thisVal.hasPrototype() ? thisVal.getPrototype() : undefined
     );
 
-    if (!isInFunction && args.some((arg) => arg.type.isClosure())) {
+    if (!this.isInFunction(expression) && args.some((arg) => arg.type.isClosure())) {
       const indexesOfClosureArguments = args.reduce((indexes, arg, index) => {
         if (arg.type.isClosure()) {
           indexes.push(index);
@@ -1714,7 +1688,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator,
       { args, signature },
       outerEnv,
-      constructorDeclaration.body,
       /* prefer local this = */ true,
       valueDeclaration.getPrototype()
     );
@@ -1792,7 +1765,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
         this.generator,
         undefined,
         outerEnv,
-        method.body,
         undefined,
         outerEnv?.thisPrototype
       );
@@ -1930,7 +1902,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
         signature,
       },
       outerEnv,
-      expression.body,
       undefined,
       outerEnv?.thisPrototype
     );

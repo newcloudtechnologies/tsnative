@@ -11,7 +11,7 @@
 
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "../generator";
+import { GenericTypeMapper, LLVMGenerator } from "../generator";
 
 import { TSType } from "../ts/type";
 import { flatten } from "lodash";
@@ -275,22 +275,12 @@ export class HeapVariableDeclaration {
   }
 }
 
-function getInnerEnvironmentFromExpression(expression: ts.Expression, generator: LLVMGenerator) {
-  const type = generator.ts.checker.getTypeAtLocation(expression);
-  const symbol = type.getSymbol();
-
-  const declaration = symbol.declarations[0];
-
-  return generator.meta.try(MetaInfoStorage.prototype.getFunctionEnvironment, declaration);
-}
-
 export function createEnvironment(
   scope: Scope,
   environmentVariables: string[],
   generator: LLVMGenerator,
   functionData?: { args: LLVMValue[]; signature: Signature },
   outerEnv?: Environment,
-  functionBody?: ts.ConciseBody,
   preferLocalThis?: boolean,
   thisPrototype?: Prototype
 ) {
@@ -379,80 +369,13 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
-  let env = new Environment(
+  const env = new Environment(
     names,
     generator.builder.asVoidStar(environmentAlloca),
     environmentDataType,
     generator,
     thisPrototype
   );
-
-  if (functionBody) {
-    const innerEnvironments: Environment[] = [];
-
-    const visitor = (node: ts.Node) => {
-      node.forEachChild(visitor);
-
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-        const isLocal = generator.symbolTable.currentScope.get(node.expression.getText());
-        if (!isLocal) {
-          const type = generator.ts.checker.getTypeAtLocation(node.expression);
-          if (type.isSymbolless()) {
-            return;
-          }
-
-          const symbol = type.getSymbol();
-          const declaration = symbol.valueDeclaration;
-
-          if (!declaration) {
-            return;
-          }
-
-          if (!declaration.isFunctionLike()) {
-            return;
-          }
-
-          declaration.body?.forEachChild(visitor);
-          const innerEnvironment = getInnerEnvironmentFromExpression(node.expression, generator);
-
-          if (innerEnvironment) {
-            innerEnvironments.push(innerEnvironment);
-          }
-
-          node.arguments.forEach((arg) => {
-            const argType = generator.ts.checker.getTypeAtLocation(arg);
-            if (argType.isSymbolless()) {
-              return;
-            }
-
-            const argSymbol = argType.getSymbol();
-            const argDeclaration = argSymbol.valueDeclaration;
-
-            if (!argDeclaration) {
-              return;
-            }
-
-            if (!argDeclaration.isFunctionLike()) {
-              return;
-            }
-
-            argDeclaration.body?.forEachChild(visitor);
-
-            const argInnerEnvironment = getInnerEnvironmentFromExpression(arg, generator);
-            if (argInnerEnvironment) {
-              innerEnvironments.push(argInnerEnvironment);
-            }
-          });
-        }
-      }
-    };
-
-    functionBody.forEachChild(visitor);
-
-    if (innerEnvironments.length > 0) {
-      env = Environment.merge(env, innerEnvironments, generator);
-    }
-  }
 
   return env;
 }

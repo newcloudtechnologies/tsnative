@@ -1193,3 +1193,23 @@
 
   let id_statum = new MyStatum_t();
 }
+
+{
+  // only test buildability
+  const tmp_createActionButton = (action: (() => void)): void => {
+    action();
+  }
+
+  class MyComponent {
+    n = 3
+    my_updateState(): void { console.log(this.n) }
+
+    render2(): void {
+      let this_my_updateState = this.my_updateState.bind(this);
+      tmp_createActionButton(this_my_updateState);
+    }
+  }
+
+  let obj = new MyComponent();
+  obj.render2();
+}
