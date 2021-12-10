@@ -18,7 +18,7 @@ namespace analyzer
 
 void TsMethod::parse(const std::string& sig)
 {
-    std::regex regexp(R"(([a-zA-Z0-9_\<\>]+)\((.*)\)\s*\:\s*([a-zA-Z0-9\[\]\_]+))");
+    std::regex regexp(R"((\w*)\((.*)\)\:\s*(\w*))");
 
     std::smatch match;
 
@@ -36,8 +36,7 @@ void TsMethod::parse(const std::string& sig)
 
 void TsMethod::parseArgumentList(const std::string& args)
 {
-    std::regex regexp(
-        R"(((\.\.\.)?[a-zA-Z0-9_]+\s*\:\s*)((\([^)]+\)\s*=>\s[a-zA-Z0-9\[\]\_]+)|((readonly)?\s*[a-zA-Z0-9\[\]\_]+)))");
+    std::regex regexp(R"(((\.\.\.)?[\w]+\s*\:\s*)((\([^)]+\)\s*\=\>\s[\w\[\]\_]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
 
     std::vector<std::string> tokens;
 
@@ -53,7 +52,7 @@ void TsMethod::parseArgumentList(const std::string& args)
 
 void TsMethod::parseArgument(const std::string& arg)
 {
-    std::regex regexp(R"((\.\.\.)?([a-zA-Z0-9_]+)\s*\:\s*((\([^)]+\)\s*=>\s*[a-zA-Z0-9\_]+)|([a-zA-Z0-9\_]+)))");
+    std::regex regexp(R"((\.\.\.)?([\w]+)\s*\:\s*((\([^)]+\)\s*\=\>\s*[\w\[\]]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
     std::smatch match;
 
     if (!std::regex_search(arg.begin(), arg.end(), match, regexp))
