@@ -218,6 +218,20 @@ export class TSType {
     return declaration.isInterface();
   }
 
+  isTypeLiteral() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    const symbol = this.getSymbol();
+    const declaration = symbol.valueDeclaration || symbol.declarations[0];
+    if (!declaration) {
+      return false;
+    }
+
+    return declaration.isTypeLiteral();
+  }
+
   isUnionOrIntersection(): this is ts.UnionOrIntersectionType {
     return this.isUnion() || this.isIntersection();
   }

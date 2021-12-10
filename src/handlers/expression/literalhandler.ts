@@ -148,7 +148,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       }
     });
 
-    this.correctInterfacePropertiesOrder(expression, llvmValues);
+    this.correctPropertiesOrder(expression, llvmValues);
 
     const types = Array.from(llvmValues.values()).map((value) => value.type);
     const objectType = LLVMStructType.get(this.generator, types);
@@ -164,7 +164,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return object;
   }
 
-  private correctInterfacePropertiesOrder(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
+  private correctPropertiesOrder(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
     const isAssignment =
       ts.isBinaryExpression(expression.parent) && expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
     const isVariableDeclaration = ts.isVariableDeclaration(expression.parent);
@@ -218,22 +218,22 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
       variableType = declaredParameterType;
     } else {
-      throw new Error("Unreachable in interface properties order correction");
+      throw new Error("Unreachable in properties order correction");
     }
 
-    if (variableType.isInterface()) {
-      const interfaceSymbol = variableType.getSymbol();
-      const interfaceDeclaration = interfaceSymbol.valueDeclaration || interfaceSymbol.declarations[0];
+    if (variableType.isInterface() || variableType.isTypeLiteral()) {
+      const symbol = variableType.getSymbol();
+      const declaration = symbol.valueDeclaration || symbol.declarations[0];
 
-      if (!interfaceDeclaration) {
+      if (!declaration) {
         throw new Error(`Unable to find declaration for type: '${variableType.toString()}'`);
       }
 
-      if (interfaceDeclaration.members.some((m) => !m.name)) {
-        throw new Error(`Expected all interface members to be named. Error at: '${interfaceDeclaration.getText()}'`);
+      if (declaration.members.some((m) => !m.name)) {
+        throw new Error(`Expected all properties to be named. Error at: '${declaration.getText()}'`);
       }
 
-      const propNames = interfaceDeclaration.members.map((m) => m.name!.getText());
+      const propNames = declaration.members.map((m) => m.name!.getText());
 
       const llvmValuesCopy = new Map(llvmValues);
       llvmValues.clear();

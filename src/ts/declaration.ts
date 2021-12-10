@@ -35,10 +35,17 @@ export class Declaration {
   }
 
   get members() {
-    if (!ts.isClassDeclaration(this.declaration) && !ts.isInterfaceDeclaration(this.declaration)) {
+    if (
+      !ts.isClassDeclaration(this.declaration) &&
+      !ts.isInterfaceDeclaration(this.declaration) &&
+      !ts.isTypeLiteralNode(this.declaration)
+    ) {
       return [];
     }
 
+    // mkrv: @todo have no idea why, but without this check there are error like:
+    // src/tsbuiltins/builtins.ts:252:61 - error TS7006: Parameter 'p' implicitly has an 'any' type.
+    // 252     const argTypes = constructorDeclaration.parameters.map((p) => this.generator.ts.checker.getTypeAtLocation(p));
     if (ts.isClassDeclaration(this.declaration)) {
       return this.declaration.members.map((member) => Declaration.create(member, this.generator));
     }
