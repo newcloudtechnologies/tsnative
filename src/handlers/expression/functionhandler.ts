@@ -1386,8 +1386,21 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const handledArgs = args
       .map((argument, index) => {
-        const value = this.generator.handleExpression(argument, outerEnv);
-        const parameterName = parameters[index].escapedName.toString();
+        const parameter = parameters[index];
+        const parameterName = parameter.escapedName.toString();
+        const parameterDeclaration = parameter.valueDeclaration || parameter.declarations[0];
+        const parameterType = parameterDeclaration.type;
+
+        let value = this.generator.handleExpression(argument, outerEnv);
+
+        if (parameterType.isSupported()) {
+          const parameterLLVMType = parameterType.getLLVMType();
+
+          if (parameterLLVMType.isUnionWithNull() || parameterLLVMType.isUnionWithUndefined()) {
+            const nullUnion = LLVMUnion.createNullValue(parameterLLVMType, this.generator);
+            value = nullUnion.initialize(value);
+          }
+        }
 
         registerPrototype(argument, value, parameterName);
 

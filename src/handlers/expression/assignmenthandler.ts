@@ -67,7 +67,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
               throw new Error(
                 `Expected left hand side operand to be union with null type, got '${lhs.type
                   .unwrapPointer()
-                  .toString()}'`
+                  .toString()}'. Error at: '${expression.getText()}'`
               );
             }
 

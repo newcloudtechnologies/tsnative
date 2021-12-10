@@ -9,6 +9,8 @@
  *
  */
 
+import createStore2 from "./union_type_imports"
+
 {
     interface A {
         a: number
@@ -165,4 +167,8 @@
     const stanger: MyData | null = new MyData;
     whosThere(stanger);
     whosThere(null);
+}
+
+{
+    createStore2();
 }
