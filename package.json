@@ -1,6 +1,6 @@
 {
     "name": "tsnative",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "scripts": {
         "transpile": "tsc",
         "start": "playground/start.sh",

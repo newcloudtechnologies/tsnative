@@ -246,7 +246,7 @@ export class Declaration {
   }
 
   isAmbient() {
-    return this.declaration.getSourceFile().fileName.endsWith("d.ts");
+    return this.declaration.getSourceFile().fileName.endsWith(".d.ts");
   }
 
   isExternalCallArgument() {
