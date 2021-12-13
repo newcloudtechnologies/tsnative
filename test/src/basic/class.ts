@@ -1213,3 +1213,38 @@
   let obj = new MyComponent();
   obj.render2();
 }
+
+{
+  class RxComponent2<StateT> {
+    _state: StateT
+
+    constructor(initialState: StateT) {
+      this._state = initialState;
+    }
+
+    setState(reducer: ((state: StateT) => StateT)): void {
+      reducer(this._state);
+    }
+  }
+
+  interface MyState {
+    num: number;
+  }
+
+  class MyComponent extends RxComponent2<MyState> {
+    constructor() {
+      let initialState: MyState = {
+        num: 555,
+      }
+      super(initialState);
+    }
+  }
+
+  let obj = new MyComponent();
+  obj.setState((state: MyState): MyState => {
+    state.num = 639;
+    return state;
+  });
+
+  console.assert(obj._state.num === 639, "Funarg that use generic type");
+}

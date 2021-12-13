@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator, MetaInfoStorage } from "../../generator";
+import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "../../generator";
 import { FunctionMangler } from "../../mangling";
 import {
   setLLVMFunctionScope,
@@ -304,14 +304,34 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const withRestParameters = last(signature.getDeclaredParameters())?.dotDotDotToken;
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
 
+    const typeMapper = GenericTypeMapper.tryGetMapperForGenericClassMethod(expression, this.generator);
+
     const tsReturnType = resolvedSignature.getReturnType();
-    let llvmReturnType = tsReturnType.getLLVMType();
+
+    let llvmReturnType;
+    if (tsReturnType.isSupported()) {
+      llvmReturnType = tsReturnType.getLLVMType();
+    } else {
+      if (!typeMapper) {
+        throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);
+      }
+
+      llvmReturnType = typeMapper.get(tsReturnType.toString()).getLLVMType();
+    }
 
     const types = withRestParameters
       ? args.map((arg) => arg.type)
       : resolvedSignature.getParameters().map((p) => {
           const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
-          return tsType.getLLVMType();
+          if (tsType.isSupported()) {
+            return tsType.getLLVMType();
+          }
+
+          if (!typeMapper) {
+            throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);
+          }
+
+          return typeMapper.get(tsType.toString()).getLLVMType();
         });
 
     const mismatchArgs: { arg: LLVMValue; llvmArgType: LLVMType }[] = [];

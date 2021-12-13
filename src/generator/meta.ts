@@ -17,6 +17,7 @@ import { TSType } from "../ts/type";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
+import { LLVMGenerator } from "./generator";
 
 type PropsMap = Map<string, number>;
 class UnionMeta {
@@ -269,5 +270,36 @@ export class GenericTypeMapper {
     for (const [key, value] of this.genericTypenameTypeMap) {
       base.genericTypenameTypeMap.set(key, value);
     }
+  }
+
+  static tryGetMapperForGenericClassMethod(expression: ts.Expression, generator: LLVMGenerator) {
+    let parentFunction = expression.parent;
+
+    while (parentFunction && !ts.isFunctionLike(parentFunction)) {
+      parentFunction = parentFunction.parent;
+    }
+
+    if (!parentFunction) {
+      return;
+    }
+
+    const parentFunctionDeclaration = Declaration.create(parentFunction, generator);
+    if (!parentFunctionDeclaration.isMethod()) {
+      return;
+    }
+
+    const parentClass = parentFunctionDeclaration.parent;
+    if (!ts.isClassDeclaration(parentClass)) {
+      throw new Error(
+        `Generic-typed parameters/return type allowed only for class methods. Error at: '${expression.getText()}'`
+      );
+    }
+
+    const parentClassDeclaration = Declaration.create(parentClass, generator);
+    if (!parentClassDeclaration.typeParameters) {
+      return;
+    }
+
+    return generator.meta.getClassTypeMapper(parentClassDeclaration);
   }
 }

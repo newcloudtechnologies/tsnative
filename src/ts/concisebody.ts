@@ -9,7 +9,7 @@
  *
  */
 
-import { LLVMGenerator, MetaInfoStorage } from "../generator";
+import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "../generator";
 import { Scope, Environment, HeapVariableDeclaration } from "../scope";
 import * as llvm from "llvm-node";
 import { LLVMConstantInt, LLVMValue, LLVMConstant } from "../llvm/value";
@@ -367,8 +367,19 @@ export class ConciseBody {
           });
         }
       } else if (ts.isCallExpression(node) && node.expression.getText() === closure) {
+        const typeMapper = GenericTypeMapper.tryGetMapperForGenericClassMethod(node, this.generator);
+
         node.arguments.forEach((arg) => {
-          const llvmType = this.generator.ts.checker.getTypeAtLocation(arg).getLLVMType();
+          let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
+          if (!tsType.isSupported()) {
+            if (!typeMapper) {
+              throw new Error(`Expected generic class type mapper. Error at '${node.getText()}'`);
+            }
+
+            tsType = typeMapper.get(tsType.toString());
+          }
+
+          const llvmType = tsType.getLLVMType();
           effectiveArguments.set(
             Expression.create(arg, this.generator).getExpressionText(),
             LLVMConstant.createNullValue(llvmType, this.generator)
