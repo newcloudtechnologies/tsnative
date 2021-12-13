@@ -6,21 +6,127 @@ NPM_PRIVATE_REPO_PUBLIC_URL = 'https://nexus.devos.club/repository/antiq_npm_loc
 NPM_PRIVATE_REPO_AUTH_STR = '//nexus.devos.club/repository/'
 NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID = 'nexus_npm_user_antiq_NpmToken'
 
-def get_source_branch() {
-    if (env.BRANCH_NAME.startsWith('PR')) {
-        return "${env.CHANGE_BRANCH}"
-    } else {
-        return "${env.BRANCH_NAME}"
-    }
-}
+// Vars for control skip build in CI
+SKIP_CI = false
+
+// Vars for fix auto increment version
+INCREMENT_VERSION = false
 
 pipeline {
     agent none
     parameters {
         booleanParam(name: 'PublishWithoutIncrement', defaultValue: false, description: 'Whether we need to publish artifact to npm registry (without version increment')
     }
-    stages {    
+    stages {
+        // WARNING! Need add message for commit Auto increment 'patch' version package with '[skip ci]'
+        // this is a protection against recursive run tasks in Jenkins by 'push' in Gitea and webhook
+        stage('Skip CI') {
+            agent { label 'linux64'}
+
+            steps{
+                script {
+                    // view current branch
+                    echo "Use GIT branch is " + get_source_branch()
+
+                    // check for [skip ci] or [ci skip] in latest commit message
+                    if ( git_skip_ci_in_last_commit() ) {
+                        // view output of SKIP CI
+                        echo "In latest commit found [skip ci] or [ci skip]"
+                        echo "Aborted task!"
+
+                        // выставляем флаг на остановку сборки
+                        SKIP_CI = true
+                    }
+                }
+            }
+
+            post {
+                always {
+                    cleanWs()
+                }
+            }
+        }
+
+        stage('Increment version on master') {
+            when {
+                allOf {
+                    expression { (get_source_branch() == 'master') }
+                    not { expression { SKIP_CI } }
+                }
+                beforeAgent true
+            }
+
+            agent {
+                docker {
+                    // use official Node LTS image
+                    image "node:lts"
+                }
+            }
+
+            environment {
+                // Override HOME to WORKSPACE for NPM
+                HOME = "${WORKSPACE}"
+                // or override default cache directory (~/.npm)
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                // CI enable
+                CI = 'true'
+            }
+
+            steps {
+                script {
+                    // check version
+                    sh "npm -v"
+                    sh "node -v"
+
+                    // view current version
+                    env.CURRENT_PROJECT_VERSION =
+                            sh script: 'yarn version | grep "^info Current version:" | cut -d " " -f 4 | tr -d "\\n"',
+                                returnStdout: true
+                    echo "Current project version is ${env.CURRENT_PROJECT_VERSION}"
+
+                    // Work with GIT
+                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+                        // test work with GIT
+                        sh 'git fetch --all'
+
+                        // config user for commit
+                        sh 'git config --global user.email "devops_emb00x@collabio.team"'
+                        sh 'git config --global user.name "jenkins"'
+
+                        // Auto increment 'patch' version package with commit to GIT
+                        // WARNING! Need add message for commit with '[skip ci]'
+                        // this is a protection against recursive run tasks in Jenkins by 'push' in Gitea and webhook
+                        sh 'npm version patch -m "[skip ci] Auto increment version by npm"'
+
+                        // push with tag in Gitea
+                        sh 'git push origin HEAD:' + get_source_branch() + ' --tags'
+
+                        // view current version
+                        env.NEW_PROJECT_VERSION =
+                                sh script: 'yarn version | grep "^info Current version:" | cut -d " " -f 4 | tr -d "\\n"',
+                                        returnStdout: true
+                        // view version
+                        echo "New project version is ${env.NEW_PROJECT_VERSION}"
+                    }
+
+                    // fix work with auto increment version
+                    INCREMENT_VERSION = true
+                }
+            }
+
+            post {
+                always {
+                    cleanWs()
+                }
+            }
+        }
+
         stage('Build and test') {
+            when {
+                not { expression { SKIP_CI } }
+                beforeAgent true
+            }
+
             parallel {
                 stage('Linux x86_64') {
                     agent {
@@ -32,10 +138,30 @@ pipeline {
                             alwaysPull true
                         }
                     }
+
                     environment {
                         CI = 'true'
                     }
+
+                    // need for pull changes from remote repo for autoincrement version
                     stages {
+                        stage("Checkout repo") {
+                            when {
+                                expression { INCREMENT_VERSION }
+                            }
+
+                            steps {
+                                script {
+                                    // Work with GIT
+                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+                                        // Update repo
+                                        sh 'git fetch --all'
+                                        sh 'git pull'
+                                    }
+                                }
+                            }
+                        }
+
                         stage("Setup Env") {
                             steps {
                                 script {
@@ -71,12 +197,16 @@ pipeline {
                                         // install deps
                                         sh "npm install"
 
+                                        // debug
+                                        sh "npm version"
+
                                         // logout private repo
                                         npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                                     }
                                 }
                             }
                         }
+
                         stage("Build") {
                             steps {
                                 script {
@@ -84,26 +214,32 @@ pipeline {
                                 }
                             }
                         }
-                        stage("Run Linter") {
+
+                        stage("Linter") {
                             steps {
                                 sh "npm run lint"
                             }
                         }
-                        stage("Run Tests") {
+
+                        stage("Tests") {
                             steps {
                                 // FIXME: enable parallel build once KDM-836 is fixed
                                 sh "npm run test"
                                 sh "npm run runtime_test"
                             }
                         }
+
                         stage("Publish")
                         {
                             when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == "master") }
+                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
                             }
                             steps {
                                 // login to private registry
                                 npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                // debug
+                                sh "npm version"
 
                                 sh "npm run publishToLocalRegistry"
 
@@ -112,6 +248,7 @@ pipeline {
                             }
                         }
                     }
+
                     post {
                         cleanup {
                             // custom clean workdir from bug cleanWs()
@@ -129,10 +266,12 @@ pipeline {
                         }
                     }
                 }
+
                 stage('Windows x86_64') {
                     agent {
                         label 'winsrv19'
                     }
+
                     environment {
                         // CI enable for NodeJS
                         // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-final-deliver-stage-to-your-pipeline
@@ -140,7 +279,42 @@ pipeline {
                         // Force using GIT from MSYS
                         PATH = "/usr/bin:${env.PATH}"
                     }
+
                     stages {
+                        stage("Fix CRLF on Windows") {
+                            steps {
+                                script {
+                                    echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+
+                                    // on Windows in GIT config use core.autocrlf = true
+                                    // when checkout repository on Windows all files change end line from LF to CRLF
+                                    // this view how non-add files to GIT on local copy
+                                    // need delete this changes
+                                    sh 'git status'
+                                    sh 'git restore :/'
+                                    sh 'git status'
+                                }
+                            }
+                        }
+
+                        // need for pull changes from remote repo for autoincrement version
+                        stage("Checkout repo") {
+                            when {
+                                expression { INCREMENT_VERSION }
+                            }
+
+                            steps {
+                                script {
+                                    // Work with GIT
+                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+                                        // Update repo
+                                        sh 'git fetch --all'
+                                        sh 'git pull'
+                                    }
+                                }
+                            }
+                        }
+
                         stage("Setup Env") {
                             steps {
                                 script {
@@ -179,12 +353,16 @@ pipeline {
                                         // install deps
                                         sh "npm install"
 
+                                        // debug
+                                        sh "npm version"
+
                                         // logout from registry private repo
                                         npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                                     }
                                 }
                             }
                         }
+
                         stage("Build") {
                             steps {
                                 script {
@@ -192,27 +370,33 @@ pipeline {
                                 }
                             }
                         }
-                        stage("Run Linter") {
+
+                        stage("Linter") {
                             steps {
                                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                                     sh "npm run lint"
                                 }
                             }
                         }
-                        stage("Run Tests") {
+
+                        stage("Tests") {
                             steps {
                                 // FIXME: enable parallel build once KDM-836 (???) is fixed
                                 sh 'npm test'
                                 sh 'npm run runtime_test'
                             }
                         }
+
                         stage("Publish") {
                             when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == "master") }
+                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
                             }
                             steps {
                                 // login to private registry
                                 npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                // debug
+                                sh "npm version"
 
                                 sh "npm run publishToLocalRegistry"
 
@@ -221,6 +405,7 @@ pipeline {
                             }
                         }
                     }
+
                     post {
                         cleanup {
                             // custom clean work dir from bug cleanWs()
@@ -239,9 +424,18 @@ pipeline {
             }
         }
     }
+
     post {
         always {
             script {
+                // skip build on CI
+                // ABORTED task and description of this
+                if (SKIP_CI == true) {
+                    currentBuild.result = 'ABORTED'
+                    currentBuild.description = 'SKIP CI'
+                }
+
+                // email
                 emailext (
                     subject: "Pipeline status of ${currentBuild.fullDisplayName}: ${currentBuild.currentResult}",
                     body: "<p>Check console output at <a href='${env.BUILD_URL}display/redirect'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>",
@@ -250,6 +444,22 @@ pipeline {
                 )
             }
         }
+    }
+}
+
+String get_source_branch() {
+    if (env.BRANCH_NAME.startsWith('PR')) {
+        return "${env.CHANGE_BRANCH}".toString()
+    } else {
+        return "${env.BRANCH_NAME}".toString()
+    }
+}
+
+boolean git_skip_ci_in_last_commit() {
+    if (sh (script: "git --no-pager show -s --format=\'%B\' -1 | grep '.*\\[skip ci\\].*\\|.*\\[ci skip\\].*'", returnStatus: true) == 0) {
+        return true
+    } else {
+        return false
     }
 }
 
