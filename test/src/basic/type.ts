@@ -30,3 +30,61 @@
     console.assert(itemList[0]._name === nameInitializer, "Out-of-order type literal initialization (3)");
     console.assert(itemList[0]._type === typeInitializer, "Out-of-order type literal initialization (4)");
 }
+
+{
+    type RxText_args2 = {
+        text: string,
+        color: number,
+        font: (string | undefined)
+    }
+
+    {
+        function RxText(args: RxText_args2) {
+            if (args.font) {
+                return true;
+            }
+
+            return false;
+        }
+
+        const positive = RxText({
+            text: "string",
+            color: 777,
+            font: "Arial"
+        });
+
+        const negative = RxText({
+            text: "string",
+            color: 777,
+            font: undefined
+        });
+
+        console.assert(positive === true, "Optional property (1)");
+        console.assert(negative === false, "Optional property (2)");
+    }
+
+    {
+        function RxText(args: RxText_args2) {
+            if (args.font) {
+                return args.font;
+            }
+
+            return "none";
+        }
+
+        const positive = RxText({
+            text: "string",
+            color: 777,
+            font: "Arial"
+        });
+
+        const negative = RxText({
+            text: "string",
+            color: 777,
+            font: undefined
+        });
+
+        console.assert(positive === "Arial", "Optional property (1)");
+        console.assert(negative === "none", "Optional property (2)");
+    }
+}

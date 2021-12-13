@@ -1,10 +1,11 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration } from "../../scope";
-import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
+import { LLVMConstantFP, LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
 import { LLVMStructType, LLVMType } from "../../llvm/type";
 import { TSTuple } from "../../ts/tuple";
 import { TSType } from "../../ts/type";
+import { Declaration } from "../../ts/declaration";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -148,7 +149,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       }
     });
 
-    this.correctPropertiesOrder(expression, llvmValues);
+    this.correctValues(expression, llvmValues);
 
     const types = Array.from(llvmValues.values()).map((value) => value.type);
     const objectType = LLVMStructType.get(this.generator, types);
@@ -164,7 +165,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return object;
   }
 
-  private correctPropertiesOrder(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
+  private correctValues(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
     const isAssignment =
       ts.isBinaryExpression(expression.parent) && expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
     const isVariableDeclaration = ts.isVariableDeclaration(expression.parent);
@@ -221,30 +222,61 @@ export class LiteralHandler extends AbstractExpressionHandler {
       throw new Error("Unreachable in properties order correction");
     }
 
-    if (variableType.isInterface() || variableType.isTypeLiteral()) {
-      const symbol = variableType.getSymbol();
-      const declaration = symbol.valueDeclaration || symbol.declarations[0];
+    if (!variableType.isInterface() && !variableType.isTypeLiteral()) {
+      return;
+    }
 
-      if (!declaration) {
-        throw new Error(`Unable to find declaration for type: '${variableType.toString()}'`);
+    const symbol = variableType.getSymbol();
+    const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+    if (!declaration) {
+      throw new Error(`Unable to find declaration for type: '${variableType.toString()}'`);
+    }
+
+    this.correctPropertiesOrder(declaration, llvmValues);
+    this.correctOptionalValues(declaration, llvmValues);
+  }
+
+  private correctOptionalValues(declaration: Declaration, values: Map<string, LLVMValue>) {
+    const declaredLlvmTypes = declaration.members.map((member) => member.type.getLLVMType());
+    const llvmValues = Array.from(values.values());
+    const keys = Array.from(values.keys());
+
+    for (let i = 0; i < llvmValues.length; ++i) {
+      let llvmValue = llvmValues[i];
+      const declaredType = declaredLlvmTypes[i];
+      const actualType = llvmValue.type;
+
+      if (declaredType.equals(actualType)) {
+        continue;
       }
 
-      if (declaration.members.some((m) => !m.name)) {
-        throw new Error(`Expected all properties to be named. Error at: '${declaration.getText()}'`);
+      if (!declaredType.isUnionWithNull() && !declaredType.isUnionWithUndefined()) {
+        continue;
       }
 
-      const propNames = declaration.members.map((m) => m.name!.getText());
+      const nullValue = LLVMUnion.createNullValue(declaredType, this.generator);
+      llvmValue = nullValue.initialize(llvmValue);
+      values.set(keys[i], llvmValue);
+    }
+  }
 
-      const llvmValuesCopy = new Map(llvmValues);
-      llvmValues.clear();
+  private correctPropertiesOrder(declaration: Declaration, values: Map<string, LLVMValue>) {
+    if (declaration.members.some((m) => !m.name)) {
+      throw new Error(`Expected all properties to be named. Error at: '${declaration.getText()}'`);
+    }
 
-      for (const name of propNames) {
-        const value = llvmValuesCopy.get(name);
-        if (!value) {
-          throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
-        }
-        llvmValues.set(name, value);
+    const propNames = declaration.members.map((m) => m.name!.getText());
+
+    const llvmValuesCopy = new Map(values);
+    values.clear();
+
+    for (const name of propNames) {
+      const value = llvmValuesCopy.get(name);
+      if (!value) {
+        throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
       }
+      values.set(name, value);
     }
   }
 
