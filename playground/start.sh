@@ -67,12 +67,12 @@ case $key in
 esac
 done
 
-PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/..)
+PROJECT_DIR="${CURRENT_DIR}/.."
 STAGE_DIR=$(dirname "${ENTRY}")
 
 if [ -n "${EXTENSION+x}" ]; then
-    ln -sr ${EXTENSION} ${CURRENT_DIR}/extension
-    ln -sr ${EXTENSION}/../node_modules ${CURRENT_DIR}/node_modules
+    ln -s ${EXTENSION} ${CURRENT_DIR}/extension
+    ln -s ${EXTENSION}/../node_modules ${CURRENT_DIR}/node_modules
 fi
 
 if [ -z "$BUILD" ]
@@ -82,7 +82,7 @@ fi
 
 rm -rf ${BUILD}
 mkdir -p ${BUILD}
-BUILD=$(readlink -f ${BUILD})
+# BUILD=$(readlink -f ${BUILD})
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD} \
@@ -98,7 +98,7 @@ cmake -G "Unix Makefiles" \
     -DPRINT_IR=${PRINT_IR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD} && make -j$(expr $(nproc) + 1)
+cd ${BUILD} && make -j$(sysctl -n hw.ncpu)
 
 
 

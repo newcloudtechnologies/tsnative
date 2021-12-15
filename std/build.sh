@@ -26,6 +26,7 @@ cmake -G "Unix Makefiles" \
     -S ${CURRENT_DIR} \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
     -DCMAKE_OSX_SYSROOT=/Users/antiq/Downloads/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${OUTPUT_DIR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
