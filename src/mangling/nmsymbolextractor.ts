@@ -28,6 +28,10 @@ export class NmSymbolExtractor {
       })
     );
 
+    mangledSymbols.forEach((v: string, i: number, a: string[]) => {
+      a[i] = v.substring(1);
+    });
+
     return { mangledSymbols, demangledSymbols };
   }
 

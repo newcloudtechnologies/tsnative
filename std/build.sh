@@ -18,14 +18,16 @@ OUTPUT_DIR="${CURRENT_DIR}/lib"
 mkdir -p ${BUILD_DIR}
 mkdir -p ${OUTPUT_DIR}
 
-BUILD_DIR=$(readlink -f ${BUILD_DIR})
-OUTPUT_DIR=$(readlink -f ${OUTPUT_DIR})
+# BUILD_DIR=$(readlink -f ${BUILD_DIR})
+# OUTPUT_DIR=$(readlink -f ${OUTPUT_DIR})
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_SYSROOT=/Users/antiq/Downloads/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
     -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${OUTPUT_DIR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD_DIR} && make -j$(expr $(nproc) + 1)
+cd ${BUILD_DIR} && make -j$(sysctl -n hw.ncpu)
 

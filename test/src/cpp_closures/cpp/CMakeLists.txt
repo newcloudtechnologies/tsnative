@@ -21,6 +21,9 @@ find_package(StdLib REQUIRED)
 include(FeatureSummary)
 include(GNUInstallDirs) # provides CMAKE_INSTALL_* variables
 
+include_directories(/Users/antiq/Downloads/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include)
+
+
 set(INCLUDES
     button.h
     point.h

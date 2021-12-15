@@ -17,17 +17,20 @@ BUILD_DIR="${CURRENT_DIR}/../out/test/build"
 rm -rf ${BUILD_DIR}
 mkdir -p ${BUILD_DIR}
 
-BUILD_DIR=$(readlink -f ${BUILD_DIR})
+# BUILD_DIR=$(readlink -f ${BUILD_DIR})
 
-tsc
-npm run build
+# tsc
+# npm run build
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
-    -DCMAKE_BUILD_TYPE=release \
+    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_SYSROOT=/Users/antiq/Downloads/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+    -DCMAKE_BUILD_TYPE=Release \
     -DPROJECT_DIR=${CURRENT_DIR} \
     -DSTAGE_DIR=${BUILD_DIR} \
     -DBUILD=${BUILD_DIR}
 
-cd ${BUILD_DIR} && make $JOBS && make test
+cd ${BUILD_DIR} && VERBOSE=1 make $JOBS && make test

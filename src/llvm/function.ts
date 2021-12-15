@@ -53,6 +53,7 @@ export class LLVMFunction {
       parameterTypes.map((t) => t.unwrapped),
       false
     );
+
     return {
       fn: LLVMValue.create(
         llvm.Function.create(type, llvm.LinkageTypes.ExternalLinkage, name, this.generator.module),
