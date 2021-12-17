@@ -86,13 +86,16 @@ mkdir -p ${BUILD}
 
 if [ "$(uname -s)" == "Darwin" ]; then
     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    JOBS_NUM=$(sysctl -n hw.ncpu)
+else
+    JOBS_NUM=$(expr $(nproc) + 1)
 fi
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD} \
     -S ${CURRENT_DIR} \
     -DCMAKE_OSX_SYSROOT=${MACOS_SYSROOT} \
-    -DCMAKE_BUILD_TYPE=release \
+    -DCMAKE_BUILD_TYPE=Release \
     -DPROJECT_DIR=${PROJECT_DIR} \
     -DENTRY=${ENTRY} \
     -DTS_CONFIG=${TS_CONFIG} \
@@ -103,7 +106,7 @@ cmake -G "Unix Makefiles" \
     -DPRINT_IR=${PRINT_IR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD} && make -j$(sysctl -n hw.ncpu)
+cd ${BUILD} && make -j${JOBS_NUM}
 
 
 

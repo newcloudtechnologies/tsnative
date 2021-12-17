@@ -23,6 +23,9 @@ mkdir -p ${OUTPUT_DIR}
 
 if [ "$(uname -s)" == "Darwin" ]; then
     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    JOBS_NUM=$(sysctl -n hw.ncpu)
+else
+    JOBS_NUM=$(expr $(nproc) + 1)
 fi
 
 cmake -G "Unix Makefiles" \
@@ -33,5 +36,5 @@ cmake -G "Unix Makefiles" \
     -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${OUTPUT_DIR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD_DIR} && make -j$(sysctl -n hw.ncpu)
+cd ${BUILD_DIR} && make -j${JOBS_NUM}
 

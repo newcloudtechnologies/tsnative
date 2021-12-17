@@ -31,6 +31,9 @@ fi
 
 if [ "$(uname -s)" == "Darwin" ]; then
     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    JOBS_NUM=$(sysctl -n hw.ncpu)
+else
+    JOBS_NUM=$(expr $(nproc) + 1)
 fi
 
 cmake -G "$GENERATOR" "$PLATFORM" \
@@ -46,7 +49,7 @@ if [[ "$OSTYPE" == "msys" ]]; then
 	mv ${OUTPUT_DIR}/Release/declarator.exe ${OUTPUT_DIR}/declarator.exe
 	rm -rf ${OUTPUT_DIR}/Release
 else
-	cd ${BUILD_DIR} && make -j$(sysctl -n hw.ncpu)
+	cd ${BUILD_DIR} && make -j${JOBS_NUM}
 fi
 
 
