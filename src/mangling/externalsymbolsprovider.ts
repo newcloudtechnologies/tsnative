@@ -43,7 +43,8 @@ export async function prepareExternalSymbols(demangledTables: string[], mangledT
 }
 
 class Itanium {
-  static completeObjectConstructor: string = "C1";
+  static completeObjectConstructor = "C1";
+  static baseObjectConstructor = "C2";
 }
 
 type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
@@ -233,9 +234,10 @@ export class ExternalSymbolsProvider {
       );
 
       return this.handleDeclarationWithPredicate((cppSignature: string, mangledIndex: number) => {
+        const symbol = externalMangledSymbolsTable[mangledIndex];
         return (
           constructorPattern.test(cppSignature) &&
-          externalMangledSymbolsTable[mangledIndex].includes(Itanium.completeObjectConstructor)
+          (symbol.includes(Itanium.completeObjectConstructor) || symbol.includes(Itanium.baseObjectConstructor))
         );
       });
     } else if (declaration.isFunction()) {
