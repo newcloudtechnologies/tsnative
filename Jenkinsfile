@@ -375,8 +375,8 @@ pipeline {
                                         sh """
                                             mkdir -p ~/.ssh
                                             chmod 700 ~/.ssh
-                                            cat ${ssh_key} > ~/.ssh/${id_rsa_name}
-                                            chmod 600 ~/.ssh/${id_rsa_name}
+                                            cat \${SSH_KEY} > ~/.ssh/id_rsa
+                                            chmod 600 ~/.ssh/id_rsa
                                             echo "Host *" > ~/.ssh/config
                                             echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
                                         """
@@ -468,8 +468,8 @@ pipeline {
                                         sh """
                                             mkdir -p ~/.ssh
                                             chmod 700 ~/.ssh
-                                            cat ${ssh_key} > ~/.ssh/${id_rsa_name}
-                                            chmod 600 ~/.ssh/${id_rsa_name}
+                                            cat \${SSH_KEY} > ~/.ssh/id_rsa
+                                            chmod 600 ~/.ssh/id_rsa_name
                                             echo "Host *" > ~/.ssh/config
                                             echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
                                         """
@@ -530,9 +530,9 @@ pipeline {
         always {
             script {
                 // skip build on CI
-                // ABORTED task and description of this
+                // Mark job as successful to avoid visual alerts
                 if (SKIP_CI == true) {
-                    currentBuild.result = 'ABORTED'
+                    currentBuild.result = 'SUCCESS'
                     currentBuild.description = 'SKIP CI'
                 }
 
