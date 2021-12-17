@@ -166,8 +166,7 @@ pipeline {
                             steps {
                                 script {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
-                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
-
+                                        sh 'useradd -u $(stat -c "%u" .gitignore) jenkins'
                                         init_ssh(SSH_KEY, 'id_rsa', 'unix')
 
                                         npm_clean_config()
@@ -337,6 +336,7 @@ pipeline {
 
                     environment {
                         CI = 'true'
+                        LLVM_DIR='/opt/local/libexec/llvm-11'
                     }
 
                     stages {
@@ -422,6 +422,7 @@ pipeline {
 
                     environment {
                         CI = 'true'
+                        LLVM_DIR='/opt/local/libexec/llvm-11'
                     }
 
                     stages {
