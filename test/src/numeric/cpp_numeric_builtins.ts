@@ -24,7 +24,7 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
   console.assert(i + 1 === 0, "+(int8_t, number) failed");
   console.assert(1 + i === 0, "+(number, int8_t) failed");
 
-  console.assert(i - ii === -2, "-(int8_t, int8_t) failed");
+  console.assert(i - ii as int8_t === -2, "-(int8_t, int8_t) failed");
   console.assert(ii - i === 2, "-(int8_t, int8_t) failed");
   console.assert(ii - 1 === 0, "-(int8_t, number) failed");
   console.assert(1 - ii === 0, "-(number, int8_t) failed");
@@ -66,14 +66,6 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
   console.assert(2 !== i, "number !== int8_t failed");
   console.assert(ii === 1, "int8_t === number failed");
   console.assert(1 === ii, "number === int8_t failed");
-
-  i = INT8_MAX;
-  i = i + 1;
-  console.assert(i === INT8_MIN, "int8_t upper bound overflow failed");
-
-  i = INT8_MIN;
-  i = i - 1;
-  console.assert(i === INT8_MAX, "int8_t lower bound overflow failed");
 
   i = 0;
   console.assert((i && ii) === 0, "&&(int8_t, int8_t) failed");
@@ -137,9 +129,6 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
 
 // int16_t tests
 {
-  const INT16_MIN: int16_t = -32768;
-  const INT16_MAX: int16_t = 32767;
-
   let i: int16_t = -1;
   const ii: int16_t = 1;
 
@@ -148,7 +137,7 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
   console.assert(i + 1 === 0, "+(int16_t, number) failed");
   console.assert(1 + i === 0, "+(number, int16_t) failed");
 
-  console.assert(i - ii === -2, "-(int16_t, int16_t) failed");
+  console.assert(i - ii as int16_t === -2, "-(int16_t, int16_t) failed");
   console.assert(ii - i === 2, "-(int16_t, int16_t) failed");
   console.assert(ii - 1 === 0, "-(int16_t, number) failed");
   console.assert(1 - ii === 0, "-(number, int16_t) failed");
@@ -167,14 +156,6 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
   console.assert(ii % i === 0, "%(int16_t, int16_t) failed");
   console.assert(i % 2 === -1, "%(int16_t, number) failed");
   console.assert(2 % i === 0, "%(number, int16_t) failed");
-
-  i = INT16_MAX;
-  i = i + 1;
-  console.assert(i === INT16_MIN, "int16_t upper bound overflow failed");
-
-  i = INT16_MIN;
-  i = i - 1;
-  console.assert(i === INT16_MAX, "int16_t lower bound overflow failed");
 }
 
 // uint16_t tests
@@ -226,9 +207,6 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
 
 // int32_t tests
 {
-  const INT32_MIN: int32_t = -2147483648;
-  const INT32_MAX: int32_t = 2147483647;
-
   let i: int32_t = -1;
   const ii: int32_t = 1;
 
@@ -237,7 +215,7 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
   console.assert(i + 1 === 0, "+(int32_t, number) failed");
   console.assert(1 + i === 0, "+(number, int32_t) failed");
 
-  console.assert(i - ii === -2, "-(int32_t, int32_t) failed");
+  console.assert(i - ii as int32_t === -2, "-(int32_t, int32_t) failed");
   console.assert(ii - i === 2, "-(int32_t, int32_t) failed");
   console.assert(ii - 1 === 0, "-(int32_t, number) failed");
   console.assert(1 - ii === 0, "-(number, int32_t) failed");
@@ -256,14 +234,6 @@ import { int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t } from "std/defin
   console.assert(ii % i === 0, "%(int32_t, int32_t) failed");
   console.assert(i % 2 === -1, "%(int32_t, number) failed");
   console.assert(2 % i === 0, "%(number, int32_t) failed");
-
-  i = INT32_MAX;
-  i = i + 1;
-  console.assert(i === INT32_MIN, "int32_t upper bound overflow failed");
-
-  i = INT32_MIN;
-  i = i - 1;
-  console.assert(i === INT32_MAX, "int32_t lower bound overflow failed");
 }
 
 // uint32_t tests
