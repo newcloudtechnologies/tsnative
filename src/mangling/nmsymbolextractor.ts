@@ -45,7 +45,7 @@ export class NmSymbolExtractor {
         return null;
       }
       const symbolType = symbolTypeMatches[0];
-      if (symbolType === "V" || symbolType === "R") {
+      if (symbolType === "V" || symbolType === "R" || symbolType === "S") {
         return trimmed.split(` ${symbolType} `)[1];
       }
       if (symbolType === "T" || symbolType === "W") {
