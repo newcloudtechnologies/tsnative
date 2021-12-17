@@ -84,9 +84,14 @@ rm -rf ${BUILD}
 mkdir -p ${BUILD}
 # BUILD=$(readlink -f ${BUILD})
 
+if [ "$(uname -s)" == "Darwin" ]; then
+    MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+fi
+
 cmake -G "Unix Makefiles" \
     -B ${BUILD} \
     -S ${CURRENT_DIR} \
+    -DCMAKE_OSX_SYSROOT=${MACOS_SYSROOT} \
     -DCMAKE_BUILD_TYPE=release \
     -DPROJECT_DIR=${PROJECT_DIR} \
     -DENTRY=${ENTRY} \

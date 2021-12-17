@@ -21,11 +21,14 @@ mkdir -p ${OUTPUT_DIR}
 # BUILD_DIR=$(readlink -f ${BUILD_DIR})
 # OUTPUT_DIR=$(readlink -f ${OUTPUT_DIR})
 
+if [ "$(uname -s)" == "Darwin" ]; then
+    MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+fi
+
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
-    -DCMAKE_OSX_ARCHITECTURES=arm64 \
-    -DCMAKE_OSX_SYSROOT=/Users/antiq/Downloads/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+    -DCMAKE_OSX_SYSROOT=${MACOS_SYSROOT} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${OUTPUT_DIR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
