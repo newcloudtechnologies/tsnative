@@ -166,8 +166,12 @@ pipeline {
                             steps {
                                 script {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
-                                        sh 'useradd -u $(stat -c "%u" .gitignore) jenkins'
-                                        init_ssh(SSH_KEY, 'id_rsa', 'unix')
+                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+
+                                        useradd()
+                                        ssh_config()
+                                        ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
+                                        ssh_user(SSH_KEY, "root", "/root")
 
                                         npm_clean_config()
 
@@ -175,7 +179,7 @@ pipeline {
                                         // work from root for all script execute
                                         sh "npm config set unsafe-perm true"
                                         // npm 7 is flawed a lot
-                                        sh "npm install -g npm@8"
+                                        sh "npm install -g npm@6"
 
                                         npm_install_deps()
                                     }
@@ -240,8 +244,6 @@ pipeline {
                         stage("Fix CRLF on Windows") {
                             steps {
                                 script {
-                                    echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
-
                                     // on Windows in GIT config use core.autocrlf = true
                                     // when checkout repository on Windows all files change end line from LF to CRLF
                                     // this view how non-add files to GIT on local copy
@@ -277,7 +279,13 @@ pipeline {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
                                         
-                                        init_ssh(SSH_KEY, 'id_rsa', 'windows')
+                                        sh """
+                                            mkdir -p \$HOME/.ssh
+                                            cat \${SSH_KEY} > \$HOME/.ssh/id_rsa
+                                            chmod 600 \$HOME/.ssh/id_rsa
+                                            echo "Host *" > \$HOME/.ssh/config
+                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
+                                        """
 
                                         npm_clean_config()
 
@@ -285,7 +293,7 @@ pipeline {
                                         sh "npm config set python \"C:\\Python39\\python\""
                                         sh "npm config list"
                                         // npm 7 is flawed a lot
-                                        sh "npm install -g npm@8"
+                                        sh "npm install -g npm@6"
                                         npm_install_deps()
                                     }
                                 }
@@ -364,7 +372,14 @@ pipeline {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        init_ssh(SSH_KEY, 'id_rsa', 'unix')
+                                        sh """
+                                            mkdir -p ~/.ssh
+                                            chmod 700 ~/.ssh
+                                            cat ${ssh_key} > ~/.ssh/${id_rsa_name}
+                                            chmod 600 ~/.ssh/${id_rsa_name}
+                                            echo "Host *" > ~/.ssh/config
+                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
+                                        """
 
                                         npm_clean_config()
 
@@ -450,7 +465,14 @@ pipeline {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        init_ssh(SSH_KEY, 'id_rsa', 'unix')
+                                        sh """
+                                            mkdir -p ~/.ssh
+                                            chmod 700 ~/.ssh
+                                            cat ${ssh_key} > ~/.ssh/${id_rsa_name}
+                                            chmod 600 ~/.ssh/${id_rsa_name}
+                                            echo "Host *" > ~/.ssh/config
+                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
+                                        """
 
                                         npm_clean_config()
 
@@ -526,33 +548,30 @@ pipeline {
     }
 }
 
-// TODO: move to shared lib
-void init_ssh(String ssh_key, String id_rsa_name, String host = 'unix')
+// TODO: unify ssh initialization procedure
+void useradd()
 {
-    echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
-    echo "Configuring ssh..."
-    if (host == 'unix') {
-        sh """
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-            cat ${ssh_key} > ~/.ssh/${id_rsa_name}
-            chmod 600 ~/.ssh/${id_rsa_name}
-            echo "Host *" > ~/.ssh/config
-            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-        """
-    }
-    else if (host == 'windows') {
-        sh """
-            mkdir -p \$HOME/.ssh
-            cat \${SSH_KEY} > \$HOME/.ssh/id_rsa
-            chmod 600 \$HOME/.ssh/id_rsa
-            echo "Host *" > \$HOME/.ssh/config
-            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-        """
-    }
-    else {
-        echo "Unknown host platform: ${host}"
-    }
+    sh 'useradd -u $(stat -c "%u" .gitignore) jenkins'
+}
+
+void ssh_config()
+{
+    sh '''
+        echo "Host *" >> /etc/ssh/ssh_config
+        echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+        echo "    UserKnownHostsFile=/dev/null" >> /etc/ssh/ssh_config
+    '''
+}
+
+void ssh_user(String ssh_key, String user_name, String home_dir)
+{
+    echo "Configure ssh"
+    sh """
+        mkdir -p ${home_dir}/.ssh
+        cat ${ssh_key} > ${home_dir}/.ssh/id_rsa
+        chmod 600 ${home_dir}/.ssh/id_rsa
+        chown -R ${user_name} ${home_dir}
+    """
 }
 
 void npm_clean_config()
