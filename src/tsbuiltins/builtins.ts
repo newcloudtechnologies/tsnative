@@ -368,14 +368,13 @@ export class BuiltinString extends Builtin {
   getLLVMLength() {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
-    const llvmThisType = this.getLLVMType();
 
     const lengthDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "length")!;
 
     const { qualifiedName } = FunctionMangler.mangle(lengthDeclaration, undefined, thisType, [], this.generator);
 
-    const llvmReturnType = LLVMType.getInt32Type(this.generator);
-    const llvmArgumentTypes = [llvmThisType];
+    const llvmReturnType = LLVMType.getDoubleType(this.generator);
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     const { fn: length } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return length;

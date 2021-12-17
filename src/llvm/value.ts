@@ -190,8 +190,8 @@ export class LLVMValue {
 
     if (value.type.isString()) {
       const lengthGetter = this.generator.builtinString.getLLVMLength();
-      const length = this.generator.builder.createSafeCall(lengthGetter, [value]);
-      return this.generator.builder.createICmpNE(length, LLVMConstant.createNullValue(length.type, this.generator));
+      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(value)]);
+      return this.generator.builder.createFCmpONE(length, LLVMConstant.createNullValue(length.type, this.generator));
     }
 
     if (value.isUnion()) {
