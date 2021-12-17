@@ -19,8 +19,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/../cmake/utils.cmake")
 
-include_directories(/Users/antiq/Downloads/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include)
-set(CMAKE_EXE_LINKER_FLAGS "-Xlinker -v -v")
+# set(CMAKE_EXE_LINKER_FLAGS "-Xlinker -v -v")
 
 if (NOT DEFINED SOURCES)
     # looking for all test cases

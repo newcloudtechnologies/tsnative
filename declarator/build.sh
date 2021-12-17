@@ -45,7 +45,7 @@ cmake -G "$GENERATOR" "$PLATFORM" \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 if [[ "$OSTYPE" == "msys" ]]; then
-	cmake --build ${BUILD_DIR} --config Release -j$(sysctl -n hw.ncpu)
+	cmake --build ${BUILD_DIR} --config Release -j${JOBS_NUM}
 	mv ${OUTPUT_DIR}/Release/declarator.exe ${OUTPUT_DIR}/declarator.exe
 	rm -rf ${OUTPUT_DIR}/Release
 else

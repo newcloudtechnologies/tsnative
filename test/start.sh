@@ -8,7 +8,7 @@
 # To obtain such a permit, you should contact New Cloud Technologies, Ltd.
 # at http://ncloudtech.com/contact.html
 #
-set -xe
+
 echo "Starting test..."
 
 CURRENT_DIR=$(cd `dirname $0` && pwd)
@@ -22,8 +22,8 @@ if [ "$(uname -s)" == "Darwin" ]; then
     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
 fi
 
-# tsc
-# npm run build
+tsc
+npm run build
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
@@ -34,4 +34,4 @@ cmake -G "Unix Makefiles" \
     -DSTAGE_DIR=${BUILD_DIR} \
     -DBUILD=${BUILD_DIR}
 
-cd ${BUILD_DIR} && VERBOSE=1 make $JOBS && make test
+cd ${BUILD_DIR} && make $JOBS && make test
