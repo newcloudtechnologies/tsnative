@@ -135,13 +135,10 @@ export class SysVFunctionHandler {
       return arg;
     });
 
-    const parametersTypes = parameters.map((p) =>
-      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, valueDeclaration.unwrapped)
-    );
-    args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
+    args = this.adjustArguments(args, llvmArgumentTypes, argumentTypes);
 
     if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
-      throw new Error("Parameters adjusting failed");
+      throw new Error(`Arguments adjusting failed at '${expression.getText()}'`);
     }
 
     if (isMethod) {
@@ -253,10 +250,7 @@ export class SysVFunctionHandler {
         return arg;
       }) || [];
 
-    const parametersTypes = parameters.map((p) =>
-      this.generator.ts.checker.getTypeOfSymbolAtLocation(p, constructorDeclaration.unwrapped)
-    );
-    args = this.adjustParameters(args, parametersTypes, llvmArgumentTypes);
+    args = this.adjustArguments(args, llvmArgumentTypes, argumentTypes);
 
     llvmArgumentTypes.unshift(LLVMType.getInt8Type(this.generator).getPointer());
 
@@ -337,20 +331,21 @@ export class SysVFunctionHandler {
     this.generator.builder.createSafeStore(vtableStructCasted, classVTablePtr);
   }
 
-  private adjustParameters(parameters: LLVMValue[], tsTypes: TSType[], llvmTypes: LLVMType[]) {
-    if (parameters.length !== llvmTypes.length) {
+  private adjustArguments(args: LLVMValue[], llvmArgumentTypes: LLVMType[], tsArgumentsTypes: TSType[]) {
+    if (args.length !== llvmArgumentTypes.length) {
       throw new Error("Expected arrays of same length");
     }
 
-    return parameters.map((parameter, index) => {
-      const destinationType = llvmTypes[index];
-      const adjusted = parameter.adjustToType(destinationType);
+    return args.map((arg, index) => {
+      const destinationType = llvmArgumentTypes[index];
+      const adjusted = arg.adjustToType(destinationType);
 
-      if (adjusted.type.isConvertibleTo(destinationType)) {
+      if (!adjusted.type.equals(destinationType) && adjusted.type.isConvertibleTo(destinationType)) {
         const converter = destinationType.isIntegerType()
           ? LLVMValue.prototype.castFPToIntegralType
           : LLVMValue.prototype.promoteIntegralToFP;
-        return converter.call(adjusted, destinationType, tsTypes[index].isSigned());
+
+        return converter.call(adjusted, destinationType, tsArgumentsTypes[index].isSigned());
       }
 
       return adjusted;
