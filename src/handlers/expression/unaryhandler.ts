@@ -26,7 +26,7 @@ export class UnaryHandler extends AbstractExpressionHandler {
         return this.generator.handleExpression(operand, env);
       case ts.SyntaxKind.MinusToken: {
         const value = this.generator.handleExpression(operand, env);
-        const negated = this.generator.builder.createFNeg(this.generator.createLoadIfNecessary(value));
+        const negated = this.generator.builder.createNeg(this.generator.createLoadIfNecessary(value));
         return value.makeAssignment(negated);
       }
       case ts.SyntaxKind.PlusPlusToken: {
