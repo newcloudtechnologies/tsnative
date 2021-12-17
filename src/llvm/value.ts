@@ -222,6 +222,10 @@ export class LLVMValue {
   }
 
   promoteIntegralToFP(target: LLVMType, signed: boolean): LLVMValue {
+    if (this.type.isDoubleType()) {
+      return this;
+    }
+
     return signed
       ? this.generator.builder.createSIToFP(this, target)
       : this.generator.builder.createUIToFP(this, target);
