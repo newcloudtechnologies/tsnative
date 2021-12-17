@@ -231,6 +231,10 @@ export class LLVMValue {
       : this.generator.builder.createUIToFP(this, target);
   }
 
+  canPerformNumericOperation() {
+    return this.type.isIntegerType() || this.type.isDoubleType();
+  }
+
   makeAssignment(other: LLVMValue): LLVMValue {
     const value = this as LLVMValue;
 
