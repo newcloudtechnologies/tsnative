@@ -469,7 +469,7 @@ pipeline {
                                             mkdir -p ~/.ssh
                                             chmod 700 ~/.ssh
                                             cat \${SSH_KEY} > ~/.ssh/id_rsa
-                                            chmod 600 ~/.ssh/id_rsa_name
+                                            chmod 600 ~/.ssh/id_rsa
                                             echo "Host *" > ~/.ssh/config
                                             echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
                                         """
