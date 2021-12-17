@@ -168,40 +168,15 @@ pipeline {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        useradd()
-                                        ssh_config()
-                                        ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
-                                        ssh_user(SSH_KEY, "root", "/root")
+                                        init_ssh(SSH_KEY, 'id_rsa', 'unix')
 
-                                        // clear NPM config user and in clone repo for local build
-                                        sh "rm -f \$(npm config get userconfig)"
-                                        sh "rm -f .npmrc"
+                                        npm_clean_config()
 
                                         // enable unsafe-perm since running as a root for install npm-prebuilt-dependencies
                                         // work from root for all script execute
                                         sh "npm config set unsafe-perm true"
 
-                                        // login private repo
-                                        npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-
-                                        // stick to version 6 since 7 one is flawed a lot
-                                        sh "npm install -g npm@6"
-
-                                        // check version
-                                        sh "npm -v"
-                                        sh "node -v"
-
-                                        // clean cache
-                                        sh "npm cache clean -f"
-
-                                        // install deps
-                                        sh "npm install"
-
-                                        // debug
-                                        sh "npm version"
-
-                                        // logout private repo
-                                        npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                        npm_install_deps()
                                     }
                                 }
                             }
@@ -209,23 +184,13 @@ pipeline {
 
                         stage("Build") {
                             steps {
-                                script {
-                                    sh "npm run build"
-                                }
-                            }
-                        }
-
-                        stage("Linter") {
-                            steps {
-                                sh "npm run lint"
+                                npm_build()
                             }
                         }
 
                         stage("Tests") {
                             steps {
-                                // FIXME: enable parallel build once KDM-836 is fixed
-                                sh "npm run test"
-                                sh "npm run runtime_test"
+                                npm_test()
                             }
                         }
 
@@ -235,16 +200,7 @@ pipeline {
                                 expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
                             }
                             steps {
-                                // login to private registry
-                                npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-
-                                // debug
-                                sh "npm version"
-
-                                sh "npm run publishToLocalRegistry"
-
-                                // logout to private registry
-                                npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                npm_publish()
                             }
                         }
                     }
@@ -257,10 +213,9 @@ pipeline {
 
                         always {
                             // disable unsafe-perm since running as a root for install npm-prebuilt-dependencies
-                            sh "npm config set unsafe-perm true"
+                            sh "npm config set unsafe-perm false"
                             // always logout
-                            npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-                            npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                            npm_logout()
                             // always clean work dir
                             cleanWs()
                         }
@@ -321,43 +276,15 @@ pipeline {
                                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
                                         
-                                        sh """
-                                            mkdir -p \$HOME/.ssh
-                                            cat \${SSH_KEY} > \$HOME/.ssh/id_rsa
-                                            chmod 600 \$HOME/.ssh/id_rsa
-                                            echo "Host *" > \$HOME/.ssh/config
-                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-                                        """
+                                        init_ssh(SSH_KEY, 'id_rsa', 'windows')
 
-                                        // clear NPM config user and in clone repo for local build
-                                        sh "rm -f \$(npm config get userconfig)"
-                                        sh "rm -f .npmrc"
-
-                                        // login in registry private repo
-                                        npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                        npm_clean_config()
 
                                         // hack: explicitly set python path on windows
                                         sh "npm config set python \"C:\\Python39\\python\""
                                         sh "npm config list"
 
-                                        // stick to version 6 since 7 one is flawed a lot
-                                        sh "npm install -g npm@6"
-
-                                        // check version
-                                        sh "npm -v"
-                                        sh "node -v"
-
-                                        // clean cache
-                                        sh "npm cache clean -f"
-
-                                        // install deps
-                                        sh "npm install"
-
-                                        // debug
-                                        sh "npm version"
-
-                                        // logout from registry private repo
-                                        npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                        npm_install_deps()
                                     }
                                 }
                             }
@@ -365,25 +292,13 @@ pipeline {
 
                         stage("Build") {
                             steps {
-                                script {
-                                    sh "npm run build"
-                                }
-                            }
-                        }
-
-                        stage("Linter") {
-                            steps {
-                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                                    sh "npm run lint"
-                                }
+                                npm_build()
                             }
                         }
 
                         stage("Tests") {
                             steps {
-                                // FIXME: enable parallel build once KDM-836 (???) is fixed
-                                sh 'npm test'
-                                sh 'npm run runtime_test'
+                                npm_test()
                             }
                         }
 
@@ -392,16 +307,7 @@ pipeline {
                                 expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
                             }
                             steps {
-                                // login to private registry
-                                npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-
-                                // debug
-                                sh "npm version"
-
-                                sh "npm run publishToLocalRegistry"
-
-                                // logout to private registry
-                                npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                npm_publish()
                             }
                         }
                     }
@@ -414,10 +320,179 @@ pipeline {
 
                         always {
                             // always logout
-                            npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-                            npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                            npm_logout()
                             // always clean work dir
                             cleanWs()
+                        }
+                    }
+                }
+
+                stage('macOS arm64') {
+                    agent {
+                        label 'antiq_mac'
+                    }
+
+                    environment {
+                        CI = 'true'
+                    }
+
+                    stages {
+                        // need for pull changes from remote repo for autoincrement version
+                        stage("Checkout repo") {
+                            when {
+                                expression { INCREMENT_VERSION }
+                            }
+
+                            steps {
+                                script {
+                                    // Work with GIT
+                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+                                        // Update repo
+                                        sh 'git fetch --all'
+                                        sh 'git pull'
+                                    }
+                                }
+                            }
+                        }
+
+                        stage("Setup Env") {
+                            steps {
+                                script {
+                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+
+                                        init_ssh(SSH_KEY, 'id_rsa', 'unix')
+
+                                        npm_clean_config()
+
+                                        npm_install_deps()
+                                    }
+                                }
+                            }
+                        }
+
+                        stage("Build") {
+                            steps {
+                                npm_build()
+                            }
+                        }
+
+                        stage("Tests") {
+                            steps {
+                                npm_test()
+                            }
+                        }
+
+                        stage("Publish")
+                        {
+                            when {
+                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
+                            }
+                            steps {
+                                npm_publish()
+                            }
+                        }
+                    }
+
+                    post {
+                        cleanup {
+                            // custom clean workdir from bug cleanWs()
+                            sh 'rm -rf ./* ~/.ssh'
+                        }
+
+                        always {
+                            // always logout
+                            npm_logout()
+                            // always clean work dir
+                            deleteDir()
+                            dir("${workspace}@tmp") {
+                                deleteDir()
+                            }
+                        }
+                    }
+                }
+
+                stage('macOS x86_64') {
+                    agent {
+                        label 'antiq_mac_x86_64'
+                    }
+
+                    environment {
+                        CI = 'true'
+                    }
+
+                    stages {
+                        // need for pull changes from remote repo for autoincrement version
+                        stage("Checkout repo") {
+                            when {
+                                expression { INCREMENT_VERSION }
+                            }
+
+                            steps {
+                                script {
+                                    // Work with GIT
+                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+                                        // Update repo
+                                        sh 'git fetch --all'
+                                        sh 'git pull'
+                                    }
+                                }
+                            }
+                        }
+
+                        stage("Setup Env") {
+                            steps {
+                                script {
+                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+
+                                        init_ssh(SSH_KEY, 'id_rsa', 'unix')
+
+                                        npm_clean_config()
+
+                                        npm_install_deps()
+                                    }
+                                }
+                            }
+                        }
+
+                        stage("Build") {
+                            steps {
+                                npm_build()
+                            }
+                        }
+
+                        stage("Tests") {
+                            steps {
+                                npm_test()
+                            }
+                        }
+
+                        stage("Publish")
+                        {
+                            when {
+                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
+                            }
+                            steps {
+                                npm_publish()
+                            }
+                        }
+                    }
+
+                    post {
+                        cleanup {
+                            // custom clean workdir from bug cleanWs()
+                            sh 'rm -rf ./* ~/.ssh'
+                        }
+
+                        always {
+                            // always logout
+                            npm_logout()
+                            // always clean work dir
+                            deleteDir()
+                            dir("${workspace}@tmp") {
+                                deleteDir()
+                            }
                         }
                     }
                 }
@@ -447,45 +522,98 @@ pipeline {
     }
 }
 
-String get_source_branch() {
-    if (env.BRANCH_NAME.startsWith('PR')) {
-        return "${env.CHANGE_BRANCH}".toString()
-    } else {
-        return "${env.BRANCH_NAME}".toString()
+// TODO: move to shared lib
+void init_ssh(String ssh_key, String id_rsa_name, String host = 'unix')
+{
+    echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+    echo "Configuring ssh..."
+    if (host == 'unix') {
+        sh """
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            cat ${ssh_key} > ~/.ssh/${id_rsa_name}
+            chmod 600 ~/.ssh/${id_rsa_name}
+            echo "Host *" > ~/.ssh/config
+            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
+        """
+    }
+    else if (host == 'windows') {
+        sh """
+            mkdir -p \$HOME/.ssh
+            cat \${SSH_KEY} > \$HOME/.ssh/id_rsa
+            chmod 600 \$HOME/.ssh/id_rsa
+            echo "Host *" > \$HOME/.ssh/config
+            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
+        """
+    }
+    else {
+        echo "Unknown host platform: ${host}"
     }
 }
 
-boolean git_skip_ci_in_last_commit() {
-    if (sh (script: "git --no-pager show -s --format=\'%B\' -1 | grep '.*\\[skip ci\\].*\\|.*\\[ci skip\\].*'", returnStatus: true) == 0) {
-        return true
-    } else {
-        return false
-    }
+void npm_clean_config()
+{
+    // clear NPM config user and in clone repo for local build
+    sh "rm -f \$(npm config get userconfig)"
+    sh "rm -f .npmrc"
 }
 
-void useradd()
+void npm_install_deps()
 {
-    sh 'useradd -u $(stat -c "%u" .gitignore) jenkins'
+    // login private repo
+    npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+    // stick to version 6 since 7 one is flawed a lot
+    sh "npm install -g npm@6"
+
+    // check version
+    sh "npm -v"
+    sh "node -v"
+
+    // clean cache
+    sh "npm cache clean -f"
+
+    // install deps
+    sh "npm install"
+
+    // debug
+    sh "npm version"
+
+    // logout private repo
+    npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
 }
 
-void ssh_config()
+void npm_build()
 {
-    sh '''
-        echo "Host *" >> /etc/ssh/ssh_config
-        echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-        echo "    UserKnownHostsFile=/dev/null" >> /etc/ssh/ssh_config
-    '''
+    sh "npm run lint"
+    sh "npm run build"
 }
 
-void ssh_user(String ssh_key, String user_name, String home_dir)
+void npm_test()
 {
-    echo "Configure ssh"
-    sh """
-        mkdir -p ${home_dir}/.ssh
-        cat ${ssh_key} > ${home_dir}/.ssh/id_rsa
-        chmod 600 ${home_dir}/.ssh/id_rsa
-        chown -R ${user_name} ${home_dir}
-    """
+    // FIXME: enable parallel build once KDM-836 (???) is fixed
+    sh 'npm test'
+    sh 'npm run runtime_test'
+}
+
+void npm_publish()
+{
+    // login to private registry
+    npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+    // debug
+    sh "npm version"
+
+    sh "npm run publishToLocalRegistry"
+
+    // logout to private registry
+    npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+}
+
+void npm_logout()
+{
+    npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+    npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
 }
 
 // авторизуемся в репозитории для получения зависимостей
@@ -548,4 +676,20 @@ void npm_logout_registry_for_publish(String registry_url, String registry_auth_s
              sh "npm config list"
         }
    }
+}
+
+String get_source_branch() {
+    if (env.BRANCH_NAME.startsWith('PR')) {
+        return "${env.CHANGE_BRANCH}".toString()
+    } else {
+        return "${env.BRANCH_NAME}".toString()
+    }
+}
+
+boolean git_skip_ci_in_last_commit() {
+    if (sh (script: "git --no-pager show -s --format=\'%B\' -1 | grep '.*\\[skip ci\\].*\\|.*\\[ci skip\\].*'", returnStatus: true) == 0) {
+        return true
+    } else {
+        return false
+    }
 }
