@@ -79,10 +79,17 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
-    const allocated = this.generator.gc.allocate(LLVMType.getDoubleType(this.generator));
-    const value = LLVMConstantFP.get(this.generator, parseFloat(expression.text));
-    this.generator.builder.createSafeStore(value, allocated);
-    return allocated;
+    const declaredType = this.getDeclaredType(expression);
+
+    if (declaredType && declaredType.isCppIntegralType()) {
+      return LLVMConstantInt.get(
+        this.generator,
+        parseInt(expression.text, 10), // mkrv: @todo: support only decimal numbers
+        declaredType.getIntegralBitwidth()
+      ).createHeapAllocated();
+    }
+
+    return LLVMConstantFP.get(this.generator, parseFloat(expression.text)).createHeapAllocated();
   }
 
   private handleStringLiteral(expression: ts.StringLiteral): LLVMValue {
@@ -165,23 +172,36 @@ export class LiteralHandler extends AbstractExpressionHandler {
     return object;
   }
 
-  private correctValues(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
-    const isAssignment =
-      ts.isBinaryExpression(expression.parent) && expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
-    const isVariableDeclaration = ts.isVariableDeclaration(expression.parent);
-    const isArgument = ts.isCallExpression(expression.parent);
+  private getDeclaredType(expression: ts.Expression) {
+    let parent = expression.parent;
+
+    const expressionType = this.generator.ts.checker.getTypeAtLocation(expression);
+    if (expressionType.isNumber()) {
+      while (parent) {
+        if (!ts.isPrefixUnaryExpression(parent) && !ts.isPostfixUnaryExpression(parent)) {
+          break;
+        }
+
+        expression = parent;
+        parent = parent.parent;
+      }
+    }
+
+    const isAssignment = ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+    const isVariableDeclaration = ts.isVariableDeclaration(parent);
+    const isArgument = ts.isCallExpression(parent);
 
     if (!isAssignment && !isVariableDeclaration && !isArgument) {
       return;
     }
 
-    let variableType: TSType;
+    let variableType: TSType | undefined;
     if (isAssignment) {
-      variableType = this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.BinaryExpression).left);
+      variableType = this.generator.ts.checker.getTypeAtLocation((parent as ts.BinaryExpression).left);
     } else if (isVariableDeclaration) {
-      variableType = this.generator.ts.checker.getTypeAtLocation((expression.parent as ts.VariableDeclaration).name);
+      variableType = this.generator.ts.checker.getTypeAtLocation((parent as ts.VariableDeclaration).name);
     } else if (isArgument) {
-      const parentFunction = expression.parent as ts.CallExpression | ts.NewExpression;
+      const parentFunction = parent as ts.CallExpression | ts.NewExpression;
 
       const argumentIndex = parentFunction.arguments?.indexOf(expression);
       if (typeof argumentIndex === "undefined" || argumentIndex === -1) {
@@ -218,8 +238,15 @@ export class LiteralHandler extends AbstractExpressionHandler {
       const declaredParameterType = this.generator.ts.checker.getTypeAtLocation(declaredParameter);
 
       variableType = declaredParameterType;
-    } else {
-      throw new Error("Unreachable in properties order correction");
+    }
+
+    return variableType;
+  }
+
+  private correctValues(expression: ts.Expression, llvmValues: Map<string, LLVMValue>) {
+    const variableType = this.getDeclaredType(expression);
+    if (!variableType) {
+      return;
     }
 
     if (!variableType.isInterface() && !variableType.isTypeLiteral()) {
