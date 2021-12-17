@@ -962,6 +962,7 @@ export class TSType {
     const getInt64Type = () => {
       switch (process.platform) {
         case "win32":
+        case "darwin":
           return "long long";
         default:
           return "long";
