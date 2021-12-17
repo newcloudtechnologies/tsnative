@@ -175,6 +175,8 @@ pipeline {
                                         // enable unsafe-perm since running as a root for install npm-prebuilt-dependencies
                                         // work from root for all script execute
                                         sh "npm config set unsafe-perm true"
+                                        // npm 7 is flawed a lot
+                                        sh "npm install -g npm@8"
 
                                         npm_install_deps()
                                     }
@@ -283,7 +285,8 @@ pipeline {
                                         // hack: explicitly set python path on windows
                                         sh "npm config set python \"C:\\Python39\\python\""
                                         sh "npm config list"
-
+                                        // npm 7 is flawed a lot
+                                        sh "npm install -g npm@8"
                                         npm_install_deps()
                                     }
                                 }
@@ -562,9 +565,6 @@ void npm_install_deps()
 {
     // login private repo
     npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-
-    // stick to version 6 since 7 one is flawed a lot
-    sh "npm install -g npm@6"
 
     // check version
     sh "npm -v"
