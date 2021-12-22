@@ -308,10 +308,7 @@ pipeline {
 
                         stage("Tests") {
                             steps {
-                                // Disabled due to broken compilation pipeline on Windows (AN-786)
-                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                                    npm_test()
-                                }
+                                npm_test()
                             }
                         }
 
