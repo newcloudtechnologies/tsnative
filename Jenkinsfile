@@ -128,104 +128,104 @@ pipeline {
             }
 
             parallel {
-                stage('Linux x86_64') {
-                    agent {
-                        docker {
-                            image "docreg.devos.club/typescript-environment:1.7"
-                            args "--user root"
-                            registryUrl 'https://docreg.devos.club'
-                            registryCredentialsId 'docker_kos'
-                            alwaysPull true
-                        }
-                    }
+                // stage('Linux x86_64') {
+                //     agent {
+                //         docker {
+                //             image "docreg.devos.club/typescript-environment:1.7"
+                //             args "--user root"
+                //             registryUrl 'https://docreg.devos.club'
+                //             registryCredentialsId 'docker_kos'
+                //             alwaysPull true
+                //         }
+                //     }
 
-                    environment {
-                        CI = 'true'
-                    }
+                //     environment {
+                //         CI = 'true'
+                //     }
 
-                    // need for pull changes from remote repo for autoincrement version
-                    stages {
-                        stage("Checkout repo") {
-                            when {
-                                expression { INCREMENT_VERSION }
-                            }
+                //     // need for pull changes from remote repo for autoincrement version
+                //     stages {
+                //         stage("Checkout repo") {
+                //             when {
+                //                 expression { INCREMENT_VERSION }
+                //             }
 
-                            steps {
-                                script {
-                                    // Work with GIT
-                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                                        // Update repo
-                                        sh 'git fetch --all'
-                                        sh 'git pull'
-                                    }
-                                }
-                            }
-                        }
+                //             steps {
+                //                 script {
+                //                     // Work with GIT
+                //                     withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+                //                         // Update repo
+                //                         sh 'git fetch --all'
+                //                         sh 'git pull'
+                //                     }
+                //                 }
+                //             }
+                //         }
 
-                        stage("Setup Env") {
-                            steps {
-                                script {
-                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
-                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+                //         stage("Setup Env") {
+                //             steps {
+                //                 script {
+                //                     withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                //                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        useradd()
-                                        ssh_config()
-                                        ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
-                                        ssh_user(SSH_KEY, "root", "/root")
+                //                         useradd()
+                //                         ssh_config()
+                //                         ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
+                //                         ssh_user(SSH_KEY, "root", "/root")
 
-                                        npm_clean_config()
+                //                         npm_clean_config()
 
-                                        // enable unsafe-perm since running as a root for install npm-prebuilt-dependencies
-                                        // work from root for all script execute
-                                        sh "npm config set unsafe-perm true"
-                                        // npm 7 is flawed a lot
-                                        sh "npm install -g npm@6"
+                //                         // enable unsafe-perm since running as a root for install npm-prebuilt-dependencies
+                //                         // work from root for all script execute
+                //                         sh "npm config set unsafe-perm true"
+                //                         // npm 7 is flawed a lot
+                //                         sh "npm install -g npm@6"
 
-                                        npm_install_deps()
-                                    }
-                                }
-                            }
-                        }
+                //                         npm_install_deps()
+                //                     }
+                //                 }
+                //             }
+                //         }
 
-                        stage("Build") {
-                            steps {
-                                npm_build()
-                            }
-                        }
+                //         stage("Build") {
+                //             steps {
+                //                 npm_build()
+                //             }
+                //         }
 
-                        stage("Tests") {
-                            steps {
-                                npm_test()
-                            }
-                        }
+                //         stage("Tests") {
+                //             steps {
+                //                 npm_test()
+                //             }
+                //         }
 
-                        stage("Publish")
-                        {
-                            when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
-                            }
-                            steps {
-                                npm_publish()
-                            }
-                        }
-                    }
+                //         stage("Publish")
+                //         {
+                //             when {
+                //                 expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
+                //             }
+                //             steps {
+                //                 npm_publish()
+                //             }
+                //         }
+                //     }
 
-                    post {
-                        cleanup {
-                            // custom clean workdir from bug cleanWs()
-                            sh 'rm -rf ./* ~/.ssh'
-                        }
+                //     post {
+                //         cleanup {
+                //             // custom clean workdir from bug cleanWs()
+                //             sh 'rm -rf ./* ~/.ssh'
+                //         }
 
-                        always {
-                            // disable unsafe-perm since running as a root for install npm-prebuilt-dependencies
-                            sh "npm config set unsafe-perm false"
-                            // always logout
-                            npm_logout()
-                            // always clean work dir
-                            cleanWs()
-                        }
-                    }
-                }
+                //         always {
+                //             // disable unsafe-perm since running as a root for install npm-prebuilt-dependencies
+                //             sh "npm config set unsafe-perm false"
+                //             // always logout
+                //             npm_logout()
+                //             // always clean work dir
+                //             cleanWs()
+                //         }
+                //     }
+                // }
 
                 stage('Windows x86_64') {
                     agent {
@@ -430,99 +430,99 @@ pipeline {
                     }
                 }
 
-                stage('macOS x86_64') {
-                    agent {
-                        label 'antiq_mac_x86_64'
-                    }
+            //     stage('macOS x86_64') {
+            //         agent {
+            //             label 'antiq_mac_x86_64'
+            //         }
 
-                    environment {
-                        CI = 'true'
-                        LLVM_DIR='/opt/local/libexec/llvm-11'
-                    }
+            //         environment {
+            //             CI = 'true'
+            //             LLVM_DIR='/opt/local/libexec/llvm-11'
+            //         }
 
-                    stages {
-                        // need for pull changes from remote repo for autoincrement version
-                        stage("Checkout repo") {
-                            when {
-                                expression { INCREMENT_VERSION }
-                            }
+            //         stages {
+            //             // need for pull changes from remote repo for autoincrement version
+            //             stage("Checkout repo") {
+            //                 when {
+            //                     expression { INCREMENT_VERSION }
+            //                 }
 
-                            steps {
-                                script {
-                                    // Work with GIT
-                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                                        // Update repo
-                                        sh 'git fetch --all'
-                                        sh 'git pull'
-                                    }
-                                }
-                            }
-                        }
+            //                 steps {
+            //                     script {
+            //                         // Work with GIT
+            //                         withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
+            //                             // Update repo
+            //                             sh 'git fetch --all'
+            //                             sh 'git pull'
+            //                         }
+            //                     }
+            //                 }
+            //             }
 
-                        stage("Setup Env") {
-                            steps {
-                                script {
-                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
-                                        echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
+            //             stage("Setup Env") {
+            //                 steps {
+            //                     script {
+            //                         withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+            //                             echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        sh """
-                                            mkdir -p ~/.ssh
-                                            chmod 700 ~/.ssh
-                                            cat \${SSH_KEY} > ~/.ssh/id_rsa
-                                            chmod 600 ~/.ssh/id_rsa
-                                            echo "Host *" > ~/.ssh/config
-                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-                                        """
+            //                             sh """
+            //                                 mkdir -p ~/.ssh
+            //                                 chmod 700 ~/.ssh
+            //                                 cat \${SSH_KEY} > ~/.ssh/id_rsa
+            //                                 chmod 600 ~/.ssh/id_rsa
+            //                                 echo "Host *" > ~/.ssh/config
+            //                                 echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
+            //                             """
 
-                                        npm_clean_config()
+            //                             npm_clean_config()
 
-                                        npm_install_deps()
-                                    }
-                                }
-                            }
-                        }
+            //                             npm_install_deps()
+            //                         }
+            //                     }
+            //                 }
+            //             }
 
-                        stage("Build") {
-                            steps {
-                                npm_build()
-                            }
-                        }
+            //             stage("Build") {
+            //                 steps {
+            //                     npm_build()
+            //                 }
+            //             }
 
-                        stage("Tests") {
-                            steps {
-                                npm_test()
-                            }
-                        }
+            //             stage("Tests") {
+            //                 steps {
+            //                     npm_test()
+            //                 }
+            //             }
 
-                        stage("Publish")
-                        {
-                            when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
-                            }
-                            steps {
-                                npm_publish()
-                            }
-                        }
-                    }
+            //             stage("Publish")
+            //             {
+            //                 when {
+            //                     expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
+            //                 }
+            //                 steps {
+            //                     npm_publish()
+            //                 }
+            //             }
+            //         }
 
-                    post {
-                        cleanup {
-                            // custom clean workdir from bug cleanWs()
-                            sh 'rm -rf ./* ~/.ssh'
-                        }
+            //         post {
+            //             cleanup {
+            //                 // custom clean workdir from bug cleanWs()
+            //                 sh 'rm -rf ./* ~/.ssh'
+            //             }
 
-                        always {
-                            // always logout
-                            npm_logout()
-                            // always clean work dir
-                            deleteDir()
-                            dir("${workspace}@tmp") {
-                                deleteDir()
-                            }
-                        }
-                    }
-                }
-            }
+            //             always {
+            //                 // always logout
+            //                 npm_logout()
+            //                 // always clean work dir
+            //                 deleteDir()
+            //                 dir("${workspace}@tmp") {
+            //                     deleteDir()
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
         }
     }
 
