@@ -17,11 +17,11 @@ BUILD_DIR="${CURRENT_DIR}/../out/test/build"
 rm -rf ${BUILD_DIR}
 mkdir -p ${BUILD_DIR}
 
-if [ "$(uname -s)" == "Darwin" ]; then
-    MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-fi
+# if [ "$(uname -s)" == "Darwin" ]; then
+#     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+# fi
 
-echo "!!!! MACOS_SYSROOT ${MACOS_SYSROOT}"
+# echo "!!!! MACOS_SYSROOT ${MACOS_SYSROOT}"
 
 tsc
 npm run build
@@ -29,7 +29,6 @@ npm run build
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
-    # -DCMAKE_OSX_SYSROOT=${MACOS_SYSROOT} \
     -DCMAKE_BUILD_TYPE=Release \
     -DPROJECT_DIR=${CURRENT_DIR} \
     -DSTAGE_DIR=${BUILD_DIR} \
