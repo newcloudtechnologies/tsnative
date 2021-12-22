@@ -247,7 +247,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compiling cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -v -c ${includes} ${definitions} ${entry}
+        ARGS -v -std=c++${CMAKE_CXX_STANDARD} -stdlib=libstdc++ -c ${includes} ${definitions} ${entry}
     )
 
     add_custom_target(${target}
