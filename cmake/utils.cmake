@@ -236,6 +236,8 @@ endfunction()
 function(compile_cpp target dep_target includes definitions entry output_dir compiled)
     string(REPLACE ".cpp" ".o" output "${entry}")
 
+    list(includes APPEND ${CMAKE_OSX_SYSROOT}/usr/include)
+
     list(TRANSFORM includes PREPEND "-I")
 
     message("... CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
