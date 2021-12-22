@@ -234,6 +234,7 @@ endif()
 endfunction()
 
 function(compile_cpp target dep_target includes definitions source output_dir compiled)
+message("!!!!!! compile_cpp for ${entry} " ${entry})
     string(REPLACE ".cpp" ".o" output "${entry}")
 
     list(TRANSFORM includes PREPEND "-I")
