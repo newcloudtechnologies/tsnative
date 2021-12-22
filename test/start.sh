@@ -17,9 +17,10 @@ BUILD_DIR="${CURRENT_DIR}/../out/test/build"
 rm -rf ${BUILD_DIR}
 mkdir -p ${BUILD_DIR}
 
-# if [ "$(uname -s)" == "Darwin" ]; then
+if [ "$(uname -s)" == "Darwin" ]; then
+    xcode-select --install
 #     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-# fi
+fi
 
 # echo "!!!! MACOS_SYSROOT ${MACOS_SYSROOT}"
 
