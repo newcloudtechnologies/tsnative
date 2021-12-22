@@ -238,13 +238,15 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
 
     list(TRANSFORM includes PREPEND "-I")
 
+    message("... CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
+
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${entry}
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compiling cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
+        ARGS -v -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
     )
 
     add_custom_target(${target}
