@@ -238,6 +238,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
 
     list(TRANSFORM includes PREPEND "-I")
 
+    message("... CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
     message("... CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
 
     add_custom_command(
