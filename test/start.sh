@@ -29,7 +29,7 @@ npm run build
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
-    -DCMAKE_OSX_SYSROOT=${MACOS_SYSROOT} \
+    # -DCMAKE_OSX_SYSROOT=${MACOS_SYSROOT} \
     -DCMAKE_BUILD_TYPE=Release \
     -DPROJECT_DIR=${CURRENT_DIR} \
     -DSTAGE_DIR=${BUILD_DIR} \
