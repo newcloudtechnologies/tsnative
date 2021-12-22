@@ -23,7 +23,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/../cmake/utils.cmake")
 
 if (NOT DEFINED SOURCES)
     # looking for all test cases
-    file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_LIST_DIR}" "*.ts")
+    file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.ts")
     list(FILTER SOURCES EXCLUDE REGEX ".*[.]d.ts$")
     list(FILTER SOURCES EXCLUDE REGEX ".*runtime_test.ts$")
 endif()
