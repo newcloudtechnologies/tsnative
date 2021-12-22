@@ -21,6 +21,8 @@ if [ "$(uname -s)" == "Darwin" ]; then
     MACOS_SYSROOT="$(xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
 fi
 
+echo "!!!! MACOS_SYSROOT ${MACOS_SYSROOT}"
+
 tsc
 npm run build
 
