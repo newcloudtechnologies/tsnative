@@ -277,10 +277,13 @@ message("!!!!!! compile_cpp for ${entry} " ${entry})
         target_compile_options(${OBJECT_TARGET} PUBLIC --target=${CMAKE_CXX_COMPILER_TARGET})
     endif()
     add_dependencies(${OBJECT_TARGET} ${dep_target})
-    add_custom_target(${target}
-        DEPENDS ${OBJECT_TARGET}
-    )
+
     set(OUTFILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${OBJECT_TARGET}.dir/${binary_name}.dir/${output}.cpp.o")
+
+    add_custom_target(${target}
+        DEPENDS ${OBJECT_TARGET} ${OUTFILE}
+    )
+
     set(${compiled} ${OUTFILE} PARENT_SCOPE)
 endfunction()
 
