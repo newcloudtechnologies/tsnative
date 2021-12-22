@@ -240,6 +240,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
 
     message("... CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
     message("... CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
+    message("... CMAKE_OSX_SYSROOT: ${CMAKE_OSX_SYSROOT}")
 
     add_custom_command(
         OUTPUT ${output}
@@ -247,7 +248,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compiling cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -v -std=gnu++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
+        ARGS -v -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
     )
 
     add_custom_target(${target}
