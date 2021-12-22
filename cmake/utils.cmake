@@ -233,8 +233,8 @@ endif()
     set(${functions_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(compile_cpp target dep_target includes definitions source output_dir compiled)
-    string(REPLACE ".cpp" ".o" output "${source}")
+function(compile_cpp target dep_target includes definitions entry output_dir compiled)
+    string(REPLACE ".cpp" ".o" output "${entry}")
 
     list(TRANSFORM includes PREPEND "-I")
 
@@ -250,40 +250,10 @@ function(compile_cpp target dep_target includes definitions source output_dir co
     add_custom_target(${target}
         DEPENDS ${output}
     )
-    
+
     add_dependencies(${target} ${dep_target})
-    
+
     set(${compiled} ${output} PARENT_SCOPE)
-
-    # get_filename_component(output "${source}" NAME_WE)
-    # set(OBJECT_TARGET "${target}_${output}")
-
-    # message("!!! output ${output}")
-    # message("!!! OBJECT_TARGET ${OBJECT_TARGET}")
-
-    # set(INCLUDESZ )
-    # list(APPEND INCLUDESZ "${SRCDIR}/node_modules")
-    # list(APPEND INCLUDESZ "${SRCDIR}/../node_modules")
-    # list(APPEND INCLUDESZ "${SRCDIR}/..")
-    # if (NOT "${includes}" STREQUAL "")
-    #     list(APPEND INCLUDESZ "${includes}")
-    # endif()
-    # list(TRANSFORM INCLUDESZ PREPEND "-I")
-    # add_library(${OBJECT_TARGET} OBJECT ${source})
-    # target_compile_options(${OBJECT_TARGET} PUBLIC ${INCLUDESZ} ${definitions})
-    # target_link_libraries(${OBJECT_TARGET} -L/Users/antiq/tsnative/std/lib -ltsnative-std)
-    # if (ANDROID)
-    #     target_compile_options(${OBJECT_TARGET} PUBLIC --target=${CMAKE_CXX_COMPILER_TARGET})
-    # endif()
-    # add_dependencies(${OBJECT_TARGET} ${dep_target})
-
-    # set(OUTFILE "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${OBJECT_TARGET}.dir/${binary_name}.dir/${output}.cpp.o")
-
-    # add_custom_target(${target}
-    #     DEPENDS ${OBJECT_TARGET} ${OUTFILE}
-    # )
-
-    # set(${compiled} ${OUTFILE} PARENT_SCOPE)
 endfunction()
 
 
