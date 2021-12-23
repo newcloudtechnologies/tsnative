@@ -190,8 +190,8 @@ export class LLVMValue {
 
     if (value.type.isString()) {
       const lengthGetter = this.generator.builtinString.getLLVMLength();
-      const length = this.generator.builder.createSafeCall(lengthGetter, [value]);
-      return this.generator.builder.createICmpNE(length, LLVMConstant.createNullValue(length.type, this.generator));
+      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(value)]);
+      return this.generator.builder.createFCmpONE(length, LLVMConstant.createNullValue(length.type, this.generator));
     }
 
     if (value.isUnion()) {
@@ -222,9 +222,17 @@ export class LLVMValue {
   }
 
   promoteIntegralToFP(target: LLVMType, signed: boolean): LLVMValue {
+    if (this.type.isDoubleType()) {
+      return this;
+    }
+
     return signed
       ? this.generator.builder.createSIToFP(this, target)
       : this.generator.builder.createUIToFP(this, target);
+  }
+
+  canPerformNumericOperation() {
+    return this.type.isIntegerType() || this.type.isDoubleType();
   }
 
   makeAssignment(other: LLVMValue): LLVMValue {

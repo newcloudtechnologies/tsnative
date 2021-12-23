@@ -18,14 +18,18 @@ OUTPUT_DIR="${CURRENT_DIR}/lib"
 mkdir -p ${BUILD_DIR}
 mkdir -p ${OUTPUT_DIR}
 
-BUILD_DIR=$(readlink -f ${BUILD_DIR})
-OUTPUT_DIR=$(readlink -f ${OUTPUT_DIR})
+if [ "$(uname -s)" == "Darwin" ]; then
+    JOBS_NUM=$(sysctl -n hw.ncpu)
+else
+    JOBS_NUM=$(expr $(nproc) + 1)
+fi
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${OUTPUT_DIR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD_DIR} && make -j$(expr $(nproc) + 1)
+cd ${BUILD_DIR} && make -j${JOBS_NUM}
 

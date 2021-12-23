@@ -238,13 +238,19 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
 
     list(TRANSFORM includes PREPEND "-I")
 
+    set(ISYSROOT )
+    if(APPLE)
+        set(ISYSROOT_ARG "-isysroot ${CMAKE_OSX_SYSROOT}")
+        separate_arguments(ISYSROOT NATIVE_COMMAND ${ISYSROOT_ARG})
+    endif()
+
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${entry}
         WORKING_DIRECTORY ${output_dir}
         COMMAND echo "Compiling cpp..."
         COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
+        ARGS ${ISYSROOT} -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
     )
 
     add_custom_target(${target}
@@ -255,6 +261,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
 
     set(${compiled} ${output} PARENT_SCOPE)
 endfunction()
+
 
 function(verify_ts target dep_target entry sources output_dir)
     get_filename_component(entry_fn "${entry}" NAME)

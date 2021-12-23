@@ -21,9 +21,6 @@ export class CastHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.TypeAssertionExpression:
       case ts.SyntaxKind.AsExpression:
         const asExpression = expression as ts.AsExpression | ts.TypeAssertion;
-        const value = this.generator.handleExpression(asExpression.expression, env);
-
-        const destinationType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
 
         if (this.generator.boxedPrimitives.includes(asExpression.type.getText())) {
           throw new Error(`
@@ -32,26 +29,48 @@ export class CastHandler extends AbstractExpressionHandler {
           `);
         }
 
+        const value = this.generator.handleExpression(asExpression.expression, env);
+
+        const sourceTSType = this.generator.ts.checker.getTypeAtLocation(asExpression.expression);
+        const nakedValueType = value.type.unwrapPointer();
+
+        const destinationTSType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
+        const destinationLLVMType = destinationTSType.getLLVMType();
+        const nakedDestinationType = destinationLLVMType.unwrapPointer();
+
         if (!value.isUnion()) {
-          return this.generator.builder.createBitCast(value, destinationType.getLLVMType());
+          if (nakedValueType.isDoubleType() && destinationTSType.isCppIntegralType()) {
+            return value
+              .getValue()
+              .castFPToIntegralType(destinationLLVMType, destinationTSType.isSigned())
+              .createHeapAllocated();
+          }
+
+          if (sourceTSType.isCppIntegralType() && nakedDestinationType.isDoubleType()) {
+            return value
+              .getValue()
+              .promoteIntegralToFP(destinationLLVMType, sourceTSType.isSigned())
+              .createHeapAllocated();
+          }
+
+          return this.generator.builder.createBitCast(value, destinationTSType.getLLVMType().ensurePointer());
         }
 
-        const unionName = (value.type.unwrapPointer() as LLVMStructType).name;
+        const unionName = (nakedValueType as LLVMStructType).name;
         if (!unionName) {
           throw new Error("Name required for UnionStruct");
         }
 
         const unionMeta = this.generator.meta.getUnionMeta(unionName);
 
-        if (destinationType.isObject()) {
-          if (destinationType.isClass()) {
-            return value.extract(destinationType.getLLVMType());
+        if (destinationTSType.isObject()) {
+          if (destinationTSType.isClass()) {
+            return value.extract(destinationLLVMType);
           }
 
-          const typeProps = destinationType.getProperties();
+          const typeProps = destinationTSType.getProperties();
           const propNames = typeProps.map((symbol) => symbol.name);
-          const objectType = destinationType.getLLVMType();
-          const allocated = this.generator.gc.allocate(objectType.unwrapPointer());
+          const allocated = this.generator.gc.allocate(nakedDestinationType.unwrapPointer());
 
           for (let i = 0; i < propNames.length; ++i) {
             const valueIndex = unionMeta.propsMap.get(propNames[i]);
@@ -66,8 +85,8 @@ export class CastHandler extends AbstractExpressionHandler {
           }
 
           return allocated;
-        } else if (destinationType.isUnion()) {
-          const destinationStructType = destinationType.getLLVMType().unwrapPointer() as LLVMStructType;
+        } else if (destinationTSType.isUnion()) {
+          const destinationStructType = nakedDestinationType as LLVMStructType;
           const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
 
           const allocated = this.generator.gc.allocate(destinationStructType);
@@ -86,7 +105,7 @@ export class CastHandler extends AbstractExpressionHandler {
 
           return allocated;
         } else {
-          return value.extract(destinationType.getLLVMType());
+          return value.extract(destinationLLVMType);
         }
       default:
         break;

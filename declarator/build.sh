@@ -18,15 +18,18 @@ OUTPUT_DIR="${CURRENT_DIR}/../bin"
 mkdir -p ${BUILD_DIR}
 mkdir -p ${OUTPUT_DIR}
 
-BUILD_DIR=$(readlink -f ${BUILD_DIR})
-OUTPUT_DIR=$(readlink -f ${OUTPUT_DIR})
-
 GENERATOR="Unix Makefiles"
 PLATFORM=""
 
 if [[ "$OSTYPE" == "msys" ]]; then
     GENERATOR="Visual Studio 16 2019"
     PLATFORM="-Ax64"
+fi
+
+if [ "$(uname -s)" == "Darwin" ]; then
+    JOBS_NUM=$(sysctl -n hw.ncpu)
+else
+    JOBS_NUM=$(expr $(nproc) + 1)
 fi
 
 cmake -G "$GENERATOR" "$PLATFORM" \
@@ -37,11 +40,11 @@ cmake -G "$GENERATOR" "$PLATFORM" \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 if [[ "$OSTYPE" == "msys" ]]; then
-	cmake --build ${BUILD_DIR} --config Release -j$(expr $(nproc) + 1)
+	cmake --build ${BUILD_DIR} --config Release -j${JOBS_NUM}
 	mv ${OUTPUT_DIR}/Release/declarator.exe ${OUTPUT_DIR}/declarator.exe
 	rm -rf ${OUTPUT_DIR}/Release
 else
-	cd ${BUILD_DIR} && make -j$(expr $(nproc) + 1)
+	cd ${BUILD_DIR} && make -j${JOBS_NUM}
 fi
 
 

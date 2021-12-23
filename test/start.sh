@@ -17,15 +17,13 @@ BUILD_DIR="${CURRENT_DIR}/../out/test/build"
 rm -rf ${BUILD_DIR}
 mkdir -p ${BUILD_DIR}
 
-BUILD_DIR=$(readlink -f ${BUILD_DIR})
-
 tsc
 npm run build
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD_DIR} \
     -S ${CURRENT_DIR} \
-    -DCMAKE_BUILD_TYPE=release \
+    -DCMAKE_BUILD_TYPE=Release \
     -DPROJECT_DIR=${CURRENT_DIR} \
     -DSTAGE_DIR=${BUILD_DIR} \
     -DBUILD=${BUILD_DIR}

@@ -19,6 +19,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/../cmake/utils.cmake")
 
+# set(CMAKE_EXE_LINKER_FLAGS "-Xlinker -v -v")
+
 if (NOT DEFINED SOURCES)
     # looking for all test cases
     file(GLOB_RECURSE SOURCES RELATIVE "${CMAKE_CURRENT_LIST_DIR}" "*.ts")

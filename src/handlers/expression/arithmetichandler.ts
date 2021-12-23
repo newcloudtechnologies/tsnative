@@ -13,8 +13,8 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { Conversion, LLVMValue } from "../../llvm/value";
-import { Builder } from "../../builder/builder";
 import { LLVMType } from "../../llvm/type";
+import { Builder } from "../../builder/builder";
 
 export class ArithmeticHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -51,10 +51,14 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     left = left.getValue();
     right = right.adjustToType(left.type);
 
-    if (
-      (left.type.isDoubleType() && right.type.isDoubleType()) ||
-      (left.type.isIntegerType() && right.type.isIntegerType())
-    ) {
+    if (left.type.isString() && right.type.isString()) {
+      const concat = this.generator.builtinString.getLLVMConcat();
+      const untypedThis = this.generator.builder.asVoidStar(left);
+
+      return this.generator.builder.createSafeCall(concat, [untypedThis, right]);
+    }
+
+    if (left.canPerformNumericOperation() && right.canPerformNumericOperation() && right.type.equals(left.type)) {
       return this.generator.builder.createAdd(left, right).createHeapAllocated();
     }
 
@@ -64,26 +68,17 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
         .createHeapAllocated();
     }
 
-    if (left.type.isString() && right.type.isString()) {
-      const concat = this.generator.builtinString.getLLVMConcat();
-      const untypedThis = this.generator.builder.asVoidStar(left);
-
-      return this.generator.builder.createSafeCall(concat, [untypedThis, right]);
-    }
-
     throw new Error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
+
     left = left.getValue();
     right = right.adjustToType(left.type);
 
-    if (
-      (left.type.isDoubleType() && right.type.isDoubleType()) ||
-      (left.type.isIntegerType() && right.type.isIntegerType())
-    ) {
+    if (left.canPerformNumericOperation() && right.canPerformNumericOperation() && right.type.equals(left.type)) {
       return this.generator.builder.createSub(left, right).createHeapAllocated();
     }
 
@@ -93,89 +88,66 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
         .createHeapAllocated();
     }
 
-    throw new Error("Invalid operand types to binary minus");
+    throw new Error(`Invalid operand types to binary minus: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = left.getValue();
-    right = right.adjustToType(left.type);
 
-    if (
-      (left.type.isDoubleType() && right.type.isDoubleType()) ||
-      (left.type.isIntegerType() && right.type.isIntegerType())
-    ) {
-      return this.generator.builder.createMul(left, right).createHeapAllocated();
-    }
+    left = left
+      .getValue()
+      .promoteIntegralToFP(
+        LLVMType.getDoubleType(this.generator),
+        this.generator.ts.checker.getTypeAtLocation(lhs).isSigned()
+      );
+    right = right
+      .getValue()
+      .promoteIntegralToFP(
+        LLVMType.getDoubleType(this.generator),
+        this.generator.ts.checker.getTypeAtLocation(rhs).isSigned()
+      );
 
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, Builder.prototype.createMul)
-        .createHeapAllocated();
-    }
-
-    throw new Error("Invalid operand types to multiply");
+    return this.generator.builder.createMul(left, right).createHeapAllocated();
   }
 
   private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = left.getValue();
-    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createDiv(left, right).createHeapAllocated();
-    }
+    left = left
+      .getValue()
+      .promoteIntegralToFP(
+        LLVMType.getDoubleType(this.generator),
+        this.generator.ts.checker.getTypeAtLocation(lhs).isSigned()
+      );
+    right = right
+      .getValue()
+      .promoteIntegralToFP(
+        LLVMType.getDoubleType(this.generator),
+        this.generator.ts.checker.getTypeAtLocation(rhs).isSigned()
+      );
 
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
-      const doubleType = LLVMType.getDoubleType(this.generator);
-
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-
-      left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
-      right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
-      return this.generator.builder.createDiv(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, Builder.prototype.createDiv)
-        .createHeapAllocated();
-    }
-
-    throw new Error("Invalid operand types to division");
+    return this.generator.builder.createDiv(left, right).createHeapAllocated();
   }
 
   private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     let left = this.generator.handleExpression(lhs, env);
     let right = this.generator.handleExpression(rhs, env);
-    left = left.getValue();
-    right = right.adjustToType(left.type);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createRem(left, right).createHeapAllocated();
-    }
+    left = left
+      .getValue()
+      .promoteIntegralToFP(
+        LLVMType.getDoubleType(this.generator),
+        this.generator.ts.checker.getTypeAtLocation(lhs).isSigned()
+      );
+    right = right
+      .getValue()
+      .promoteIntegralToFP(
+        LLVMType.getDoubleType(this.generator),
+        this.generator.ts.checker.getTypeAtLocation(rhs).isSigned()
+      );
 
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
-      const doubleType = LLVMType.getDoubleType(this.generator);
-
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-
-      left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
-      right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
-
-      return this.generator.builder.createRem(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, Builder.prototype.createRem)
-        .createHeapAllocated();
-    }
-
-    throw new Error("Invalid operand types to modulo");
+    return this.generator.builder.createRem(left, right).createHeapAllocated();
   }
 }

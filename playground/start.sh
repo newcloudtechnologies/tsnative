@@ -67,12 +67,12 @@ case $key in
 esac
 done
 
-PROJECT_DIR=$(readlink -f ${CURRENT_DIR}/..)
+PROJECT_DIR="${CURRENT_DIR}/.."
 STAGE_DIR=$(dirname "${ENTRY}")
 
 if [ -n "${EXTENSION+x}" ]; then
-    ln -sr ${EXTENSION} ${CURRENT_DIR}/extension
-    ln -sr ${EXTENSION}/../node_modules ${CURRENT_DIR}/node_modules
+    ln -s ${EXTENSION} ${CURRENT_DIR}/extension
+    ln -s ${EXTENSION}/../node_modules ${CURRENT_DIR}/node_modules
 fi
 
 if [ -z "$BUILD" ]
@@ -82,12 +82,17 @@ fi
 
 rm -rf ${BUILD}
 mkdir -p ${BUILD}
-BUILD=$(readlink -f ${BUILD})
+
+if [ "$(uname -s)" == "Darwin" ]; then
+    JOBS_NUM=$(sysctl -n hw.ncpu)
+else
+    JOBS_NUM=$(expr $(nproc) + 1)
+fi
 
 cmake -G "Unix Makefiles" \
     -B ${BUILD} \
     -S ${CURRENT_DIR} \
-    -DCMAKE_BUILD_TYPE=release \
+    -DCMAKE_BUILD_TYPE=Release \
     -DPROJECT_DIR=${PROJECT_DIR} \
     -DENTRY=${ENTRY} \
     -DTS_CONFIG=${TS_CONFIG} \
@@ -98,7 +103,7 @@ cmake -G "Unix Makefiles" \
     -DPRINT_IR=${PRINT_IR} \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
-cd ${BUILD} && make -j$(expr $(nproc) + 1)
+cd ${BUILD} && make -j${JOBS_NUM}
 
 
 

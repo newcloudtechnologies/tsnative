@@ -429,8 +429,17 @@ export class Builder {
     return LLVMValue.create(negated, this.generator);
   }
 
-  createFNeg(value: LLVMValue, name?: string) {
-    const negated = this.builder.createFNeg(value.unwrapped, name);
+  createNeg(value: LLVMValue, name?: string) {
+    let negated: llvm.Value;
+
+    if (value.type.isIntegerType()) {
+      negated = this.builder.createNeg(value.unwrapped, name);
+    } else if (value.type.isDoubleType()) {
+      negated = this.builder.createFNeg(value.unwrapped, name);
+    } else {
+      throw new Error(`Unexpected negation of type '${value.type.toString()}'`);
+    }
+
     return LLVMValue.create(negated, this.generator);
   }
 

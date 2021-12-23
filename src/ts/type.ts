@@ -323,6 +323,31 @@ export class TSType {
     }
   }
 
+  getIntegralBitwidth() {
+    if (!this.isCppIntegralType()) {
+      throw new Error(
+        `Expected 'TSType.getIntegralBitwidth' to be called on cpp integral type, called on '${this.toString()}'`
+      );
+    }
+
+    switch (this.toString()) {
+      case "int8_t":
+      case "uint8_t":
+        return 8;
+      case "int16_t":
+      case "uint16_t":
+        return 16;
+      case "int32_t":
+      case "uint32_t":
+        return 32;
+      case "int64_t":
+      case "uint64_t":
+        return 64;
+      default:
+        throw new Error(`Unhandled cpp integral type '${this.toString()}' in 'TSType.getIntegralBitwidth'`);
+    }
+  }
+
   isPrimitive() {
     return (
       this.isNumber() ||
@@ -962,6 +987,7 @@ export class TSType {
     const getInt64Type = () => {
       switch (process.platform) {
         case "win32":
+        case "darwin":
           return "long long";
         default:
           return "long";
