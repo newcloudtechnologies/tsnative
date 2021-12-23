@@ -133,12 +133,9 @@ export class Declaration {
 
   get typeParameters() {
     if (!ts.isFunctionLike(this.declaration) && !ts.isClassLike(this.declaration)) {
-      throw new Error(
-        `Expected 'typeParameters' to be called on function or class-alike declaration, called on '${
-          ts.SyntaxKind[this.declaration.kind]
-        }'`
-      );
+      return;
     }
+
     return this.declaration.typeParameters;
   }
 

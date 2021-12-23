@@ -10,7 +10,7 @@
  */
 
 import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "../generator";
-import { Scope, Environment, HeapVariableDeclaration } from "../scope";
+import { Scope, Environment, HeapVariableDeclaration, Prototype } from "../scope";
 import * as llvm from "llvm-node";
 import { LLVMConstantInt, LLVMValue, LLVMConstant } from "../llvm/value";
 import * as ts from "typescript";
@@ -32,7 +32,7 @@ export class ConciseBody {
   }
 
   getEnvironmentVariables(signature: Signature, extendScope: Scope, outerEnv?: Environment) {
-    const environmentVariables = this.getEnvironmentVariablesFromBody(signature, extendScope);
+    const environmentVariables = this.getEnvironmentVariablesFromBody(signature, extendScope, outerEnv);
     if (outerEnv) {
       environmentVariables.push(...outerEnv.variables);
     }
@@ -40,8 +40,8 @@ export class ConciseBody {
     return environmentVariables;
   }
 
-  private getEnvironmentVariablesFromBody(signature: Signature, extendScope: Scope) {
-    const vars = this.getFunctionEnvironmentVariables(signature, extendScope);
+  private getEnvironmentVariablesFromBody(signature: Signature, extendScope: Scope, outerEnv?: Environment) {
+    const vars = this.getFunctionEnvironmentVariables(signature, extendScope, [], [], outerEnv);
     const varsStatic = this.getStaticFunctionEnvironmentVariables();
     // Do not take 'undefined' since it is injected for every source file and available globally
     // as variable of 'i8' type that breaks further logic (all the variables expected to be pointers). @todo: turn 'undefined' into pointer?
@@ -52,7 +52,8 @@ export class ConciseBody {
     signature: Signature,
     extendScope: Scope,
     environmentVariables: string[] = [],
-    handled: ts.ConciseBody[] = []
+    handled: ts.ConciseBody[] = [],
+    outerEnv?: Environment
   ) {
     return this.generator.withInsertBlockKeeping(() => {
       return this.generator.symbolTable.withLocalScope((bodyScope) => {
@@ -165,30 +166,36 @@ export class ConciseBody {
                 if (propertyAccessRoot.kind === ts.SyntaxKind.ThisKeyword) {
                   const thisVal = extendScope.get("this");
 
-                  if (thisVal instanceof LLVMValue) {
-                    if (thisVal.hasPrototype()) {
-                      const methodDeclaration = thisVal
-                        .getPrototype()
-                        .methods.find((member) => member.name?.getText() === functionName);
+                  let prototype: Prototype | undefined;
 
-                      if (methodDeclaration) {
-                        declaration = methodDeclaration;
-                        skip = true;
-                      }
-                    } else {
-                      if (!propertyAccessDeclaration?.isClassOrInterface()) {
-                        throw new Error(
-                          `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
-                        );
-                      }
+                  if (thisVal instanceof LLVMValue && thisVal.hasPrototype()) {
+                    prototype = thisVal.getPrototype();
+                  } else if (outerEnv?.thisPrototype) {
+                    prototype = outerEnv.thisPrototype;
+                  }
 
-                      const methodDeclaration = propertyAccessDeclaration.members.find(
-                        (m) => m.name?.getText() === functionName
+                  if (prototype) {
+                    const methodDeclaration = prototype.methods.find(
+                      (member) => member.name?.getText() === functionName
+                    );
+
+                    if (methodDeclaration) {
+                      declaration = methodDeclaration;
+                      skip = true;
+                    }
+                  } else {
+                    if (!propertyAccessDeclaration?.isClassOrInterface()) {
+                      throw new Error(
+                        `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
                       );
-                      if (methodDeclaration) {
-                        declaration = methodDeclaration;
-                        skip = true;
-                      }
+                    }
+
+                    const methodDeclaration = propertyAccessDeclaration.members.find(
+                      (m) => m.name?.getText() === functionName
+                    );
+                    if (methodDeclaration) {
+                      declaration = methodDeclaration;
+                      skip = true;
                     }
                   }
                 } else {

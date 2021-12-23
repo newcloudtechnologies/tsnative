@@ -19,8 +19,7 @@
     },
     "husky": {
         "hooks": {
-            "pre-commit": "tslint --project tsconfig.json --fix",
-            "pre-push": "JOBS=-j$(cat /proc/cpuinfo | grep \"processor\" | wc -l) npm test"
+            "pre-commit": "tslint --project tsconfig.json --fix"
         }
     },
     "prettier": {

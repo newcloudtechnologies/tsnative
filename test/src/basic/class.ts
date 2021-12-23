@@ -1248,3 +1248,36 @@
 
   console.assert(obj._state.num === 639, "Funarg that use generic type");
 }
+
+{
+  class RxComponent_t {
+    constructor() {
+      this.render();
+    }
+
+    protected render(): void { }
+  }
+
+  class RxWidget_t {
+    constructor(s: string) {
+      this._selfWidget = s;
+    }
+
+    _selfWidget: string;
+  }
+
+  const s = "2";
+
+  function createText(): RxWidget_t {
+    return new RxWidget_t(s);
+  }
+
+  class MyStatum_t extends RxComponent_t {
+    protected /*override*/ render(): void {
+      const widget = createText();
+      console.assert(widget._selfWidget === s, "Outer function correcly captured in environment");
+    }
+  }
+
+  new MyStatum_t();
+}

@@ -549,7 +549,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const environmentVariables = ConciseBody.create(
       constructorDeclaration.body,
       this.generator
-    ).getEnvironmentVariables(signature, parentScope);
+    ).getEnvironmentVariables(signature, parentScope, outerEnv);
 
     // Memory to initialization is provided by outer environment. Force its usage by mention it in variables list.
     environmentVariables.push(this.generator.internalNames.This);
@@ -1700,6 +1700,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const llvmThisType = parentScope.thisData.llvmType;
     const thisValue = this.generator.gc.allocate(llvmThisType.getPointerElementType());
+    thisValue.attachPrototype(valueDeclaration.getPrototype());
 
     const oldThis = parentScope.get(this.generator.internalNames.This);
     if (oldThis) {
