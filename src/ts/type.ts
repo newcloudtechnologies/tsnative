@@ -240,6 +240,10 @@ export class TSType {
     return this.type.isUnion() && !this.isBoolean() && !this.isEnum();
   }
 
+  isOptionalUnion() {
+    return this.isUnion() && this.types.some((type) => type.isUndefined() || type.isNull());
+  }
+
   isIntersection(): this is ts.IntersectionType {
     return this.type.isIntersection();
   }
@@ -755,8 +759,17 @@ export class TSType {
   private getUnionElementTypes(): LLVMType[] {
     return flatten(
       this.types.map((subtype) => {
-        if (!subtype.isSymbolless() && subtype.getSymbol().declarations[0].isInterface()) {
-          return subtype.getObjectPropsLLVMTypesNames().map((value) => value.type);
+        if (!subtype.isSymbolless()) {
+          const subtypeSymbol = subtype.getSymbol();
+          const subtypeValueDeclaration = subtypeSymbol.valueDeclaration || subtypeSymbol.declarations[0];
+
+          if (!subtypeValueDeclaration) {
+            throw new Error(`Unable to find value declaration for type '${subtype.toString()}'`);
+          }
+
+          if (subtypeValueDeclaration.isInterface()) {
+            return subtype.getObjectPropsLLVMTypesNames().map((value) => value.type);
+          }
         }
 
         if (subtype.isUnion()) {

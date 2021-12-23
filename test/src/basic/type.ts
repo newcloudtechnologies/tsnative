@@ -88,3 +88,42 @@
         console.assert(negative === "none", "Optional property (2)");
     }
 }
+
+{
+    class FontBase {
+        size: number = 5;
+        family: string = "Times";
+    }
+
+    type RxText_args2 = {
+        text: string,
+        color: number,
+        font: (FontBase | null)
+    }
+
+    function RxText(args: RxText_args2) {
+        if (args.font) {
+            return args.font;
+        }
+
+        return new FontBase;
+    }
+
+    const positive = RxText({
+        text: "string",
+        color: 777,
+        font: {
+            family: "Arial",
+            size: 14,
+        },
+    });
+
+    const negative = RxText({
+        text: "string",
+        color: 777,
+        font: null,
+    });
+
+    console.assert(positive.family === "Arial" && positive.size === 14, "Class-typed optional property (1)");
+    console.assert(negative.family === "Times" && negative.size === 5, "Class-typed optional property (2)");
+}

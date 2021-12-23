@@ -200,6 +200,10 @@ export class LLVMType {
     );
   }
 
+  isOptionalUnion() {
+    return this.isUnionWithUndefined() || this.isUnionWithNull();
+  }
+
   isClosure() {
     const nakedType = this.unwrapPointer();
     return Boolean(nakedType.isStructType() && nakedType.name?.startsWith("TSClosure__class"));

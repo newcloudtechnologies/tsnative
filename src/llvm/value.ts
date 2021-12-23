@@ -575,7 +575,10 @@ export class LLVMUnion extends LLVMValue {
     }
 
     for (let i = 0; i < elementTypes.length; ++i) {
-      if (elementTypes[i].equals(type)) {
+      const elementType = elementTypes[i];
+      const nakedElementType = elementType.unwrapPointer();
+      const isSameStructs = nakedElementType.isStructType() && nakedElementType.isSameStructs(type); // mkrv @todo: potential pitfall, will fail if there are same-typed elements in union, should be refactored
+      if (elementType.equals(type) || isSameStructs) {
         return i;
       }
     }
@@ -605,7 +608,15 @@ export class LLVMUnion extends LLVMValue {
     const allocated = this.generator.gc.allocate(unionStructType);
     this.generator.builder.createSafeStore(unionValue, allocated);
 
+    const unionElements = [];
+    for (let i = 0; i < unionStructType.numElements; ++i) {
+      unionElements.push(unionStructType.getElementType(i));
+    }
+    // mkrv @todo: there is a mess with ooo initialization, should be refactored
+    const optionalWithClass = unionStructType.isOptionalUnion() && unionElements.some((type) => type.isTSClass());
+
     if (
+      !optionalWithClass &&
       !initializer.type.isString() &&
       !initializer.type.isTSClass() &&
       !unionValue.isOptionalClosure() &&
@@ -752,13 +763,13 @@ export class LLVMUnion extends LLVMValue {
       return allocated;
     }
 
-    const activeIndex = this.indexOfType(type);
+    const index = this.indexOfType(type);
 
-    if (activeIndex === -1) {
+    if (index === -1) {
       throw new Error(`Cannot find type '${type.toString()}' in union type '${unionStructType.toString()}'`);
     }
 
-    return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(this, [0, activeIndex]));
+    return this.generator.builder.createLoad(this.generator.builder.createSafeInBoundsGEP(this, [0, index]));
   }
 }
 

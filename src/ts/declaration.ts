@@ -38,9 +38,14 @@ export class Declaration {
     if (
       !ts.isClassDeclaration(this.declaration) &&
       !ts.isInterfaceDeclaration(this.declaration) &&
-      !ts.isTypeLiteralNode(this.declaration)
+      !ts.isTypeLiteralNode(this.declaration) &&
+      !ts.isObjectLiteralExpression(this.declaration)
     ) {
       return [];
+    }
+
+    if (ts.isObjectLiteralExpression(this.declaration)) {
+      return this.declaration.properties.map((p) => Declaration.create(p, this.generator));
     }
 
     // mkrv: @todo have no idea why, but without this check there are error like:
@@ -51,6 +56,10 @@ export class Declaration {
     }
 
     return this.declaration.members.map((member) => Declaration.create(member, this.generator));
+  }
+
+  get properties() {
+    return this.members.filter((m) => m.isProperty());
   }
 
   isOptional() {
@@ -210,7 +219,11 @@ export class Declaration {
   }
 
   isProperty() {
-    return ts.isPropertyDeclaration(this.declaration);
+    return (
+      ts.isPropertyDeclaration(this.declaration) ||
+      ts.isPropertySignature(this.declaration) ||
+      ts.isPropertyAssignment(this.declaration)
+    );
   }
 
   isFunction() {

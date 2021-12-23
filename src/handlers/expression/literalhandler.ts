@@ -5,6 +5,7 @@ import { LLVMConstantFP, LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llv
 import { LLVMStructType, LLVMType } from "../../llvm/type";
 import { TSTuple } from "../../ts/tuple";
 import { TSType } from "../../ts/type";
+import { TSSymbol } from "../../ts/symbol";
 import { Declaration } from "../../ts/declaration";
 
 export class LiteralHandler extends AbstractExpressionHandler {
@@ -190,8 +191,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const isAssignment = ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
     const isVariableDeclaration = ts.isVariableDeclaration(parent);
     const isArgument = ts.isCallExpression(parent);
+    const isPropertyAssignment = ts.isPropertyAssignment(parent);
 
-    if (!isAssignment && !isVariableDeclaration && !isArgument) {
+    if (!isAssignment && !isVariableDeclaration && !isArgument && !isPropertyAssignment) {
       return;
     }
 
@@ -238,6 +240,75 @@ export class LiteralHandler extends AbstractExpressionHandler {
       const declaredParameterType = this.generator.ts.checker.getTypeAtLocation(declaredParameter);
 
       variableType = declaredParameterType;
+    } else if (isPropertyAssignment) {
+      let maybeParentObject = parent.parent;
+
+      if (this.generator.ts.checker.nodeHasSymbol(parent)) {
+        const propertyType = this.generator.ts.checker.getTypeAtLocation(parent);
+        const propertySymbol = propertyType.getSymbol();
+
+        const propertyDeclaration = propertySymbol.valueDeclaration;
+        if (!propertyDeclaration) {
+          throw new Error(`Unable to find value declaration at '${expression.getText()}'`);
+        }
+
+        maybeParentObject = propertyDeclaration.parent.parent;
+      }
+
+      if (maybeParentObject && ts.isObjectLiteralExpression(maybeParentObject)) {
+        const parentType = this.getDeclaredType(maybeParentObject);
+        if (!parentType) {
+          throw new Error(`Unable to find get declared type for '${maybeParentObject.getText()}'`);
+        }
+
+        if (!parentType.isSupported()) {
+          return; // mkrv @todo: resolve type using MetaInfoStorage.getClassTypeMapper
+        }
+
+        if (parentType.isSymbolless()) {
+          return;
+        }
+
+        const parentSymbol: TSSymbol = parentType.getSymbol();
+        const parentDeclaration = parentSymbol.valueDeclaration || parentSymbol.declarations[0];
+        if (!parentDeclaration) {
+          throw new Error(`Unable to find value declaration at '${maybeParentObject.getText()}'`);
+        }
+
+        const propertyName = (parent as ts.PropertyAssignment).name.getText();
+        if (!propertyName) {
+          throw new Error(`Expected name property at '${expression.parent.getText()}'`);
+        }
+
+        const parentPropertyDeclaration = parentDeclaration.properties.find(
+          (member) => member.name?.getText() === propertyName
+        );
+        if (!parentPropertyDeclaration) {
+          throw new Error(
+            `Unable to find declaration for property '${propertyName}' at '${parentDeclaration.getText()}'`
+          );
+        }
+
+        const type = parentPropertyDeclaration.type;
+        if (type.isOptionalUnion()) {
+          if (type.types.length > 2) {
+            throw new Error(
+              `Only optionals with single type supported, got '${type.toString()}'. Error at: '${parentPropertyDeclaration.getText()}'`
+            );
+          }
+
+          const unionElementType = type.types.find((t) => !t.isUndefined() && !t.isNull());
+          if (!unionElementType) {
+            throw new Error(
+              `Unable to find type at '${type.toString()}'. Error at: '${parentPropertyDeclaration.getText()}'`
+            );
+          }
+
+          return unionElementType;
+        }
+
+        return type;
+      }
     }
 
     return variableType;
@@ -249,7 +320,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       return;
     }
 
-    if (!variableType.isInterface() && !variableType.isTypeLiteral()) {
+    if (!variableType.isClassOrInterface() && !variableType.isTypeLiteral()) {
       return;
     }
 
@@ -264,8 +335,27 @@ export class LiteralHandler extends AbstractExpressionHandler {
     this.correctOptionalValues(declaration, llvmValues);
   }
 
+  private correctPropertiesOrder(declaration: Declaration, values: Map<string, LLVMValue>) {
+    if (declaration.properties.some((m) => !m.name)) {
+      throw new Error(`Expected all properties to be named. Error at: '${declaration.getText()}'`);
+    }
+
+    const propNames = declaration.properties.map((m) => m.name!.getText());
+
+    const llvmValuesCopy = new Map(values);
+    values.clear();
+
+    for (const name of propNames) {
+      const value = llvmValuesCopy.get(name);
+      if (!value) {
+        throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
+      }
+      values.set(name, value);
+    }
+  }
+
   private correctOptionalValues(declaration: Declaration, values: Map<string, LLVMValue>) {
-    const declaredLlvmTypes = declaration.members.map((member) => member.type.getLLVMType());
+    const declaredLlvmTypes = declaration.properties.map((member) => member.type.getLLVMType());
     const llvmValues = Array.from(values.values());
     const keys = Array.from(values.keys());
 
@@ -285,25 +375,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
       const nullValue = LLVMUnion.createNullValue(declaredType, this.generator);
       llvmValue = nullValue.initialize(llvmValue);
       values.set(keys[i], llvmValue);
-    }
-  }
-
-  private correctPropertiesOrder(declaration: Declaration, values: Map<string, LLVMValue>) {
-    if (declaration.members.some((m) => !m.name)) {
-      throw new Error(`Expected all properties to be named. Error at: '${declaration.getText()}'`);
-    }
-
-    const propNames = declaration.members.map((m) => m.name!.getText());
-
-    const llvmValuesCopy = new Map(values);
-    values.clear();
-
-    for (const name of propNames) {
-      const value = llvmValuesCopy.get(name);
-      if (!value) {
-        throw new Error(`Unable to find property name '${name}' in ${Array.from(llvmValuesCopy.keys())}`);
-      }
-      values.set(name, value);
     }
   }
 
