@@ -277,9 +277,8 @@
   console.assert(noBreak(3) === 4, "switch: noBreak(3) failed");
 }
 
+// @todo https://jira.ncloudtech.ru:8090/browse/AN-790
 /*
-@todo: doesn't work on ts-node
-
 {
   let n_case1 = 0;
   let n_case2 = 0;
@@ -297,7 +296,7 @@
 
   n_case1 = 0; n_case2 = 0;
   foo(1, n_case1, n_case2);
-console.log(`n_case1=${n_case1}; n_case2=${n_case2}`);
+
   console.assert(n_case1 === 1 && n_case2 === 1, "switch: CasesNoDefaultNoAnyBreak(1) failed");
 
   n_case1 = 0; n_case2 = 0;
@@ -332,4 +331,84 @@ console.log(`n_case1=${n_case1}; n_case2=${n_case2}`);
   console.assert(foo(11, n_case1, n_case2) === 0 && n_case1 === 0 && n_case2 === 1, "switch: CasesDefaultNoAnyBreak(11) failed");
 }
 */
+{
+  const FOLDER_ICON = "./icons/png/file_manager_big_icon_folder_32_32.png";
+  const FILE_ICON = "./icons/png/file_manager_big_icon_file_32_32.png";
+  const DEFAULT_ICON = "icon";
 
+  const FOLDER_TYPE = "folder";
+  const FILE_TYPE = "file";
+  const UNKNOWN_TYPE = "unknown";
+
+  function getIcon(_type: string) {
+    let icon = DEFAULT_ICON;
+
+    switch (_type) {
+      case FOLDER_TYPE: {
+        icon = FOLDER_ICON;
+        break;
+      }
+      case FILE_TYPE: {
+        icon = FILE_ICON;
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+
+    return icon;
+  }
+
+  console.assert(getIcon(FOLDER_TYPE) === FOLDER_ICON, "Switch with blocked case clauses (1)");
+  console.assert(getIcon(FILE_TYPE) === FILE_ICON, "Switch with blocked case clauses (2)");
+  console.assert(getIcon(UNKNOWN_TYPE) === DEFAULT_ICON, "Switch with blocked case clauses (3)");
+}
+
+{
+  const switch_int = function (day: number): string {
+    let result: string = "INITIAL";
+
+    switch (day) {
+      default:
+        result = "default";
+    }
+
+    return result;
+  }
+
+  console.assert(switch_int(0) === "default", "Only default switch");
+}
+
+{
+  let result: string = "INITIAL";
+
+  const switch_int = function (day: number): string {
+    switch (day) { }
+
+    return result;
+  }
+
+  console.assert(switch_int(0) === result, "Empty switch");
+}
+
+{
+  const switch_int = function (day: number): string {
+    let result: string = "INITIAL";
+    const cond = true;
+
+    switch (day) {
+      case 0:
+        if (cond) {
+          result = "from condition";
+          break;
+        }
+      default:
+        result = "default";
+    }
+
+    return result;
+  }
+
+  console.assert(switch_int(0) === "from condition", "Conditional 'break'");
+}

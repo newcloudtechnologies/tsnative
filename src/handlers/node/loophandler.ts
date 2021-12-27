@@ -17,6 +17,7 @@ import { Scope, Environment } from "../../scope";
 import { last } from "lodash";
 import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";
+import { LoopHelper } from "./loophelper";
 
 export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -32,9 +33,6 @@ export class LoopHandler extends AbstractNodeHandler {
         return true;
       case ts.SyntaxKind.ContinueStatement:
         this.handleContinueStatement(node as ts.ContinueStatement);
-        return true;
-      case ts.SyntaxKind.BreakStatement:
-        this.handleBreakStatement(node as ts.BreakStatement);
         return true;
       default:
         break;
@@ -293,7 +291,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
   private handleContinueStatement(statement: ts.ContinueStatement): void {
     const basicBlocks = this.generator.currentFunction.getBasicBlocks();
-    const cycleBlocks = basicBlocks.filter(this.isLoopBlock.bind(this));
+    const cycleBlocks = basicBlocks.filter((block) => LoopHelper.isLoopBlock(block));
     if (!cycleBlocks.length) {
       return;
     }
@@ -310,38 +308,5 @@ export class LoopHandler extends AbstractNodeHandler {
       // To allow conditionless `continue` we have to erase body's latch block, which is quite impossible lacking an API provided for that.
       throw new Error("Conditionless `continue` is not supported");
     }
-  }
-
-  private handleBreakStatement(statement: ts.BreakStatement): void {
-    const basicBlocks = this.generator.currentFunction.getBasicBlocks();
-    const cycleBlocks = basicBlocks.filter(this.isLoopBlock.bind(this));
-    if (!cycleBlocks.length) {
-      return;
-    }
-
-    const exitingBlocks = cycleBlocks.filter((block) => block.name.includes(".exiting"));
-    const currentExitingBlock = last(exitingBlocks);
-
-    if (
-      ts.isIfStatement(statement.parent) ||
-      (ts.isBlock(statement.parent) && ts.isIfStatement(statement.parent.parent))
-    ) {
-      this.generator.builder.createBr(currentExitingBlock!);
-    } else {
-      // To allow conditionless `break` we have to erase exiting block, which is quite impossible lacking an API provided for that.
-      throw new Error("Conditionless `break` is not supported");
-    }
-  }
-
-  private isWhileLoopBlock(block: BasicBlock): boolean {
-    return block.name.startsWith("while.");
-  }
-
-  private isForLoopBlock(block: BasicBlock): boolean {
-    return block.name.startsWith("for.");
-  }
-
-  private isLoopBlock(block: BasicBlock): boolean {
-    return this.isForLoopBlock(block) || this.isWhileLoopBlock(block);
   }
 }

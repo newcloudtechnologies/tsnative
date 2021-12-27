@@ -15,6 +15,7 @@ import * as ts from "typescript";
 import {
   BlockHandler,
   BranchHandler,
+  BreakHandler,
   BypassingHandler,
   ClassHandler,
   ExpressionStatementHandler,
@@ -40,6 +41,7 @@ export class NodeHandlerChain {
     imports
       .setNext(new BlockHandler(generator))
       .setNext(new BranchHandler(generator))
+      .setNext(new BreakHandler(generator))
       .setNext(new BypassingHandler(generator))
       .setNext(new ClassHandler(generator))
       .setNext(new ExpressionStatementHandler(generator))

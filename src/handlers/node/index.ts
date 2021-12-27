@@ -11,6 +11,7 @@
 
 export { BlockHandler } from "./blockhandler";
 export { BranchHandler } from "./branchhandler";
+export { BreakHandler } from "./breakhandler";
 export { BypassingHandler } from "./bypassinghandler";
 export { ClassHandler } from "./classhandler";
 export { ExpressionStatementHandler } from "./expressionstatementhandler";
