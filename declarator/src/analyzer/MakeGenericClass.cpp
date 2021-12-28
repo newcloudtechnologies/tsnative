@@ -36,7 +36,9 @@ void makeGenericClass(parser::const_class_template_item_t item,
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
-    auto classBlock = AbstractBlock::make<ClassBlock>(item->name(), true);
+    std::string name = (annotations.exist("TS_NAME")) ? annotations.values("TS_NAME").at(0) : item->name();
+
+    auto classBlock = AbstractBlock::make<ClassBlock>(name, true);
 
     for (const auto& it : item->templateParameters())
     {
@@ -44,6 +46,11 @@ void makeGenericClass(parser::const_class_template_item_t item,
     }
 
     classBlock->addExtends(getExtends(item));
+
+    for (const auto& it : getFields(item, typeMapper, Collection::get()))
+    {
+        classBlock->addField(it);
+    }
 
     for (const auto& it : getMethods(item, typeMapper, Collection::get()))
     {
@@ -58,6 +65,20 @@ void makeGenericClass(parser::const_class_template_item_t item,
     for (const auto& it : getClosures(item, typeMapper, Collection::get()))
     {
         classBlock->addClosure(it);
+    }
+
+    if (annotations.exist("TS_DECORATOR"))
+    {
+        for (const auto& it : annotations.values("TS_DECORATOR"))
+        {
+            decorator_t decorator = Decorator::fromString(it);
+            classBlock->addDecorator(decorator);
+        }
+    }
+
+    if (annotations.exist("TS_IGNORE"))
+    {
+        classBlock->setIgnore();
     }
 
     block->add(classBlock);

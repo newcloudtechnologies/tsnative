@@ -24,8 +24,11 @@ set(INCLUDES
     ClassTemplateItem.h
     EnumItem.h
     FunctionItem.h
+    FunctionTemplateItem.h
     MethodItem.h
+    FieldItem.h
     TemplateMethodItem.h
+    CodeBlockItem.h
 )
 
 set(SOURCES
@@ -41,8 +44,11 @@ set(SOURCES
     ClassTemplateItem.cpp
     EnumItem.cpp
     FunctionItem.cpp
+    FunctionTemplateItem.cpp
     MethodItem.cpp
+    FieldItem.cpp
     TemplateMethodItem.cpp
+    CodeBlockItem.cpp
 )
 
 add_library(${PROJECT_NAME} OBJECT

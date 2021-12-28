@@ -13,12 +13,14 @@
 
 #include "utils/Exception.h"
 
+#include <regex>
+
 namespace analyzer
 {
 
 void TsMethod::parse(const std::string& sig)
 {
-    std::regex regexp(R"((\w*)\((.*)\)\:\s*(\w*))");
+    std::regex regexp(R"(^([\w\<\>\,\s]*)\((.*)\)(\:\s*([\w\[\]]*))?)");
 
     std::smatch match;
 
@@ -29,7 +31,7 @@ void TsMethod::parse(const std::string& sig)
 
     m_name = match[1];
     std::string args = match[2];
-    m_retType = match[3];
+    m_retType = match[4];
 
     parseArgumentList(args);
 }

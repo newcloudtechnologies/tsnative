@@ -13,6 +13,7 @@
 
 #include "AbstractBlock.h"
 #include "ClassDetails.h"
+#include "CodeBlock.h"
 #include "FieldBlock.h"
 #include "MethodBlock.h"
 
@@ -36,6 +37,7 @@ class ClassBlock : public AbstractBlock
     std::vector<const_method_block_t> m_methods;
     std::vector<const_method_block_t> m_staticMethods;
     std::vector<const_method_block_t> m_closures;
+    std::vector<const_code_block_t> m_codeBlocks;
     bool m_isExport;
 
 private:
@@ -58,6 +60,7 @@ public:
     void addTemplateParameter(const TemplateParameterValue& p);
     void addExtends(const std::string& extends);
     void addImplements(const std::vector<std::string>& implements);
+    void addCodeBlock(const_code_block_t codeBlock);
 };
 
 using class_block_t = block_t<ClassBlock>;

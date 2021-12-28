@@ -17,6 +17,7 @@
 #include <clang/AST/Attr.h>
 
 #include <algorithm>
+#include <sstream>
 
 namespace
 {
@@ -37,12 +38,30 @@ std::string getAnnotations(const clang::Decl* decl)
             }
             else
             {
-                result += ";" + annotateAttr->getAnnotation().str();
+                result += "^;" + annotateAttr->getAnnotation().str();
             }
         }
     }
 
     return result;
+}
+
+void setAnnotations(clang::Decl* decl, const std::string& annotations)
+{
+    clang::AttrVec attrs;
+
+    for (const auto& it : decl->getAttrs())
+    {
+        if (it->getKind() != clang::attr::Kind::Annotate)
+        {
+            attrs.push_back(it);
+        }
+    }
+
+    auto* ann = clang::AnnotateAttr::CreateImplicit(decl->getASTContext(), annotations);
+    attrs.push_back(ann);
+
+    decl->setAttrs(attrs);
 }
 
 } //  namespace
@@ -66,6 +85,11 @@ std::string getAnnotations(const clang::CXXRecordDecl* decl)
 }
 
 std::string getAnnotations(const clang::CXXMethodDecl* decl)
+{
+    return ::getAnnotations(static_cast<const clang::Decl*>(decl));
+}
+
+std::string getAnnotations(const clang::FieldDecl* decl)
 {
     return ::getAnnotations(static_cast<const clang::Decl*>(decl));
 }
@@ -108,24 +132,68 @@ std::string getAnnotations(const clang::FunctionTemplateDecl* decl)
     return result;
 }
 
-AnnotationList::AnnotationList(const std::string& annotations)
-    : m_annotationList(utils::split(annotations, ";"))
+bool setAnnotations(clang::CXXRecordDecl* decl, const std::string& annotations)
 {
+    bool result = false;
+
+    if (!decl->attrs().empty())
+    {
+        ::setAnnotations(static_cast<clang::Decl*>(decl), annotations);
+        result = true;
+    }
+    else
+    {
+        if (decl->hasDefinition())
+        {
+            auto* def = decl->getDefinition();
+            ::setAnnotations(static_cast<clang::Decl*>(def), annotations);
+            result = true;
+        }
+    }
+
+    return result;
+}
+
+AnnotationList::AnnotationList(const std::string& annotations)
+    : m_annotationList(utils::split(annotations, "^;"))
+{
+}
+
+int AnnotationList::find(const std::string& annotation, int beginIndex, std::string& value) const
+{
+    int nextIndex = -1;
+
+    if (beginIndex < 0 && beginIndex >= m_annotationList.size())
+        return nextIndex;
+
+    auto it = std::find_if(std::next(m_annotationList.begin(), beginIndex),
+                           m_annotationList.end(),
+                           [annotation](const auto& it) { return utils::starts_with(it, annotation); });
+
+    if (it != m_annotationList.end())
+    {
+        value = *it;
+        nextIndex = std::distance(m_annotationList.begin(), it) + 1;
+    }
+
+    return nextIndex;
 }
 
 int AnnotationList::find(const std::string& annotation) const
 {
-    auto it = std::find_if(m_annotationList.begin(),
-                           m_annotationList.end(),
-                           [annotation](const auto& it) { return utils::starts_with(it, annotation); });
+    std::string value;
 
-    return it != m_annotationList.end() ? std::distance(m_annotationList.begin(), it) : -1;
+    return find(annotation, 0, value);
 }
 
 std::vector<std::string> AnnotationList::split(const std::string& s) const
 {
     const char delimiter = '=';
-    const char quote = '\"';
+    const char quotationMark = '\"';
+    size_t nQuotationMarks = std::count(s.begin(), s.end(), quotationMark);
+
+    // it must be even
+    _ASSERT((nQuotationMarks & 1) == 0);
 
     std::vector<std::string> parts;
     int _beg = 0;
@@ -134,18 +202,20 @@ std::vector<std::string> AnnotationList::split(const std::string& s) const
     if (s.empty())
         return parts;
 
-    bool isGroup = false;
+    // needs for nested quotes
+    bool isInsideQuotation = false;
+    int nQuotationMarksCounter = 0;
 
     while (_end >= 0 && _end < s.length())
     {
         for (_end = _beg; _end < s.length(); _end++)
         {
-            if (s.at(_end) == quote)
+            if (s.at(_end) == quotationMark)
             {
-                isGroup = (!isGroup) ? isGroup = true : isGroup = false;
+                isInsideQuotation = (nQuotationMarksCounter++ <= nQuotationMarks) ? true : false;
             }
 
-            if (isGroup)
+            if (isInsideQuotation)
                 continue;
 
             if (s.at(_end) == delimiter)
@@ -164,38 +234,76 @@ std::vector<std::string> AnnotationList::split(const std::string& s) const
     return parts;
 }
 
+std::string AnnotationList::prettify(std::string raw) const
+{
+    // remove outer quotes
+    utils::trim_if(raw, [](char ch) { return ch != '\"'; });
+
+    // replace wrong symbols
+    utils::replace_all(raw, R"(\n)", "\n");
+    utils::replace_all(raw, R"(\")", "\"");
+
+    return raw;
+}
+
 bool AnnotationList::exist(const std::string& annotation) const
 {
     return find(annotation) > -1;
 }
 
-std::string AnnotationList::value(const std::string& annotation) const
+void AnnotationList::add(const std::string& annotation)
 {
-    std::string result;
+    m_annotationList.push_back(annotation);
+}
+
+void AnnotationList::remove(const std::string& annotation)
+{
     int index = find(annotation);
 
-    if (index < 0)
-        throw utils::Exception(R"(annotation "%s" is not found)", annotation.c_str());
-
-    std::string item = m_annotationList.at(index);
-
-    std::vector<std::string> parts = split(item);
-
-    if (parts.size() == 1)
+    if (index >= 0)
     {
-        result = parts.at(0);
+        m_annotationList.erase(std::next(m_annotationList.begin(), index));
     }
-    else
-    {
-        _ASSERT(parts.size() == 2);
-        _ASSERT(!parts.at(1).empty());
-        result = parts.at(1);
-    }
+}
 
-    // remove quotes
-    result.erase(remove(result.begin(), result.end(), '\"'), result.end());
+std::vector<std::string> AnnotationList::values(const std::string& annotation) const
+{
+    std::vector<std::string> result;
+
+    int index = 0;
+    std::string item;
+
+    while (true)
+    {
+        index = find(annotation, index, item);
+
+        if (index < 0)
+            break;
+
+        std::vector<std::string> parts = split(item);
+
+        std::string value;
+
+        if (parts.size() == 1)
+        {
+            value = parts.at(0);
+        }
+        else
+        {
+            _ASSERT(parts.size() == 2);
+            _ASSERT(!parts.at(1).empty());
+            value = parts.at(1);
+        }
+
+        result.push_back(prettify(value));
+    }
 
     return result;
+}
+
+std::string AnnotationList::toString() const
+{
+    return utils::join(m_annotationList, "^;");
 }
 
 } //  namespace parser

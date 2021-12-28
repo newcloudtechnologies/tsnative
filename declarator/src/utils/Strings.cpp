@@ -75,14 +75,30 @@ bool ends_with(const std::string& str, const std::string& suffix)
     return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
 }
 
+void ltrim_if(std::string& s, std::function<bool(char)> pred)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), pred));
+}
+
+void rtrim_if(std::string& s, std::function<bool(char)> pred)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), pred).base(), s.end());
+}
+
+void trim_if(std::string& s, std::function<bool(char)> pred)
+{
+    ltrim_if(s, pred);
+    rtrim_if(s, pred);
+}
+
 void ltrim(std::string& s)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+    ltrim_if(s, [](char ch) { return ch != ' '; });
 }
 
 void rtrim(std::string& s)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
+    rtrim_if(s, [](char ch) { return ch != ' '; });
 }
 
 void trim(std::string& s)

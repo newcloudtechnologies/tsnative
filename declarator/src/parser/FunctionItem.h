@@ -28,7 +28,13 @@ class FunctionItem : public AbstractItem
 private:
     FunctionItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl);
 
+protected:
+    FunctionItem(
+        Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl);
+
 public:
+    virtual ~FunctionItem() = default;
+
     std::string name() const;
     bool isStatic() const;
     clang::QualType returnType() const;

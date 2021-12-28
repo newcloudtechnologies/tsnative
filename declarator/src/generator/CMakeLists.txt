@@ -15,6 +15,7 @@ set(INCLUDES
     Utils.h
     Printer.h
     Decorator.h
+    Ignore.h
     AbstractBlock.h
     ContainerBlock.h
     ModuleBlock.h
@@ -23,8 +24,8 @@ set(INCLUDES
     ClassBlock.h
     FieldBlock.h
     MethodBlock.h
-    ElementAccessExpressionBlock.h
     CommentBlock.h
+    CodeBlock.h
     FunctionDetails.h
     ClassDetails.h
     FunctionBlock.h
@@ -36,6 +37,7 @@ set(SOURCES
     Utils.cpp
     Printer.cpp
     Decorator.cpp
+    Ignore.cpp
     AbstractBlock.cpp
     ContainerBlock.cpp
     ModuleBlock.cpp
@@ -44,8 +46,8 @@ set(SOURCES
     ClassBlock.cpp
     FieldBlock.cpp
     MethodBlock.cpp
-    ElementAccessExpressionBlock.cpp
     CommentBlock.cpp
+    CodeBlock.cpp
     FunctionDetails.cpp
     ClassDetails.cpp
     FunctionBlock.cpp

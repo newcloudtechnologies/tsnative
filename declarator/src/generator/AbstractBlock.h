@@ -40,6 +40,7 @@ struct AbstractBlock
     {
         CLASS,
         COMMENT,
+        CODE_BLOCK,
         FIELD,
         FILE,
         IMPORT,
@@ -55,9 +56,11 @@ private:
     Type m_type;
     std::string m_name;
     decorator_list_t m_decorators;
+    bool m_hasIgnore = false;
 
 private:
     void printDecorators(generator::print::printer_t printer) const;
+    void printIgnore(generator::print::printer_t printer) const;
 
 protected:
     virtual void printHeader(generator::print::printer_t printer) const;
@@ -71,6 +74,7 @@ public:
     Type type() const;
     std::string name() const;
     void addDecorator(decorator_t decorator);
+    void setIgnore();
 
     void print(generator::print::printer_t printer) const;
 

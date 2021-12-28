@@ -13,7 +13,7 @@
 #include "TsUtils.h"
 
 #include "generator/AbstractBlock.h"
-#include "generator/ElementAccessExpressionBlock.h"
+#include "generator/FileBlock.h"
 
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
@@ -24,6 +24,7 @@
 #include <clang/AST/PrettyPrinter.h>
 
 #include <optional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -35,7 +36,218 @@ std::string getFullName(const std::string& name, const std::string& prefix)
     return !prefix.empty() ? prefix + "::" + name : name;
 }
 
-std::optional<parser::const_abstract_item_t> getItem(const parser::Collection& collection, const std::string& path)
+std::string getPartName(const std::string& path)
+{
+    std::string result = path;
+    std::regex regexp(R"(([a-zA-Z\:\<\>]*)::([a-zA-Z\:\<\>]*))");
+    std::smatch match;
+
+    if (std::regex_search(path.begin(), path.end(), match, regexp))
+    {
+        result = match[2];
+    }
+
+    return result;
+}
+
+std::vector<parser::const_class_item_t> getNotExportedBases(parser::const_class_item_t item,
+                                                            const parser::Collection& collection)
+{
+    using namespace parser;
+    using namespace analyzer;
+
+    class Collector
+    {
+        std::vector<const_class_item_t> m_list;
+
+    public:
+        void collect(const InheritanceNode& node)
+        {
+            for (const auto& it : node.bases())
+            {
+                AnnotationList annotations(getAnnotations(it.item()->decl()));
+
+                if (!annotations.exist("TS_EXPORT"))
+                {
+                    m_list.push_back(it.item());
+
+                    collect(it);
+                }
+            }
+        }
+
+        std::vector<const_class_item_t> get() const
+        {
+            return m_list;
+        }
+    };
+
+    auto node = InheritanceNode::make(Collection::get(), item);
+
+    Collector collector;
+    collector.collect(node);
+    return collector.get();
+}
+
+generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_class_item_t classItem,
+                                                              const parser::MethodItem& item,
+                                                              const analyzer::TypeMapper& typeMapper)
+{
+    using namespace parser;
+    using namespace analyzer;
+    using namespace generator::ts;
+
+    block_t<MethodBlock> method;
+
+    AnnotationList annotations(getAnnotations(item.decl()));
+
+    if (annotations.exist("TS_METHOD"))
+    {
+        if (annotations.exist("TS_SIGNATURE"))
+        {
+            TsMethod signature(annotations.values("TS_SIGNATURE").at(0));
+
+            method = AbstractBlock::make<MethodBlock>(signature.name(), signature.retType(), false);
+
+            for (const auto& it : signature.arguments())
+            {
+                method->addArgument(it.name, it.type, it.isSpread);
+            }
+        }
+        else
+        {
+            std::string name = annotations.exist("TS_NAME") ? annotations.values("TS_NAME").at(0) : item.name();
+
+            std::string retType = annotations.exist("TS_RETURN_TYPE")
+                                      ? annotations.values("TS_RETURN_TYPE").at(0)
+                                      : collapseType(classItem->prefix(), mapType(typeMapper, item.returnType()));
+
+            method = (item.isConstructor()) ? AbstractBlock::make<MethodBlock>()
+                                            : AbstractBlock::make<MethodBlock>(name, retType, item.isStatic());
+
+            if (annotations.exist("TS_GETTER"))
+            {
+                method->setAccessor("get");
+            }
+            else if (annotations.exist("TS_SETTER"))
+            {
+                method->setAccessor("set");
+            }
+
+            for (const auto& it : item.parameters())
+            {
+                method->addArgument(
+                    it.name(), collapseType(classItem->prefix(), mapType(typeMapper, it.type())), false);
+            }
+        }
+
+        if (annotations.exist("TS_DECORATOR"))
+        {
+            for (const auto& it : annotations.values("TS_DECORATOR"))
+            {
+                decorator_t decorator = Decorator::fromString(it);
+                method->addDecorator(decorator);
+            }
+        }
+
+        if (annotations.exist("TS_IGNORE"))
+        {
+            method->setIgnore();
+        }
+    }
+
+    return method;
+}
+
+generator::ts::block_t<generator::ts::FieldBlock> makeField(parser::const_class_item_t classItem,
+                                                            const parser::FieldItem& item,
+                                                            const analyzer::TypeMapper& typeMapper)
+{
+    using namespace parser;
+    using namespace analyzer;
+    using namespace generator::ts;
+
+    block_t<FieldBlock> result;
+
+    auto isTemplateType = [](const parser::FieldItem& item, parser::const_class_item_t classItem)
+    {
+        bool result = false;
+        auto templateClassItem = std::dynamic_pointer_cast<const ClassTemplateItem>(classItem);
+
+        if (templateClassItem)
+        {
+            std::string type = item.type().getAsString();
+
+            for (const auto& it : templateClassItem->templateParameters())
+            {
+                if (type == it.name())
+                {
+                    result = true;
+                    break;
+                }
+            }
+        }
+
+        return result;
+    };
+
+    if (isTemplateType(item, classItem))
+    {
+        // don't map template type
+        result = AbstractBlock::make<FieldBlock>(item.name(), "pointer", true);
+    }
+    else
+    {
+        result = AbstractBlock::make<FieldBlock>(item.name(), mapType(typeMapper, item.type()), true);
+    }
+
+    return result;
+}
+
+} // namespace
+
+namespace analyzer
+{
+
+InheritanceNode::InheritanceNode(const parser::Collection& collection,
+                                 parser::const_class_item_t item,
+                                 const std::string& actualTypeName,
+                                 bool instantiated)
+    : m_collection(collection)
+    , m_item(item)
+    , m_actualTypeName(actualTypeName)
+    , m_instantiated(instantiated)
+{
+    using namespace parser;
+
+    for (const auto& it : getBases(item->decl()))
+    {
+        std::string actualTypeName = getType(it);
+        bool instantiated = true;
+
+        auto base_item = getItem(m_collection, actualTypeName);
+
+        if (!base_item)
+        {
+            // MyClass<T> -> MyClass
+            base_item = getItem(m_collection, getTemplateName(actualTypeName));
+
+            _ASSERT((*base_item)->type() == AbstractItem::CLASS_TEMPLATE);
+
+            instantiated = false;
+        }
+
+        if (base_item)
+        {
+            const_class_item_t baseClassItem = std::static_pointer_cast<const ClassItem>(*base_item);
+
+            m_bases.push_back(InheritanceNode{m_collection, baseClassItem, getPartName(actualTypeName), instantiated});
+        }
+    }
+}
+
+std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const parser::Collection& collection,
+                                                                      const std::string& path)
 {
     std::optional<parser::const_abstract_item_t> result;
 
@@ -51,238 +263,197 @@ std::optional<parser::const_abstract_item_t> getItem(const parser::Collection& c
     return result;
 }
 
-void getAllBasesImpl(std::vector<analyzer::ClassBases>& list,
-                     const parser::const_class_item_t item,
-                     const parser::Collection& collection)
+std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it)
 {
-    using namespace parser;
+    clang::LangOptions lo;
+    clang::PrintingPolicy pp(lo);
+    pp.adjustForCPlusPlus();
 
-    auto getBases = [](const clang::CXXRecordDecl* decl)
-    {
-        clang::LangOptions lo;
-        clang::PrintingPolicy pp(lo);
-        pp.adjustForCPlusPlus();
-
-        std::vector<std::string> result;
-
-        if (decl && decl->hasDefinition())
-        {
-            auto bases = decl->bases();
-
-            for (const auto& it : bases)
-            {
-                std::string type = it.getType().getCanonicalType().getAsString(pp);
-                result.push_back(type);
-            }
-        }
-
-        return result;
-    };
-
-    std::vector<const_class_item_t> bases;
-
-    for (const auto& it : getBases(item->decl()))
-    {
-        auto base_item = getItem(collection, it);
-
-        if (base_item)
-        {
-            const_class_item_t item = std::static_pointer_cast<const ClassItem>(*base_item);
-            bases.push_back(item);
-        }
-    }
-
-    list.push_back({item->name(), item->prefix(), bases});
-
-    for (const auto& it : bases)
-    {
-        if (it)
-        {
-            getAllBasesImpl(list, it, collection);
-        }
-    }
+    std::string type = it.getTypeSourceInfo()->getType().getAsString(pp);
+    return type;
 }
 
-std::vector<parser::const_class_item_t> getNotExportedBases(parser::const_class_item_t item,
-                                                            const parser::Collection& collection)
+std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(const clang::CXXRecordDecl* decl)
 {
-    using namespace parser;
-    using namespace analyzer;
-    using namespace generator::ts;
+    std::vector<clang::CXXBaseSpecifier> result;
 
-    std::vector<const_class_item_t> result;
-
-    auto bases = getAllBases(item, collection);
-
-    // iterate all base classes without TS_EXPORT and extract methods with TS_METHOD annotation
-    for (const auto& [name, prefix, _1] : bases)
+    if (decl && decl->hasDefinition())
     {
-        if (!(item->name() == name && item->prefix() == prefix))
+        auto bases = decl->bases();
+
+        for (const auto& it : bases)
         {
-            auto base_item = getItem(collection, getFullName(name, prefix));
-
-            if (base_item)
-            {
-                const_class_item_t baseClass = std::static_pointer_cast<const ClassItem>(*base_item);
-
-                AnnotationList annotations(getAnnotations(baseClass->decl()));
-
-                if (!annotations.exist("TS_EXPORT"))
-                {
-                    result.push_back(baseClass);
-                }
-            }
+            result.push_back(it);
         }
     }
 
     return result;
 }
 
-generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_class_item_t item,
-                                                              const parser::MethodItem& it,
-                                                              const analyzer::TypeMapper& typeMapper,
-                                                              const parser::AnnotationList& annotations)
+std::string InheritanceNode::getTemplateName(const std::string& actualTypeName) const
 {
-    using namespace parser;
-    using namespace analyzer;
-    using namespace generator::ts;
+    std::string result;
+    std::regex regexp(R"((\w*)(\<(.*)\>)?)");
 
-    block_t<MethodBlock> method;
+    std::smatch match;
 
-    if (annotations.exist("TS_METHOD"))
+    if (!std::regex_search(actualTypeName.begin(), actualTypeName.end(), match, regexp))
     {
-        if (annotations.exist("TS_SIGNATURE"))
-        {
-            TsMethod signature(annotations.value("TS_SIGNATURE"));
-
-            method = AbstractBlock::make<MethodBlock>(signature.name(), signature.retType(), false);
-
-            for (const auto& it : signature.arguments())
-            {
-                method->addArgument(it.name, it.type, it.isSpread);
-            }
-        }
-        else
-        {
-            std::string name = annotations.exist("TS_NAME") ? annotations.value("TS_NAME") : it.name();
-
-            std::string retType = annotations.exist("TS_RETURN_TYPE")
-                                      ? annotations.value("TS_RETURN_TYPE")
-                                      : collapseType(item->prefix(), mapType(typeMapper, it.returnType()));
-
-            // TODO: add other operators
-            if (name == "operator[]")
-            {
-                method = AbstractBlock::make<ElementAccessExpressionBlock>(retType, it.isStatic());
-            }
-            else
-            {
-                method = (it.isConstructor()) ? AbstractBlock::make<MethodBlock>()
-                                              : AbstractBlock::make<MethodBlock>(name, retType, it.isStatic());
-
-                if (annotations.exist("TS_GETTER"))
-                {
-                    method->setAccessor("get");
-                }
-                else if (annotations.exist("TS_SETTER"))
-                {
-                    method->setAccessor("set");
-                }
-            }
-
-            for (const auto& it : it.parameters())
-            {
-                method->addArgument(it.name(), collapseType(item->prefix(), mapType(typeMapper, it.type())), false);
-            }
-        }
+        throw utils::Exception(R"(invalid class template instantiation signature: "%s")", actualTypeName.c_str());
     }
 
-    return method;
-}
-
-} // namespace
-
-namespace analyzer
-{
-
-/*
-Example:
-
-Event <- CustomEvent
-
-<CustomEvent>:
-
-[0]:
-[name] CustomEvent
-[prefix] mgt::ts
-[items] {Event} (one base class)
-
-[1]:
-[name] Event
-[prefix] mgt::ts
-[items] {} (no any base classes)
-
-<Event>:
-
-[0]:
-[name] Event
-[prefix] mgt::ts
-[items] {} (no any base classes)
-*/
-std::vector<ClassBases> getAllBases(parser::const_class_item_t item, const parser::Collection& collection)
-{
-    std::vector<ClassBases> result;
-
-    getAllBasesImpl(result, item, collection);
+    result = match[1];
 
     return result;
 }
+
+InheritanceNode InheritanceNode::make(const parser::Collection& collection, parser::const_class_item_t item)
+{
+    InheritanceNode node(collection, item, item->name());
+
+    return node;
+}
+
+parser::const_class_item_t InheritanceNode::item() const
+{
+    return m_item;
+}
+
+std::string InheritanceNode::actualTypeName() const
+{
+    return m_actualTypeName;
+}
+
+std::vector<InheritanceNode> InheritanceNode::bases() const
+{
+    return m_bases;
+}
+
+//-------------------
 
 std::string getExtends(parser::const_class_item_t item)
 {
-    using namespace parser;
     using namespace utils;
+    using namespace parser;
 
-    auto classFullName = [item](std::string name, std::string prefix)
+    class Collector
     {
-        prefix = collapseType(item->prefix(), prefix);
-        std::string result = !prefix.empty() ? prefix + "." + name : name;
-        return result;
+        std::vector<std::string> m_list;
+
+    public:
+        void collect(const InheritanceNode& node)
+        {
+            for (const auto& it : node.bases())
+            {
+                AnnotationList annotations(getAnnotations(it.item()->decl()));
+
+                // collect all annotated classes
+                if (annotations.exist("TS_EXPORT"))
+                {
+                    m_list.push_back(it.actualTypeName());
+                }
+                else
+                {
+                    collect(it);
+                }
+            }
+        }
+
+        std::vector<std::string> get() const
+        {
+            return m_list;
+        }
     };
 
-    auto bases = getAllBases(item, Collection::get());
+    auto node = InheritanceNode::make(Collection::get(), item);
 
-    std::vector<std::string> extends;
+    Collector collector;
+    collector.collect(node);
 
-    for (auto level = 0; level < bases.size(); level++)
+    std::vector<std::string> bases = collector.get();
+
+    // no more than one annotated class in a hierarchy of inheritance
+    if (bases.size() > 1)
     {
-        std::vector<std::string> inherits;
-
-        for (const auto& it : bases.at(level).items)
-        {
-            AnnotationList annotations(getAnnotations(it->decl()));
-
-            // collect all annotated class
-            if (annotations.exist("TS_EXPORT"))
-            {
-                inherits.push_back(classFullName(it->name(), it->prefix()));
-            }
-
-            // not more than one annotated class on the level of inheritance
-            if (inherits.size() > 1)
-            {
-                throw Exception(R"(Multiple inheritance: class "%s")", bases.at(level).name.c_str());
-            }
-
-            if (extends.empty())
-                extends = inherits;
-        }
+        throw Exception(R"(Multiple inheritance is not supported in TypeScript: class "%s", bases: [%s])",
+                        item->name().c_str(),
+                        join(bases).c_str());
     }
 
-    return !extends.empty() ? extends.at(0) : "";
+    return !bases.empty() ? bases.at(0) : "";
 }
 
-std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item)
+std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item,
+                                                    const analyzer::TypeMapper& typeMapper,
+                                                    const parser::Collection& collection)
+{
+    using namespace generator::ts;
+    using namespace utils;
+    using namespace parser;
+
+    class Collector
+    {
+    private:
+        const analyzer::TypeMapper& m_typeMapper;
+        std::vector<field_block_t> m_fieldList;
+
+    private:
+        void extract(const InheritanceNode& node)
+        {
+            extract(node.item());
+        }
+
+        void extract(parser::const_class_item_t item)
+        {
+            std::vector<FieldItem> fields = item->fields();
+
+            for (const auto& field : fields)
+            {
+                m_fieldList.push_back(makeField(item, field, m_typeMapper));
+            }
+        }
+
+        void collect_bases(const InheritanceNode& node)
+        {
+            for (const auto& it : node.bases())
+            {
+                AnnotationList annotations(getAnnotations(it.item()->decl()));
+
+                if (!annotations.exist("TS_EXPORT"))
+                {
+                    extract(it);
+                    collect_bases(it);
+                }
+            }
+        }
+
+    public:
+        Collector(const analyzer::TypeMapper& typeMapper)
+            : m_typeMapper(typeMapper)
+        {
+        }
+
+        void collect(const InheritanceNode& node)
+        {
+            extract(node.item());
+            collect_bases(node);
+        }
+    
+        std::vector<field_block_t> get() const
+        {
+            return m_fieldList;
+        }
+    };
+
+    auto node = InheritanceNode::make(Collection::get(), item);
+
+    Collector collector(typeMapper);
+    collector.collect(node);
+
+    return collector.get();
+}
+
+std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_item_t item)
 {
     using namespace generator::ts;
     using namespace utils;
@@ -296,24 +467,24 @@ std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t i
         return size / d;
     };
 
-    // find size of bases classes
-    auto bases = getAllBases(item, Collection::get());
     int basesSize = 0;
 
-    for (const auto& it : bases)
-    {
-        if (item->name() == it.name && item->prefix() == it.prefix)
-        {
-            for (const auto& it : it.items)
-            {
-                basesSize += it->size();
-            }
+    auto node = InheritanceNode::make(Collection::get(), item);
 
-            break;
+    // find size of bases (annotated) classes
+    for (const auto& it : node.bases())
+    {
+        AnnotationList annotations(getAnnotations(it.item()->decl()));
+
+        if (annotations.exist("TS_EXPORT"))
+        {
+            basesSize += it.item()->size();
         }
     }
 
     int size = item->size() - basesSize;
+
+    _ASSERT(size >= 0);
 
     const std::vector<std::pair<std::string, int>> denominators = {
         {"uint64_t", sizeof(uint64_t)},
@@ -330,7 +501,7 @@ std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t i
 
         for (auto i = 0; i < N; i++)
         {
-            std::string name = strprintf("p%d", n);
+            std::string name = strprintf("p%d_%s", n, item->name().c_str());
             result.push_back(AbstractBlock::make<FieldBlock>(name, it.first, true));
 
             ++n;
@@ -355,9 +526,7 @@ std::vector<generator::ts::method_block_t> getMethods(parser::const_class_item_t
     {
         for (const auto& it : item->methods())
         {
-            AnnotationList annotations(getAnnotations(it.decl()));
-
-            auto method = makeMethod(item, it, typeMapper, annotations);
+            auto method = makeMethod(item, it, typeMapper);
 
             if (method)
             {
@@ -432,9 +601,7 @@ std::vector<generator::ts::method_block_t> getTemplateMethods(parser::const_clas
 
     for (const auto& it : item->templateMethods())
     {
-        AnnotationList annotations(getAnnotations(it.decl()));
-
-        auto method = makeMethod(item, it, typeMapper, annotations);
+        auto method = makeMethod(item, it, typeMapper);
 
         if (method)
         {

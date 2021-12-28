@@ -21,18 +21,17 @@
 namespace parser
 {
 
-class TemplateParameterValue
+class FieldItem
 {
-    const clang::TemplateTypeParmDecl* m_decl;
+    const clang::FieldDecl* m_decl;
 
 public:
-    TemplateParameterValue(const clang::TemplateTypeParmDecl* decl);
+    FieldItem(const clang::FieldDecl* decl);
 
     std::string name() const;
-    bool isParameterPack() const;
-    const clang::TemplateTypeParmDecl* decl() const;
-};
+    clang::QualType type() const;
 
-std::vector<TemplateParameterValue> getTemplateParameters(const clang::TemplateDecl* templateDecl);
+    const clang::FieldDecl* decl() const;
+};
 
 } //  namespace parser

@@ -14,6 +14,7 @@
 #include "FileBlock.h"
 #include "ModuleBlock.h"
 #include "NamespaceBlock.h"
+#include "Ignore.h"
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
@@ -47,11 +48,24 @@ void AbstractBlock::addDecorator(decorator_t decorator)
     m_decorators.push_back(decorator);
 }
 
+void AbstractBlock::setIgnore()
+{
+    m_hasIgnore = true;
+}
+
 void AbstractBlock::printDecorators(generator::print::printer_t printer) const
 {
     for (const auto& it : m_decorators)
     {
         it->print(printer);
+    }
+}
+
+void AbstractBlock::printIgnore(generator::print::printer_t printer) const
+{
+    if (m_hasIgnore)
+    {
+        Ignore::make()->print(printer);
     }
 }
 
@@ -65,6 +79,7 @@ void AbstractBlock::printFooter(generator::print::printer_t printer) const
 
 void AbstractBlock::print(generator::print::printer_t printer) const
 {
+    printIgnore(printer);
     printDecorators(printer);
 
     printHeader(printer);
@@ -94,6 +109,7 @@ std::string typeToString(AbstractBlock::Type type)
     const std::map<int, std::string> types = {
         {AbstractBlock::Type::CLASS, "Class"},
         {AbstractBlock::Type::COMMENT, "Comment"},
+        {AbstractBlock::Type::CODE_BLOCK, "CodeBlock"},
         {AbstractBlock::Type::FIELD, "Field"},
         {AbstractBlock::Type::FILE, "File"},
         {AbstractBlock::Type::IMPORT, "Import"},

@@ -71,6 +71,8 @@ std::string typeToString(AbstractItem::Type type)
         {AbstractItem::Type::CLASS_TEMPLATE, "ClassTemplate"},
         {AbstractItem::Type::ENUM, "Enum"},
         {AbstractItem::Type::FUNCTION, "Function"},
+        {AbstractItem::Type::FUNCTION_TEMPLATE, "FunctionTemplate"},
+        {AbstractItem::Type::CODE_BLOCK, "CodeBlock"},
     };
 
     _ASSERT(types.find(type) != types.end());

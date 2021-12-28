@@ -23,6 +23,13 @@ FunctionItem::FunctionItem(const std::string& name,
 {
 }
 
+FunctionItem::FunctionItem(
+    Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl)
+    : AbstractItem(type, name, prefix, isLocal)
+    , m_decl(decl)
+{
+}
+
 std::string FunctionItem::name() const
 {
     return m_decl->getNameAsString();

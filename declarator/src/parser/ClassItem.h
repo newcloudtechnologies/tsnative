@@ -12,6 +12,7 @@
 #pragma once
 
 #include "ContainerItem.h"
+#include "FieldItem.h"
 #include "MethodItem.h"
 
 #include <clang/AST/Decl.h>
@@ -35,10 +36,13 @@ private:
     ClassItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
 
 protected:
-    ClassItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::ClassTemplateDecl* decl);
+    ClassItem(
+        Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
 
 public:
+    virtual ~ClassItem() = default;
     std::vector<MethodItem> methods() const;
+    std::vector<FieldItem> fields() const;
     std::vector<clang::CXXBaseSpecifier> bases() const;
     int size() const;
     bool hasVirtualDestructor() const;

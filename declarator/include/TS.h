@@ -12,23 +12,37 @@
 #pragma once
 
 #ifdef TS
+#define MK_ANNOTATION(ann, value) #ann "=" #value
+
+#define CONCAT(a, b) _DO_CONCAT(a, b)
+#define _DO_CONCAT(a, b) a##b
+
+#define UNIQUE_NAME(base) CONCAT(base, __COUNTER__)
+
+#define MK_TS_CODE(code) __attribute__((annotate(MK_ANNOTATION(TS_CODE, code))))
+
 #define TS_EXPORT __attribute__((annotate("TS_EXPORT")))
 #define TS_METHOD __attribute__((annotate("TS_METHOD")))
 #define TS_CLOSURE __attribute__((annotate("TS_CLOSURE")))
-#define _JOIN(p1, p2) #p1 #p2
-#define TS_SIGNATURE(sig) __attribute__((annotate(_JOIN(TS_SIGNATURE =, sig))))
-#define TS_NAME(name) __attribute__((annotate(_JOIN(TS_NAME =, name))))
-#define TS_RETURN_TYPE(type) __attribute__((annotate(_JOIN(TS_RETURN_TYPE =, type))))
+#define TS_SIGNATURE(sig) __attribute__((annotate(MK_ANNOTATION(TS_SIGNATURE, sig))))
+#define TS_DECORATOR(sig) __attribute__((annotate(MK_ANNOTATION(TS_DECORATOR, sig))))
+#define TS_NAME(name) __attribute__((annotate(MK_ANNOTATION(TS_NAME, name))))
+#define TS_RETURN_TYPE(type) __attribute__((annotate(MK_ANNOTATION(TS_RETURN_TYPE, type))))
 #define TS_GETTER __attribute__((annotate("TS_GETTER")))
 #define TS_SETTER __attribute__((annotate("TS_SETTER")))
+#define TS_IGNORE __attribute__((annotate("TS_IGNORE")))
+#define TS_CODE(code) class MK_TS_CODE(code) UNIQUE_NAME(TS_CODE) {};
 
 #else
 #define TS_EXPORT
 #define TS_METHOD
 #define TS_CLOSURE
 #define TS_SIGNATURE(sig)
+#define TS_DECORATOR(sig)
 #define TS_NAME(name)
 #define TS_RETURN_TYPE(type)
 #define TS_GETTER
 #define TS_SETTER
+#define TS_IGNORE
+#define TS_CODE
 #endif

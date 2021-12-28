@@ -20,7 +20,7 @@ ClassTemplateItem::ClassTemplateItem(const std::string& name,
                                      const std::string& prefix,
                                      bool isLocal,
                                      const clang::ClassTemplateDecl* decl)
-    : ClassItem(name, prefix, isLocal, decl)
+    : ClassItem(AbstractItem::Type::CLASS_TEMPLATE, name, prefix, isLocal, decl->getTemplatedDecl())
     , m_decl(decl)
 {
 }
@@ -56,21 +56,7 @@ std::vector<TemplateMethodItem> ClassTemplateItem::templateMethods() const
 
 std::vector<TemplateParameterValue> ClassTemplateItem::templateParameters() const
 {
-    std::vector<TemplateParameterValue> result;
-
-    for (const auto& it : m_decl->getTemplateParameters()->asArray())
-    {
-        // ignore clang::Decl::Kind::NonTypeTemplateParm
-        if (it->getKind() == clang::Decl::Kind::TemplateTypeParm)
-        {
-            const auto* templateParamDecl = clang::dyn_cast_or_null<const clang::TemplateTypeParmDecl>(it);
-            _ASSERT(templateParamDecl);
-
-            result.push_back(templateParamDecl);
-        }
-    }
-
-    return result;
+    return getTemplateParameters(m_decl);
 }
 
 const clang::ClassTemplateDecl* ClassTemplateItem::decl() const

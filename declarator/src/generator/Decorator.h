@@ -36,18 +36,23 @@ private:
 
 private:
     Decorator(const std::string& name);
-    void addArgument(const std::string& arg);
 
 public:
+    void addArgument(int arg);
+    void addArgument(double arg);
+    void addArgument(const char* arg);
+
     void print(generator::print::printer_t printer) const;
 
     template <typename... Args>
     static decorator_t make(const std::string& name, Args&&... args)
     {
         decorator_t result(new Decorator(name));
-        ((result->addArgument(utils::toString(std::forward<Args>(args)))), ...);
+        ((result->addArgument(std::forward<Args>(args))), ...);
         return result;
     }
+
+    static decorator_t fromString(const std::string& s);
 };
 
 } // namespace ts

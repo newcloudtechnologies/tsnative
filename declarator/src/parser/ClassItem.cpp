@@ -23,16 +23,14 @@ ClassItem::ClassItem(const std::string& name, const std::string& prefix, bool is
     : ContainerItem(AbstractItem::Type::CLASS, name, prefix, isLocal)
     , m_decl(decl)
 {
+    _ASSERT(m_decl);
 }
 
-ClassItem::ClassItem(const std::string& name,
-                     const std::string& prefix,
-                     bool isLocal,
-                     const clang::ClassTemplateDecl* decl)
-    : ContainerItem(AbstractItem::Type::CLASS_TEMPLATE, name, prefix, isLocal)
-    , m_decl(nullptr)
+ClassItem::ClassItem(
+    Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl)
+    : ContainerItem(type, name, prefix, isLocal)
+    , m_decl(decl)
 {
-    m_decl = decl->getTemplatedDecl();
     _ASSERT(m_decl);
 }
 
@@ -43,6 +41,21 @@ std::vector<MethodItem> ClassItem::methods() const
     if (m_decl && m_decl->hasDefinition())
     {
         for (const auto& it : m_decl->methods())
+        {
+            result.push_back(it);
+        }
+    }
+
+    return result;
+}
+
+std::vector<FieldItem> ClassItem::fields() const
+{
+    std::vector<FieldItem> result;
+
+    if (m_decl && m_decl->hasDefinition())
+    {
+        for (const auto& it : m_decl->fields())
         {
             result.push_back(it);
         }

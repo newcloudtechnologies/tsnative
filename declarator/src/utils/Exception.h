@@ -69,3 +69,5 @@ public:
                  "Assert: \"%s:\", func: %s, file: %s, line: %d", #exp, __FUNCTION__, __FILE__, __LINE__))
 #define _THROW(msg) \
     throw ::utils::Exception("Message: %s, func: %s, file: %s, line: %d", #msg, __FUNCTION__, __FILE__, __LINE__)
+
+#define _STAMP() ::utils::Exception("func: %s, file: %s, line: %d", __FUNCTION__, __FILE__, __LINE__).what()

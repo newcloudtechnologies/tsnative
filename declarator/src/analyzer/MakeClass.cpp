@@ -31,13 +31,13 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
-    std::string name = (annotations.exist("TS_NAME")) ? annotations.value("TS_NAME") : item->name();
+    std::string name = (annotations.exist("TS_NAME")) ? annotations.values("TS_NAME").at(0) : item->name();
 
     auto classBlock = AbstractBlock::make<ClassBlock>(name, true);
 
     classBlock->addExtends(getExtends(item));
 
-    for (const auto& it : getFields(item))
+    for (const auto& it : getFillerFields(item))
     {
         classBlock->addField(it);
     }
@@ -52,6 +52,15 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
         classBlock->addClosure(it);
     }
 
+    if (annotations.exist("TS_DECORATOR"))
+    {
+        for (const auto& it : annotations.values("TS_DECORATOR"))
+        {
+            decorator_t decorator = Decorator::fromString(it);
+            classBlock->addDecorator(decorator);
+        }
+    }
+
     if (item->hasVTable())
     {
         classBlock->addDecorator(Decorator::make("VTableSize", item->getVTableSize()));
@@ -60,6 +69,11 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
     if (item->hasVirtualDestructor())
     {
         classBlock->addDecorator(Decorator::make("VirtualDestructor"));
+    }
+
+    if (annotations.exist("TS_IGNORE"))
+    {
+        classBlock->setIgnore();
     }
 
     block->add(classBlock);

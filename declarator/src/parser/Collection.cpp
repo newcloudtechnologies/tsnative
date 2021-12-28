@@ -11,10 +11,13 @@
 
 #include "Collection.h"
 #include "AbstractItem.h"
+#include "Annotation.h"
 #include "ClassItem.h"
 #include "ClassTemplateItem.h"
+#include "CodeBlockItem.h"
 #include "EnumItem.h"
 #include "FunctionItem.h"
+#include "FunctionTemplateItem.h"
 #include "NamespaceItem.h"
 
 #include "utils/Exception.h"
@@ -207,6 +210,16 @@ private:
                 specName += ">";
             }
 
+            AnnotationList templateAnnotations(getAnnotations(classTemplateDecl));
+            AnnotationList instantiationAnnotations(getAnnotations(it));
+
+            // remove TS_EXPORT annotation from all template specifications
+            if (templateAnnotations.exist("TS_EXPORT"))
+            {
+                instantiationAnnotations.remove("TS_EXPORT");
+                setAnnotations(it, instantiationAnnotations.toString());
+            }
+
             m_collection.addClass(specName, getPrefix(), isLocal, it);
         }
     }
@@ -233,6 +246,18 @@ private:
             return;
 
         m_collection.addFunction(funcDecl->getNameAsString(), getPrefix(), isLocal, funcDecl);
+    }
+
+    void addFunctionTemplate(const clang::NamedDecl* decl, bool isLocal)
+    {
+        const auto* funcTemplateDecl = clang::dyn_cast_or_null<const clang::FunctionTemplateDecl>(decl);
+        _ASSERT(funcTemplateDecl);
+
+        // function from local file only
+        if (!isLocal)
+            return;
+
+        m_collection.addFunctionTemplate(funcTemplateDecl->getNameAsString(), getPrefix(), isLocal, funcTemplateDecl);
     }
 
 public:
@@ -291,6 +316,13 @@ public:
             _ASSERT(namedDecl);
 
             context->addFunction(namedDecl, isLocal);
+        }
+        else if (current.kind == CXCursorKind::CXCursor_FunctionTemplate)
+        {
+            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
+            _ASSERT(namedDecl);
+
+            context->addFunctionTemplate(namedDecl, isLocal);
         }
 
         return CXChildVisit_Continue;
@@ -500,7 +532,19 @@ void Collection::addClass(const std::string& name,
     if (!existItem(name, prefix))
     {
         auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
-        auto item = AbstractItem::make<ClassItem>(name, prefix, isLocal, decl);
+        parser::class_item_t item;
+
+        AnnotationList annotations(getAnnotations(decl));
+
+        if (annotations.exist("TS_CODE"))
+        {
+            item = AbstractItem::make<CodeBlockItem>(name, prefix, decl);
+        }
+        else
+        {
+            item = AbstractItem::make<ClassItem>(name, prefix, isLocal, decl);
+        }
+
         parent->addItem(item);
     }
 }
@@ -537,6 +581,19 @@ void Collection::addFunction(const std::string& name,
     {
         auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
         auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
+        parent->addItem(item);
+    }
+}
+
+void Collection::addFunctionTemplate(const std::string& name,
+                                     const std::string& prefix,
+                                     bool isLocal,
+                                     const clang::FunctionTemplateDecl* decl)
+{
+    if (!existItem(name, prefix))
+    {
+        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
+        auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);
         parent->addItem(item);
     }
 }

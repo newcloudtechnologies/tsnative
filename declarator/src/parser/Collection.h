@@ -49,6 +49,11 @@ private:
 
     void addFunction(const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl);
 
+    void addFunctionTemplate(const std::string& name,
+                             const std::string& prefix,
+                             bool isLocal,
+                             const clang::FunctionTemplateDecl* decl);
+
 private:
     Collection();
     static Collection& do_get();

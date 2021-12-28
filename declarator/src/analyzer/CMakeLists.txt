@@ -18,6 +18,7 @@ set(INCLUDES
     MakeGenericClass.h
     MakeEnum.h
     MakeFunction.h
+    MakeCodeBlock.h
     TypeUtils.h
     TsUtils.h
 )
@@ -29,6 +30,7 @@ set(SOURCES
     MakeGenericClass.cpp
     MakeEnum.cpp
     MakeFunction.cpp
+    MakeCodeBlock.cpp
     TypeUtils.cpp
     TsUtils.cpp
 )

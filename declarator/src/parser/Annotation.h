@@ -23,24 +23,34 @@ namespace parser
 
 std::string getAnnotations(const clang::CXXRecordDecl* decl);
 std::string getAnnotations(const clang::CXXMethodDecl* decl);
+std::string getAnnotations(const clang::FieldDecl* decl);
 std::string getAnnotations(const clang::EnumDecl* decl);
 std::string getAnnotations(const clang::FunctionDecl* decl);
 std::string getAnnotations(const clang::ClassTemplateDecl* decl);
 std::string getAnnotations(const clang::FunctionTemplateDecl* decl);
+
+bool setAnnotations(clang::CXXRecordDecl* decl, const std::string& annotations);
 
 class AnnotationList
 {
     std::vector<std::string> m_annotationList;
 
 private:
+    int find(const std::string& annotation, int beginIndex, std::string& value) const;
     int find(const std::string& annotation) const;
+
     std::vector<std::string> split(const std::string& s) const;
+    std::string prettify(std::string raw) const;
 
 public:
     AnnotationList(const std::string& annotations);
 
     bool exist(const std::string& annotation) const;
-    std::string value(const std::string& annotation) const;
+    void add(const std::string& annotation);
+    void remove(const std::string& annotation);
+    std::vector<std::string> values(const std::string& annotation) const;
+
+    std::string toString() const;
 };
 
 } //  namespace parser

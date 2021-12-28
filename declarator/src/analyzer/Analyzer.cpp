@@ -11,6 +11,7 @@
 
 #include "Analyzer.h"
 #include "MakeClass.h"
+#include "MakeCodeBlock.h"
 #include "MakeEnum.h"
 #include "MakeFunction.h"
 #include "MakeGenericClass.h"
@@ -21,6 +22,7 @@
 #include "parser/Collection.h"
 #include "parser/EnumItem.h"
 #include "parser/FunctionItem.h"
+#include "parser/FunctionTemplateItem.h"
 
 #include "generator/AbstractBlock.h"
 #include "generator/ClassBlock.h"
@@ -45,30 +47,64 @@ namespace
 
 void do_create(parser::const_abstract_item_t item,
                const analyzer::TypeMapper& typeMapper,
-               generator::ts::container_block_t block)
+               generator::ts::abstract_block_t block)
 {
     using namespace parser;
+    using namespace generator::ts;
 
     switch (item->type())
     {
         case AbstractItem::Type::CLASS:
         {
-            makeClass(std::static_pointer_cast<const ClassItem>(item), typeMapper, block);
+            _ASSERT(AbstractBlock::isContainerBlock(block));
+
+            makeClass(std::static_pointer_cast<const ClassItem>(item),
+                      typeMapper,
+                      std::static_pointer_cast<ContainerBlock>(block));
             break;
         }
         case AbstractItem::Type::CLASS_TEMPLATE:
         {
-            makeGenericClass(std::static_pointer_cast<const ClassTemplateItem>(item), typeMapper, block);
+            _ASSERT(AbstractBlock::isContainerBlock(block));
+
+            makeGenericClass(std::static_pointer_cast<const ClassTemplateItem>(item),
+                             typeMapper,
+                             std::static_pointer_cast<ContainerBlock>(block));
             break;
         }
         case AbstractItem::Type::ENUM:
         {
-            makeEnum(std::static_pointer_cast<const EnumItem>(item), typeMapper, block);
+            _ASSERT(AbstractBlock::isContainerBlock(block));
+
+            makeEnum(std::static_pointer_cast<const EnumItem>(item),
+                     typeMapper,
+                     std::static_pointer_cast<ContainerBlock>(block));
             break;
         }
         case AbstractItem::Type::FUNCTION:
         {
-            makeFunction(std::static_pointer_cast<const FunctionItem>(item), typeMapper, block);
+            _ASSERT(AbstractBlock::isContainerBlock(block));
+
+            makeFunction(std::static_pointer_cast<const FunctionItem>(item),
+                         typeMapper,
+                         std::static_pointer_cast<ContainerBlock>(block));
+            break;
+        }
+        case AbstractItem::Type::FUNCTION_TEMPLATE:
+        {
+            _ASSERT(AbstractBlock::isContainerBlock(block));
+
+            // TODO: handle template functions
+            // here ordinary function is used
+            // template parameters ignore
+            makeFunction(std::static_pointer_cast<const FunctionTemplateItem>(item),
+                         typeMapper,
+                         std::static_pointer_cast<ContainerBlock>(block));
+            break;
+        }
+        case AbstractItem::Type::CODE_BLOCK:
+        {
+            makeCodeBlock(std::static_pointer_cast<const CodeBlockItem>(item), typeMapper, block);
             break;
         }
         default:
@@ -91,7 +127,13 @@ std::string getAnnotations(parser::const_abstract_item_t item)
             // TODO: Support annotations for namespace
             break;
         }
+        case AbstractItem::Type::CODE_BLOCK:
+        {
+            result = parser::getAnnotations(AbstractItem::decl<const CodeBlockItem>(item));
+            break;
+        }
         case AbstractItem::Type::CLASS:
+
         {
             result = parser::getAnnotations(AbstractItem::decl<const ClassItem>(item));
             break;
@@ -111,9 +153,15 @@ std::string getAnnotations(parser::const_abstract_item_t item)
             result = parser::getAnnotations(AbstractItem::decl<const FunctionItem>(item));
             break;
         }
+        case AbstractItem::Type::FUNCTION_TEMPLATE:
+        {
+            result = parser::getAnnotations(AbstractItem::decl<const FunctionTemplateItem>(item));
+            break;
+        }
         default:
         {
-            throw utils::Exception(R"(type of items "%s" is not supported)", typeToString(item->type()).c_str());
+            throw utils::Exception(
+                R"(type of items "%s" is not supported, %s)", typeToString(item->type()).c_str(), _STAMP());
         }
     };
 
@@ -138,7 +186,7 @@ parser::item_list_t getSuitableItems(const parser::Collection& collection)
 
             AnnotationList anotations(s);
 
-            if (item->isLocal() && anotations.exist("TS_EXPORT"))
+            if (item->isLocal() && (anotations.exist("TS_EXPORT") || anotations.exist("TS_CODE")))
             {
                 result.push_back(item);
             }
@@ -165,7 +213,7 @@ analyzer::TypeMapper makeTypeMapper(const parser::Collection& collection)
             if (anotations.exist("TS_NAME"))
             {
                 table.insert(
-                    std::make_pair(getClassFullName(item->name(), item->prefix()), anotations.value("TS_NAME")));
+                    std::make_pair(getClassFullName(item->name(), item->prefix()), anotations.values("TS_NAME").at(0)));
             }
         });
 
@@ -178,12 +226,13 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
                                         generator::ts::abstract_block_t file)
 {
     using namespace generator::ts;
+    using namespace parser;
 
     _ASSERT(file->type() == AbstractBlock::Type::FILE);
 
     auto root = std::static_pointer_cast<File>(file);
 
-    auto find_or_create = [root, importBlocks](container_block_t parent, const std::string& name)
+    auto find_or_create = [root, item, importBlocks](container_block_t parent, const std::string& name)
     {
         abstract_block_t result;
         block_list_t containers;
@@ -194,7 +243,16 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
         {
             if (it->name() == name)
             {
-                AbstractBlock::isContainerBlock(it) ? containers.push_back(it) : (void)(hasNamesake = true);
+                if (item->type() == AbstractItem::Type::CODE_BLOCK)
+                {
+                    // in this case we have pseudo-container
+                    // for example class into which inserted code block
+                    containers.push_back(it);
+                }
+                else
+                {
+                    AbstractBlock::isContainerBlock(it) ? containers.push_back(it) : (void)(hasNamesake = true);
+                }
             }
         }
 
@@ -222,7 +280,7 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
             {
                 result = AbstractBlock::make<NamespaceBlock>(name, true);
 
-                // put namespace before if we have other element with the same name, suck a class
+                // put namespace before if we have other element with the same name, such a class
                 hasNamesake ? parent->add_before(name, result) : parent->add(result);
             }
         }
@@ -230,13 +288,10 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
         return result;
     };
 
-    // find container block with prefix
+    // find container (is not always) block with prefix
     auto block = getBlock(root, item->prefix(), find_or_create);
 
-    _ASSERT(AbstractBlock::isContainerBlock(block));
-    auto containerBlock = std::static_pointer_cast<ContainerBlock>(block);
-
-    do_create(item, typeMapper, containerBlock);
+    do_create(item, typeMapper, block);
 
     return file;
 }

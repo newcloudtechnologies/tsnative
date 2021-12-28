@@ -12,7 +12,8 @@
 #pragma once
 
 #include "AbstractBlock.h"
-#include "MethodBlock.h"
+
+#include <string>
 
 namespace generator
 {
@@ -20,22 +21,19 @@ namespace generator
 namespace ts
 {
 
-class ElementAccessExpressionBlock : public MethodBlock
+class CodeBlock : public AbstractBlock
 {
-    friend class AbstractBlock;
+    std::string m_code;
 
 protected:
     void printBody(generator::print::printer_t printer) const override;
 
-protected:
-    ElementAccessExpressionBlock(const std::string& retType, bool isStatic);
-
 public:
-    void addArgument(const std::string& name, const std::string& type, bool isSpread) override;
+    CodeBlock(const std::string& code);
 };
 
-using element_access_expression_block_t = block_t<MethodBlock>;
-using const_element_access_expression_block_t = block_t<const MethodBlock>;
+using code_block_t = block_t<CodeBlock>;
+using const_code_block_t = block_t<const CodeBlock>;
 
 } // namespace ts
 

@@ -36,7 +36,9 @@ struct AbstractItem
         CLASS,
         CLASS_TEMPLATE,
         ENUM,
-        FUNCTION
+        FUNCTION,
+        FUNCTION_TEMPLATE,
+        CODE_BLOCK
     } Type;
 
 private:

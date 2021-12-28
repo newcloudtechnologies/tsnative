@@ -96,6 +96,11 @@ void ClassBlock::addImplements(const std::vector<std::string>& implements)
     m_implements = implements;
 }
 
+void ClassBlock::addCodeBlock(const_code_block_t codeBlock)
+{
+    m_codeBlocks.push_back(codeBlock);
+}
+
 void ClassBlock::printHeader(generator::print::printer_t printer) const
 {
     using namespace utils;
@@ -159,6 +164,13 @@ void ClassBlock::printBody(generator::print::printer_t printer) const
     for (auto i = 0; i < m_closures.size(); i++)
     {
         m_closures.at(i)->print(printer);
+    }
+
+    printer->enter();
+
+    for (auto i = 0; i < m_codeBlocks.size(); i++)
+    {
+        m_codeBlocks.at(i)->print(printer);
     }
 
     printer->backspace();

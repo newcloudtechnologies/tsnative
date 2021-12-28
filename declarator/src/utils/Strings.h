@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <functional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -24,6 +25,10 @@ std::vector<std::string> split(const std::string& s, const std::string& delimite
 bool starts_with(const std::string& s, const std::string& prefix);
 bool ends_with(const std::string& str, const std::string& suffix);
 
+void ltrim_if(std::string& s, std::function<bool(char)> pred);
+void rtrim_if(std::string& s, std::function<bool(char)> pred);
+void trim_if(std::string& s, std::function<bool(char)> pred);
+
 void ltrim(std::string& s);
 void rtrim(std::string& s);
 void trim(std::string& s);
@@ -33,6 +38,15 @@ bool includes(const std::string& s, const std::string& sub, std::size_t pos = 0)
 std::string join(std::vector<std::string> list, const std::string& delimiter = ", ");
 
 void replace_all(std::string& s, const std::string& search, const std::string& replace);
+
+template <typename T>
+bool is_type(const std::string& s, T& result)
+{
+    std::istringstream iss(s);
+    iss >> result;
+
+    return !iss.fail() && iss.eof();
+}
 
 template <typename T, typename... Ts>
 std::string stringify(const T& first, const Ts&... rest)

@@ -25,18 +25,43 @@
 namespace analyzer
 {
 
-struct ClassBases
+class InheritanceNode
 {
-    std::string name;
-    std::string prefix;
-    std::vector<parser::const_class_item_t> items;
-};
+private:
+    const parser::Collection& m_collection;
 
-std::vector<ClassBases> getAllBases(parser::const_class_item_t item, const parser::Collection& collection);
+    parser::const_class_item_t m_item;
+    std::string m_actualTypeName; // uses for non instantiated templates
+    std::vector<InheritanceNode> m_bases;
+    bool m_instantiated = true; // example; Iterator<T> - false, Rect<int, double> - true, Widget - true
+
+private:
+    InheritanceNode(const parser::Collection& collection,
+                    parser::const_class_item_t item,
+                    const std::string& actualTypeName,
+                    bool instantiated = true);
+
+    std::optional<parser::const_abstract_item_t> getItem(const parser::Collection& collection, const std::string& path);
+    std::string getType(const clang::CXXBaseSpecifier& it);
+    std::vector<clang::CXXBaseSpecifier> getBases(const clang::CXXRecordDecl* decl);
+
+    std::string getTemplateName(const std::string& actualTypeName) const;
+
+public:
+    static InheritanceNode make(const parser::Collection& collection, parser::const_class_item_t item);
+
+    parser::const_class_item_t item() const;
+    std::string actualTypeName() const;
+    std::vector<InheritanceNode> bases() const;
+};
 
 std::string getExtends(parser::const_class_item_t item);
 
-std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item);
+std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item,
+                                                    const analyzer::TypeMapper& typeMapper,
+                                                    const parser::Collection& collection);
+
+std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_item_t item);
 
 std::vector<generator::ts::method_block_t> getMethods(parser::const_class_item_t item,
                                                       const analyzer::TypeMapper& typeMapper,

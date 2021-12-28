@@ -13,6 +13,25 @@
 
 #include "utils/Exception.h"
 
+#include <regex>
+
+namespace
+{
+
+void addArgument(generator::ts::decorator_t decorator, const std::string& value)
+{
+    int vInt = 0;
+    bool vBool = false;
+    double vDbl = 0;
+
+    utils::is_type<int>(value, vInt)      ? decorator->addArgument(vInt)
+    : utils::is_type<bool>(value, vBool)  ? decorator->addArgument(vBool)
+    : utils::is_type<double>(value, vDbl) ? decorator->addArgument(vDbl)
+                                          : decorator->addArgument(value.c_str());
+}
+
+} //  namespace
+
 namespace generator
 {
 
@@ -24,9 +43,19 @@ Decorator::Decorator(const std::string& name)
 {
 }
 
-void Decorator::addArgument(const std::string& arg)
+void Decorator::addArgument(int arg)
 {
-    m_arguments.push_back(arg);
+    m_arguments.push_back(utils::strprintf(R"(%d)", arg));
+}
+
+void Decorator::addArgument(double arg)
+{
+    m_arguments.push_back(utils::strprintf(R"(%.2f)", arg));
+}
+
+void Decorator::addArgument(const char* arg)
+{
+    m_arguments.push_back(utils::strprintf(R"("%s")", arg));
 }
 
 void Decorator::print(generator::print::printer_t printer) const
@@ -40,6 +69,41 @@ void Decorator::print(generator::print::printer_t printer) const
 
     printer->print(img);
     printer->enter();
+}
+
+decorator_t Decorator::fromString(const std::string& s)
+{
+    decorator_t result;
+
+    std::regex regexp(R"(^([\w]*)(\((.*)\))?)");
+    std::smatch match;
+
+    if (!std::regex_search(s.begin(), s.end(), match, regexp))
+    {
+        throw utils::Exception(R"(invalid decorator signature: "%s")", s.c_str());
+    }
+
+    std::string name = match[1];
+    std::string args = match[3];
+
+    result = Decorator::make(name);
+
+    if (!args.empty())
+    {
+        regexp.assign(R"(([^\,\'\s]+))");
+
+        auto begin = std::sregex_iterator(args.begin(), args.end(), regexp);
+        auto end = std::sregex_iterator();
+
+        for (auto it = begin; it != end; ++it)
+        {
+            std::string arg = (*it).str();
+
+            ::addArgument(result, arg);
+        }
+    }
+
+    return result;
 }
 
 } // namespace ts
