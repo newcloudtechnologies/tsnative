@@ -1,10 +1,20 @@
-gitea_creds = 'jenkins_gitea'
+// Used Jenkins shared library
+@Library('shared-lib@master') _
+// imported need class from Jenkins shared library
+import com.ncloudtech.emb.devops.pipeline.commonUtils
+import com.ncloudtech.emb.devops.pipeline.gitUtils
+import com.ncloudtech.emb.devops.pipeline.sshUtils
+import com.ncloudtech.emb.devops.pipeline.npmUtils
+import com.ncloudtech.emb.devops.pipeline.complexUtils
+import com.ncloudtech.emb.devops.pipeline.notificationUtils
 
-// NPM private repository
-NPM_PRIVATE_REPO_ALL_URL = 'https://nexus.devos.club/repository/antiq_npm'
-NPM_PRIVATE_REPO_PUBLIC_URL = 'https://nexus.devos.club/repository/antiq_npm_local'
-NPM_PRIVATE_REPO_AUTH_STR = '//nexus.devos.club/repository/'
-NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID = 'nexus_npm_user_antiq_NpmToken'
+// initiate object for work
+def commonUtils = new commonUtils()
+def gitUtils = new gitUtils()
+def sshUtils = new sshUtils()
+def npmUtils = new npmUtils()
+def complexUtils = new complexUtils()
+
 
 // Vars for control skip build in CI
 SKIP_CI = false
@@ -14,9 +24,11 @@ INCREMENT_VERSION = false
 
 pipeline {
     agent none
+
     parameters {
         booleanParam(name: 'PublishWithoutIncrement', defaultValue: false, description: 'Whether we need to publish artifact to npm registry (without version increment')
     }
+
     stages {
         // WARNING! Need add message for commit Auto increment 'patch' version package with '[skip ci]'
         // this is a protection against recursive run tasks in Jenkins by 'push' in Gitea and webhook
@@ -25,18 +37,8 @@ pipeline {
 
             steps{
                 script {
-                    // view current branch
-                    echo "Use GIT branch is " + get_source_branch()
-
-                    // check for [skip ci] or [ci skip] in latest commit message
-                    if ( git_skip_ci_in_last_commit() ) {
-                        // view output of SKIP CI
-                        echo "In latest commit found [skip ci] or [ci skip]"
-                        echo "Aborted task!"
-
-                        // выставляем флаг на остановку сборки
-                        SKIP_CI = true
-                    }
+                    // check abort build by [skip ci] or [ci skip] in latest commit message
+                    SKIP_CI = gitUtils.skipCIinLastCommit(this)
                 }
             }
 
@@ -50,7 +52,7 @@ pipeline {
         stage('Increment version on master') {
             when {
                 allOf {
-                    expression { (get_source_branch() == 'master') }
+                    expression { (gitUtils.getSourceBranch(this) == 'master') }
                     not { expression { SKIP_CI } }
                 }
                 beforeAgent true
@@ -58,56 +60,35 @@ pipeline {
 
             agent {
                 docker {
-                    // use official Node LTS image
-                    image "node:lts"
+                    // use official Node LTS image from local Harbor
+                    image "${JENKINS_PROXY_DOCKER_HUB_DOCKER_REGISTRY_REPO}/library/node:lts"
                 }
             }
 
             environment {
-                // Override HOME to WORKSPACE for NPM
+                // Change environment for LOCAL work with NodeJS in container for fix error ACCESS to files on Linux
+                // оverride HOME to WORKSPACE
                 HOME = "${WORKSPACE}"
-                // or override default cache directory (~/.npm)
+                // override default cache directory (~/.npm)
                 NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
-                // CI enable
+                // Change work NodeJS with CI
+                // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-test-stage-to-your-pipeline
                 CI = 'true'
+
+                // override PATH
+                // https://docs.npmjs.com/cli/v6/configuring-npm/folders#executables
+                PATH = "${WORKSPACE}/node_modules/.bin:${env.PATH}"
             }
 
             steps {
                 script {
-                    // check version
-                    sh "npm -v"
-                    sh "node -v"
-
-                    // view current version
-                    env.CURRENT_PROJECT_VERSION =
-                            sh script: 'yarn version | grep "^info Current version:" | cut -d " " -f 4 | tr -d "\\n"',
-                                returnStdout: true
-                    echo "Current project version is ${env.CURRENT_PROJECT_VERSION}"
-
-                    // Work with GIT
-                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                        // test work with GIT
-                        sh 'git fetch --all'
-
-                        // config user for commit
-                        sh 'git config --global user.email "devops_emb00x@collabio.team"'
-                        sh 'git config --global user.name "jenkins"'
-
-                        // Auto increment 'patch' version package with commit to GIT
-                        // WARNING! Need add message for commit with '[skip ci]'
-                        // this is a protection against recursive run tasks in Jenkins by 'push' in Gitea and webhook
-                        sh 'npm version patch -m "[skip ci] Auto increment version by npm"'
-
-                        // push with tag in Gitea
-                        sh 'git push origin HEAD:' + get_source_branch() + ' --tags'
-
-                        // view current version
-                        env.NEW_PROJECT_VERSION =
-                                sh script: 'yarn version | grep "^info Current version:" | cut -d " " -f 4 | tr -d "\\n"',
-                                        returnStdout: true
-                        // view version
-                        echo "New project version is ${env.NEW_PROJECT_VERSION}"
-                    }
+                    // Auto increment 'patch' version package with commit to GIT
+                    // WARNING! Need add message for commit with '[skip ci]'
+                    // this is a protection against recursive run tasks in Jenkins by 'push' in Gitea and webhook
+                    // set environment:
+                    // env.CURRENT_NODE_JS_PROJECT_VERSION
+                    // env.NEW_NODE_JS_PROJECT_VERSION
+                    complexUtils.nodeJSautoIncrementPackagePathVersionWithCommitInGitHTTPwithSkipCIinBaseImageFromDockerHub(this, "${env.JENKINS_GIT_CREDENTIALS_HTTP}", 'jenkins', 'emb_alerts@collabio.team')
 
                     // fix work with auto increment version
                     INCREMENT_VERSION = true
@@ -128,8 +109,10 @@ pipeline {
             }
 
             parallel {
+                // Linux
                 stage('Linux x86_64') {
                     agent {
+                        // future refactoring - using harbor.devos.club
                         docker {
                             image "docreg.devos.club/typescript-environment:1.7"
                             args "--user root"
@@ -140,7 +123,18 @@ pipeline {
                     }
 
                     environment {
+                        // Change environment for LOCAL work with NodeJS in container for fix error ACCESS to files on Linux
+                        // оverride HOME to WORKSPACE
+                        HOME = "${WORKSPACE}"
+                        // override default cache directory (~/.npm)
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                        // Change work NodeJS with CI
+                        // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-test-stage-to-your-pipeline
                         CI = 'true'
+
+                        // override PATH
+                        // https://docs.npmjs.com/cli/v6/configuring-npm/folders#executables
+                        PATH = "${WORKSPACE}/node_modules/.bin:${env.PATH}"
                     }
 
                     // need for pull changes from remote repo for autoincrement version
@@ -152,12 +146,8 @@ pipeline {
 
                             steps {
                                 script {
-                                    // Work with GIT
-                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                                        // Update repo
-                                        sh 'git fetch --all'
-                                        sh 'git pull'
-                                    }
+                                    // Work with GIT - update repo
+                                    gitUtils.fetchAllAndPullWithCredentialsHTTP(this, "${env.JENKINS_GIT_CREDENTIALS_HTTP}")
                                 }
                             }
                         }
@@ -165,23 +155,30 @@ pipeline {
                         stage("Setup Env") {
                             steps {
                                 script {
-                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                    // with authorization in GIT by SSH
+                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: "${env.JENKINS_GIT_CREDENTIALS_SSH}", keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        useradd()
-                                        ssh_config()
-                                        ssh_user(SSH_KEY, "jenkins", "/home/jenkins")
-                                        ssh_user(SSH_KEY, "root", "/root")
+                                        // SSH in Linux container
+                                        // add user jenkins for UID and GID mapping to container
+                                        // disable check key hosts global and add SSH key for users
+                                        complexUtils.initSSHforWorkWithGITinLinuxContainerArgsUserROOT(this, SSH_KEY, 'id_rsa')
 
-                                        npm_clean_config()
+                                        // clear NPM config user and in clone repo for local build
+                                        npmUtils.deleteNpmrcLocalAndUser(this)
 
                                         // enable unsafe-perm since running as a root for install npm-prebuilt-dependencies
                                         // work from root for all script execute
-                                        sh "npm config set unsafe-perm true"
-                                        // npm 7 is flawed a lot
-                                        sh "npm install -g npm@6"
+                                        npmUtils.npmConfigSet(this, 'unsafe-perm true')
 
-                                        npm_install_deps()
+                                        // stick to version 6 since 7 one is flawed a lot with check version
+                                        npmUtils.npmInstall(this, '-g npm@6')
+
+                                        // 'npm install' with clean cache before and authorization in private repo in Nexus
+                                        complexUtils.nodeJSnpmInstallWithCacheCleanAndAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                        // delete SSH configs in Linux container
+                                        complexUtils.clearSSHclientConfigInLinuxContainerArgsUserROOT(this)
                                     }
                                 }
                             }
@@ -189,55 +186,78 @@ pipeline {
 
                         stage("Build") {
                             steps {
-                                npm_build()
+                                script {
+                                    npmUtils.npmRun(this, 'lint')
+                                    npmUtils.npmRun(this, 'build')
+                                }
                             }
                         }
 
                         stage("Tests") {
                             steps {
-                                npm_test()
+                                script {
+                                    // FIXME: enable parallel build once KDM-836 is fixed
+                                    npmUtils.npmRun(this, 'test')
+                                    npmUtils.npmRun(this, 'runtime_test')
+                                }
                             }
                         }
 
                         stage("Publish")
                         {
                             when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
+                                expression { params.PublishWithoutIncrement || (gitUtils.getSourceBranch(this) == 'master') }
                             }
                             steps {
-                                npm_publish()
+                                script {
+                                    // Custom 'npm run publishToLocalRegistry' with authorization in private repo to publishing artefact in Nexus and view version package
+                                    complexUtils.antiqNodeJSnpmPublishToLocalRegistryWithAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                }
                             }
                         }
                     }
 
                     post {
                         cleanup {
-                            // custom clean workdir from bug cleanWs()
-                            sh 'rm -rf ./* ~/.ssh'
+                            script {
+                                // delete SSH configs in Linux container and custom clean workdir by conflict permissions to cleanWs()
+                                complexUtils.clearSSHclientConfigAndClearWorkDirForFixErrorInPermissionsInLinuxContainerArgsUserROOT(this)
+                            }
                         }
 
                         always {
-                            // disable unsafe-perm since running as a root for install npm-prebuilt-dependencies
-                            sh "npm config set unsafe-perm false"
-                            // always logout
-                            npm_logout()
+                            script {
+                                // disable unsafe-perm since running as a root for install npm-prebuilt-dependencies
+                                npmUtils.npmConfigDelete(this, 'unsafe-perm true')
+
+                                // always npm logout
+                                // for clear configure NodeJS in case then do not delete .npmrc from one level
+                                // this needing for clear work environment in future builds
+                                npmUtils.logoutFromPrivateRegistryAndPrivateRegistryForPublish(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                            }
                             // always clean work dir
                             cleanWs()
                         }
                     }
                 }
 
+                // Windows
                 stage('Windows x86_64') {
                     agent {
                         label 'winsrv19'
                     }
 
                     environment {
-                        // CI enable for NodeJS
-                        // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-final-deliver-stage-to-your-pipeline
+                        // Change environment for LOCAL work with NodeJS on Windows
+                        // override default cache directory (~/.npm)
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                        // Change work NodeJS with CI
+                        // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-test-stage-to-your-pipeline
                         CI = 'true'
-                        // Force using GIT from MSYS
-                        PATH = "/usr/bin:${env.PATH}"
+
+                        // override PATH with force using GIT from MSYS
+                        // https://docs.npmjs.com/cli/v6/configuring-npm/folders#executables
+                        PATH = "${WORKSPACE}/node_modules/.bin:/usr/bin:${env.PATH}"
                     }
 
                     stages {
@@ -248,9 +268,7 @@ pipeline {
                                     // when checkout repository on Windows all files change end line from LF to CRLF
                                     // this view how non-add files to GIT on local copy
                                     // need delete this changes
-                                    sh 'git status'
-                                    sh 'git restore :/'
-                                    sh 'git status'
+                                    gitUtils.fixCRLFonWindowsByRestore(this)
                                 }
                             }
                         }
@@ -263,12 +281,8 @@ pipeline {
 
                             steps {
                                 script {
-                                    // Work with GIT
-                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                                        // Update repo
-                                        sh 'git fetch --all'
-                                        sh 'git pull'
-                                    }
+                                    // Work with GIT - update repo
+                                    gitUtils.fetchAllAndPullWithCredentialsHTTP(this, "${env.JENKINS_GIT_CREDENTIALS_HTTP}")
                                 }
                             }
                         }
@@ -276,25 +290,28 @@ pipeline {
                         stage("Setup Env") {
                             steps {
                                 script {
-                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                    // with authorization in GIT by SSH
+                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: "${env.JENKINS_GIT_CREDENTIALS_SSH}", keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
-                                        
-                                        sh """
-                                            mkdir -p \$HOME/.ssh
-                                            cat \${SSH_KEY} > \$HOME/.ssh/id_rsa
-                                            chmod 600 \$HOME/.ssh/id_rsa
-                                            echo "Host *" > \$HOME/.ssh/config
-                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-                                        """
 
-                                        npm_clean_config()
+                                        // SSH on Windows in MSYS2
+                                        // disable check key hosts and add SSH key for current user
+                                        complexUtils.initSSHforWorkWithGITforCurrentUserOnWindows(this, 'SSH_KEY', 'id_rsa')
+
+                                        // clear NPM config user and in clone repo for local build
+                                        npmUtils.deleteNpmrcLocalAndUser(this)
 
                                         // hack: explicitly set python path on windows
-                                        sh "npm config set python \"C:\\Python39\\python\""
-                                        sh "npm config list"
-                                        // npm 7 is flawed a lot
-                                        sh "npm install -g npm@6"
-                                        npm_install_deps()
+                                        npmUtils.npmConfigSet(this, 'python \"C:\\Python39\\python\"')
+
+                                        // stick to version 6 since 7 one is flawed a lot with check version
+                                        npmUtils.npmInstall(this, '-g npm@6')
+
+                                        // 'npm install' with clean cache before and authorization in private repo in Nexus
+                                        complexUtils.nodeJSnpmInstallWithCacheCleanAndAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                        // delete SSH configs on Windows in MSYS2
+                                        sshUtils.deleteSshDirForUser(this)
                                     }
                                 }
                             }
@@ -302,53 +319,81 @@ pipeline {
 
                         stage("Build") {
                             steps {
-                                npm_build()
+                                script {
+                                    npmUtils.npmRun(this, 'lint')
+                                    npmUtils.npmRun(this, 'build')
+                                }
                             }
                         }
 
                         stage("Tests") {
                             steps {
-                                npm_test()
+                                script {
+                                    // FIXME: enable parallel build once KDM-836 (???) is fixed
+                                    npmUtils.npmRun(this, 'test')
+                                    npmUtils.npmRun(this, 'runtime_test')
+                                }
                             }
                         }
 
                         stage("Publish") {
                             when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
+                                expression { params.PublishWithoutIncrement || (gitUtils.getSourceBranch(this) == 'master') }
                             }
                             steps {
-                                npm_publish()
+                                script {
+                                    // Custom 'npm run publishToLocalRegistry' with authorization in private repo to publishing artefact in Nexus and view version package
+                                    complexUtils.antiqNodeJSnpmPublishToLocalRegistryWithAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                }
                             }
                         }
                     }
 
                     post {
                         cleanup {
-                            // custom clean work dir from bug cleanWs()
-                            sh 'rm -rf ./* ~/.ssh'
+                            script {
+                                // delete SSH configs on Windows
+                                sshUtils.deleteSshDirForUser(this)
+                            }
                         }
 
                         always {
-                            // always logout
-                            npm_logout()
+                            script {
+                                // always logout
+                                // for clear configure NodeJS in case then do not delete .npmrc from one level
+                                // this needing for clear work environment in future builds
+                                npmUtils.logoutFromPrivateRegistryAndPrivateRegistryForPublish(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                            }
                             // always clean work dir
                             cleanWs()
                         }
                     }
                 }
 
-                stage('macOS arm64') {
+                // MacOS arm64
+                stage('MacOS arm64') {
                     agent {
-                        label 'antiq_mac'
+                        label 'antiq_mac_arm64'
                     }
 
                     environment {
+                        // Change environment for LOCAL work with NodeJS in container for fix error ACCESS to files on Linux
+                        // override default cache directory (~/.npm)
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                        // Change work NodeJS with CI
+                        // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-test-stage-to-your-pipeline
                         CI = 'true'
+
+                        // override PATH
+                        // https://docs.npmjs.com/cli/v6/configuring-npm/folders#executables
+                        PATH = "${WORKSPACE}/node_modules/.bin:${env.PATH}"
+
+                        // LLVM use
                         LLVM_DIR='/opt/local/libexec/llvm-11'
                     }
 
+                    // need for pull changes from remote repo for autoincrement version
                     stages {
-                        // need for pull changes from remote repo for autoincrement version
                         stage("Checkout repo") {
                             when {
                                 expression { INCREMENT_VERSION }
@@ -356,12 +401,8 @@ pipeline {
 
                             steps {
                                 script {
-                                    // Work with GIT
-                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                                        // Update repo
-                                        sh 'git fetch --all'
-                                        sh 'git pull'
-                                    }
+                                    // Work with GIT - update repo
+                                    gitUtils.fetchAllAndPullWithCredentialsHTTP(this, "${env.JENKINS_GIT_CREDENTIALS_HTTP}")
                                 }
                             }
                         }
@@ -369,21 +410,22 @@ pipeline {
                         stage("Setup Env") {
                             steps {
                                 script {
-                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                    // with authorization in GIT by SSH
+                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: "${env.JENKINS_GIT_CREDENTIALS_SSH}", keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        sh """
-                                            mkdir -p ~/.ssh
-                                            chmod 700 ~/.ssh
-                                            cat \${SSH_KEY} > ~/.ssh/id_rsa
-                                            chmod 600 ~/.ssh/id_rsa
-                                            echo "Host *" > ~/.ssh/config
-                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-                                        """
+                                        // SSH on Linux or MacOS
+                                        // disable check key hosts and add SSH key for current user
+                                        complexUtils.initSSHforWorkWithGITforCurrentUSer(this, SSH_KEY, 'id_rsa')
 
-                                        npm_clean_config()
+                                        // clear NPM config user and in clone repo for local build
+                                        npmUtils.deleteNpmrcLocalAndUser(this)
 
-                                        npm_install_deps()
+                                        // 'npm install' with clean cache before and authorization in private repo in Nexus
+                                        complexUtils.nodeJSnpmInstallWithCacheCleanAndAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                        // delete SSH configs on Linux or MacOS
+                                        sshUtils.deleteSshDirForUser(this)
                                     }
                                 }
                             }
@@ -391,57 +433,82 @@ pipeline {
 
                         stage("Build") {
                             steps {
-                                npm_build()
+                                script {
+                                    npmUtils.npmRun(this, 'lint')
+                                    npmUtils.npmRun(this, 'build')
+                                }
                             }
                         }
 
                         stage("Tests") {
                             steps {
-                                npm_test()
+                                script {
+                                    // FIXME: enable parallel build once KDM-836 is fixed
+                                    npmUtils.npmRun(this, 'test')
+                                    npmUtils.npmRun(this, 'runtime_test')
+                                }
                             }
                         }
 
                         stage("Publish")
-                        {
-                            when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
-                            }
-                            steps {
-                                npm_publish()
-                            }
-                        }
+                                {
+                                    when {
+                                        expression { params.PublishWithoutIncrement || (gitUtils.getSourceBranch(this) == 'master') }
+                                    }
+                                    steps {
+                                        script {
+                                            // Custom 'npm run publishToLocalRegistry' with authorization in private repo to publishing artefact in Nexus and view version package
+                                            complexUtils.antiqNodeJSnpmPublishToLocalRegistryWithAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                        }
+                                    }
+                                }
                     }
 
                     post {
                         cleanup {
-                            // custom clean workdir from bug cleanWs()
-                            sh 'rm -rf ./* ~/.ssh'
+                            script {
+                                // delete SSH configs on Linux or MacOS
+                                sshUtils.deleteSshDirForUser(this)
+                            }
                         }
 
                         always {
-                            // always logout
-                            npm_logout()
-                            // always clean work dir
-                            deleteDir()
-                            dir("${workspace}@tmp") {
-                                deleteDir()
+                            script {
+                                // always npm logout
+                                // for clear configure NodeJS in case then do not delete .npmrc from one level
+                                // this needing for clear work environment in future builds
+                                npmUtils.logoutFromPrivateRegistryAndPrivateRegistryForPublish(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                             }
+                            // always clean work dir
+                            cleanWs()
                         }
                     }
                 }
 
-                stage('macOS x86_64') {
+                // MacOS x86_64
+                stage('MacOS x86_64') {
                     agent {
                         label 'antiq_mac_x86_64'
                     }
 
                     environment {
+                        // Change environment for LOCAL work with NodeJS in container for fix error ACCESS to files on Linux
+                        // override default cache directory (~/.npm)
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                        // Change work NodeJS with CI
+                        // https://www.jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/#add-a-test-stage-to-your-pipeline
                         CI = 'true'
+
+                        // override PATH
+                        // https://docs.npmjs.com/cli/v6/configuring-npm/folders#executables
+                        PATH = "${WORKSPACE}/node_modules/.bin:${env.PATH}"
+
+                        // LLVM use
                         LLVM_DIR='/opt/local/libexec/llvm-11'
                     }
 
+                    // need for pull changes from remote repo for autoincrement version
                     stages {
-                        // need for pull changes from remote repo for autoincrement version
                         stage("Checkout repo") {
                             when {
                                 expression { INCREMENT_VERSION }
@@ -449,12 +516,8 @@ pipeline {
 
                             steps {
                                 script {
-                                    // Work with GIT
-                                    withCredentials([gitUsernamePassword(credentialsId: 'jenkins_gitea_http', gitToolName: 'git-tool')]) {
-                                        // Update repo
-                                        sh 'git fetch --all'
-                                        sh 'git pull'
-                                    }
+                                    // Work with GIT - update repo
+                                    gitUtils.fetchAllAndPullWithCredentialsHTTP(this, "${env.JENKINS_GIT_CREDENTIALS_HTTP}")
                                 }
                             }
                         }
@@ -462,21 +525,22 @@ pipeline {
                         stage("Setup Env") {
                             steps {
                                 script {
-                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: gitea_creds, keyFileVariable: 'SSH_KEY')]) {
+                                    // with authorization in GIT by SSH
+                                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: "${env.JENKINS_GIT_CREDENTIALS_SSH}", keyFileVariable: 'SSH_KEY')]) {
                                         echo "Using agent ${env.NODE_NAME} (${env.JENKINS_URL})"
 
-                                        sh """
-                                            mkdir -p ~/.ssh
-                                            chmod 700 ~/.ssh
-                                            cat \${SSH_KEY} > ~/.ssh/id_rsa
-                                            chmod 600 ~/.ssh/id_rsa
-                                            echo "Host *" > ~/.ssh/config
-                                            echo "    StrictHostKeyChecking no" >>  ~/.ssh/config
-                                        """
+                                        // SSH on Linux or MacOS
+                                        // disable check key hosts and add SSH key for current user
+                                        complexUtils.initSSHforWorkWithGITforCurrentUSer(this, SSH_KEY, 'id_rsa')
 
-                                        npm_clean_config()
+                                        // clear NPM config user and in clone repo for local build
+                                        npmUtils.deleteNpmrcLocalAndUser(this)
 
-                                        npm_install_deps()
+                                        // 'npm install' with clean cache before and authorization in private repo in Nexus
+                                        complexUtils.nodeJSnpmInstallWithCacheCleanAndAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+
+                                        // delete SSH configs on Linux or MacOS
+                                        sshUtils.deleteSshDirForUser(this)
                                     }
                                 }
                             }
@@ -484,41 +548,54 @@ pipeline {
 
                         stage("Build") {
                             steps {
-                                npm_build()
+                                script {
+                                    npmUtils.npmRun(this, 'lint')
+                                    npmUtils.npmRun(this, 'build')
+                                }
                             }
                         }
 
                         stage("Tests") {
                             steps {
-                                npm_test()
+                                script {
+                                    // FIXME: enable parallel build once KDM-836 is fixed
+                                    npmUtils.npmRun(this, 'test')
+                                    npmUtils.npmRun(this, 'runtime_test')
+                                }
                             }
                         }
 
                         stage("Publish")
-                        {
-                            when {
-                                expression { params.PublishWithoutIncrement || (get_source_branch() == 'master') }
-                            }
-                            steps {
-                                npm_publish()
-                            }
-                        }
+                                {
+                                    when {
+                                        expression { params.PublishWithoutIncrement || (gitUtils.getSourceBranch(this) == 'master') }
+                                    }
+                                    steps {
+                                        script {
+                                            // Custom 'npm run publishToLocalRegistry' with authorization in private repo to publishing artefact in Nexus and view version package
+                                            complexUtils.antiqNodeJSnpmPublishToLocalRegistryWithAuthToPrivateRepo(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
+                                        }
+                                    }
+                                }
                     }
 
                     post {
                         cleanup {
-                            // custom clean workdir from bug cleanWs()
-                            sh 'rm -rf ./* ~/.ssh'
+                            script {
+                                // delete SSH configs on Linux or MacOS
+                                sshUtils.deleteSshDirForUser(this)
+                            }
                         }
 
                         always {
-                            // always logout
-                            npm_logout()
-                            // always clean work dir
-                            deleteDir()
-                            dir("${workspace}@tmp") {
-                                deleteDir()
+                            script {
+                                // always npm logout
+                                // for clear configure NodeJS in case then do not delete .npmrc from one level
+                                // this needing for clear work environment in future builds
+                                npmUtils.logoutFromPrivateRegistryAndPrivateRegistryForPublish(this, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_ALL_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_PUBLIC_URL, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_STR, global.SHARED_LIB_ANTIQ_NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
                             }
+                            // always clean work dir
+                            cleanWs()
                         }
                     }
                 }
@@ -530,186 +607,21 @@ pipeline {
         always {
             script {
                 // skip build on CI
-                // Mark job as successful to avoid visual alerts
-                if (SKIP_CI == true) {
-                    currentBuild.result = 'SUCCESS'
-                    currentBuild.description = 'SKIP CI'
-                }
+                // ABORTED task and description of this
+                commonUtils.postSkipCiFixStatus(this, SKIP_CI)
 
-                // email
-                emailext (
-                    subject: "Pipeline status of ${currentBuild.fullDisplayName}: ${currentBuild.currentResult}",
-                    body: "<p>Check console output at <a href='${env.BUILD_URL}display/redirect'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>",
-                    recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']],
-                    attachLog: true
-                )
+                // notification by email
+                def notificationUtils = new notificationUtils()
+                notificationUtils.stdEmailExt(this)
+                notificationUtils = null
             }
         }
     }
 }
 
-// TODO: unify ssh initialization procedure
-void useradd()
-{
-    sh 'useradd -u $(stat -c "%u" .gitignore) jenkins'
-}
-
-void ssh_config()
-{
-    sh '''
-        echo "Host *" >> /etc/ssh/ssh_config
-        echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-        echo "    UserKnownHostsFile=/dev/null" >> /etc/ssh/ssh_config
-    '''
-}
-
-void ssh_user(String ssh_key, String user_name, String home_dir)
-{
-    echo "Configure ssh"
-    sh """
-        mkdir -p ${home_dir}/.ssh
-        cat ${ssh_key} > ${home_dir}/.ssh/id_rsa
-        chmod 600 ${home_dir}/.ssh/id_rsa
-        chown -R ${user_name} ${home_dir}
-    """
-}
-
-void npm_clean_config()
-{
-    // clear NPM config user and in clone repo for local build
-    sh "rm -f \$(npm config get userconfig)"
-    sh "rm -f .npmrc"
-}
-
-void npm_install_deps()
-{
-    // login private repo
-    npm_login_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-
-    // check version
-    sh "npm -v"
-    sh "node -v"
-
-    // clean cache
-    sh "npm cache clean -f"
-
-    // install deps
-    sh "npm install"
-
-    // debug
-    sh "npm version"
-
-    // logout private repo
-    npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-}
-
-void npm_build()
-{
-    sh "npm run lint"
-    sh "npm run build"
-}
-
-void npm_test()
-{
-    // FIXME: enable parallel build once KDM-836 (???) is fixed
-    sh 'npm test'
-    sh 'npm run runtime_test'
-}
-
-void npm_publish()
-{
-    // login to private registry
-    npm_login_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-
-    // debug
-    sh "npm version"
-
-    sh "npm run publishToLocalRegistry"
-
-    // logout to private registry
-    npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-}
-
-void npm_logout()
-{
-    npm_logout_registry(NPM_PRIVATE_REPO_ALL_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-    npm_logout_registry_for_publish(NPM_PRIVATE_REPO_PUBLIC_URL, NPM_PRIVATE_REPO_AUTH_STR, NPM_PRIVATE_REPO_AUTH_TOKEN_CREDENTIALS_ID)
-}
-
-// авторизуемся в репозитории для получения зависимостей
-void npm_login_registry(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
-{
-   withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
-        // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
-        // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
-             sh 'npm config set always-auth true'
-             sh "npm config set registry ${registry_url}"
-             sh 'npm config set $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
-             sh "npm config list"
-        }
-   }
-}
-
-void npm_logout_registry(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
-{
-   withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
-        // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
-        // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
-             sh 'npm config delete $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
-             sh "npm config delete registry ${registry_url}"
-             sh 'npm config delete always-auth true'
-             sh "npm config list"
-        }
-   }
-}
-
-// авторизуемся в репозитории для публикации артефакта
-void npm_login_registry_for_publish(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
-{
-   withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
-        // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
-        // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
-             sh 'npm config set private true'
-             sh 'npm config set always-auth true'
-             sh "npm config set registry ${registry_url}"
-             sh "npm config set publishConfig.registry ${registry_url}"
-             sh 'npm config set $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
-             sh "npm config list"
-        }
-   }
-}
-
-void npm_logout_registry_for_publish(String registry_url, String registry_auth_str, String npm_auth_token_credentials_id)
-{
-   withCredentials(bindings: [string(credentialsId: "${npm_auth_token_credentials_id}", variable: 'authToken')]) {
-        // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#string-interpolation
-        // переопределяем переменные через переменные окружения, иначе не работает подстановка при настройке токена
-        withEnv(["LOCAL_REGISTRY_AUTH_STR=${registry_auth_str}", "LOCAL_NPM_AUTH_TOKEN=${authToken}"]) {
-             sh 'npm config delete $LOCAL_REGISTRY_AUTH_STR:_authToken $LOCAL_NPM_AUTH_TOKEN'
-             sh "npm config delete publishConfig.registry ${registry_url}"
-             sh "npm config delete registry ${registry_url}"
-             sh 'npm config delete always-auth true'
-             sh 'npm config delete private true'
-             sh "npm config list"
-        }
-   }
-}
-
-String get_source_branch() {
-    if (env.BRANCH_NAME.startsWith('PR')) {
-        return "${env.CHANGE_BRANCH}".toString()
-    } else {
-        return "${env.BRANCH_NAME}".toString()
-    }
-}
-
-boolean git_skip_ci_in_last_commit() {
-    if (sh (script: "git --no-pager show -s --format=\'%B\' -1 | grep '.*\\[skip ci\\].*\\|.*\\[ci skip\\].*'", returnStatus: true) == 0) {
-        return true
-    } else {
-        return false
-    }
-}
+// destroy object
+commonUtils = null
+gitUtils = null
+sshUtils = null
+npmUtils = null
+complexUtils = null
