@@ -277,13 +277,8 @@
   console.assert(noBreak(3) === 4, "switch: noBreak(3) failed");
 }
 
-// @todo https://jira.ncloudtech.ru:8090/browse/AN-790
-/*
 {
-  let n_case1 = 0;
-  let n_case2 = 0;
-
-  const foo = function (x: number, n1: number, n2: number): number {
+  const foo = function (x: number, n1: number, n2: number) {
     switch (x) {
       case 1:
         n1++;
@@ -291,46 +286,47 @@
         n2++;
     }
 
-    return 101;
+    return [n1, n2];
   }
 
-  n_case1 = 0; n_case2 = 0;
-  foo(1, n_case1, n_case2);
-
-  console.assert(n_case1 === 1 && n_case2 === 1, "switch: CasesNoDefaultNoAnyBreak(1) failed");
-
-  n_case1 = 0; n_case2 = 0;
-  foo(2, n_case1, n_case2);
-  console.assert(n_case1 === 0 && n_case2 === 1, "switch: CasesNoDefaultNoAnyBreak(2) failed");
-
-  n_case1 = 0; n_case2 = 0;
-  foo(3, n_case1, n_case2);
-  console.assert(n_case1 === 0 && n_case2 === 0, "switch: CasesNoDefaultNoAnyBreak(3) failed");
-}
-
-{
   let n_case1 = 0;
   let n_case2 = 0;
 
-  const foo = function (x: number, n1: number, n2: number): number {
+  let r = foo(1, n_case1, n_case2);
+
+  console.assert(r[0] === 1 && r[1] === 1, "switch: CasesNoDefaultNoAnyBreak(1) failed");
+
+  n_case1 = 0; n_case2 = 0;
+  r = foo(2, n_case1, n_case2);
+  console.assert(r[0] === 0 && r[1] === 1, "switch: CasesNoDefaultNoAnyBreak(2) failed");
+
+  n_case1 = 0; n_case2 = 0;
+  r = foo(3, n_case1, n_case2);
+  console.assert(r[0] === 0 && r[1] === 0, "switch: CasesNoDefaultNoAnyBreak(3) failed");
+}
+
+{
+  const foo = function (x: number, n1: number, n2: number) {
     switch (x) {
       case 1:
         n1++;
       default:
         n2++;
-        return 0;
     }
 
-    return 101;
+    return [n1, n2];
   }
 
-  n_case1 = 0; n_case2 = 0;
-  console.assert(foo(1, n_case1, n_case2) === 0 && n_case1 === 1 && n_case2 === 1, "switch: CasesDefaultNoAnyBreak(1) failed");
+  let n_case1 = 0;
+  let n_case2 = 0;
 
-  n_case1 = 0; n_case2 = 0;
-  console.assert(foo(11, n_case1, n_case2) === 0 && n_case1 === 0 && n_case2 === 1, "switch: CasesDefaultNoAnyBreak(11) failed");
+  let r = foo(1, n_case1, n_case2);
+  console.assert(r[0] === 1 && r[1] === 1, "switch: CasesDefaultNoAnyBreak(1) failed");
+
+  r = foo(11, n_case1, n_case2);
+  console.assert(r[0] === 0 && r[1] === 1, "switch: CasesDefaultNoAnyBreak(11) failed");
 }
-*/
+
 {
   const FOLDER_ICON = "./icons/png/file_manager_big_icon_folder_32_32.png";
   const FILE_ICON = "./icons/png/file_manager_big_icon_file_32_32.png";

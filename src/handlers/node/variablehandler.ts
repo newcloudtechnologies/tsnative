@@ -60,6 +60,13 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = initializer.adjustToIntegralType(typename);
     }
 
+    if (!type.isArray() && !type.isSet() && !type.isMap()) {
+      if (initializer.isTSPrimitivePtr()) {
+        // mimics 'value' semantic for primitives
+        initializer = this.generator.builder.createLoad(initializer).createHeapAllocated();
+      }
+    }
+
     if (type.isUnion()) {
       const llvmUnionType = type.getLLVMType();
       const nullUnion = LLVMUnion.createNullValue(llvmUnionType, this.generator);

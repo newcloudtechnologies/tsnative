@@ -1413,6 +1413,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
         let value = this.generator.handleExpression(argument, outerEnv);
 
+        if (!parameterType.isArray() && !parameterType.isSet() && !parameterType.isMap()) {
+          if (value.isTSPrimitivePtr()) {
+            // mimics 'value' semantic for primitives
+            value = this.generator.builder.createLoad(value).createHeapAllocated();
+          }
+        }
+
         if (parameterType.isSupported()) {
           const parameterLLVMType = parameterType.getLLVMType();
 

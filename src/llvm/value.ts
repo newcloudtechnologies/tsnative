@@ -25,7 +25,7 @@ export class LLVMValue {
   protected readonly generator: LLVMGenerator;
   protected prototype: Prototype | undefined;
 
-  constructor(value: llvm.Value, generator: LLVMGenerator) {
+  protected constructor(value: llvm.Value, generator: LLVMGenerator) {
     this.value = value;
     this.generator = generator;
   }
@@ -142,6 +142,16 @@ export class LLVMValue {
     const allocated = this.generator.gc.allocate(value.type);
     this.generator.builder.createSafeStore(value, allocated);
     return allocated.adjustToType(type);
+  }
+
+  isTSPrimitivePtr() {
+    const type = this.type;
+    if (!type.isPointer()) {
+      return false;
+    }
+
+    const pointerElementType = this.type.getPointerElementType();
+    return pointerElementType.isString() || pointerElementType.isCppPrimitiveType();
   }
 
   isIntersection(): this is LLVMIntersection {
