@@ -38,7 +38,7 @@ export class TSObjectConsoleLogPreprocessor extends AbstractPreprocessor {
             const logArguments = argumentTypes.reduce((args, type, index) => {
               const callArgument = call.arguments[index];
 
-              if (!type.isTSObjectType()) {
+              if (!type.isTSObjectType() || type.isOptionalUnion()) {
                 args.push(callArgument);
                 return args;
               }

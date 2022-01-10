@@ -33,9 +33,7 @@ export class LogicHandler extends AbstractExpressionHandler {
     }
 
     if (ts.isConditionalExpression(expression)) {
-      const conditionValue = this.generator.createLoadIfNecessary(
-        this.generator.handleExpression(expression.condition, env)
-      );
+      const conditionValue = this.generator.handleExpression(expression.condition, env);
       const condition = conditionValue.makeBoolean();
 
       const resultType = this.generator.ts.checker.getTypeAtLocation(expression);

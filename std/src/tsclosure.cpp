@@ -1,9 +1,10 @@
 #include "std/tsclosure.h"
 
-TSClosure::TSClosure(void* fn, void** env, int numArgs)
+TSClosure::TSClosure(void* fn, void** env, int numArgs, int64_t optionals)
     : fn(fn)
     , env(env)
     , numArgs(numArgs)
+    , optionals(optionals)
 {
 }
 

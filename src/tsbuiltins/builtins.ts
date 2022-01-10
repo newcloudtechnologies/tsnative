@@ -268,13 +268,14 @@ export class BuiltinTSClosure extends Builtin {
       LLVMType.getInt8Type(this.generator).getPointer(),
       LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
       LLVMType.getInt32Type(this.generator),
+      LLVMType.getInt64Type(this.generator),
     ];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;
   }
 
-  createClosure(fn: LLVMValue, env: LLVMValue, numArgs: number) {
+  createClosure(fn: LLVMValue, env: LLVMValue, functionDeclaraion: Declaration) {
     if (fn.type.getPointerLevel() !== 1 || !fn.type.unwrapPointer().isFunction()) {
       throw new Error("Malformed function");
     }
@@ -286,12 +287,27 @@ export class BuiltinTSClosure extends Builtin {
     const untypedFn = this.generator.builder.asVoidStar(fn);
     const untypedEnv = this.generator.builder.asVoidStarStar(env);
 
+    const numArgs = functionDeclaraion.parameters.length;
+
+    if (numArgs > 63) {
+      throw new Error(`Parameters limited up to 63. Error at closure creation for '${functionDeclaraion.getText()}'`);
+    }
+
+    const optionals = functionDeclaraion.parameters.reduce((acc, parameter, index) => {
+      if (parameter.questionToken) {
+        acc |= 1 << index;
+      }
+
+      return acc;
+    }, 0);
+
     const constructor = this.getLLVMConstructor();
     this.generator.builder.createSafeCall(constructor, [
       thisValue,
       untypedFn,
       untypedEnv,
       LLVMConstantInt.get(this.generator, numArgs, 32),
+      LLVMConstantInt.get(this.generator, optionals, 64),
     ]);
     return thisValue;
   }

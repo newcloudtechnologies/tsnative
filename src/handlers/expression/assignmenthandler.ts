@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration, Scope } from "../../scope";
-import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
+import { LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
@@ -72,13 +72,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             }
 
             rhs = this.generator.gc.allocate(lhs.type.unwrapPointer());
-            const markerPtr = this.generator.builder.createSafeInBoundsGEP(rhs, [0, 0]);
-
-            const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
-            const markerValue = LLVMConstantInt.get(this.generator, -1, 8);
-            this.generator.builder.createSafeStore(markerValue, allocatedMarker);
-
-            this.generator.builder.createSafeStore(allocatedMarker, markerPtr);
+            (rhs as LLVMUnion).initializeNullOptional();
           } else {
             rhs = this.generator.handleExpression(right, env);
           }

@@ -966,6 +966,16 @@ export class TSType {
       return `Tuple<${cppTypeParameters.join(",")}>*`;
     }
 
+    if (this.isOptionalUnion()) {
+      if (this.types.length > 2) {
+        throw new Error(
+          `CPP integration only implemented for optional unions with exactly one element. Error for type '${this.toString()}'`
+        );
+      }
+
+      return `TSOptional<${this.types[1].toCppType()}>*`;
+    }
+
     let typename = this.toString();
 
     if (this.isNumber()) {

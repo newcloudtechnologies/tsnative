@@ -26,14 +26,7 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
 import { last } from "lodash";
 import { TSType } from "../../ts/type";
-import {
-  LLVMConstant,
-  LLVMConstantInt,
-  LLVMGlobalVariable,
-  LLVMIntersection,
-  LLVMUnion,
-  LLVMValue,
-} from "../../llvm/value";
+import { LLVMConstant, LLVMGlobalVariable, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "../../llvm/type";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
@@ -629,7 +622,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     // these dummy arguments will be substituted by actual arguments once called
     const dummyArguments = llvmArgumentTypes.map((t, index) => {
-      const nullArg = LLVMConstant.createNullValue(t.ensurePointer(), this.generator);
+      let nullArg = LLVMConstant.createNullValue(t.unwrapPointer(), this.generator);
+
+      const allocated = this.generator.gc.allocate(nullArg.type.unwrapPointer());
+      this.generator.builder.createSafeStore(nullArg, allocated);
+      nullArg = allocated;
+
       const tsType = tsArgumentTypes[index];
       if (!tsType.isSymbolless()) {
         const argSymbol = tsType.getSymbol();
@@ -638,6 +636,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
           const prototype = argDeclaration.getPrototype();
           nullArg.attachPrototype(prototype);
         }
+      }
+
+      if (nullArg.isOptionalUnion()) {
+        nullArg.initializeNullOptional();
       }
 
       return nullArg;
@@ -1004,9 +1006,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (bindableSignature.getParameters().length !== fixesArgsCount) {
       // these dummy arguments will be substituted by actual arguments once called
-      const dummyArguments = llvmArgumentTypes
-        .slice(fixesArgsCount)
-        .map((t) => LLVMConstant.createNullValue(t.ensurePointer(), this.generator));
+      const dummyArguments = llvmArgumentTypes.slice(fixesArgsCount).map((t) => {
+        const nullArg = LLVMConstant.createNullValue(t.unwrapPointer(), this.generator);
+
+        const allocated = this.generator.gc.allocate(nullArg.type.unwrapPointer());
+        this.generator.builder.createSafeStore(nullArg, allocated);
+
+        if (allocated.isOptionalUnion()) {
+          allocated.initializeNullOptional();
+        }
+
+        return allocated;
+      });
 
       args.push(...dummyArguments);
     }
@@ -1454,6 +1465,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
           signature.getParameters()[index].escapedName.toString()
         );
 
+        if (!expression.arguments) {
+          throw new Error(`No arguments at expression '${expression.getText()}'`);
+        }
+
+        const closureArgument = expression.arguments[index];
+        if (ts.isFunctionLike(closureArgument)) {
+          effectiveArguments.length = closureArgument.parameters.length;
+        }
+
         const isFunargCalled = effectiveArguments.length > 0;
         if (!isFunargCalled) {
           return { value: pair.value, generated: false };
@@ -1477,6 +1497,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
         const parameterDeclaration = parameterSymbol.valueDeclaration;
         if (!parameterDeclaration) {
           throw new Error(`Unable to find declaration for parameter '${parameterSymbol.escapedName}'`);
+        }
+
+        if (parameterDeclaration.isOptional()) {
+          continue;
         }
 
         const defaultInitializer = parameterDeclaration.initializer;
@@ -1646,7 +1670,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
   private makeClosure(fn: LLVMValue, functionType: TSType, env: Environment) {
     const functionDeclaration = functionType.getSymbol().declarations[0];
-    const closure = this.generator.tsclosure.createClosure(fn, env.untyped, functionDeclaration.parameters.length);
+    const closure = this.generator.tsclosure.createClosure(fn, env.untyped, functionDeclaration);
     this.generator.meta.registerClosureEnvironment(closure, env);
     return closure;
   }
@@ -1913,7 +1937,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     // these dummy arguments will be substituted by actual arguments once called
     const dummyArguments = llvmArgumentTypes.map((t, index) => {
-      const nullArg = LLVMConstant.createNullValue(t.ensurePointer(), this.generator);
+      let nullArg = LLVMConstant.createNullValue(t.unwrapPointer(), this.generator);
+
+      const allocated = this.generator.gc.allocate(nullArg.type.unwrapPointer());
+      this.generator.builder.createSafeStore(nullArg, allocated);
+      nullArg = allocated;
+
       const tsType = tsArgumentTypes[index];
       if (!tsType.isSymbolless()) {
         const argSymbol = tsType.getSymbol();
@@ -1922,6 +1951,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
           const prototype = argDeclaration.getPrototype();
           nullArg.attachPrototype(prototype);
         }
+      }
+
+      if (nullArg.isOptionalUnion()) {
+        nullArg.initializeNullOptional();
       }
 
       return nullArg;
@@ -2061,14 +2094,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
                       }
                     }
                     */
-                    if (currentFnReturnType.isUnionWithUndefined()) {
-                      const markerPtr = this.generator.builder.createSafeInBoundsGEP(defaultReturn, [0, 0]);
-
-                      const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
-                      const markerValue = LLVMConstantInt.get(this.generator, -1, 8);
-                      this.generator.builder.createSafeStore(markerValue, allocatedMarker);
-
-                      this.generator.builder.createSafeStore(allocatedMarker, markerPtr);
+                    if (defaultReturn.isOptionalUnion()) {
+                      defaultReturn.initializeNullOptional();
                     } else if (!hasTerminatedSwitchDefaultClause) {
                       throw new Error("No return statement in function returning non-void");
                     }

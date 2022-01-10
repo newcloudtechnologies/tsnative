@@ -47,7 +47,10 @@ export class DefaultPropertiesPreprocessor extends AbstractPreprocessor {
               throw new Error(`Expected identifier at '${member.name.getText()}'`);
             }
 
-            let initializer = memberDeclaration.isOptional() ? ts.createIdentifier("undefined") : member.initializer;
+            let initializer = member.initializer;
+            if (!initializer && memberDeclaration.isOptional()) {
+              initializer = ts.createIdentifier("undefined");
+            }
 
             if (memberDeclaration.isMethod() && memberDeclaration.body) {
               const parentClassDeclaration = Declaration.create(parent as ts.ClassDeclaration, this.generator);

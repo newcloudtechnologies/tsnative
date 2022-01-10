@@ -502,10 +502,10 @@
 
 {
   const i = 4444
-  const nInitilizer = 9909;
+  const nInitializer = 9909;
 
   class Base {
-    n = nInitilizer;
+    n = nInitializer;
 
     constructor() {
       const r1 = this.render1.bind(this);
@@ -542,7 +542,7 @@
       const r2 = this.render2.bind(this);
       console.assert(r2() === this.m, "Assign class method to variable in ctor (class variable capturing)");
 
-      console.assert(this.n === nInitilizer, "'Super' property from derived class ctor");
+      console.assert(this.n === nInitializer, "'Super' property from derived class ctor");
     }
 
     render2(): number {

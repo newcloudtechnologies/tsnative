@@ -162,6 +162,10 @@ export class LLVMValue {
     return this.type.isUnion();
   }
 
+  isOptionalUnion(): this is LLVMUnion {
+    return this.type.isOptionalUnion();
+  }
+
   isOptionalClosure(): boolean {
     const isOptionalUnion = this.type.isUnionWithNull() || this.type.isUnionWithUndefined();
 
@@ -205,7 +209,7 @@ export class LLVMValue {
     }
 
     if (value.isUnion()) {
-      if (value.type.isUnionWithNull() || value.type.isUnionWithUndefined()) {
+      if (value.type.isOptionalUnion()) {
         let marker = this.generator.builder.createSafeExtractValue(value, [0]);
         marker = this.generator.builder.createLoad(marker);
         return this.generator.builder.createICmpNE(marker, LLVMConstantInt.get(this.generator, -1, 8));
@@ -600,6 +604,16 @@ export class LLVMUnion extends LLVMValue {
     return this.indexOfType(type) !== -1;
   }
 
+  initializeNullOptional() {
+    const markerPtr = this.generator.builder.createSafeInBoundsGEP(this, [0, 0]);
+    // 'T | null' or 'T | undefined'
+    // this kind of types is represented as LLVM's { i8*, T* }
+    // first element is considered as a marker. value of '-1' in it signals that T is not stored in this union
+    // '8' is for the bitwidth
+    const markerValue = LLVMConstantInt.get(this.generator, -1, 8);
+    this.generator.builder.createSafeStore(markerValue, markerPtr);
+  }
+
   initialize(initializer: LLVMValue, runtimeIndex?: LLVMValue) {
     if (!this.type.isPointer()) {
       throw new Error(`Expected pointer type, got '${this.type.toString()}'`);
@@ -668,7 +682,17 @@ export class LLVMUnion extends LLVMValue {
       const initializerValue = initializer.getValue();
 
       propNames.forEach((name, index) => {
-        const destinationIndex = unionMeta.propsMap.get(name);
+        let destinationIndex = unionMeta.propsMap.get(name);
+        if (name === "primitive") {
+          destinationIndex = this.indexOfType(
+            (initializer.type.unwrapPointer() as LLVMStructType).getElementType(index)
+          );
+
+          if (destinationIndex === -1) {
+            return;
+          }
+        }
+
         if (typeof destinationIndex === "undefined") {
           throw new Error(`Mapping not found for property ${name}`);
         }
@@ -721,7 +745,7 @@ export class LLVMUnion extends LLVMValue {
           throw new Error(`Cannot find type '${initializer.type.toString()}' in union type '${this.type.toString()}'`);
         }
 
-        if (this.type.isUnionWithUndefined() || this.type.isUnionWithNull()) {
+        if (this.type.isOptionalUnion()) {
           const isNullOrUndefinedNow = activeIndex === 0;
           const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
           const markerNumericValue = isNullOrUndefinedNow ? -1 : 0;

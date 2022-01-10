@@ -1,9 +1,11 @@
 #pragma once
 
+#include "tsoptional.h"
+
 class TSClosure
 {
 public:
-    TSClosure(void* fn, void** env, int numArgs);
+    TSClosure(void* fn, void** env, int numArgs, int64_t optionals);
 
     void** getEnvironment() const;
 
@@ -18,10 +20,21 @@ private:
     void* fn = nullptr;
     void** env = nullptr;
     int numArgs = 0;
+    int64_t optionals = 0;
 };
 
 template <typename T>
 void TSClosure::setEnvironmentElement(T* value, int index)
 {
-    env[index] = reinterpret_cast<void*>(value);
+    if ((this->optionals & (1 << index)) != 0)
+    {
+        TSOptional<T>* optional = static_cast<TSOptional<T>*>(env[index]);
+
+        *(optional->marker) = 0;
+        optional->value = value;
+
+        return;
+    }
+
+    env[index] = value;
 }
