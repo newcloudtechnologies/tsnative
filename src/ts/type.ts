@@ -553,7 +553,7 @@ export class TSType {
           suffix = "class";
           suffix += "__" + declaration.unique;
         } else if (declaration.isTypeLiteral()) {
-          suffix += "__" + declaration.unique;
+          suffix += this.checker.generator.internalNames.TypeLiteral + declaration.unique;
         }
 
         if (declaration.isClass() && !declaration.isAmbient() && declaration.typeParameters) {

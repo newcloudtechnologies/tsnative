@@ -127,3 +127,25 @@
     console.assert(positive.family === "Arial" && positive.size === 14, "Class-typed optional property (1)");
     console.assert(negative.family === "Times" && negative.size === 5, "Class-typed optional property (2)");
 }
+
+{
+    type Time_t = {
+        msTime: number,
+    }
+
+    class MyClass {
+        clickTime: Time_t | undefined;
+
+        constructor() {
+            this.clickTime = { msTime: 35 };
+        }
+    }
+
+    const c = new MyClass();
+    if (c.clickTime) {
+        console.assert(c.clickTime.msTime === 35, "Type literal-typed optional property (1)");
+    }
+
+    c.clickTime = undefined;
+    console.assert(!c.clickTime, "Type literal-typed optional property (2)");
+}

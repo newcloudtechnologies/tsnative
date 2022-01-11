@@ -637,10 +637,11 @@ export class LLVMUnion extends LLVMValue {
       unionElements.push(unionStructType.getElementType(i));
     }
     // mkrv @todo: there is a mess with ooo initialization, should be refactored
-    const optionalWithClass = unionStructType.isOptionalUnion() && unionElements.some((type) => type.isTSClass());
+    const optionalWithClassOrTypeLiteral =
+      unionStructType.isOptionalUnion() && unionElements.some((type) => type.isTSClass() || type.isTSTypeLiteral());
 
     if (
-      !optionalWithClass &&
+      !optionalWithClassOrTypeLiteral &&
       !initializer.type.isString() &&
       !initializer.type.isTSClass() &&
       !unionValue.isOptionalClosure() &&

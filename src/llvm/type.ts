@@ -156,6 +156,11 @@ export class LLVMType {
     return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.Object));
   }
 
+  isTSTypeLiteral() {
+    const nakedType = this.unwrapPointer().type;
+    return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.TypeLiteral));
+  }
+
   isCppPrimitiveType() {
     return this.type.isIntegerTy() || this.type.isDoubleTy();
   }

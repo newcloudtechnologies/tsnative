@@ -248,7 +248,12 @@ export class AccessHandler extends AbstractExpressionHandler {
         }
       }
 
-      if (!llvmValue.type.isTSClass() && !llvmValue.type.isTSInterface() && !llvmValue.type.isTSObject()) {
+      if (
+        !llvmValue.type.isTSClass() &&
+        !llvmValue.type.isTSInterface() &&
+        !llvmValue.type.isTSObject() &&
+        !llvmValue.type.isTSTypeLiteral()
+      ) {
         return llvmValue;
       }
     }

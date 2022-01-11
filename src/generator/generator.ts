@@ -38,6 +38,7 @@ enum InternalNames {
   FunctionScope = "__function_scope__",
   Object = "__object__",
   This = "this",
+  TypeLiteral = "__tl__",
 }
 
 class BoxedPrimitives {

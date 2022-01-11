@@ -421,6 +421,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
   private createTSObjectName(props: string[]) {
     // Reduce object's props names to string to store them as object's name.
     // Later this name may be used for out-of-order object initialization and property access.
-    return this.generator.randomString + "__object__" + props.join(".");
+    return this.generator.randomString + this.generator.internalNames.Object + props.join(".");
   }
 }
