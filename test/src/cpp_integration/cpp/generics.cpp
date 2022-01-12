@@ -15,7 +15,6 @@ namespace NS {
 namespace innerNS {
 template <typename T> T getGenericNumber();
 
-template <> int8_t getGenericNumber() { return 1; }
 template <> double getGenericNumber() { return 42; }
 template <> string *getGenericNumber() {
   return GC::createHeapAllocated<string>("forty two");

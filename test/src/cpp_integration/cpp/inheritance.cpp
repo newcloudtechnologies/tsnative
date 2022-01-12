@@ -32,7 +32,7 @@ VirtualBase::VirtualBase() {}
 string *VirtualBase::virtualMethod() const { return GC::createHeapAllocated<string>(s); }
 
 DerivedFromVirtualBase::DerivedFromVirtualBase() {}
-int32_t DerivedFromVirtualBase::pureVirtualMethodToOverride() const {
+TSNumber DerivedFromVirtualBase::pureVirtualMethodToOverride() const {
   return i;
 }
 

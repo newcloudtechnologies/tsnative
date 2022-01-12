@@ -15,7 +15,6 @@ import * as llvm from "llvm-node";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
 
 export class LogicHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -77,26 +76,12 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const lhsBoolean = left.makeBoolean();
 
     if (left.type.equals(right.type)) {
-      return this.generator.builder.createSelect(lhsBoolean, right, left);
-    }
-
-    if (left.type.isIntegerType() && right.type.isDoubleType()) {
-      const doubleType = LLVMType.getDoubleType(this.generator);
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-      left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
-      return this.generator.builder.createSelect(lhsBoolean, right, left);
-    }
-
-    if (left.type.isDoubleType() && right.type.isIntegerType()) {
-      const doubleType = LLVMType.getDoubleType(this.generator);
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-      right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
@@ -104,26 +89,12 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const lhsBoolean = left.makeBoolean();
 
     if (left.type.equals(right.type)) {
-      return this.generator.builder.createSelect(lhsBoolean, left, right);
-    }
-
-    if (left.type.isIntegerType() && right.type.isDoubleType()) {
-      const doubleType = LLVMType.getDoubleType(this.generator);
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-      left = left.promoteIntegralToFP(doubleType, lhsTsType.isSigned());
-      return this.generator.builder.createSelect(lhsBoolean, left, right);
-    }
-
-    if (left.type.isDoubleType() && right.type.isIntegerType()) {
-      const doubleType = LLVMType.getDoubleType(this.generator);
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-      right = right.promoteIntegralToFP(doubleType, rhsTsType.isSigned());
       return this.generator.builder.createSelect(lhsBoolean, left, right);
     }
 

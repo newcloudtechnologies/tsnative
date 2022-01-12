@@ -310,48 +310,6 @@ export class TSType {
     return this.isObject() && !this.isArray() && !this.isString();
   }
 
-  isCppIntegralType() {
-    switch (this.toString()) {
-      case "int8_t":
-      case "int16_t":
-      case "int32_t":
-      case "int64_t":
-
-      case "uint8_t":
-      case "uint16_t":
-      case "uint32_t":
-      case "uint64_t":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  getIntegralBitwidth() {
-    if (!this.isCppIntegralType()) {
-      throw new Error(
-        `Expected 'TSType.getIntegralBitwidth' to be called on cpp integral type, called on '${this.toString()}'`
-      );
-    }
-
-    switch (this.toString()) {
-      case "int8_t":
-      case "uint8_t":
-        return 8;
-      case "int16_t":
-      case "uint16_t":
-        return 16;
-      case "int32_t":
-      case "uint32_t":
-        return 32;
-      case "int64_t":
-      case "uint64_t":
-        return 64;
-      default:
-        throw new Error(`Unhandled cpp integral type '${this.toString()}' in 'TSType.getIntegralBitwidth'`);
-    }
-  }
-
   isPrimitive() {
     return (
       this.isNumber() ||
@@ -360,7 +318,6 @@ export class TSType {
       this.isUndefined() ||
       this.isNull() ||
       this.isVoid() ||
-      this.isCppIntegralType() ||
       this.isEnum()
     );
   }
@@ -644,41 +601,6 @@ export class TSType {
     return properties;
   }
 
-  getIntegralType() {
-    switch (this.toString()) {
-      case "int8_t":
-      case "uint8_t":
-        return LLVMType.getInt8Type(this.checker.generator);
-      case "int16_t":
-      case "uint16_t":
-        return LLVMType.getInt16Type(this.checker.generator);
-      case "int32_t":
-      case "uint32_t":
-        return LLVMType.getInt32Type(this.checker.generator);
-      case "int64_t":
-      case "uint64_t":
-        return LLVMType.getInt64Type(this.checker.generator);
-      default:
-        throw new Error("Expected integral type");
-    }
-  }
-
-  isSigned() {
-    switch (this.toString()) {
-      case "int8_t":
-      case "int16_t":
-      case "int32_t":
-      case "int64_t":
-        return true;
-      case "uint8_t":
-      case "uint16_t":
-      case "uint32_t":
-      case "uint64_t":
-      default:
-        return false;
-    }
-  }
-
   // @todo: tslint will warn 'no-unused-variables' if this method is marked as private
   protected getStructType() {
     const elements = this.getObjectPropsLLVMTypesNames();
@@ -849,10 +771,6 @@ export class TSType {
       return this.getUnionStructType().getPointer();
     }
 
-    if (this.isCppIntegralType()) {
-      return this.getIntegralType();
-    }
-
     if (this.isEnum()) {
       return this.getEnumElementType();
     }
@@ -1007,18 +925,6 @@ export class TSType {
       }
     }
 
-    const getInt64Type = () => {
-      switch (process.platform) {
-        case "win32":
-        case "darwin":
-          return "long long";
-        default:
-          return "long";
-      }
-    };
-
-    const getUInt64Type = () => `unsigned ${getInt64Type()}`;
-
     switch (typename) {
       case "String": // @todo
         return "string*";
@@ -1030,22 +936,6 @@ export class TSType {
       case "true":
       case "false":
         return "bool";
-      case "int8_t":
-        return "signed char";
-      case "int16_t":
-        return "short";
-      case "int32_t":
-        return "int";
-      case "int64_t":
-        return getInt64Type();
-      case "uint8_t":
-        return "unsigned char";
-      case "uint16_t":
-        return "unsigned short";
-      case "uint32_t":
-        return "unsigned int";
-      case "uint64_t":
-        return getUInt64Type();
       default:
         if (!typename) {
           throw new Error(`Type '${this.toString()}' is not mapped to C++ type`);

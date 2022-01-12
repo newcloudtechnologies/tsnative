@@ -9,7 +9,6 @@ include_directories(
 )
 
 set(SOURCES
-    src/console.cpp
     src/gc.cpp
     src/stdstring.cpp
     src/tsclosure.cpp

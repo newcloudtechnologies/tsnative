@@ -1,4 +1,3 @@
-import { int8_t } from "std/definitions/lib.std.numeric";
 import { innerNS } from "./declarations/cpp";
 import { sum, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod } from "./declarations/generics";
 
@@ -7,7 +6,6 @@ sum<number, number>(1, 3);
 sum<string, int32_t>("hello, ", "world");
 */
 
-console.assert(innerNS.getGenericNumber<int8_t>() === 1, "Generic 'innerNS.getGenericNumber<int8_t>' test failed");
 console.assert(innerNS.getGenericNumber<number>() === 42, "Generic 'innerNS.getGenericNumber<number>' test failed");
 console.assert(innerNS.getGenericNumber<string>() === "forty two", "Generic 'innerNS.getGenericNumber<string>' test failed");
 

@@ -55,10 +55,6 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     const type = this.generator.ts.checker.getTypeAtLocation(declaration);
-    if (type.isCppIntegralType()) {
-      const typename = type.toString();
-      initializer = initializer.adjustToIntegralType(typename);
-    }
 
     if (!type.isArray() && !type.isSet() && !type.isMap()) {
       if (initializer.isTSPrimitivePtr()) {

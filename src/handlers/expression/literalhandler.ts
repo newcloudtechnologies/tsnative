@@ -80,16 +80,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
-    const declaredType = this.getDeclaredType(expression);
-
-    if (declaredType && declaredType.isCppIntegralType()) {
-      return LLVMConstantInt.get(
-        this.generator,
-        parseInt(expression.text, 10), // mkrv: @todo: support only decimal numbers
-        declaredType.getIntegralBitwidth()
-      ).createHeapAllocated();
-    }
-
     return LLVMConstantFP.get(this.generator, parseFloat(expression.text)).createHeapAllocated();
   }
 

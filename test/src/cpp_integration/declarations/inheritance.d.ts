@@ -2,7 +2,6 @@
 
 declare module "cpp" {
     import { ValueType, VTable } from "std/decorators/decorators";
-    import { int32_t } from "std/definitions/lib.std.numeric";
 
     import { Base } from "test";
 
@@ -39,7 +38,7 @@ declare module "cpp" {
         constructor();
 
         virtualMethod(): string;
-        pureVirtualMethodToOverride(): int32_t;
+        pureVirtualMethodToOverride(): number;
 
         @ValueType
         private _s: string;
@@ -49,9 +48,9 @@ declare module "cpp" {
     export class DerivedFromVirtualBase extends VirtualBase {
         constructor();
 
-        pureVirtualMethodToOverride(): int32_t;
+        pureVirtualMethodToOverride(): number;
 
-        private _i: int32_t;
+        private _i: number;
     }
 
     export class DerivedFromBaseInOtherNamespace implements Base {

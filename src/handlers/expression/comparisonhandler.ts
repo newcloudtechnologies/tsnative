@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
-import { Conversion, LLVMValue } from "../../llvm/value";
+import { LLVMValue } from "../../llvm/value";
 import { LLVMType } from "../../llvm/type";
 
 export class ComparisonHandler extends AbstractExpressionHandler {
@@ -54,20 +54,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private bothSigned(lhs: ts.Expression, rhs: ts.Expression) {
-    const lhsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-    const rhsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-
-    return lhsType.isSigned() && rhsType.isSigned();
-  }
-
-  private bothUnsigned(lhs: ts.Expression, rhs: ts.Expression) {
-    const lhsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-    const rhsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-
-    return !lhsType.isSigned() && !rhsType.isSigned();
-  }
-
   private handleStrictEquals(
     lhs: ts.Expression,
     rhs: ts.Expression,
@@ -87,20 +73,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
 
     if (lhsLLVMType.isIntegerType() && rhsLLVMType.isIntegerType()) {
       return this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM).createHeapAllocated();
-    }
-
-    if (lhsLLVMType.isIntegerType() && rhsLLVMType.isDoubleType()) {
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-      const signed = lhsTsType.isSigned();
-      rhsLLVM = rhsLLVM.castFPToIntegralType(lhsLLVMType, signed);
-      return this.generator.builder.createICmpEQ(lhsLLVM, rhsLLVM).createHeapAllocated();
-    }
-
-    if (lhsLLVMType.isDoubleType() && rhsLLVMType.isIntegerType()) {
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-      const signed = rhsTsType.isSigned();
-      rhsLLVM = rhsLLVM.promoteIntegralToFP(lhsLLVMType, signed);
-      return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM).createHeapAllocated();
     }
 
     if (lhsLLVMType.isString() && rhsLLVMType.isString()) {
@@ -166,22 +138,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       return this.generator.builder.createFCmpOLT(left, right).createHeapAllocated();
     }
 
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
-      if (this.bothSigned(lhs, rhs)) {
-        return this.generator.builder.createICmpSLT(left, right).createHeapAllocated();
-      } else if (this.bothUnsigned(lhs, rhs)) {
-        return this.generator.builder.createICmpULT(left, right).createHeapAllocated();
-      } else {
-        throw new Error("Signed -- unsigned comparison not allowed");
-      }
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOLT)
-        .createHeapAllocated();
-    }
-
     throw new Error(`Invalid operand types to less than: 
                             lhs: ${left.type.toString()} ${left.type.typeIDName}
                             rhs: ${right.type.toString()} ${right.type.typeIDName}`);
@@ -193,22 +149,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
 
     if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return this.generator.builder.createFCmpOGT(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
-      if (this.bothSigned(lhs, rhs)) {
-        return this.generator.builder.createICmpSGT(left, right).createHeapAllocated();
-      } else if (this.bothUnsigned(lhs, rhs)) {
-        return this.generator.builder.createICmpUGT(left, right).createHeapAllocated();
-      } else {
-        throw new Error("Signed -- unsigned comparison not allowed");
-      }
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOGT)
-        .createHeapAllocated();
     }
 
     throw new Error(`Invalid operand types to greater than: 
@@ -224,22 +164,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       return this.generator.builder.createFCmpOLE(left, right).createHeapAllocated();
     }
 
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
-      if (this.bothSigned(lhs, rhs)) {
-        return this.generator.builder.createICmpSLE(left, right).createHeapAllocated();
-      } else if (this.bothUnsigned(lhs, rhs)) {
-        return this.generator.builder.createICmpULE(left, right).createHeapAllocated();
-      } else {
-        throw new Error("Signed -- unsigned comparison not allowed");
-      }
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOLE)
-        .createHeapAllocated();
-    }
-
     throw new Error(`Invalid operand types to less equal than: 
                             lhs: ${left.type.toString()} ${left.type.typeIDName}
                             rhs: ${right.type.toString()} ${right.type.typeIDName}`);
@@ -251,22 +175,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
 
     if (left.type.isDoubleType() && right.type.isDoubleType()) {
       return this.generator.builder.createFCmpOGE(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isIntegerType() && right.type.isIntegerType()) {
-      if (this.bothSigned(lhs, rhs)) {
-        return this.generator.builder.createICmpSGE(left, right).createHeapAllocated();
-      } else if (this.bothUnsigned(lhs, rhs)) {
-        return this.generator.builder.createICmpUGE(left, right).createHeapAllocated();
-      } else {
-        throw new Error("Signed -- unsigned comparison not allowed");
-      }
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Promotion, this.generator.builder.createFCmpOGE)
-        .createHeapAllocated();
     }
 
     throw new Error(`Invalid operand types to greater equal than: 

@@ -2,5 +2,5 @@
 
 using namespace cpp;
 
-Printable::Printable(Point *point, string *s, int64_t i)
-    : point_(*point), string_(*s), i_(i) {}
+Printable::Printable(Point *point, string *s)
+    : point_(*point), string_(*s) {}

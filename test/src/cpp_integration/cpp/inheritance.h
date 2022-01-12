@@ -7,6 +7,7 @@
 #include "rect.h"
 
 #include <std/stdstring.h>
+#include <std/tsnumber.h>
 
 namespace cpp {
 
@@ -45,7 +46,7 @@ public:
   virtual ~VirtualBase() = default;
 
   virtual string* virtualMethod() const;
-  virtual int32_t pureVirtualMethodToOverride() const = 0;
+  virtual TSNumber pureVirtualMethodToOverride() const = 0;
 
 private:
   string s{"base virtual method"};
@@ -56,10 +57,10 @@ public:
   DerivedFromVirtualBase();
   ~DerivedFromVirtualBase() override = default;
 
-  int32_t pureVirtualMethodToOverride() const override;
+  TSNumber pureVirtualMethodToOverride() const override;
 
 private:
-  int32_t i{324};
+  TSNumber i{324};
 };
 
 class DerivedFromBaseInOtherNamespace : public test::Base {

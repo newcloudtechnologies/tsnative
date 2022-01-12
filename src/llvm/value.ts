@@ -11,14 +11,8 @@
 
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
-import * as ts from "typescript";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "./type";
 import { Prototype } from "../scope";
-
-export enum Conversion {
-  Narrowing,
-  Promotion,
-}
 
 export class LLVMValue {
   protected readonly value: llvm.Value;
@@ -87,7 +81,7 @@ export class LLVMValue {
 
   adjustToType(type: LLVMType): LLVMValue {
     let value = this as LLVMValue;
-    if (value.type.equals(type) || value.type.isConvertibleTo(type)) {
+    if (value.type.equals(type)) {
       return value;
     }
 
@@ -229,26 +223,6 @@ export class LLVMValue {
     throw new Error(`Unable to convert operand of type ${value.type.toString()} to boolean value`);
   }
 
-  castFPToIntegralType(target: LLVMType, signed: boolean): LLVMValue {
-    return signed
-      ? this.generator.builder.createFPToSI(this, target)
-      : this.generator.builder.createFPToUI(this, target);
-  }
-
-  promoteIntegralToFP(target: LLVMType, signed: boolean): LLVMValue {
-    if (this.type.isDoubleType()) {
-      return this;
-    }
-
-    return signed
-      ? this.generator.builder.createSIToFP(this, target)
-      : this.generator.builder.createUIToFP(this, target);
-  }
-
-  canPerformNumericOperation() {
-    return this.type.isIntegerType() || this.type.isDoubleType();
-  }
-
   makeAssignment(other: LLVMValue): LLVMValue {
     const value = this as LLVMValue;
 
@@ -256,10 +230,7 @@ export class LLVMValue {
       throw new Error(`Assignment destination expected to be of PointerType, got '${value.type.toString()}'`);
     }
 
-    const typename = value.type.unwrapPointer().getIntegralLLVMTypeTypename();
-    if (typename) {
-      other = other.adjustToIntegralType(typename);
-    } else if (value.isUnion()) {
+    if (value.isUnion()) {
       let unionValue = value.initialize(other);
       if (!value.type.getPointerElementType().equals(unionValue.type)) {
         unionValue = unionValue.adjustToType(value.type.getPointerElementType());
@@ -272,107 +243,6 @@ export class LLVMValue {
 
     this.generator.builder.createSafeStore(other, value);
     return value;
-  }
-
-  /* tslint:disable:object-literal-sort-keys */
-  private readonly integralAdjust: {
-    [type: string]: {
-      isSigned: boolean;
-      typeGetter: (_: LLVMGenerator) => LLVMType;
-    };
-  } = {
-    int8_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt8Type,
-    },
-    int16_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt16Type,
-    },
-    int32_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt32Type,
-    },
-    int64_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt64Type,
-    },
-    uint8_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt8Type,
-    },
-    uint16_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt16Type,
-    },
-    uint32_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt32Type,
-    },
-    uint64_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt64Type,
-    },
-  };
-  /* tslint:enable:object-literal-sort-keys */
-
-  adjustToIntegralType(typename: string): LLVMValue {
-    let value = this as LLVMValue;
-    const loaded = this.generator.createLoadIfNecessary(this);
-    if (!loaded.type.isIntegerType()) {
-      const adjustParameters = this.integralAdjust[typename];
-      const typeGetter = adjustParameters.typeGetter(this.generator);
-
-      value = adjustParameters.isSigned
-        ? this.generator.builder.createFPToSI(loaded, typeGetter)
-        : this.generator.builder.createFPToUI(loaded, typeGetter);
-
-      // @todo: how to avoid extra allocation?
-      const allocated = this.generator.gc.allocate(value.type);
-      value = allocated.makeAssignment(value);
-    }
-
-    return value;
-  }
-
-  // @todo: refactor this
-  handleBinaryWithConversion(
-    lhsExpression: ts.Expression,
-    rhsExpression: ts.Expression,
-    rhsValue: LLVMValue,
-    conversion: Conversion,
-    handler: (l: LLVMValue, r: LLVMValue) => LLVMValue
-  ): LLVMValue {
-    const convertor =
-      conversion === Conversion.Narrowing
-        ? LLVMValue.prototype.castFPToIntegralType
-        : LLVMValue.prototype.promoteIntegralToFP;
-
-    if (this.type.isIntegerType() && rhsValue.type.isDoubleType()) {
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhsExpression);
-      const signed = lhsTsType.isSigned();
-      const destinationType = conversion === Conversion.Narrowing ? this.type : rhsValue.type;
-      let convertedArg = conversion === Conversion.Narrowing ? rhsValue : this;
-      const untouchedArg = conversion === Conversion.Narrowing ? this : rhsValue;
-      convertedArg = convertor.call(convertedArg, destinationType, signed);
-      const args: [LLVMValue, LLVMValue] =
-        conversion === Conversion.Narrowing ? [untouchedArg, convertedArg] : [convertedArg, untouchedArg];
-      return handler.apply(this.generator.builder, args);
-    }
-
-    if (this.type.isDoubleType() && rhsValue.type.isIntegerType()) {
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhsExpression);
-      const signed = rhsTsType.isSigned();
-      const destinationType = conversion === Conversion.Narrowing ? rhsValue.type : this.type;
-      let convertedArg = conversion === Conversion.Narrowing ? this : rhsValue;
-      const untouchedArg = conversion === Conversion.Narrowing ? rhsValue : this;
-      convertedArg = convertor.call(convertedArg, destinationType, signed);
-      const args: [LLVMValue, LLVMValue] =
-        conversion === Conversion.Narrowing ? [convertedArg, untouchedArg] : [untouchedArg, convertedArg];
-      return handler.apply(this.generator.builder, args);
-    }
-
-    throw new Error("Invalid types to handle with conversion");
   }
 
   createHeapAllocated(): LLVMValue {

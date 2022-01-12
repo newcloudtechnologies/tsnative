@@ -116,15 +116,12 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     ...handlers: CompoundHandler[]
   ): LLVMValue {
     const left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
     const oldValue = this.generator.createLoadIfNecessary(left);
     const [numericHandler, sHandler] = handlers;
 
-    if (
-      (oldValue.type.isDoubleType() && right.type.isDoubleType()) ||
-      (oldValue.type.isIntegerType() && right.type.isIntegerType())
-    ) {
+    if (oldValue.type.isDoubleType() && right.type.isDoubleType()) {
       if (!numericHandler) {
         throw new Error("No  numeric handler provided");
       }
@@ -137,34 +134,6 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
         throw new Error("String type met, but no handler provided");
       }
       const newValue = sHandler(oldValue, right);
-      return left.makeAssignment(newValue);
-    }
-
-    if (oldValue.type.isIntegerType() && right.type.isDoubleType()) {
-      if (!numericHandler) {
-        throw new Error("No numeric handler provided");
-      }
-
-      if (!left.type.isPointer()) {
-        throw new Error("Pointer type expected");
-      }
-
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhs);
-      right = right.castFPToIntegralType(left.type.getPointerElementType(), lhsTsType.isSigned());
-
-      const newValue = numericHandler(oldValue, right);
-      return left.makeAssignment(newValue);
-    }
-
-    if (oldValue.type.isDoubleType() && right.type.isIntegerType()) {
-      if (!numericHandler) {
-        throw new Error("No numeric handler provided");
-      }
-
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhs);
-      right = right.promoteIntegralToFP(oldValue.type, rhsTsType.isSigned());
-
-      const newValue = numericHandler(oldValue, right);
       return left.makeAssignment(newValue);
     }
 

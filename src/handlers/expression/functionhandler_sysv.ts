@@ -12,7 +12,6 @@ import * as ts from "typescript";
 
 import { LLVMGenerator } from "../../generator";
 import { Environment } from "../../scope";
-import { TSType } from "../../ts/type";
 import { LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { Expression } from "../../ts/expression";
@@ -88,26 +87,12 @@ export class SysVFunctionHandler {
       throw new Error(`No value declaration found at '${expression.getText()}'`);
     }
 
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
-
-    const parameters = signature.getParameters();
-    const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
+    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
       if (argumentType.isObject() || argumentType.isFunction()) {
         return LLVMType.getInt8Type(this.generator).getPointer();
       }
 
-      if (parameters[index]) {
-        const tsParameterType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
-          parameters[index],
-          valueDeclaration.unwrapped
-        );
-        if (tsParameterType.isCppIntegralType()) {
-          return tsParameterType.getIntegralType();
-        }
-      }
-
-      const llvmType = argumentType.getLLVMType();
-      return llvmType.correctCppPrimitiveType();
+      return argumentType.getLLVMType().correctCppPrimitiveType();
     });
 
     let thisValue;
@@ -135,7 +120,7 @@ export class SysVFunctionHandler {
       return arg;
     });
 
-    args = this.adjustArguments(args, llvmArgumentTypes, argumentTypes);
+    args = this.adjustArguments(args, llvmArgumentTypes);
 
     if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
       throw new Error(`Arguments adjusting failed at '${expression.getText()}'`);
@@ -217,23 +202,11 @@ export class SysVFunctionHandler {
     const parentScope = valueDeclaration.getScope(thisType);
     const llvmThisType = parentScope.thisData!.llvmType;
 
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(constructorDeclaration);
-    const parameters = signature.getParameters();
-    const llvmArgumentTypes = argumentTypes.map((argumentType, index) => {
+    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
       const llvmType = argumentType.getLLVMType();
 
       if (argumentType.isObject() || argumentType.isFunction()) {
         return LLVMType.getInt8Type(this.generator).getPointer();
-      }
-
-      if (parameters[index]) {
-        const tsParameterType = this.generator.ts.checker.getTypeOfSymbolAtLocation(
-          parameters[index],
-          constructorDeclaration.unwrapped
-        );
-        if (tsParameterType.isCppIntegralType()) {
-          return tsParameterType.getIntegralType();
-        }
       }
 
       return llvmType.correctCppPrimitiveType();
@@ -250,7 +223,7 @@ export class SysVFunctionHandler {
         return arg;
       }) || [];
 
-    args = this.adjustArguments(args, llvmArgumentTypes, argumentTypes);
+    args = this.adjustArguments(args, llvmArgumentTypes);
 
     llvmArgumentTypes.unshift(LLVMType.getInt8Type(this.generator).getPointer());
 
@@ -331,7 +304,7 @@ export class SysVFunctionHandler {
     this.generator.builder.createSafeStore(vtableStructCasted, classVTablePtr);
   }
 
-  private adjustArguments(args: LLVMValue[], llvmArgumentTypes: LLVMType[], tsArgumentsTypes: TSType[]) {
+  private adjustArguments(args: LLVMValue[], llvmArgumentTypes: LLVMType[]) {
     if (args.length !== llvmArgumentTypes.length) {
       throw new Error("Expected arrays of same length");
     }
@@ -339,14 +312,6 @@ export class SysVFunctionHandler {
     return args.map((arg, index) => {
       const destinationType = llvmArgumentTypes[index];
       const adjusted = arg.adjustToType(destinationType);
-
-      if (!adjusted.type.equals(destinationType) && adjusted.type.isConvertibleTo(destinationType)) {
-        const converter = destinationType.isIntegerType()
-          ? LLVMValue.prototype.castFPToIntegralType
-          : LLVMValue.prototype.promoteIntegralToFP;
-
-        return converter.call(adjusted, destinationType, tsArgumentsTypes[index].isSigned());
-      }
 
       return adjusted;
     });
