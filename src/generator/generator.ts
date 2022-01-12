@@ -11,7 +11,7 @@
 
 import { ExpressionHandlerChain } from "../handlers/expression";
 import { NodeHandlerChain } from "../handlers/node";
-import { Scope, SymbolTable, Environment, injectUndefined, addClassScope } from "../scope";
+import { Scope, SymbolTable, Environment, addClassScope } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import {
@@ -105,16 +105,24 @@ export class LLVMGenerator {
       sourceFiles.push(sourceFile);
     }
 
-    // Sources order is not defined, ensure std numeric types will appear in symbol table first as others, like GC, depends on them.
-    const indexOfStdNumeric = sourceFiles.findIndex((file) => file.fileName.endsWith("lib.std.numeric.d.ts"));
-    sourceFiles.unshift(...sourceFiles.splice(indexOfStdNumeric, 1));
-
     this.builder.setInsertionPoint(entryBlock);
+
+    const undefinedValue = (() => {
+      const type = LLVMType.getInt8Type(this);
+      const allocated = this.gc.allocate(type);
+      // '-1' is a special value for 'undefined'
+      // '8' is for bitwidth
+      const value = LLVMConstantInt.get(this, -1, 8);
+      this.builder.createSafeStore(value, allocated);
+
+      return allocated;
+    })();
+
     for (const sourceFile of sourceFiles) {
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
 
-      injectUndefined(this.symbolTable.currentScope, this);
+      this.symbolTable.currentScope.set("undefined", undefinedValue);
 
       sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }

@@ -172,3 +172,10 @@ import createStore2 from "./union_type_imports"
 {
     createStore2();
 }
+
+{
+    let n: number | undefined = undefined;
+    n = 5;
+
+    console.assert(n as number === 5, "Optional union initialized with undefined");
+}
