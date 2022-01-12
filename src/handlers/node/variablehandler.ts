@@ -63,7 +63,14 @@ export class VariableHandler extends AbstractNodeHandler {
     if (!type.isArray() && !type.isSet() && !type.isMap()) {
       if (initializer.isTSPrimitivePtr()) {
         // mimics 'value' semantic for primitives
-        initializer = this.generator.builder.createLoad(initializer).createHeapAllocated();
+        initializer = this.generator.builder.createLoad(initializer);
+
+        // convert c++ enumerator values to ts' number
+        if (type.isEnum() && initializer.type.isIntegerType()) {
+          initializer = this.generator.builder.createSIToFP(initializer, LLVMType.getDoubleType(this.generator));
+        }
+
+        initializer = initializer.createHeapAllocated();
       }
     }
 

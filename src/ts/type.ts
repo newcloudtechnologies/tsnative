@@ -1074,6 +1074,11 @@ export class TSType {
       throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
     }
 
+    if (declaration.isAmbient()) {
+      // c++ enums considered to be of int32_t
+      return LLVMType.getInt32Type(this.checker.generator);
+    }
+
     if (declaration.isEnum()) {
       // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
       // Pretend it is a numeric enum for now.
