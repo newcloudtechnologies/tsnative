@@ -1280,4 +1280,20 @@
   }
 
   new MyStatum_t();
+
+  function createStatum() {
+    return new MyStatum_t;
+  }
+
+  createStatum();
+
+  function other() {
+    return createStatum();
+  }
+  other();
+
+  function another() {
+    return () => createStatum();
+  }
+  another()();
 }

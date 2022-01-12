@@ -41,7 +41,9 @@ export class ConciseBody {
   }
 
   private getEnvironmentVariablesFromBody(signature: Signature, extendScope: Scope, outerEnv?: Environment) {
-    const vars = this.getFunctionEnvironmentVariables(signature, extendScope, [], [], outerEnv);
+    const vars = extendScope.withThisKeeping(() =>
+      this.getFunctionEnvironmentVariables(signature, extendScope, [], [], outerEnv)
+    );
     const varsStatic = this.getStaticFunctionEnvironmentVariables();
     // Do not take 'undefined' since it is injected for every source file and available globally
     // as variable of 'i8' type that breaks further logic (all the variables expected to be pointers). @todo: turn 'undefined' into pointer?
@@ -251,6 +253,15 @@ export class ConciseBody {
               if (!constructorDeclaration) {
                 // unreachable if source is preprocessed correctly
                 throw new Error(`No constructor provided: ${declaration.getText()}`);
+              }
+
+              const externalThis = extendScope.get("this");
+              if (externalThis && externalThis instanceof LLVMValue) {
+                externalThis.attachPrototype(declaration.getPrototype());
+              } else {
+                const fakeThis = LLVMConstantInt.getFalse(this.generator);
+                fakeThis.attachPrototype(declaration.getPrototype());
+                extendScope.set("this", fakeThis);
               }
 
               declaration = constructorDeclaration;

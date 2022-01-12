@@ -630,6 +630,35 @@ export class Scope {
     throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
   }
 
+  remove(identifier: string) {
+    this.map.delete(identifier);
+  }
+
+  withThisKeeping<R>(action: () => R): R {
+    const originalThis = this.get("this");
+    let originalPrototype: Prototype | undefined;
+
+    if (originalThis instanceof LLVMValue && originalThis.hasPrototype()) {
+      originalPrototype = originalThis.getPrototype();
+    }
+
+    const result = action();
+
+    if (this.get("this")) {
+      this.remove("this");
+    }
+
+    if (originalThis instanceof LLVMValue) {
+      if (originalPrototype) {
+        originalThis.attachPrototype(originalPrototype);
+      }
+
+      this.set("this", originalThis);
+    }
+
+    return result;
+  }
+
   dump(pad = 0, seen: Scope[] = []) {
     console.log("--".repeat(pad), this.name, this.mangledName);
 
