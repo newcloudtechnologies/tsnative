@@ -18,10 +18,10 @@
 string::string()
 {
 }
-string::string(double d)
+string::string(TSNumber d)
 {
     std::ostringstream oss;
-    oss << std::setprecision(std::numeric_limits<double>::max_digits10) << std::noshowpoint << d;
+    oss << std::setprecision(std::numeric_limits<TSNumber>::max_digits10) << std::noshowpoint << d;
     this->string_ = oss.str();
 }
 string::string(const int8_t* s)
@@ -37,9 +37,9 @@ string::string(const char* s)
 {
 }
 
-double string::length() const
+TSNumber string::length() const
 {
-    return static_cast<double>(string_.size());
+    return static_cast<TSNumber>(string_.size());
 }
 
 string* string::concat(const string& other) const
@@ -52,7 +52,7 @@ bool string::startsWith(const string& other) const
     return startsWith(other, 0);
 }
 
-bool string::startsWith(const string& other, double startIndex) const
+bool string::startsWith(const string& other, TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
     bool result = false;
@@ -82,7 +82,7 @@ bool string::endsWith(const string& other) const
     return endsWith(other, length());
 }
 
-bool string::endsWith(const string& other, double startIndex) const
+bool string::endsWith(const string& other, TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
     bool result = false;
@@ -129,7 +129,7 @@ Array<string*>* string::split(const string& pattern) const
     return GC::createHeapAllocated<Array<string*>>(result);
 }
 
-Array<string*>* string::split(const string& pattern, double limit) const
+Array<string*>* string::split(const string& pattern, TSNumber limit) const
 {
     Array<string*> result;
     size_t prev = 0, pos = 0;
@@ -186,7 +186,7 @@ Array<string*>* string::split(const string& pattern, double limit) const
     return GC::createHeapAllocated<Array<string*>>(result);
 }
 
-string* string::slice(double startIndex) const
+string* string::slice(TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
     int length = static_cast<int>(this->length());
@@ -214,7 +214,7 @@ string* string::slice(double startIndex) const
     return GC::createHeapAllocated<string>(string_.substr(index));
 }
 
-string* string::slice(double startIndex, double endIndex) const
+string* string::slice(TSNumber startIndex, TSNumber endIndex) const
 {
     if (startIndex >= endIndex)
     {
@@ -227,7 +227,7 @@ string* string::slice(double startIndex, double endIndex) const
     return GC::createHeapAllocated<string>(s1.substr(0, s1.find(s2)));
 }
 
-string* string::substring(double startIndex) const
+string* string::substring(TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
 
@@ -241,7 +241,7 @@ string* string::substring(double startIndex) const
     return GC::createHeapAllocated<string>(string_.substr(index));
 }
 
-string* string::substring(double startIndex, double endIndex) const
+string* string::substring(TSNumber startIndex, TSNumber endIndex) const
 {
     int n1 = static_cast<int>(startIndex);
     int n2 = static_cast<int>(endIndex);
@@ -305,7 +305,7 @@ bool string::includes(const string& pattern) const
     return includes(pattern, 0);
 }
 
-bool string::includes(const string& pattern, double startIndex) const
+bool string::includes(const string& pattern, TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
 
@@ -315,12 +315,12 @@ bool string::includes(const string& pattern, double startIndex) const
     return string_.find(pattern.string_, index) != std::string::npos;
 }
 
-double string::indexOf(const string& pattern) const
+TSNumber string::indexOf(const string& pattern) const
 {
     return indexOf(pattern, 0);
 }
 
-double string::indexOf(const string& pattern, double startIndex) const
+TSNumber string::indexOf(const string& pattern, TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
 
@@ -336,12 +336,12 @@ double string::indexOf(const string& pattern, double startIndex) const
     }
 }
 
-double string::lastIndexOf(const string& pattern) const
+TSNumber string::lastIndexOf(const string& pattern) const
 {
     return lastIndexOf(pattern, length());
 }
 
-double string::lastIndexOf(const string& pattern, double startIndex) const
+TSNumber string::lastIndexOf(const string& pattern, TSNumber startIndex) const
 {
     int index = static_cast<int>(startIndex);
 
@@ -367,7 +367,7 @@ string* string::operator+(const string& other) const
     return concat(other);
 }
 
-string* string::operator[](double index) const
+string* string::operator[](TSNumber index) const
 {
     std::string character = {string_.at(static_cast<size_t>(index))};
     return GC::createHeapAllocated<string>(character);

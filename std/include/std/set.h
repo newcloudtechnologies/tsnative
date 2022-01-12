@@ -4,6 +4,7 @@
 #include "gc.h"
 #include "iterable.h"
 #include "tsclosure.h"
+#include "tsnumber.h"
 
 #include "iterators/setiterator.h"
 #include "datatypes/orderedset.h"
@@ -21,7 +22,7 @@ public:
     void forEach(TSClosure* visitor) const;
     bool has(V value) const;
     Set<V>* add(V value);
-    double size() const;
+    TSNumber size() const;
 
     IterableIterator<V>* values();
     IterableIterator<V>* iterator() override;
@@ -99,9 +100,9 @@ Set<V>* Set<V>::add(V value)
 }
 
 template <typename V>
-double Set<V>::size() const
+TSNumber Set<V>::size() const
 {
-    return static_cast<double>(_set.size());
+    return static_cast<TSNumber>(_set.size());
 }
 
 template <typename V>

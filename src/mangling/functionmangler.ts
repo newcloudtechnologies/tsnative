@@ -23,7 +23,8 @@ export class FunctionMangler {
     thisType: TSType | undefined,
     argumentTypes: TSType[],
     generator: LLVMGenerator,
-    knownGenericTypes?: TSType[]
+    knownGenericTypes?: TSType[],
+    knownArgumentTypes?: string[]
   ): { isExternalSymbol: boolean; qualifiedName: string } {
     const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
       declaration,
@@ -32,7 +33,8 @@ export class FunctionMangler {
       thisType,
       generator,
       declaration.mapping,
-      knownGenericTypes
+      knownGenericTypes,
+      knownArgumentTypes
     );
     const maybeMangled = provider.tryGet(declaration);
     if (maybeMangled) {

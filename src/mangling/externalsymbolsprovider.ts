@@ -74,7 +74,8 @@ export class ExternalSymbolsProvider {
     thisType: TSType | undefined,
     generator: LLVMGenerator,
     knownMethodName?: string,
-    knownGenericTypes?: TSType[]
+    knownGenericTypes?: TSType[],
+    knownArgumentTypes?: string[]
   ) {
     this.generator = generator;
     const namespace = declaration.getNamespace().join("::");
@@ -123,11 +124,15 @@ export class ExternalSymbolsProvider {
     );
 
     // passed in fact
-    this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
-      argumentTypes.map((type) => {
-        return type.toCppType();
-      })
-    );
+    if (knownArgumentTypes) {
+      this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(knownArgumentTypes);
+    } else {
+      this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
+        argumentTypes.map((type) => {
+          return type.toCppType();
+        })
+      );
+    }
 
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }

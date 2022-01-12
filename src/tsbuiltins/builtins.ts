@@ -4,7 +4,7 @@ import { ThisData, Scope } from "../scope";
 import { FunctionMangler } from "../mangling";
 import { SIZEOF_STRING } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { LLVMConstant, LLVMConstantInt, LLVMValue } from "../llvm/value";
+import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
 
@@ -19,16 +19,10 @@ export class GC {
 
     const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
 
-    const { qualifiedName } = FunctionMangler.mangle(
-      allocateDeclaration,
-      undefined,
-      thisType,
-      [this.generator.builtinUInt32.getTSType()],
-      this.generator
-    );
+    const { qualifiedName } = FunctionMangler.mangle(allocateDeclaration, undefined, thisType, [], this.generator);
 
     const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
-    const llvmArgumentTypes = [LLVMType.getInt32Type(this.generator)];
+    const llvmArgumentTypes = [LLVMType.getDoubleType(this.generator)];
 
     this.allocateFn = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
   }
@@ -39,8 +33,9 @@ export class GC {
     }
 
     const size = type.getTypeSize();
+
     const returnValue = this.generator.builder.createSafeCall(this.allocateFn, [
-      LLVMConstantInt.get(this.generator, size > 0 ? size : 1, 32),
+      LLVMConstantFP.get(this.generator, size || 1),
     ]);
 
     return this.generator.builder.createBitCast(returnValue, type.getPointer());
@@ -84,26 +79,6 @@ class Builtin {
   }
 }
 
-export class BuiltinInt8 extends Builtin {
-  constructor(generator: LLVMGenerator) {
-    super("int8_t", generator);
-  }
-
-  getLLVMType() {
-    return LLVMType.getInt8Type(this.generator);
-  }
-}
-
-export class BuiltinUInt32 extends Builtin {
-  constructor(generator: LLVMGenerator) {
-    super("uint32_t", generator);
-  }
-
-  getLLVMType() {
-    return LLVMType.getInt32Type(this.generator);
-  }
-}
-
 class LazyClosure {
   private readonly tag = "__lazy_closure";
 
@@ -112,7 +87,7 @@ class LazyClosure {
 
   constructor(generator: LLVMGenerator) {
     const structType = LLVMStructType.create(generator, this.tag);
-    structType.setBody([generator.builtinInt8.getLLVMType().getPointer()]);
+    structType.setBody([LLVMType.getInt8Type(generator).getPointer()]);
     this.generator = generator;
     this.llvmType = structType.getPointer();
   }
@@ -267,8 +242,8 @@ export class BuiltinTSClosure extends Builtin {
       this.getLLVMType(),
       LLVMType.getInt8Type(this.generator).getPointer(),
       LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
-      LLVMType.getInt32Type(this.generator),
-      LLVMType.getInt64Type(this.generator),
+      LLVMType.getDoubleType(this.generator),
+      LLVMType.getDoubleType(this.generator),
     ];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
@@ -306,8 +281,8 @@ export class BuiltinTSClosure extends Builtin {
       thisValue,
       untypedFn,
       untypedEnv,
-      LLVMConstantInt.get(this.generator, numArgs, 32),
-      LLVMConstantInt.get(this.generator, optionals, 64),
+      LLVMConstantFP.get(this.generator, numArgs),
+      LLVMConstantFP.get(this.generator, optionals),
     ]);
     return thisValue;
   }
@@ -339,16 +314,16 @@ export class BuiltinString extends Builtin {
     const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
     const thisType = this.getTSType();
 
-    const argType = constructorArg
-      ? this.generator.ts.checker.getTypeAtLocation(constructorArg)
-      : this.generator.builtinInt8.getTSType();
+    const argTypes: TSType[] = constructorArg ? [this.generator.ts.checker.getTypeAtLocation(constructorArg)] : [];
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       constructorDeclaration,
       undefined,
       thisType,
-      [argType],
-      this.generator
+      argTypes,
+      this.generator,
+      undefined,
+      constructorArg ? undefined : ["signed char"]
     );
 
     if (!isExternalSymbol) {
@@ -356,11 +331,13 @@ export class BuiltinString extends Builtin {
     }
 
     const llvmReturnType = llvmThisType;
-    const llvmArgumentType = constructorArg
-      ? argType.getLLVMType().correctCppPrimitiveType()
-      : this.generator.builtinInt8.getLLVMType().getPointer();
+    const llvmArgumentTypes = [llvmThisType];
+    if (argTypes.length > 0) {
+      llvmArgumentTypes.push(argTypes[0].getLLVMType().correctCppPrimitiveType());
+    } else {
+      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
+    }
 
-    const llvmArgumentTypes = [llvmThisType, llvmArgumentType];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;

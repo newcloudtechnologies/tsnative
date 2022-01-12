@@ -1,10 +1,10 @@
 #include "std/tsclosure.h"
 
-TSClosure::TSClosure(void* fn, void** env, int numArgs, int64_t optionals)
+TSClosure::TSClosure(void* fn, void** env, TSNumber numArgs, TSNumber optionals)
     : fn(fn)
     , env(env)
-    , numArgs(numArgs)
-    , optionals(optionals)
+    , numArgs(static_cast<int>(numArgs))
+    , optionals(static_cast<int64_t>(optionals))
 {
 }
 
@@ -13,9 +13,9 @@ void** TSClosure::getEnvironment() const
     return env;
 }
 
-int TSClosure::getNumArgs() const
+TSNumber TSClosure::getNumArgs() const
 {
-    return numArgs;
+    return static_cast<TSNumber>(numArgs);
 }
 
 void* TSClosure::operator()()

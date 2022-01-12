@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-void* GC::allocate(uint32_t numBytes)
+void* GC::allocate(TSNumber numBytes)
 {
-    return malloc(numBytes);
+    return malloc(static_cast<size_t>(numBytes));
 }

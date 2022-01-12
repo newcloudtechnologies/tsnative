@@ -11,6 +11,7 @@
 #include "iterable.h"
 #include "stdstring.h"
 #include "tsclosure.h"
+#include "tsnumber.h"
 
 #include "iterators/arrayiterator.h"
 
@@ -34,35 +35,35 @@ public:
         return GC::track(array);
     }
 
-    double push(T v);
+    TSNumber push(T v);
 
     template <typename... Ts>
-    double push(T t, Ts... ts);
+    TSNumber push(T t, Ts... ts);
 
-    double length() const;
+    TSNumber length() const;
 
     using SubscriptionReturnType = typename std::conditional<std::is_pointer<T>::value, T, T&>::type;
-    typename Array::SubscriptionReturnType operator[](double index);
+    typename Array::SubscriptionReturnType operator[](TSNumber index);
 
     void forEach(TSClosure* closure) const;
 
-    double indexOf(T value) const;
-    double indexOf(T value, double fromIndex) const;
+    TSNumber indexOf(T value) const;
+    TSNumber indexOf(T value, TSNumber fromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
     // but somehow meta information have to be provided for code generator on TS side
     template <typename U>
     Array<U>* map(TSClosure* closure);
 
-    Array<T>* splice(double start);
-    Array<T>* splice(double start, double deleteCount);
+    Array<T>* splice(TSNumber start);
+    Array<T>* splice(TSNumber start, TSNumber deleteCount);
 
     Array<T>* concat(Array<T> const& other);
 
     string* toString();
 
     IterableIterator<T>* iterator() override;
-    IterableIterator<double>* keys();
+    IterableIterator<TSNumber>* keys();
     IterableIterator<T>* values();
 
     template <typename U>
@@ -105,20 +106,20 @@ Array<T>::Array()
 }
 
 template <typename T>
-double Array<T>::push(T t)
+TSNumber Array<T>::push(T t)
 {
     storage_.push_back(t);
     return storage_.size();
 }
 
 template <typename T>
-double Array<T>::length() const
+TSNumber Array<T>::length() const
 {
-    return static_cast<double>(storage_.size());
+    return static_cast<TSNumber>(storage_.size());
 }
 
 template <typename T>
-typename Array<T>::SubscriptionReturnType Array<T>::operator[](double index)
+typename Array<T>::SubscriptionReturnType Array<T>::operator[](TSNumber index)
 {
     return storage_.at(index);
 }
@@ -148,13 +149,13 @@ void Array<T>::forEach(TSClosure* closure) const
 }
 
 template <typename T>
-double Array<T>::indexOf(T value) const
+TSNumber Array<T>::indexOf(T value) const
 {
     return this->indexOf(value, 0);
 }
 
 template <typename T>
-double Array<T>::indexOf(T value, double fromIndex) const
+TSNumber Array<T>::indexOf(T value, double fromIndex) const
 {
     int index = static_cast<int>(fromIndex);
     int length = static_cast<int>(this->length());
@@ -188,7 +189,7 @@ double Array<T>::indexOf(T value, double fromIndex) const
 }
 
 template <typename T>
-Array<T>* Array<T>::splice(double start)
+Array<T>* Array<T>::splice(TSNumber start)
 {
     auto begin = (start >= 0 ? storage_.begin() : storage_.end()) + start;
     auto end = storage_.end();
@@ -210,7 +211,7 @@ Array<T>* Array<T>::splice(double start)
 }
 
 template <typename T>
-Array<T>* Array<T>::splice(double start, double deleteCount)
+Array<T>* Array<T>::splice(TSNumber start, TSNumber deleteCount)
 {
     Array<T> removed;
 
@@ -273,7 +274,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
         if (closure->getNumArgs() > 1)
         {
-            closure->setEnvironmentElement(GC::createHeapAllocated<double>(i), 1);
+            closure->setEnvironmentElement(GC::createHeapAllocated<TSNumber>(i), 1);
         }
 
         if (closure->getNumArgs() > 2)
@@ -290,7 +291,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
 template <typename T>
 template <typename... Ts>
-double Array<T>::push(T t, Ts... ts)
+TSNumber Array<T>::push(T t, Ts... ts)
 {
     storage_.push_back(t);
     return push(ts...);
@@ -304,13 +305,13 @@ IterableIterator<T>* Array<T>::iterator()
 }
 
 template <typename T>
-IterableIterator<double>* Array<T>::keys()
+IterableIterator<TSNumber>* Array<T>::keys()
 {
-    std::vector<double> indexes(storage_.size());
+    std::vector<TSNumber> indexes(storage_.size());
     std::iota(indexes.begin(), indexes.end(), 0);
 
-    auto keysArray = Array<double>::fromStdVector(indexes);
-    auto it = new ArrayIterator<double>(keysArray);
+    auto keysArray = Array<TSNumber>::fromStdVector(indexes);
+    auto it = new ArrayIterator<TSNumber>(keysArray);
     return GC::track(it);
 }
 

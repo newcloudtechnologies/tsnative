@@ -52,8 +52,8 @@ public:
     Tuple() = default;
     Tuple(Ts... initializers);
 
-    double length() const;
-    void* operator[](double index);
+    TSNumber length() const;
+    void* operator[](TSNumber index);
 
     template <typename... Us>
     friend std::ostream& operator<<(std::ostream& os, Tuple<Us...>* tuple);
@@ -69,13 +69,13 @@ Tuple<Ts...>::Tuple(Ts... initializers)
 }
 
 template <typename... Ts>
-double Tuple<Ts...>::length() const
+TSNumber Tuple<Ts...>::length() const
 {
-    return static_cast<double>(sizeof...(Ts));
+    return static_cast<TSNumber>(sizeof...(Ts));
 }
 
 template <typename... Ts>
-void* Tuple<Ts...>::operator[](double index)
+void* Tuple<Ts...>::operator[](TSNumber index)
 {
     return typeless_tuple_element<sizeof...(Ts), typename std::remove_pointer<decltype(_tuple)>::type>::get(
         *_tuple, static_cast<size_t>(index));

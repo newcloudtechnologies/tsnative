@@ -4,6 +4,7 @@
 #include "gc.h"
 #include "iterable.h"
 #include "tsclosure.h"
+#include "tsnumber.h"
 #include "tuple.h"
 
 #include "datatypes/orderedmap.h"
@@ -21,7 +22,7 @@ public:
     V get(K key) const;
     bool has(K key) const;
     Map<K, V>* set(K key, V value);
-    double size() const;
+    TSNumber size() const;
 
     IterableIterator<V>* values();
 
@@ -109,9 +110,9 @@ Map<K, V>* Map<K, V>::set(K key, V value)
 }
 
 template <typename K, typename V>
-double Map<K, V>::size() const
+TSNumber Map<K, V>::size() const
 {
-    return static_cast<double>(_map.size());
+    return static_cast<TSNumber>(_map.size());
 }
 
 template <typename K, typename V>
@@ -136,7 +137,8 @@ IterableIterator<Tuple<K, V>*>* Map<K, V>::iterator()
     auto keys = _map.orderedKeys();
     auto zipped = new Array<Tuple<K, V>*>();
 
-    for (const K& key : keys) {
+    for (const K& key : keys)
+    {
         auto tuple = new Tuple<K, V>{key, get(key)};
         zipped->push(GC::track(tuple));
     }

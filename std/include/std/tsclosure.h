@@ -5,14 +5,14 @@
 class TSClosure
 {
 public:
-    TSClosure(void* fn, void** env, int numArgs, int64_t optionals);
+    TSClosure(void* fn, void** env, TSNumber numArgs, TSNumber optionals);
 
     void** getEnvironment() const;
 
     template <typename T>
     void setEnvironmentElement(T* value, int index);
 
-    int getNumArgs() const;
+    TSNumber getNumArgs() const;
 
     void* operator()();
 

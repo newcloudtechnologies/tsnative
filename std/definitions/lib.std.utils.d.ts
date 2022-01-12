@@ -1,5 +1,3 @@
-import { int32_t, int64_t, uint32_t } from "./lib.std.numeric"
-
 // @ts-ignore
 export type TSClosure = Function;
 
@@ -8,8 +6,8 @@ export declare class TSClosure {
     constructor(
         fn: void,
         env: void,
-        numArgs: int32_t,
-        optionals: int64_t
+        numArgs: number,
+        optionals: number
     );
 
     // @ts-ignore
