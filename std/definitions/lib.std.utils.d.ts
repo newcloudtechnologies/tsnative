@@ -18,9 +18,3 @@ export declare class TSClosure {
 
     getEnvironment(): void;
 }
-
-export declare class SizeOf {
-    static array(): uint32_t;
-    static string(): uint32_t;
-    static closure(): uint32_t;
-}
