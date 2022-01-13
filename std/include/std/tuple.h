@@ -4,7 +4,7 @@
 #include <tuple>
 
 #include "gc.h"
-#include <iostream>
+
 template <size_t I, typename Tuple>
 struct typeless_tuple_element
 {
@@ -52,8 +52,8 @@ public:
     Tuple() = default;
     Tuple(Ts... initializers);
 
-    TSNumber length() const;
-    void* operator[](TSNumber index);
+    Number* length() const;
+    void* operator[](Number* index);
 
     template <typename... Us>
     friend std::ostream& operator<<(std::ostream& os, Tuple<Us...>* tuple);
@@ -69,16 +69,16 @@ Tuple<Ts...>::Tuple(Ts... initializers)
 }
 
 template <typename... Ts>
-TSNumber Tuple<Ts...>::length() const
+Number* Tuple<Ts...>::length() const
 {
-    return static_cast<TSNumber>(sizeof...(Ts));
+    return GC::createHeapAllocated<Number>(sizeof...(Ts));
 }
 
 template <typename... Ts>
-void* Tuple<Ts...>::operator[](TSNumber index)
+void* Tuple<Ts...>::operator[](Number* index)
 {
     return typeless_tuple_element<sizeof...(Ts), typename std::remove_pointer<decltype(_tuple)>::type>::get(
-        *_tuple, static_cast<size_t>(index));
+        *_tuple, static_cast<size_t>(index->valueOf()));
 }
 
 template<typename Type, unsigned N, unsigned Last>

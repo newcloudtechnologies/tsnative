@@ -13,28 +13,28 @@ class string : public Iterable<string*>
 {
 public:
     string();
-    string(TSNumber d);
+    string(Number* d);
     string(const int8_t* s);
     string(const std::string& s);
     string(const char* s);
 
-    TSNumber length() const;
+    Number* length() const;
     string* concat(const string& other) const;
 
     bool startsWith(const string& other) const;
-    bool startsWith(const string& other, TSNumber startIndex) const;
+    bool startsWith(const string& other, Number* startIndex) const;
 
     bool endsWith(const string& other) const;
-    bool endsWith(const string& other, TSNumber startIndex) const;
+    bool endsWith(const string& other, Number* startIndex) const;
 
     Array<string*>* split(const string& pattern) const;
-    Array<string*>* split(const string& pattern, TSNumber limit) const;
+    Array<string*>* split(const string& pattern, Number* limit) const;
 
-    string* slice(TSNumber startIndex) const;
-    string* slice(TSNumber startIndex, TSNumber endIndex) const;
+    string* slice(Number* startIndex) const;
+    string* slice(Number* startIndex, Number* endIndex) const;
 
-    string* substring(TSNumber startIndex) const;
-    string* substring(TSNumber startIndex, TSNumber endIndex) const;
+    string* substring(Number* startIndex) const;
+    string* substring(Number* startIndex, Number* endIndex) const;
 
     string* trim() const;
 
@@ -42,19 +42,19 @@ public:
     string* toUpperCase() const;
 
     bool includes(const string& pattern) const;
-    bool includes(const string& pattern, TSNumber startIndex) const;
+    bool includes(const string& pattern, Number* startIndex) const;
 
-    TSNumber indexOf(const string& pattern) const;
-    TSNumber indexOf(const string& pattern, TSNumber startIndex) const;
+    Number* indexOf(const string& pattern) const;
+    Number* indexOf(const string& pattern, Number* startIndex) const;
 
-    TSNumber lastIndexOf(const string& pattern) const;
-    TSNumber lastIndexOf(const string& pattern, TSNumber startIndex) const;
+    Number* lastIndexOf(const string& pattern) const;
+    Number* lastIndexOf(const string& pattern, Number* startIndex) const;
 
     bool operator==(const string& other) const;
     bool operator==(string* other) const;
     string* operator+(const string& other) const;
 
-    string* operator[](TSNumber index) const;
+    string* operator[](Number* index) const;
 
     std::string cpp_str() const;
 
@@ -93,7 +93,7 @@ struct hash<::string*>
 template <>
 struct equal_to<::string*>
 {
-    bool operator()(::string* lhs, ::string* rhs) const
+    bool operator()(::string* const& lhs, ::string* const& rhs) const
     {
         return *lhs == *rhs;
     }

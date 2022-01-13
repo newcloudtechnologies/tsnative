@@ -22,7 +22,7 @@ public:
     V get(K key) const;
     bool has(K key) const;
     Map<K, V>* set(K key, V value);
-    TSNumber size() const;
+    Number* size() const;
 
     IterableIterator<V>* values();
 
@@ -69,19 +69,21 @@ template <typename K, typename V>
 void Map<K, V>::forEach(TSClosure* visitor) const
 {
     const auto& orderedKeys = _map.orderedKeys();
+    auto numArgs = visitor->getNumArgs()->valueOf();
+
     for (size_t i = 0; i < orderedKeys.size(); ++i)
     {
-        if (visitor->getNumArgs() > 0)
+        if (numArgs > 0)
         {
             visitor->setEnvironmentElement(getPointerToValue(get(orderedKeys.at(i))), 0);
         }
 
-        if (visitor->getNumArgs() > 1)
+        if (numArgs > 1)
         {
             visitor->setEnvironmentElement(getPointerToValue(orderedKeys.at(i)), 1);
         }
 
-        if (visitor->getNumArgs() > 2)
+        if (numArgs > 2)
         {
             visitor->setEnvironmentElement(const_cast<Map<K, V>*>(this), 2);
         }
@@ -110,9 +112,9 @@ Map<K, V>* Map<K, V>::set(K key, V value)
 }
 
 template <typename K, typename V>
-TSNumber Map<K, V>::size() const
+Number* Map<K, V>::size() const
 {
-    return static_cast<TSNumber>(_map.size());
+    return GC::createHeapAllocated<Number>(_map.size());
 }
 
 template <typename K, typename V>

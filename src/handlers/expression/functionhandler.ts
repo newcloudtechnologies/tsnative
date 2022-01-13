@@ -629,7 +629,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       nullArg = allocated;
 
       const tsType = tsArgumentTypes[index];
-      if (!tsType.isSymbolless()) {
+      if (!tsType.isSymbolless() && !tsType.isEnum() && !tsType.isNumber() && !tsType.isString()) {
         const argSymbol = tsType.getSymbol();
         const argDeclaration = argSymbol.valueDeclaration;
         if (argDeclaration && !argDeclaration.isAmbient()) {
@@ -1944,7 +1944,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       nullArg = allocated;
 
       const tsType = tsArgumentTypes[index];
-      if (!tsType.isSymbolless()) {
+      if (!tsType.isSymbolless() && !tsType.isEnum() && !tsType.isNumber() && !tsType.isString()) {
         const argSymbol = tsType.getSymbol();
         const argDeclaration = argSymbol.valueDeclaration;
         if (argDeclaration && !argDeclaration.isAmbient()) {

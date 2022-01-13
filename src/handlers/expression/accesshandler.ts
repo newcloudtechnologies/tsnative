@@ -180,9 +180,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     const subscription = this.generator.ts.tuple.createSubscription(tupleType);
     const tuple = this.generator.handleExpression(expression.expression, env);
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
-    const index = this.generator.createLoadIfNecessary(
-      this.generator.handleExpression(expression.argumentExpression, env)
-    );
+    const index = this.generator.handleExpression(expression.argumentExpression, env);
 
     const element = this.generator.builder.createSafeCall(subscription, [tupleUntyped, index]);
     const elementIndex = parseInt(expression.argumentExpression.getText(), 10);

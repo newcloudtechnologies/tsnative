@@ -13,7 +13,7 @@ namespace cpp {
 
 class PointPair {
 public:
-  PointPair(double x1, double y1, double x2, double y2);
+  PointPair(Number* x1, Number* y1, Number* x2, Number* y2);
 
   Point *getTopLeft() const;
   Point *getBottomRight() const;
@@ -35,9 +35,9 @@ private:
 
 class Mixin : public PointPair, public RectHolder {
 public:
-  Mixin(double x1, double y1, double x2, double y2);
+  Mixin(Number* x1, Number* y1, Number* x2, Number* y2);
 
-  Mixin *getScaled(double factor) const;
+  Mixin *getScaled(Number* factor) const;
 };
 
 class VirtualBase {
@@ -46,7 +46,7 @@ public:
   virtual ~VirtualBase() = default;
 
   virtual string* virtualMethod() const;
-  virtual TSNumber pureVirtualMethodToOverride() const = 0;
+  virtual const Number* pureVirtualMethodToOverride() const = 0;
 
 private:
   string s{"base virtual method"};
@@ -57,10 +57,10 @@ public:
   DerivedFromVirtualBase();
   ~DerivedFromVirtualBase() override = default;
 
-  TSNumber pureVirtualMethodToOverride() const override;
+  const Number* pureVirtualMethodToOverride() const override;
 
 private:
-  TSNumber i{324};
+  Number i{324};
 };
 
 class DerivedFromBaseInOtherNamespace : public test::Base {

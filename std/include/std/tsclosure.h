@@ -1,25 +1,26 @@
 #pragma once
 
 #include "tsoptional.h"
+#include "tsnumber.h"
 
 class TSClosure
 {
 public:
-    TSClosure(void* fn, void** env, TSNumber numArgs, TSNumber optionals);
+    TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
 
     void** getEnvironment() const;
 
     template <typename T>
     void setEnvironmentElement(T* value, int index);
 
-    TSNumber getNumArgs() const;
+    Number* getNumArgs() const;
 
     void* operator()();
 
 private:
     void* fn = nullptr;
     void** env = nullptr;
-    int numArgs = 0;
+    Number* numArgs = nullptr;
     int64_t optionals = 0;
 };
 

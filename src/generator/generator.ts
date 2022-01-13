@@ -14,7 +14,14 @@ import { NodeHandlerChain } from "../handlers/node";
 import { Scope, SymbolTable, Environment, injectUndefined, addClassScope } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { BuiltinString, GC, BuiltinTSClosure, BuiltinTSTuple, BuiltinIteratorResult } from "../tsbuiltins";
+import {
+  BuiltinString,
+  GC,
+  BuiltinTSClosure,
+  BuiltinTSTuple,
+  BuiltinIteratorResult,
+  BuiltinNumber,
+} from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
 import { DEFINITIONS, GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
@@ -56,6 +63,7 @@ export class LLVMGenerator {
   readonly nodeHandlerChain = new NodeHandlerChain(this);
 
   readonly builtinString: BuiltinString;
+  readonly builtinNumber: BuiltinNumber;
 
   private builtinTSTuple: BuiltinTSTuple | undefined;
   private builtinTSClosure: BuiltinTSClosure | undefined;
@@ -78,6 +86,7 @@ export class LLVMGenerator {
     this.symbolTable = new SymbolTable();
 
     this.builtinString = new BuiltinString(this);
+    this.builtinNumber = new BuiltinNumber(this);
 
     this.sizeOf = new SizeOf();
 

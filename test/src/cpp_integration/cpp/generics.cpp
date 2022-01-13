@@ -3,50 +3,67 @@
 #include <std/gc.h>
 #include <std/stdstring.h>
 
-template <typename T, typename R> R sum(T op1, T op2) { return op1 + op2; }
+template <typename T, typename R>
+R sum(T op1, T op2) { return op1 + op2; }
 
-template double sum(double, double);
-
-template <> int32_t sum(const string &op1, const string &op2) {
-  return op1.length() + op2.length();
+template <>
+Number *sum(Number *op1, Number *op2)
+{
+  return op1->add(op2);
 }
 
-namespace NS {
-namespace innerNS {
-template <typename T> T getGenericNumber();
-
-template <> double getGenericNumber() { return 42; }
-template <> string *getGenericNumber() {
-  return GC::createHeapAllocated<string>("forty two");
+template <>
+Number *sum(const string &op1, const string &op2)
+{
+  return op1.length()->add(op2.length());
 }
 
-} // namespace innerNS
+namespace NS
+{
+  namespace innerNS
+  {
+    template <typename T>
+    T getGenericNumber();
+
+    template <>
+    Number *getGenericNumber() { return GC::createHeapAllocated<Number>(42); }
+    template <>
+    string *getGenericNumber()
+    {
+      return GC::createHeapAllocated<string>("forty two");
+    }
+
+  } // namespace innerNS
 } // namespace NS
 
-class ClassWithTemplateMethod {
+class ClassWithTemplateMethod
+{
 public:
   ClassWithTemplateMethod();
 
   template <typename T>
-  typename std::enable_if<std::is_same<T, double>::value, T>::type
-  getWithAdditionOfTwo(T v) const {
-    return v + 2;
+  typename std::enable_if<std::is_same<T, Number *>::value, T>::type
+  getWithAdditionOfTwo(T v) const
+  {
+    return v->add(GC::createHeapAllocated<Number>(2));
   }
 
   template <typename T>
   typename std::enable_if<std::is_same<T, string *>::value, T>::type
-  getWithAdditionOfTwo(T v) const {
+  getWithAdditionOfTwo(T v) const
+  {
     return v->concat("_2");
   }
 };
 
 ClassWithTemplateMethod::ClassWithTemplateMethod() {}
 
-template double ClassWithTemplateMethod::getWithAdditionOfTwo(double) const;
+template Number *ClassWithTemplateMethod::getWithAdditionOfTwo(Number *) const;
 template string *ClassWithTemplateMethod::getWithAdditionOfTwo(string *) const;
 
 template <typename FirstMemberType, typename SecondMemberType>
-class ClassWithTemplateMembers {
+class ClassWithTemplateMembers
+{
 public:
   ClassWithTemplateMembers(FirstMemberType value);
 
@@ -65,30 +82,35 @@ ClassWithTemplateMembers<FirstMemberType, SecondMemberType>::
 
 template <typename FirstMemberType, typename SecondMemberType>
 FirstMemberType
-ClassWithTemplateMembers<FirstMemberType, SecondMemberType>::get() const {
+ClassWithTemplateMembers<FirstMemberType, SecondMemberType>::get() const
+{
   return m_2;
 }
 
-template class ClassWithTemplateMembers<double, string *>;
+template class ClassWithTemplateMembers<Number *, string *>;
 template class ClassWithTemplateMembers<string *, string *>;
 
-template <typename T> class TemplateClassWithTemplateMethod {
+template <typename T>
+class TemplateClassWithTemplateMethod
+{
 public:
   TemplateClassWithTemplateMethod(T transformBase);
 
   template <typename U>
   typename std::enable_if<
-      std::is_same<U, double>::value && std::is_same<T, double>::value, U>::type
-  transform(U value) const {
-    return value + _transformBase;
+      std::is_same<U, Number *>::value && std::is_same<T, Number *>::value, U>::type
+  transform(U value) const
+  {
+    return value->add(_transformBase);
   }
 
   template <typename U>
   typename std::enable_if<std::is_same<U, string *>::value &&
-                              std::is_same<T, double>::value,
+                              std::is_same<T, Number *>::value,
                           U>::type
-  transform(U value) const {
-    return value->concat(std::to_string(_transformBase));
+  transform(U value) const
+  {
+    return value->concat(std::to_string(_transformBase->valueOf()));
   }
 
 private:
@@ -100,11 +122,11 @@ TemplateClassWithTemplateMethod<T>::TemplateClassWithTemplateMethod(
     T transformBase)
     : _transformBase(transformBase) {}
 
-template class TemplateClassWithTemplateMethod<double>;
-template double
-TemplateClassWithTemplateMethod<double>::transform(double) const;
+template class TemplateClassWithTemplateMethod<Number *>;
+template Number *
+TemplateClassWithTemplateMethod<Number *>::transform(Number *) const;
 template string *
-TemplateClassWithTemplateMethod<double>::transform(string *) const;
+TemplateClassWithTemplateMethod<Number *>::transform(string *) const;
 
 /*
 class MyClass {

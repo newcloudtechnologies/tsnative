@@ -14,13 +14,13 @@ public:
 
     IteratorResult<T>* next() override
     {
-        if (currentIndex == static_cast<size_t>(_iterable->length()))
+        if (currentIndex == static_cast<size_t>(_iterable->length()->valueOf()))
         {
             auto result = new IteratorResult<T>{true, {}};
             return GC::track(result);
         }
 
-        T value = _iterable->operator[](static_cast<double>(currentIndex));
+        T value = _iterable->operator[](GC::createHeapAllocated<Number>(currentIndex));
         ++currentIndex;
 
         auto result = new IteratorResult<T>{false, value};

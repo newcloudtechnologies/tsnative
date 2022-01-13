@@ -1,3 +1,3 @@
 export declare class GC {
-    static allocate(numBytes: number): void;
+    static allocate(numBytes: any): void;
 }

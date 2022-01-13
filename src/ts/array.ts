@@ -152,7 +152,7 @@ export class TSArray {
         : elementType.getLLVMType().correctCppPrimitiveType();
 
     const { fn: push } = this.generator.llvm.function.create(
-      LLVMType.getDoubleType(this.generator),
+      this.generator.builtinNumber.getLLVMType(),
       [LLVMType.getInt8Type(this.generator).getPointer(), parameterType],
       qualifiedName
     );
@@ -171,7 +171,7 @@ export class TSArray {
       declaration,
       undefined,
       arrayType,
-      [this.generator.ts.checker.getTypeFromTypeNode(declaration.parameters[0].type!)],
+      [this.generator.builtinNumber.getTSType()],
       this.generator
     );
 
@@ -183,7 +183,7 @@ export class TSArray {
 
     const { fn: subscript } = this.generator.llvm.function.create(
       retType,
-      [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getDoubleType(this.generator)],
+      [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.builtinNumber.getLLVMType()],
       qualifiedName
     );
 
@@ -225,8 +225,11 @@ export class TSArray {
 
   createToString(arrayType: TSType, expression: ts.Expression): LLVMValue {
     let elementType = arrayType.getTypeGenericArguments()[0];
+
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();
+    } else if (elementType.isNumber()) {
+      elementType = this.generator.builtinNumber.getTSType();
     }
 
     const toStringSymbol = arrayType.getProperty("toString");
@@ -240,7 +243,7 @@ export class TSArray {
       toStringDeclaration,
       expression,
       arrayType,
-      [elementType],
+      [],
       this.generator
     );
 

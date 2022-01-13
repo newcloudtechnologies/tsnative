@@ -21,17 +21,17 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandToken:
-          return this.handleBitwiseAnd(left, right, env).createHeapAllocated();
+          return this.handleBitwiseAnd(left, right, env);
         case ts.SyntaxKind.BarToken:
-          return this.handleBitwiseOr(left, right, env).createHeapAllocated();
+          return this.handleBitwiseOr(left, right, env);
         case ts.SyntaxKind.CaretToken:
-          return this.handleBitwiseXor(left, right, env).createHeapAllocated();
+          return this.handleBitwiseXor(left, right, env);
         case ts.SyntaxKind.LessThanLessThanToken:
-          return this.handleLeftShift(left, right, env).createHeapAllocated();
+          return this.handleLeftShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanToken:
-          return this.handleRightShift(left, right, env).createHeapAllocated();
+          return this.handleRightShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
-          return this.handleLogicalRightShift(left, right, env).createHeapAllocated();
+          throw new Error(`Logical shift right is not supported. Error at '${expression.getText()}'`);
         default:
           break;
       }
@@ -45,68 +45,57 @@ export class BitwiseHandler extends AbstractExpressionHandler {
   }
 
   private handleBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment) {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createAnd(left, right);
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createBitwiseAnd(right);
     }
 
     throw new Error("Invalid operand types to bitwise AND");
   }
 
   private handleBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment) {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createOr(left, right);
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createBitwiseOr(right);
     }
 
     throw new Error("Invalid operand types to bitwise OR");
   }
 
   private handleBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment) {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createXor(left, right);
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createBitwiseXor(right);
     }
 
     throw new Error("Invalid operand types to bitwise XOR");
   }
 
   private handleLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment) {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createShl(left, right);
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createBitwiseLeftShift(right);
     }
 
     throw new Error("Invalid operand types to left shift");
   }
 
   private handleRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment) {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createAShr(left, right);
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createBitwiseRightShift(right);
     }
 
     throw new Error("Invalid operand types to right shift");
-  }
-
-  private handleLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment) {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
-
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createLShr(left, right);
-    }
-
-    throw new Error("Invalid operand types to logical right shift");
   }
 }

@@ -43,11 +43,8 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
   }
 
   private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
-
-    left = left.getValue();
-    right = right.adjustToType(left.type);
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
     if (left.type.isString() && right.type.isString()) {
       const concat = this.generator.builtinString.getLLVMConcat();
@@ -56,64 +53,52 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
       return this.generator.builder.createSafeCall(concat, [untypedThis, right]);
     }
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createAdd(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createAdd(right);
     }
 
     throw new Error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    left = left.getValue();
-    right = right.adjustToType(left.type);
-
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createSub(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createSub(right);
     }
 
     throw new Error(`Invalid operand types to binary minus: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    left = left.getValue();
-    right = right.adjustToType(left.type);
-
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createMul(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createMul(right);
     }
 
     throw new Error(`Invalid operand types to binary multiply: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    left = left.getValue();
-    right = right.adjustToType(left.type);
-
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createDiv(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createDiv(right);
     }
 
     throw new Error(`Invalid operand types to binary division: '${left.type.toString()}' '${right.type.toString()}'`);
   }
 
   private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
-    left = left.getValue();
-    right = right.adjustToType(left.type);
-
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createRem(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createMod(right);
     }
 
     throw new Error(`Invalid operand types to binary modulo: '${left.type.toString()}' '${right.type.toString()}'`);

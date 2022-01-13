@@ -12,7 +12,9 @@ using remove_specifiers =
 class GC
 {
 public:
-    static void* allocate(TSNumber numBytes);
+    static void* allocate(Number* numBytes);
+    static void* allocate(double numBytes);
+    static void* allocate(size_t numBytes);
 
     template <typename Source>
     static Source track(Source value)
@@ -25,8 +27,8 @@ public:
     template <typename Destination, typename Source>
     static Destination* createHeapAllocated(Source value)
     {
-        static_assert((std::is_same<remove_specifiers<Source>, remove_specifiers<Destination>>::value ||
-                       std::is_convertible<remove_specifiers<Source>, remove_specifiers<Destination>>::value) &&
+        static_assert(std::is_same<remove_specifiers<Source>, remove_specifiers<Destination>>::value ||
+                      std::is_convertible<remove_specifiers<Source>, remove_specifiers<Destination>>::value ||
                       std::is_constructible<Destination, Source>::value);
 
         void* mem = GC::allocate(sizeof(Destination));

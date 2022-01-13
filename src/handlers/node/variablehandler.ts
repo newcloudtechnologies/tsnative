@@ -10,8 +10,8 @@
  */
 
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
-import { LLVMStructType, LLVMType } from "../../llvm/type";
-import { LLVMConstant, LLVMConstantInt, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
+import { LLVMStructType } from "../../llvm/type";
+import { LLVMConstant, LLVMConstantFP, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 
@@ -63,7 +63,7 @@ export class VariableHandler extends AbstractNodeHandler {
 
         // convert c++ enumerator values to ts' number
         if (type.isEnum() && initializer.type.isIntegerType()) {
-          initializer = this.generator.builder.createSIToFP(initializer, LLVMType.getDoubleType(this.generator));
+          initializer = this.generator.builtinNumber.create(initializer);
         }
 
         initializer = initializer.createHeapAllocated();
@@ -216,11 +216,9 @@ export class VariableHandler extends AbstractNodeHandler {
 
     identifiers.forEach((identifier, index) => {
       const name = identifier.getText();
-      const llvmIntegralIndex = LLVMConstantInt.get(this.generator, index);
-      const llvmDoubleIndex = this.generator.builder.createSIToFP(
-        llvmIntegralIndex,
-        LLVMType.getDoubleType(this.generator)
-      );
+      const llvmIntegralIndex = LLVMConstantFP.get(this.generator, index);
+      const llvmDoubleIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
+
       const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
         arrayUntyped,
         llvmDoubleIndex,

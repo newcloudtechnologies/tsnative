@@ -1,6 +1,6 @@
 #include "point.h"
 
-Point::Point(double x, double y) : _x(x), _y(y) {}
+Point::Point(Number* x, Number* y) : _x(x->valueOf()), _y(y->valueOf()) {}
 
-double Point::x() const { return _x; }
-double Point::y() const { return _y; }
+const Number* Point::x() const { return &_x; }
+const Number* Point::y() const { return &_y; }

@@ -12,8 +12,7 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
-import { LLVMValue } from "../../llvm/value";
-import { Builder } from "../../builder/builder";
+import { LLVMValue, MathFlags } from "../../llvm/value";
 
 type CompoundHandler = (lhs: LLVMValue, rhs: LLVMValue) => LLVMValue;
 export class CompoundAssignmentHandler extends AbstractExpressionHandler {
@@ -44,7 +43,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
         case ts.SyntaxKind.GreaterThanGreaterThanEqualsToken:
           return this.handleCompoundRightShift(left, right, env);
         case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
-          return this.handleCompoundLogicalRightShift(left, right, env);
+          throw new Error(`Logical shift right is not supported. Error at '${expression.getText()}'`);
         default:
           break;
       }
@@ -59,7 +58,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
 
   private handleCompoundPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
     const numericHandler: CompoundHandler = (l: LLVMValue, r: LLVMValue): LLVMValue =>
-      this.generator.builder.createAdd(l, r);
+      l.createAdd(r, MathFlags.Inplace);
     const stringHandler: CompoundHandler = (l: LLVMValue, r: LLVMValue): LLVMValue => {
       const concat = this.generator.builtinString.getLLVMConcat();
       const untypedThis = this.generator.builder.asVoidStar(l);
@@ -70,43 +69,84 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
   }
 
   private handleCompoundMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createSub.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createSub(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createMul.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createMul(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createDiv.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createDiv(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createRem.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createMod(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundBitwiseAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createAnd.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createBitwiseAnd(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundBitwiseOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createOr.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createBitwiseOr(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundBitwiseXor(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createXor.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createBitwiseXor(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundLeftShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createShl.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createBitwiseLeftShift(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createAShr.bind(this.generator.builder));
-  }
-
-  private handleCompoundLogicalRightShift(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    return this.handleCompoundAssignment(lhs, rhs, env, Builder.prototype.createLShr.bind(this.generator.builder));
+    return this.handleCompoundAssignment(
+      lhs,
+      rhs,
+      env,
+      (l: LLVMValue, r: LLVMValue): LLVMValue => l.createBitwiseRightShift(r, MathFlags.Inplace)
+    );
   }
 
   private handleCompoundAssignment(
@@ -116,17 +156,16 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
     ...handlers: CompoundHandler[]
   ): LLVMValue {
     const left = this.generator.handleExpression(lhs, env);
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const right = this.generator.handleExpression(rhs, env);
 
     const oldValue = this.generator.createLoadIfNecessary(left);
     const [numericHandler, sHandler] = handlers;
 
-    if (oldValue.type.isDoubleType() && right.type.isDoubleType()) {
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
       if (!numericHandler) {
         throw new Error("No  numeric handler provided");
       }
-      const newValue = numericHandler(oldValue, right);
-      return left.makeAssignment(newValue);
+      return numericHandler(left, right);
     }
 
     if (oldValue.type.isString() && right.type.isString()) {

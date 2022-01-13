@@ -18,10 +18,10 @@
 string::string()
 {
 }
-string::string(TSNumber d)
+string::string(Number* d)
 {
     std::ostringstream oss;
-    oss << std::setprecision(std::numeric_limits<TSNumber>::max_digits10) << std::noshowpoint << d;
+    oss << std::setprecision(std::numeric_limits<double>::max_digits10) << std::noshowpoint << d;
     this->string_ = oss.str();
 }
 string::string(const int8_t* s)
@@ -37,9 +37,9 @@ string::string(const char* s)
 {
 }
 
-TSNumber string::length() const
+Number* string::length() const
 {
-    return static_cast<TSNumber>(string_.size());
+    return GC::createHeapAllocated<Number>(string_.size());
 }
 
 string* string::concat(const string& other) const
@@ -49,21 +49,24 @@ string* string::concat(const string& other) const
 
 bool string::startsWith(const string& other) const
 {
-    return startsWith(other, 0);
+    return startsWith(other, GC::createHeapAllocated<Number>(0));
 }
 
-bool string::startsWith(const string& other, TSNumber startIndex) const
+bool string::startsWith(const string& other, Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
+    int index = static_cast<int>(startIndex->valueOf());
     bool result = false;
 
-    if (length() == 0 && other.length() == 0)
+    auto lengthValue = length()->valueOf();
+    auto outerLengthValue = other.length()->valueOf();
+
+    if (lengthValue == 0 && outerLengthValue == 0)
     {
         result = true;
     }
     else
     {
-        if (other.length() + index > length())
+        if (outerLengthValue + index > lengthValue)
             return result;
 
         auto found = string_.rfind(other.string_, index);
@@ -76,18 +79,24 @@ bool string::startsWith(const string& other, TSNumber startIndex) const
 
 bool string::endsWith(const string& other) const
 {
-    if (other.length() > length())
+    auto lengthValue = length()->valueOf();
+    auto outerLengthValue = other.length()->valueOf();
+
+    if (outerLengthValue > lengthValue)
         return false;
 
     return endsWith(other, length());
 }
 
-bool string::endsWith(const string& other, TSNumber startIndex) const
+bool string::endsWith(const string& other, Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
+    int index = static_cast<int>(startIndex->valueOf());
     bool result = false;
 
-    if (length() == 0 && other.length() == 0)
+    auto lengthValue = length()->valueOf();
+    auto outerLengthValue = other.length()->valueOf();
+
+    if (lengthValue == 0 && outerLengthValue == 0)
     {
         result = true;
     }
@@ -96,13 +105,13 @@ bool string::endsWith(const string& other, TSNumber startIndex) const
         std::string s = string_;
         s.resize(index);
 
-        if (other.length() > s.length())
+        if (outerLengthValue > s.length())
             return result;
 
-        auto pos = s.length() - other.length();
+        auto pos = s.length() - outerLengthValue;
         auto found = s.find(other.string_, pos);
 
-        result = found == s.length() - other.length();
+        result = found == s.length() - outerLengthValue;
     }
 
     return result;
@@ -112,9 +121,9 @@ Array<string*>* string::split(const string& pattern) const
 {
     Array<string*> result;
 
-    if (length() == 0)
+    if (length()->valueOf() == 0)
     {
-        if (pattern.length() > 0)
+        if (pattern.length()->valueOf() > 0)
         {
             result.push(GC::createHeapAllocated<string>(""));
         }
@@ -123,18 +132,18 @@ Array<string*>* string::split(const string& pattern) const
     }
     else
     {
-        return split(pattern, -1.0);
+        return split(pattern, GC::createHeapAllocated<Number>(-1.0));
     }
 
     return GC::createHeapAllocated<Array<string*>>(result);
 }
 
-Array<string*>* string::split(const string& pattern, TSNumber limit) const
+Array<string*>* string::split(const string& pattern, Number* limit) const
 {
     Array<string*> result;
     size_t prev = 0, pos = 0;
 
-    int tokens_max = static_cast<int>(limit);
+    int tokens_max = static_cast<int>(limit->valueOf());
     std::string delim = pattern.string_;
 
     if (tokens_max == 0)
@@ -143,7 +152,7 @@ Array<string*>* string::split(const string& pattern, TSNumber limit) const
     if (tokens_max == -1)
         tokens_max = INT_MAX;
 
-    if (pattern.length() == 0)
+    if (pattern.length()->valueOf() == 0)
     {
         for (const auto& ch : string_)
         {
@@ -156,7 +165,7 @@ Array<string*>* string::split(const string& pattern, TSNumber limit) const
     }
     else
     {
-        if (length() == 0)
+        if (length()->valueOf() == 0)
         {
             result.push(GC::createHeapAllocated<string>(""));
         }
@@ -186,10 +195,10 @@ Array<string*>* string::split(const string& pattern, TSNumber limit) const
     return GC::createHeapAllocated<Array<string*>>(result);
 }
 
-string* string::slice(TSNumber startIndex) const
+string* string::slice(Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
-    int length = static_cast<int>(this->length());
+    int index = static_cast<int>(startIndex->valueOf());
+    int length = static_cast<int>(this->length()->valueOf());
 
     if (index >= length)
     {
@@ -214,9 +223,9 @@ string* string::slice(TSNumber startIndex) const
     return GC::createHeapAllocated<string>(string_.substr(index));
 }
 
-string* string::slice(TSNumber startIndex, TSNumber endIndex) const
+string* string::slice(Number* startIndex, Number* endIndex) const
 {
-    if (startIndex >= endIndex)
+    if (startIndex->valueOf() >= endIndex->valueOf())
     {
         return GC::createHeapAllocated<string>("");
     }
@@ -227,13 +236,13 @@ string* string::slice(TSNumber startIndex, TSNumber endIndex) const
     return GC::createHeapAllocated<string>(s1.substr(0, s1.find(s2)));
 }
 
-string* string::substring(TSNumber startIndex) const
+string* string::substring(Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
+    int index = static_cast<int>(startIndex->valueOf());
 
     index = index < 0 ? 0 : index;
 
-    if (index >= length())
+    if (index >= length()->valueOf())
     {
         return GC::createHeapAllocated<string>("");
     }
@@ -241,14 +250,14 @@ string* string::substring(TSNumber startIndex) const
     return GC::createHeapAllocated<string>(string_.substr(index));
 }
 
-string* string::substring(TSNumber startIndex, TSNumber endIndex) const
+string* string::substring(Number* startIndex, Number* endIndex) const
 {
-    int n1 = static_cast<int>(startIndex);
-    int n2 = static_cast<int>(endIndex);
+    int n1 = static_cast<int>(startIndex->valueOf());
+    int n2 = static_cast<int>(endIndex->valueOf());
 
     auto normalize = [this](int index)
     {
-        int length = this->length();
+        int length = this->length()->valueOf();
 
         if (index <= 0)
         {
@@ -302,59 +311,65 @@ string* string::toUpperCase() const
 
 bool string::includes(const string& pattern) const
 {
-    return includes(pattern, 0);
+    return includes(pattern, GC::createHeapAllocated<Number>(0));
 }
 
-bool string::includes(const string& pattern, TSNumber startIndex) const
+bool string::includes(const string& pattern, Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
+    int index = static_cast<int>(startIndex->valueOf());
 
-    if (pattern.length() == 0)
+    if (pattern.length()->valueOf() == 0)
         return true;
 
     return string_.find(pattern.string_, index) != std::string::npos;
 }
 
-TSNumber string::indexOf(const string& pattern) const
+Number* string::indexOf(const string& pattern) const
 {
-    return indexOf(pattern, 0);
+    return indexOf(pattern, GC::createHeapAllocated<Number>(0));
 }
 
-TSNumber string::indexOf(const string& pattern, TSNumber startIndex) const
+Number* string::indexOf(const string& pattern, Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
+    int index = static_cast<int>(startIndex->valueOf());
 
-    if (pattern.length() == 0)
+    if (pattern.length()->valueOf() == 0)
     {
-        return index < length() ? index : length();
+        return index < length()->valueOf() ? startIndex : length();
     }
     else
     {
         auto found = string_.find(pattern.string_, index);
 
-        return found != std::string::npos ? found : -1.0;
+        auto idx = found != std::string::npos ? found : -1.0;
+        return GC::createHeapAllocated<Number>(idx);
     }
 }
 
-TSNumber string::lastIndexOf(const string& pattern) const
+Number* string::lastIndexOf(const string& pattern) const
 {
     return lastIndexOf(pattern, length());
 }
 
-TSNumber string::lastIndexOf(const string& pattern, TSNumber startIndex) const
+Number* string::lastIndexOf(const string& pattern, Number* startIndex) const
 {
-    int index = static_cast<int>(startIndex);
+    int index = static_cast<int>(startIndex->valueOf());
 
-    if (pattern.length() == 0)
+    if (pattern.length()->valueOf() == 0)
     {
-        return index < length() ? index : length();
+        return index < length()->valueOf() ? startIndex : length();
     }
     else
     {
         auto found = string_.rfind(pattern.string_, index);
-
-        return found != std::string::npos ? found : -1.0;
+        auto idx = found != std::string::npos ? found : -1.0;
+        return GC::createHeapAllocated<Number>(idx);
     }
+}
+
+bool string::operator==(string* other) const
+{
+    return string_ == other->string_;
 }
 
 bool string::operator==(const string& other) const
@@ -367,9 +382,9 @@ string* string::operator+(const string& other) const
     return concat(other);
 }
 
-string* string::operator[](TSNumber index) const
+string* string::operator[](Number* index) const
 {
-    std::string character = {string_.at(static_cast<size_t>(index))};
+    std::string character = {string_.at(static_cast<size_t>(index->valueOf()))};
     return GC::createHeapAllocated<string>(character);
 }
 

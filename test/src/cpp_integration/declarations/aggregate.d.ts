@@ -4,18 +4,18 @@ declare module "cpp" {
     export class Aggregate {
         constructor(point: Point,
             array: string[],
-            s: string, d: number);
+            s: string, n: number);
 
         getPoint(): Point;
         getStringArray(): string[];
         getString(): string;
 
-        getDouble(): number;
+        getNumber(): number;
 
         private point: Point;
         private array: string[];
         private s: string;
         @ValueType
-        private d: number;
+        private n: number;
     }
 }

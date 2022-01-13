@@ -12,6 +12,7 @@ set(SOURCES
     src/gc.cpp
     src/stdstring.cpp
     src/tsclosure.cpp
+    src/tsnumber.cpp
 )
 
 if(DEFINED ENV{DEBUG})

@@ -1,12 +1,16 @@
 #include "rect.h"
 
+#include <std/tsnumber.h>
+
 using namespace cpp;
 
 Rect::Rect(const Point &topLeft, const Point &bottomRight)
     : topLeft(topLeft), bottomRight(bottomRight) {}
 
-double Rect::getSquare() {
-  return (bottomRight.x() - topLeft.x()) * (bottomRight.y() - topLeft.y());
+Number* Rect::getSquare() {
+  auto width = bottomRight.x()->sub(topLeft.x());
+  auto height = bottomRight.y()->sub(topLeft.y());  
+  return width->mul(height);
 }
 
 Array<Point*>* Rect::getDiagonal() const

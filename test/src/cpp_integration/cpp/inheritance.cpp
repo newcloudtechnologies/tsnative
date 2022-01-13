@@ -4,7 +4,7 @@
 
 using namespace cpp;
 
-PointPair::PointPair(double x1, double y1, double x2, double y2)
+PointPair::PointPair(Number* x1, Number* y1, Number* x2, Number* y2)
     : topLeft({x1, y1}), bottomRight({x2, y2}) {}
 
 Point *PointPair::getTopLeft() const {
@@ -19,21 +19,21 @@ Rect *RectHolder::getRect() const {
   return GC::createHeapAllocated<Rect>(rect);
 }
 
-Mixin::Mixin(double x1, double y1, double x2, double y2)
+Mixin::Mixin(Number* x1, Number* y1, Number* x2, Number* y2)
     : PointPair(x1, y1, x2, y2), RectHolder({{x1, y1}, {x2, y2}}) {}
 
-Mixin *Mixin::getScaled(double factor) const {
+Mixin *Mixin::getScaled(Number* factor) const {
   return GC::createHeapAllocated<Mixin>(
-      Mixin{topLeft.x() * factor, topLeft.y() * factor,
-            bottomRight.x() * factor, bottomRight.y() * factor});
+      Mixin{topLeft.x()->mul(factor), topLeft.y()->mul(factor),
+            bottomRight.x()->mul(factor), bottomRight.y()->mul(factor)});
 }
 
 VirtualBase::VirtualBase() {}
 string *VirtualBase::virtualMethod() const { return GC::createHeapAllocated<string>(s); }
 
 DerivedFromVirtualBase::DerivedFromVirtualBase() {}
-TSNumber DerivedFromVirtualBase::pureVirtualMethodToOverride() const {
-  return i;
+const Number* DerivedFromVirtualBase::pureVirtualMethodToOverride() const {
+  return &i;
 }
 
 DerivedFromBaseInOtherNamespace::DerivedFromBaseInOtherNamespace() {}

@@ -12,8 +12,7 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration, Scope } from "../../scope";
-import { LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
+import { LLVMConstantFP, LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -111,11 +110,9 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     const subscription = this.generator.ts.tuple.createSubscription(tupleType);
 
     identifiers.forEach((identifier, index) => {
-      const llvmIntegralIndex = LLVMConstantInt.get(this.generator, index);
-      const llvmDoubleIndex = this.generator.builder.createSIToFP(
-        llvmIntegralIndex,
-        LLVMType.getDoubleType(this.generator)
-      );
+      const llvmIntegralIndex = LLVMConstantFP.get(this.generator, index);
+      const llvmDoubleIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
+
       const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
         tupleUntyped,
         llvmDoubleIndex,

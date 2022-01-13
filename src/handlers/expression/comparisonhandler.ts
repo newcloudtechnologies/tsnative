@@ -67,8 +67,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const lhsLLVMType = lhsLLVM.type;
     const rhsLLVMType = rhsLLVM.type;
 
-    if (lhsLLVMType.isDoubleType() && rhsLLVMType.isDoubleType()) {
-      return this.generator.builder.createFCmpOEQ(lhsLLVM, rhsLLVM).createHeapAllocated();
+    if (lhsLLVMType.isTSNumber() && rhsLLVMType.isTSNumber()) {
+      return lhsLLVM.createEquals(rhsLLVM).createHeapAllocated();
     }
 
     if (lhsLLVMType.isIntegerType() && rhsLLVMType.isIntegerType()) {
@@ -134,8 +134,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
     const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFCmpOLT(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createLessThan(right);
     }
 
     throw new Error(`Invalid operand types to less than: 
@@ -147,8 +147,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
     const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFCmpOGT(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createGreaterThan(right);
     }
 
     throw new Error(`Invalid operand types to greater than: 
@@ -160,8 +160,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
     const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFCmpOLE(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createLessEqualsThan(right);
     }
 
     throw new Error(`Invalid operand types to less equal than: 
@@ -173,8 +173,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
     const left: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
     const right: LLVMValue = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
 
-    if (left.type.isDoubleType() && right.type.isDoubleType()) {
-      return this.generator.builder.createFCmpOGE(left, right).createHeapAllocated();
+    if (left.type.isTSNumber() && right.type.isTSNumber()) {
+      return left.createGreaterEqualsThan(right);
     }
 
     throw new Error(`Invalid operand types to greater equal than: 

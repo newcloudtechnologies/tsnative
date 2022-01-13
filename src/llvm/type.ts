@@ -103,6 +103,11 @@ export class LLVMType {
     return this.type.isDoubleTy();
   }
 
+  isTSNumber() {
+    const nakedType = this.unwrapPointer();
+    return nakedType.type.isStructTy() && nakedType.type.name === "number";
+  }
+
   isVoid() {
     return this.type.isVoidTy();
   }

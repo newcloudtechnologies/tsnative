@@ -486,6 +486,10 @@ export class TSType {
       return "string";
     }
 
+    if (this.isNumber()) {
+      return "Number";
+    }
+
     let suffix = "";
 
     let typeArguments: string[] = [];
@@ -780,7 +784,7 @@ export class TSType {
     }
 
     if (this.isNumber()) {
-      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      return this.checker.generator.builtinNumber.getLLVMType();
     }
 
     if (this.isString()) {
@@ -897,7 +901,7 @@ export class TSType {
     let typename = this.toString();
 
     if (this.isNumber()) {
-      typename = "number";
+      typename = "Number*";
     } else if (this.isString()) {
       return "string*";
     } else if (this.isUnionOrIntersection()) {
@@ -928,9 +932,6 @@ export class TSType {
     switch (typename) {
       case "String": // @todo
         return "string*";
-      case "Number":
-      case "number":
-        return "double";
       case "Boolean":
       case "boolean":
       case "true":
@@ -972,12 +973,12 @@ export class TSType {
     if (declaration.isEnum()) {
       // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
       // Pretend it is a numeric enum for now.
-      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      return this.checker.generator.builtinNumber.getLLVMType();
     }
 
     if (!declaration.initializer) {
       // initializer absence indicates that it is numeric enum
-      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      return this.checker.generator.builtinNumber.getLLVMType();
     }
 
     const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
@@ -993,12 +994,12 @@ export class TSType {
     if (declaration.isEnum()) {
       // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
       // Pretend it is a numeric enum for now.
-      return "double";
+      return "Number*";
     }
 
     if (!declaration.initializer) {
       // initializer absence indicates that it is numeric enum
-      return "double";
+      return "Number*";
     }
 
     const initializerType = this.checker.getTypeAtLocation(declaration.initializer);

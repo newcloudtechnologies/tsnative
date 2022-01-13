@@ -33,7 +33,7 @@ export class TSTuple {
       declaration,
       undefined,
       tupleType,
-      [], // @todo?
+      [this.generator.builtinNumber.getTSType()],
       this.generator
     );
 
@@ -45,7 +45,7 @@ export class TSTuple {
 
     const { fn: subscript } = this.generator.llvm.function.create(
       retType,
-      [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getDoubleType(this.generator)],
+      [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.builtinNumber.getLLVMType()],
       qualifiedName
     );
 
