@@ -57,7 +57,7 @@ export class NmSymbolExtractor {
     };
 
     // mkrv @todo: it would be nice to filter all the service stuff like std, __gcc, __clang, etc
-    const lambdaPattern = new RegExp(/(?=::.lambda\()/);
+    const lambdaPattern = new RegExp(/(?=::.lambda.+\()/);
     const isLambda = (line: string) => {
       return line.match(lambdaPattern);
     };
