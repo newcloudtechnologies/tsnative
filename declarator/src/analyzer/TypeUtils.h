@@ -34,10 +34,12 @@ class TypeMapper
         {"long long", "--"},
         {"unsigned long long", "--"},
         {"float", "--"},
-        {"double", "number"},
+        {"double", "--"},
         {"long double", "--"},
         {"bool", "boolean"},
         {"void", "void"},
+        {"Number", "number"},
+        {"String", "string"}
     };
 
     std::map<std::string, std::string> m_table;
