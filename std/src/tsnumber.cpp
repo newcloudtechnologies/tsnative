@@ -113,58 +113,61 @@ Number* Number::postfixDecrement()
 
 Number* Number::bitwiseAnd(const Number* other) const
 {
-    auto result = static_cast<size_t>(this->valueOf()) & static_cast<size_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(result);
+    auto result = static_cast<uint64_t>(this->valueOf()) & static_cast<uint64_t>(other->valueOf());
+    return GC::createHeapAllocated<Number>(static_cast<double>(result));
 }
 Number* Number::bitwiseOr(const Number* other) const
 {
-    auto result = static_cast<size_t>(this->valueOf()) | static_cast<size_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(result);
+    auto result = static_cast<uint64_t>(this->valueOf()) | static_cast<uint64_t>(other->valueOf());
+    return GC::createHeapAllocated<Number>(static_cast<double>(result));
 }
 Number* Number::bitwiseXor(const Number* other) const
 {
-    auto result = static_cast<size_t>(this->valueOf()) ^ static_cast<size_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(result);
+    auto result = static_cast<uint64_t>(this->valueOf()) ^ static_cast<uint64_t>(other->valueOf());
+    return GC::createHeapAllocated<Number>(static_cast<double>(result));
 }
 Number* Number::bitwiseLeftShift(const Number* other) const
 {
-    auto result = static_cast<size_t>(this->valueOf()) << static_cast<size_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(result);
+    auto result = static_cast<uint64_t>(this->valueOf()) << static_cast<uint64_t>(other->valueOf());
+    return GC::createHeapAllocated<Number>(static_cast<double>(result));
 }
 Number* Number::bitwiseRightShift(const Number* other) const
 {
-    auto result = static_cast<size_t>(this->valueOf()) >> static_cast<size_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(result);
+    // mkrv @todo: actually it is a compiler-dependent stuff
+    auto result = static_cast<int64_t>(this->valueOf()) >> static_cast<int64_t>(other->valueOf());
+    return GC::createHeapAllocated<Number>(static_cast<double>(result));
 }
 
 Number* Number::bitwiseAndInplace(const Number* other)
 {
-    _value = static_cast<size_t>(_value) & static_cast<size_t>(other->_value);
+    _value = static_cast<uint64_t>(_value) & static_cast<uint64_t>(other->_value);
     return this;
 }
 Number* Number::bitwiseOrInplace(const Number* other)
 {
-    _value = static_cast<size_t>(_value) | static_cast<size_t>(other->_value);
+    _value = static_cast<uint64_t>(_value) | static_cast<uint64_t>(other->_value);
     return this;
 }
 Number* Number::bitwiseXorInplace(const Number* other)
 {
-    _value = static_cast<size_t>(_value) ^ static_cast<size_t>(other->_value);
+    _value = static_cast<uint64_t>(_value) ^ static_cast<uint64_t>(other->_value);
     return this;
 }
 Number* Number::bitwiseLeftShiftInplace(const Number* other)
 {
-    _value = static_cast<int64_t>(static_cast<size_t>(_value) << static_cast<size_t>(other->_value));
+    _value = static_cast<uint64_t>(_value) << static_cast<uint64_t>(other->_value);
     return this;
 }
 Number* Number::bitwiseRightShiftInplace(const Number* other)
 {
+    // mkrv @todo: actually it is a compiler-dependent stuff
     _value = static_cast<int64_t>(_value) >> static_cast<int64_t>(other->_value);
     return this;
 }
 
 bool Number::equals(const Number* other) const
 {
+    // mkrv @todo: well, this is how doubles shouldn't be compared
     return _value == other->_value;
 }
 
