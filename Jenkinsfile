@@ -114,10 +114,10 @@ pipeline {
                     agent {
                         // future refactoring - using harbor.devos.club
                         docker {
-                            image "docreg.devos.club/typescript-environment:1.7"
+                            image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/antiq-ubuntu-cmake-typescript-env:1.8"
+                            registryUrl "${JENKINS_DOCKER_REGISTRY_URL}"
+                            registryCredentialsId "${JENKINS_DOCKER_REGISTRY_CI_AUTHENTICATION_TOKEN}"
                             args "--user root"
-                            registryUrl 'https://docreg.devos.club'
-                            registryCredentialsId 'docker_kos'
                             alwaysPull true
                         }
                     }
