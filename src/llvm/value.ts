@@ -90,6 +90,10 @@ export class LLVMValue {
       return value;
     }
 
+    if (value.type.isTSNumber() && type.isIntegerType()) {
+      return value.asLLVMInteger();
+    }
+
     if (value.isUnion() && value.containsType(type)) {
       value = value.extract(type);
       return value.adjustToType(type);
