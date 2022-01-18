@@ -28,4 +28,9 @@ const clang::NamespaceDecl* NamespaceItem::decl() const
     return m_decl;
 }
 
+void NamespaceItem::setDecl(const clang::NamespaceDecl* decl)
+{
+    m_decl = decl;
+}
+
 } //  namespace parser

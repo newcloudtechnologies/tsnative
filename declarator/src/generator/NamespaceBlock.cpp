@@ -18,6 +18,11 @@ namespace generator
 namespace ts
 {
 
+NamespaceBlock::NamespaceBlock(Type type, const std::string& name)
+    : ContainerBlock(type, name)
+{
+}
+
 NamespaceBlock::NamespaceBlock(const std::string& name, bool isExport)
     : ContainerBlock(Type::NAMESPACE, name)
     , m_isExport(isExport)

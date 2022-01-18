@@ -132,6 +132,15 @@ std::string getAnnotations(const clang::FunctionTemplateDecl* decl)
     return result;
 }
 
+std::string getAnnotations(const clang::NamespaceDecl* decl)
+{
+    std::string result;
+
+    result = ::getAnnotations(static_cast<const clang::Decl*>(decl));
+
+    return result;
+}
+
 bool setAnnotations(clang::CXXRecordDecl* decl, const std::string& annotations)
 {
     bool result = false;

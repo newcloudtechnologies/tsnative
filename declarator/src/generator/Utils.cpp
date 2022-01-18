@@ -41,7 +41,12 @@ abstract_block_t getBlock(abstract_block_t root,
             std::string name = names.at(i);
 
             auto foundBlock = find(currentBlock, name);
-            _ASSERT(foundBlock);
+
+            if (!foundBlock)
+            {
+                result = nullptr;
+                break;
+            }
 
             if (i < names.size() - 1)
             {

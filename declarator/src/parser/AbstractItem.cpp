@@ -12,6 +12,7 @@
 #include "AbstractItem.h"
 
 #include "utils/Exception.h"
+#include "utils/Strings.h"
 
 #include <map>
 
@@ -60,6 +61,15 @@ bool AbstractItem::isContainer(const_abstract_item_t item)
             return false;
         }
     };
+}
+
+std::string AbstractItem::getParentName(const_abstract_item_t item)
+{
+    std::vector<std::string> parts = utils::split(item->prefix(), "::");
+
+    _ASSERT(!parts.empty());
+
+    return parts.back();
 }
 
 std::string typeToString(AbstractItem::Type type)

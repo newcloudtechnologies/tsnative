@@ -57,6 +57,7 @@ public:
     bool isLocal() const;
 
     static bool isContainer(const_abstract_item_t item);
+    static std::string getParentName(const_abstract_item_t item);
 
     template <typename T, typename... Args>
     static item_t<T> make(Args&&... args)

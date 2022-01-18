@@ -14,6 +14,8 @@
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
+#include "constants/Annotations.h"
+
 #include "Annotation.h"
 
 #include <sstream>
@@ -28,13 +30,15 @@ CodeBlockItem::CodeBlockItem(const std::string& name, const std::string& prefix,
 
 std::string CodeBlockItem::code() const
 {
+    using namespace constants::annotations;
+
     AnnotationList annotations(getAnnotations(decl()));
 
-    std::vector<std::string> values = annotations.values("TS_CODE");
+    std::vector<std::string> values = annotations.values(TS_CODE);
 
     _ASSERT(values.size() == 1);
 
-    std::istringstream iss(annotations.values("TS_CODE").at(0));
+    std::istringstream iss(annotations.values(TS_CODE).at(0));
     std::vector<std::string> lines;
     std::string line;
 

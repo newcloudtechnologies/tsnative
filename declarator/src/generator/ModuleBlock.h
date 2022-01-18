@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "ContainerBlock.h"
+#include "NamespaceBlock.h"
 
 #include <string>
 
@@ -21,13 +21,12 @@ namespace generator
 namespace ts
 {
 
-class ModuleBlock : public ContainerBlock
+class ModuleBlock : public NamespaceBlock
 {
     friend class AbstractBlock;
 
 protected:
     void printHeader(generator::print::printer_t printer) const override;
-    void printFooter(generator::print::printer_t printer) const override;
 
     void printChildImpl(int index,
                         int size,

@@ -19,6 +19,8 @@
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
 
+#include "constants/Annotations.h"
+
 #include <string>
 
 namespace analyzer
@@ -26,12 +28,13 @@ namespace analyzer
 
 void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, generator::ts::container_block_t block)
 {
+    using namespace constants::annotations;
     using namespace generator::ts;
     using namespace parser;
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
-    std::string name = (annotations.exist("TS_NAME")) ? annotations.values("TS_NAME").at(0) : item->name();
+    std::string name = (annotations.exist(TS_NAME)) ? annotations.values(TS_NAME).at(0) : item->name();
 
     auto classBlock = AbstractBlock::make<ClassBlock>(name, true);
 
@@ -52,9 +55,9 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
         classBlock->addClosure(it);
     }
 
-    if (annotations.exist("TS_DECORATOR"))
+    if (annotations.exist(TS_DECORATOR))
     {
-        for (const auto& it : annotations.values("TS_DECORATOR"))
+        for (const auto& it : annotations.values(TS_DECORATOR))
         {
             decorator_t decorator = Decorator::fromString(it);
             classBlock->addDecorator(decorator);
@@ -71,7 +74,7 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
         classBlock->addDecorator(Decorator::make("VirtualDestructor"));
     }
 
-    if (annotations.exist("TS_IGNORE"))
+    if (annotations.exist(TS_IGNORE))
     {
         classBlock->setIgnore();
     }

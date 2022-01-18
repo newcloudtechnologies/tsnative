@@ -18,6 +18,8 @@
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
 
+#include "constants/Annotations.h"
+
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
@@ -53,6 +55,7 @@ std::string getPartName(const std::string& path)
 std::vector<parser::const_class_item_t> getNotExportedBases(parser::const_class_item_t item,
                                                             const parser::Collection& collection)
 {
+    using namespace constants::annotations;
     using namespace parser;
     using namespace analyzer;
 
@@ -67,7 +70,7 @@ std::vector<parser::const_class_item_t> getNotExportedBases(parser::const_class_
             {
                 AnnotationList annotations(getAnnotations(it.item()->decl()));
 
-                if (!annotations.exist("TS_EXPORT"))
+                if (!annotations.exist(TS_EXPORT))
                 {
                     m_list.push_back(it.item());
 
@@ -93,6 +96,7 @@ generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_clas
                                                               const parser::MethodItem& item,
                                                               const analyzer::TypeMapper& typeMapper)
 {
+    using namespace constants::annotations;
     using namespace parser;
     using namespace analyzer;
     using namespace generator::ts;
@@ -101,11 +105,11 @@ generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_clas
 
     AnnotationList annotations(getAnnotations(item.decl()));
 
-    if (annotations.exist("TS_METHOD"))
+    if (annotations.exist(TS_METHOD))
     {
-        if (annotations.exist("TS_SIGNATURE"))
+        if (annotations.exist(TS_SIGNATURE))
         {
-            TsMethod signature(annotations.values("TS_SIGNATURE").at(0));
+            TsMethod signature(annotations.values(TS_SIGNATURE).at(0));
 
             method = AbstractBlock::make<MethodBlock>(signature.name(), signature.retType(), false);
 
@@ -116,20 +120,20 @@ generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_clas
         }
         else
         {
-            std::string name = annotations.exist("TS_NAME") ? annotations.values("TS_NAME").at(0) : item.name();
+            std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item.name();
 
-            std::string retType = annotations.exist("TS_RETURN_TYPE")
-                                      ? annotations.values("TS_RETURN_TYPE").at(0)
+            std::string retType = annotations.exist(TS_RETURN_TYPE)
+                                      ? annotations.values(TS_RETURN_TYPE).at(0)
                                       : collapseType(classItem->prefix(), mapType(typeMapper, item.returnType()));
 
             method = (item.isConstructor()) ? AbstractBlock::make<MethodBlock>()
                                             : AbstractBlock::make<MethodBlock>(name, retType, item.isStatic());
 
-            if (annotations.exist("TS_GETTER"))
+            if (annotations.exist(TS_GETTER))
             {
                 method->setAccessor("get");
             }
-            else if (annotations.exist("TS_SETTER"))
+            else if (annotations.exist(TS_SETTER))
             {
                 method->setAccessor("set");
             }
@@ -141,16 +145,16 @@ generator::ts::block_t<generator::ts::MethodBlock> makeMethod(parser::const_clas
             }
         }
 
-        if (annotations.exist("TS_DECORATOR"))
+        if (annotations.exist(TS_DECORATOR))
         {
-            for (const auto& it : annotations.values("TS_DECORATOR"))
+            for (const auto& it : annotations.values(TS_DECORATOR))
             {
                 decorator_t decorator = Decorator::fromString(it);
                 method->addDecorator(decorator);
             }
         }
 
-        if (annotations.exist("TS_IGNORE"))
+        if (annotations.exist(TS_IGNORE))
         {
             method->setIgnore();
         }
@@ -333,6 +337,7 @@ std::vector<InheritanceNode> InheritanceNode::bases() const
 
 std::string getExtends(parser::const_class_item_t item)
 {
+    using namespace constants::annotations;
     using namespace utils;
     using namespace parser;
 
@@ -348,7 +353,7 @@ std::string getExtends(parser::const_class_item_t item)
                 AnnotationList annotations(getAnnotations(it.item()->decl()));
 
                 // collect all annotated classes
-                if (annotations.exist("TS_EXPORT"))
+                if (annotations.exist(TS_EXPORT))
                 {
                     m_list.push_back(it.actualTypeName());
                 }
@@ -387,6 +392,7 @@ std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t i
                                                     const analyzer::TypeMapper& typeMapper,
                                                     const parser::Collection& collection)
 {
+    using namespace constants::annotations;
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;
@@ -419,7 +425,7 @@ std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t i
             {
                 AnnotationList annotations(getAnnotations(it.item()->decl()));
 
-                if (!annotations.exist("TS_EXPORT"))
+                if (!annotations.exist(TS_EXPORT))
                 {
                     extract(it);
                     collect_bases(it);
@@ -438,7 +444,7 @@ std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t i
             extract(node.item());
             collect_bases(node);
         }
-    
+
         std::vector<field_block_t> get() const
         {
             return m_fieldList;
@@ -455,6 +461,7 @@ std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t i
 
 std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_item_t item)
 {
+    using namespace constants::annotations;
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;
@@ -476,7 +483,7 @@ std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_it
     {
         AnnotationList annotations(getAnnotations(it.item()->decl()));
 
-        if (annotations.exist("TS_EXPORT"))
+        if (annotations.exist(TS_EXPORT))
         {
             basesSize += it.item()->size();
         }
@@ -549,6 +556,7 @@ std::vector<generator::ts::method_block_t> getClosures(parser::const_class_item_
                                                        const analyzer::TypeMapper& typeMapper,
                                                        const parser::Collection& collection)
 {
+    using namespace constants::annotations;
     using namespace parser;
     using namespace generator::ts;
     using namespace utils;
@@ -561,7 +569,7 @@ std::vector<generator::ts::method_block_t> getClosures(parser::const_class_item_
         {
             AnnotationList annotations(getAnnotations(it.decl()));
 
-            if (annotations.exist("TS_CLOSURE"))
+            if (annotations.exist(TS_CLOSURE))
             {
                 block_t<MethodBlock> method;
 

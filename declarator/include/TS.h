@@ -21,6 +21,10 @@
 
 #define MK_TS_CODE(code) __attribute__((annotate(MK_ANNOTATION(TS_CODE, code))))
 
+#define TS_MODULE(name) name __attribute__((annotate("TS_MODULE")))
+#define TS_NAMESPACE(name) name __attribute__((annotate("TS_NAMESPACE")))
+#define IS_TS_MODULE __attribute__((annotate("TS_MODULE")))
+#define IS_TS_NAMESPACE __attribute__((annotate("TS_NAMESPACE")))
 #define TS_EXPORT __attribute__((annotate("TS_EXPORT")))
 #define TS_METHOD __attribute__((annotate("TS_METHOD")))
 #define TS_CLOSURE __attribute__((annotate("TS_CLOSURE")))
@@ -34,6 +38,10 @@
 #define TS_CODE(code) class MK_TS_CODE(code) UNIQUE_NAME(TS_CODE) {};
 
 #else
+#define TS_MODULE(name) name
+#define TS_NAMESPACE(name) name
+#define IS_TS_MODULE
+#define IS_TS_NAMESPACE
 #define TS_EXPORT
 #define TS_METHOD
 #define TS_CLOSURE

@@ -26,6 +26,8 @@ class ContainerBlock : public AbstractBlock
     std::vector<abstract_block_t> m_children;
 
 protected:
+    ContainerBlock(Type type, const std::string& name = "");
+
     virtual void printChildImpl(int index,
                                 int size,
                                 const_abstract_block_t child,
@@ -36,8 +38,6 @@ protected:
     void printBody(generator::print::printer_t printer) const override;
 
 public:
-    ContainerBlock(Type type, const std::string& name = "");
-
     void add(abstract_block_t block);
     void add_before(const std::string& siblingName, abstract_block_t block);
     std::vector<abstract_block_t> children() const;

@@ -29,6 +29,7 @@ private:
 
 public:
     const clang::NamespaceDecl* decl() const;
+    void setDecl(const clang::NamespaceDecl* decl);
 };
 
 using namespace_item_t = item_t<NamespaceItem>;

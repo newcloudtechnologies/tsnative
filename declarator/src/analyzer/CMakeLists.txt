@@ -13,7 +13,9 @@ project(analyzer LANGUAGES CXX)
 
 set(INCLUDES
     Analyzer.h
+    Annotation.h
     ClassDetails.h
+    MakeNamespace.h
     MakeClass.h
     MakeGenericClass.h
     MakeEnum.h
@@ -25,7 +27,9 @@ set(INCLUDES
 
 set(SOURCES
     Analyzer.cpp
+    Annotation.cpp
     ClassDetails.cpp
+    MakeNamespace.cpp
     MakeClass.cpp
     MakeGenericClass.cpp
     MakeEnum.cpp
@@ -40,4 +44,4 @@ add_library(${PROJECT_NAME} OBJECT
     ${SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE parser generator utils)
+target_link_libraries(${PROJECT_NAME} PRIVATE parser generator constants utils)

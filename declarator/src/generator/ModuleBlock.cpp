@@ -19,7 +19,7 @@ namespace ts
 {
 
 ModuleBlock::ModuleBlock(const std::string& name)
-    : ContainerBlock(Type::MODULE, name)
+    : NamespaceBlock(Type::MODULE, name)
 {
 }
 
@@ -28,16 +28,6 @@ void ModuleBlock::printHeader(generator::print::printer_t printer) const
     using namespace utils;
 
     std::string img = strprintf(R"(declare module "%s" {)", name().c_str());
-
-    printer->print(img);
-    printer->enter();
-}
-
-void ModuleBlock::printFooter(generator::print::printer_t printer) const
-{
-    using namespace utils;
-
-    std::string img = "}";
 
     printer->print(img);
     printer->enter();

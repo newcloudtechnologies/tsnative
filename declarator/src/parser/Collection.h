@@ -63,9 +63,12 @@ public:
     static void init(const CXCursor& cursor);
     static Collection& get();
 
-    bool existItem(const std::string& name, const std::string& path) const;
+    bool existItem(const std::string& path, const std::string& name) const;
     const_abstract_item_t getItem(const std::string& path) const;
     abstract_item_t getItem(const std::string& path);
+
+    const_abstract_item_t getItem(const std::string& parentPath, const std::string& name) const;
+    abstract_item_t getItem(const std::string& parentPath, const std::string& name);
 
     void visit(std::function<void(const abstract_item_t item)> handler) const;
 };

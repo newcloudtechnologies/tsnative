@@ -56,4 +56,4 @@ add_library(${PROJECT_NAME} OBJECT
     ${SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PRIVATE constants utils)
