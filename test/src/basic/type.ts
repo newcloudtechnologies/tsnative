@@ -149,3 +149,25 @@
     c.clickTime = undefined;
     console.assert(!c.clickTime, "Type literal-typed optional property (2)");
 }
+
+{
+    type Time_t = {
+        msTime: number,
+    }
+
+    class MyClass {
+        clickTime: Time_t | undefined;
+
+        constructor() {
+            this.clickTime = { msTime: 35 };
+        }
+
+    }
+
+    const a = new MyClass();
+    console.assert((a.clickTime as Time_t).msTime === 35, "Optional type-literal type member initialization");
+
+    a.clickTime = undefined;
+    console.assert(!a.clickTime, "Optional type-literal type member 'undefined' assignment");
+
+}

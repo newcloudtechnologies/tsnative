@@ -64,7 +64,7 @@ export class Declaration {
 
   isOptional() {
     // @ts-ignore
-    return Boolean(this.declaration.questionToken);
+    return Boolean(this.declaration.questionToken) || this.type.isOptionalUnion();
   }
 
   get kind() {

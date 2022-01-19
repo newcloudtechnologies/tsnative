@@ -37,6 +37,12 @@ export class CastHandler extends AbstractExpressionHandler {
         const destinationLLVMType = destinationTSType.getLLVMType();
         const nakedDestinationType = destinationLLVMType.unwrapPointer();
 
+        if (value.isOptionalUnion()) {
+          // mkrv @todo: cpp backend
+          const castedPtr = this.generator.builder.createSafeInBoundsGEP(value, [0, 1]);
+          return this.generator.builder.createLoad(castedPtr);
+        }
+
         if (!value.isUnion()) {
           return this.generator.builder.createBitCast(value, destinationTSType.getLLVMType().ensurePointer());
         }
