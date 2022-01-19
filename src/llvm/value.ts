@@ -139,7 +139,6 @@ export class LLVMValue {
         }
       }
 
-      console.log(this, this.generator.module.print());
       throw new Error(`Cannot adjust '${value.type.toString()}' to '${type.toString()}'`);
     }
 
