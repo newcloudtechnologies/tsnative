@@ -1297,3 +1297,41 @@
   }
   another()();
 }
+
+{
+  class Widget { }
+
+  class RxWidget_t {
+    protected _selfWidget: Widget;
+
+    constructor() {
+      this._selfWidget = new Widget();
+    }
+  }
+
+  class RxText_t extends RxWidget_t { }
+
+  function RxText(): RxText_t {
+    return new RxText_t();
+  }
+
+  class RxComponent_t extends RxWidget_t {
+    constructor() {
+      super();
+      this.render();
+    }
+
+    protected render(): RxWidget_t {
+      return new RxWidget_t();
+    }
+  }
+
+  class MyStatum_t extends RxComponent_t {
+    protected render(): RxWidget_t {
+      return RxText();
+    }
+
+  }
+
+  new MyStatum_t();
+}

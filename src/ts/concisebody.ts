@@ -108,12 +108,14 @@ export class ConciseBody {
                 Declaration.create(node, this.generator)
               );
 
-              ConciseBody.create(node.body, this.generator).getFunctionEnvironmentVariables(
-                innerFunctionSignature,
-                extendScope,
-                environmentVariables,
-                handled
-              );
+              extendScope.withThisKeeping(() => {
+                ConciseBody.create(node.body, this.generator).getFunctionEnvironmentVariables(
+                  innerFunctionSignature,
+                  extendScope,
+                  environmentVariables,
+                  handled
+                );
+              });
             }
           } else if (ts.isPropertyAccessExpression(node)) {
             const accessorType = Expression.create(node, this.generator).getAccessorType();
@@ -131,12 +133,14 @@ export class ConciseBody {
                 handled.push(declarationBody);
 
                 const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
-                ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
-                  innerFunctionSignature,
-                  extendScope,
-                  environmentVariables,
-                  handled
-                );
+                extendScope.withThisKeeping(() => {
+                  ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
+                    innerFunctionSignature,
+                    extendScope,
+                    environmentVariables,
+                    handled
+                  );
+                });
               }
             }
           } else if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
@@ -274,12 +278,14 @@ export class ConciseBody {
                 handled.push(declarationBody);
 
                 const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
-                ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
-                  innerFunctionSignature,
-                  extendScope,
-                  environmentVariables,
-                  handled
-                );
+                extendScope.withThisKeeping(() => {
+                  ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
+                    innerFunctionSignature,
+                    extendScope,
+                    environmentVariables,
+                    handled
+                  );
+                });
               }
             }
           }
