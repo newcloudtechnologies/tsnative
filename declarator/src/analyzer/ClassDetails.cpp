@@ -33,7 +33,7 @@
 namespace
 {
 
-std::string getFullName(const std::string& name, const std::string& prefix)
+std::string getFullName(const std::string& prefix, const std::string& name)
 {
     return !prefix.empty() ? prefix + "::" + name : name;
 }
@@ -355,7 +355,7 @@ std::string getExtends(parser::const_class_item_t item)
                 // collect all annotated classes
                 if (annotations.exist(TS_EXPORT))
                 {
-                    m_list.push_back(it.actualTypeName());
+                    m_list.push_back(getFullName(it.item()->prefix(), it.actualTypeName()));
                 }
                 else
                 {
@@ -385,7 +385,7 @@ std::string getExtends(parser::const_class_item_t item)
                         join(bases).c_str());
     }
 
-    return !bases.empty() ? bases.at(0) : "";
+    return !bases.empty() ? collapseType(item->prefix(), bases.at(0)) : "";
 }
 
 std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item,

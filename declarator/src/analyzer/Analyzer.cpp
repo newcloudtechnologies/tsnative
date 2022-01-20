@@ -147,8 +147,8 @@ parser::item_list_t getSuitableItems(const parser::Collection& collection)
         {
             AnnotationList anotations(getItemAnnotations(item));
 
-            if (anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE) ||
-                (item->isLocal() && (anotations.exist(TS_EXPORT) || anotations.exist(TS_CODE))))
+            if (item->isLocal() && (anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE) ||
+                                    anotations.exist(TS_EXPORT) || anotations.exist(TS_CODE)))
             {
                 result.push_back(item);
             }
