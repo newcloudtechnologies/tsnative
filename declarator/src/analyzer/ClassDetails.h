@@ -22,6 +22,8 @@
 #include "parser/ClassTemplateItem.h"
 #include "parser/Collection.h"
 
+#include <optional>
+
 namespace analyzer
 {
 
