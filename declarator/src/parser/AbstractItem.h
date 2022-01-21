@@ -55,6 +55,7 @@ public:
     std::string name() const;
     std::string prefix() const;
     bool isLocal() const;
+    void setLocal(bool isLocal);
 
     static bool isContainer(const_abstract_item_t item);
     static std::string getParentName(const_abstract_item_t item);

@@ -214,7 +214,7 @@ private:
     void addClassTemplate(const clang::NamedDecl* decl, bool isLocal)
     {
         using namespace constants::annotations;
-        
+
         const auto* classTemplateDecl = clang::dyn_cast_or_null<const clang::ClassTemplateDecl>(decl);
         _ASSERT(classTemplateDecl);
 
@@ -618,6 +618,7 @@ void Collection::addNamespace(const std::string& name,
         {
             auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
             namespaceItem->setDecl(decl);
+            namespaceItem->setLocal(true);
         }
     }
     else

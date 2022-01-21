@@ -41,9 +41,15 @@ std::string AbstractItem::prefix() const
 {
     return m_prefix;
 }
+
 bool AbstractItem::isLocal() const
 {
     return m_isLocal;
+}
+
+void AbstractItem::setLocal(bool isLocal)
+{
+    m_isLocal = isLocal;
 }
 
 bool AbstractItem::isContainer(const_abstract_item_t item)

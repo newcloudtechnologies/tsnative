@@ -21,5 +21,5 @@ set(TS_COMPILER "${TS_COMPILER_DIR}/compiler${CMAKE_EXECUTABLE_SUFFIX}")
 find_package_handle_standard_args(TsCompiler DEFAULT_MSG
   TS_COMPILER)
 
-
+message(STATUS "Compiler found: ${TS_COMPILER}")
 

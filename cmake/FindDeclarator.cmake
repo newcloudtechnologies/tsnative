@@ -12,17 +12,13 @@ cmake_minimum_required(VERSION 3.10)
 
 include(FindPackageHandleStandardArgs)
 
-get_filename_component(Declarator_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../declarator/include" REALPATH)
+get_filename_component(TS_DECLARATOR_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../declarator/include" REALPATH)
+get_filename_component(TS_DECLARATOR_BIN_DIR "${CMAKE_CURRENT_LIST_DIR}/../bin" REALPATH)
 
-find_program(Declarator_BIN
-  NAME declarator declarator.exe
-  PATHS
-    ${CMAKE_CURRENT_LIST_DIR}/../bin
-    ${CMAKE_CURRENT_LIST_DIR}/../bin/Release
-    ${CMAKE_CURRENT_LIST_DIR}/../bin/Debug
-)
+set(TS_DECLARATOR "${TS_DECLARATOR_BIN_DIR}/declarator${CMAKE_EXECUTABLE_SUFFIX}")
 
 find_package_handle_standard_args(Declarator DEFAULT_MSG
-  Declarator_BIN Declarator_INCLUDE_DIR)
+    TS_DECLARATOR TS_DECLARATOR_INCLUDE_DIR)
 
-message(STATUS "Declarator found: ${Declarator_BIN}")
+message(STATUS "Declarator INCLUDE dir: ${TS_DECLARATOR_INCLUDE_DIR}")
+message(STATUS "Declarator found: ${TS_DECLARATOR}")
