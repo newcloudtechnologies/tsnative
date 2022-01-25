@@ -27,6 +27,8 @@ pipeline {
 
     parameters {
         booleanParam(name: 'PublishWithoutIncrement', defaultValue: false, description: 'Whether we need to publish artifact to npm registry (without version increment')
+        string(name: 'IMAGE_NAME_FOR_LINUX_BUILD', defaultValue: "${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_BUILD_CMAKE_TS_NAME}", description: 'Name container image for build on Linux')
+        string(name: 'IMAGE_TAG_FOR_LINUX_BUILD', defaultValue: "${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_BUILD_CMAKE_TS_VERSION}", description: 'Tag container image for build on Linux')
     }
 
     stages {
@@ -114,7 +116,7 @@ pipeline {
                     agent {
                         // future refactoring - using harbor.devos.club
                         docker {
-                            image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/antiq-ubuntu-cmake-typescript-env:1.8"
+                            image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/${params.IMAGE_NAME_FOR_LINUX_BUILD}:${params.IMAGE_TAG_FOR_LINUX_BUILD}"
                             registryUrl "${JENKINS_DOCKER_REGISTRY_URL}"
                             registryCredentialsId "${JENKINS_DOCKER_REGISTRY_CI_AUTHENTICATION_TOKEN}"
                             args "--user root"
