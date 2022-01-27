@@ -8,18 +8,7 @@
 # at http://ncloudtech.com/contact.html
 #
 
-cmake_minimum_required(VERSION 3.10)
-project(cpp_exts LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-find_package(StdLib REQUIRED)
-
-# For feature_summary()
-include(FeatureSummary)
-include(GNUInstallDirs) # provides CMAKE_INSTALL_* variables
+set (EXTS_TARGET cpp_exts)
 
 set(INCLUDES
     button.h
@@ -31,27 +20,10 @@ set(SOURCES
     point.cpp
 )
 
-feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)
+list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
+list(TRANSFORM INCLUDES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 
-add_library(${PROJECT_NAME}
-    ${INCLUDES}
-    ${SOURCES}
+ts_build_extension ( ${EXTS_TARGET}
+    SOURCES ${SOURCES} ${INCLUDES}
+    INCLUDE_PATHS ${CMAKE_CURRENT_LIST_DIR}
 )
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  DEPENDENCIES "${StdLib_LIBRARY}"
-)
-
-target_link_libraries(${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC
-    ${StdLib_INCLUDE_DIR}
-)
-

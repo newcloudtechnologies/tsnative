@@ -13,7 +13,7 @@ import { Build } from "./buildutils/build";
 import { TemplateInstantiator } from "./cppintegration/templateinstantiator";
 import { Preprocessor } from "./preprocessing";
 
-SegfaultHandler.registerHandler("ts-llvm-crash.log");
+SegfaultHandler.registerHandler("tsnative-crash.log");
 
 argv
   .option("--printIR", "print LLVM assembly to stdout")
@@ -21,9 +21,10 @@ argv
   .option("--processTemplateClasses", "instantiate template classes")
   .option("--processTemplateFunctions", "instantiate template functions")
   .option("--templatesOutputDir [value]", "specify path to instantiated templates", "")
-  .option("--target [value]", "generate code for the given target")
-  .option("--build [value]", "specify build dir")
-  .option("--tsconfig [value]", "specify tsconfig", path.join(__dirname, "..", "..", "tsconfig.json"))
+  .option("--target <absolute path>", "generate code for the given target")
+  .option("--build <absolute path>", "specify build dir")
+  .option("--baseUrl <absolute path>", "specify base dir")
+  .option("--tsconfig <absolute path>", "specify tsconfig")
   .option("--demangledTables <items>", "specify demangled symbol files (comma separated list)", (value: string) => {
     return value.split(",");
   })
@@ -86,7 +87,13 @@ async function main() {
     options.allowUnreachableCode = false;
   }
 
-  options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
+  if (argv.baseUrl) {
+    options.baseUrl = path.resolve(argv.baseUrl);
+    console.info("baseUrl is set to " + options.baseUrl);
+  } else {
+    options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
+    console.warn("baseUrl argument is not provided. Using default value: " + options.baseUrl);
+  }
 
   const host = ts.createCompilerHost(options);
   const preprocessor = new Preprocessor(files, options, host, argv.build);

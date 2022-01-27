@@ -1,0 +1,13 @@
+{
+    "name": "test_ts_app",
+    "version": "0.0.1",
+    "description": "ts test app",
+    "scripts": {
+        "build_with_package": "bash -x -exec 'tsnative --source $(pwd)/src/main.ts --tsconfig $(pwd)/tsconfig.json --build $(pwd)/../../out/build/test_app'",
+        "build_from_stage": "bash -x -exec '$(pwd)/../../out/install/tsnative.sh --tsnative_root $(pwd)/../../out/install --project_root $(pwd) --source $(pwd)/src/main.ts --extension $(pwd)/cpp --tsconfig $(pwd)/tsconfig.json --build $(pwd)/../../out/build/test_app'",
+        "clean": "rm -rf $(pwd)/../../out/build/test_app"
+    },
+    "dependencies": {
+        "tsnative": "file:../../out/install/tsnative-0.1.20.tgz"
+    }
+}

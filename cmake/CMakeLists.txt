@@ -12,60 +12,89 @@ cmake_minimum_required(VERSION 3.10)
 
 project(builder LANGUAGES CXX)
 
+macro (printvar NAME)
+    message(STATUS "${NAME} = ${${NAME}}")
+endmacro()
+
+# include(CMakePrintSystemInformation)
+
+if(IS_TEST)
+    enable_testing()
+endif()
+
+# Convert provided paths into absolute
+get_filename_component(TSNATIVE_ROOT ${TSNATIVE_ROOT} ABSOLUTE)
+get_filename_component(PROJECT_ROOT ${PROJECT_ROOT} ABSOLUTE)
+get_filename_component(PROJECT_BUILD_DIR ${PROJECT_BUILD_DIR} ABSOLUTE)
+get_filename_component(PROJECT_OUTPUT_BINARY ${PROJECT_OUTPUT_BINARY} ABSOLUTE)
+get_filename_component(PROJECT_ENTRY_NAME ${PROJECT_ENTRY_NAME} ABSOLUTE)
+get_filename_component(PROJECT_BASE_URL ${PROJECT_BASE_URL} ABSOLUTE)
+
+printvar(TSNATIVE_ROOT)
+printvar(PROJECT_ROOT)
+printvar(PROJECT_BUILD_DIR)
+printvar(PROJECT_OUTPUT_BINARY)
+printvar(PROJECT_ENTRY_NAME)
+printvar(PROJECT_BASE_URL)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../std/cmake")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
-include("${CMAKE_CURRENT_LIST_DIR}/utils.cmake")
+find_package(tsnative REQUIRED)
 
-set(OPTIMIZATION_LEVEL "-O3")
-set(EXTRA_DEPENDENCIES "")
-set(INCLUDES )
-set(DEFINITIONS )
-set(LIBRARY_DEPENDENCIES )
+if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 14)
+endif()
+
+include(TsBuildUtils)
+include(TsDeclaratorUtils)
 
 add_custom_target(build_anyway ALL)
 
-# build extensions from builder only
-set(TS_EXTENSION_TARGET "exts")
+# FIXME? StdLib_INCLUDE_DIR point to ${TSNATIVE_ROOT}/include
+# and helps to find declarator's TS.h
+set (INCLUDES "${StdLib_INCLUDE_DIR}")
 
-if (NOT ${EXTENSION} STREQUAL "")
-    include(${EXTENSION}/CMakeLists.txt)
+if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
+    message(STATUS "Loading extension from ${PROJECT_TS_EXTENSION_DIR}")
+    include("${PROJECT_TS_EXTENSION_DIR}/CMakeLists.txt")
 
     get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDES)
     get_target_property(exts_LIBRARY ${TS_EXTENSION_TARGET} OUTPUT)
-    get_property(LIBRARY_DEPENDENCIES TARGET ${TS_EXTENSION_TARGET} PROPERTY LIBRARY_DEPENDENCIES)
-    get_target_property(exts_HEADER_DEPENDENCIES ${TS_EXTENSION_TARGET} HEADER_DEPENDENCIES)
-    get_target_property(EXTRA_DEPENDENCIES ${TS_EXTENSION_TARGET} EXTRA_DEPENDENCIES)
-    get_property(DEFINITIONS TARGET ${TS_EXTENSION_TARGET} PROPERTY DEFINITIONS)
+    get_target_property(exts_LIBRARY_DEPENDENCIES ${TS_EXTENSION_TARGET} LIBRARY_DEPENDENCIES)
+    get_target_property(exts_DEFINITIONS ${TS_EXTENSION_TARGET} DEFINITIONS)
 
-    list(FILTER exts_HEADER_DEPENDENCIES EXCLUDE REGEX "^/usr*")
-    set(INCLUDES ${exts_INCLUDES} ${exts_HEADER_DEPENDENCIES})
-
+    # TODO: why?
     get_target_property(EXTRA_CMAKE ${TS_EXTENSION_TARGET} EXTRA_CMAKE)
-
     if (${EXTRA_CMAKE})
         include(${EXTRA_CMAKE})
     endif()
+    
+    printvar(exts_INCLUDES)
+    printvar(exts_LIBRARY)
+    printvar(exts_LIBRARY_DEPENDENCIES)
+    printvar(exts_DEFINITIONS)
+    printvar(EXTRA_CMAKE)
+
+    set (INCLUDES "${INCLUDES} ${exts_INCLUDES}")
 else()
+    set(TS_EXTENSION_TARGET fake)
     add_custom_target(${TS_EXTENSION_TARGET})
 endif()
 
-if (PRINT_IR)
-    set(PRINT_IR TRUE)
-else()
-    set(PRINT_IR FALSE)
-endif()
-
-list(APPEND INCLUDES
-    "${StdLib_INCLUDE_DIR}")
 
 list(APPEND DEPENDENCIES
     "${exts_LIBRARY}"
-    "${LIBRARY_DEPENDENCIES}"
+    "${exts_LIBRARY_DEPENDENCIES}"
     "${StdLib_LIBRARY}")
 
-getProjectFiles("${ENTRY}" SOURCES)
-
-build(binary_target ${TS_EXTENSION_TARGET} "${ENTRY}" "${SOURCES}" "${INCLUDES}" "${DEPENDENCIES}" "${EXTRA_DEPENDENCIES}" "${DEFINITIONS}" "${OPTIMIZATION_LEVEL}" FALSE "${PRINT_IR}")
+build(binary_target ${TS_EXTENSION_TARGET} 
+    "${PROJECT_ENTRY_NAME}"
+    "${INCLUDES}"
+    "${DEPENDENCIES}"
+    "${exts_DEFINITIONS}"
+    "-O3"
+    ${IS_TEST}
+    "${PRINT_IR}")
 
 add_dependencies(build_anyway ${binary_target})

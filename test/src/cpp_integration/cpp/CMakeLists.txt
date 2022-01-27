@@ -8,20 +8,10 @@
 # at http://ncloudtech.com/contact.html
 #
 
-cmake_minimum_required(VERSION 3.10)
-project(cpp_integration_exts LANGUAGES CXX)
+# TODO: Create intermediate lib that acts as an extesion and links this one.
+# This way we won't need to recompile this lib for every cpp_integration test
 
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-find_package(StdLib REQUIRED)
-
-# For feature_summary()
-include(FeatureSummary)
-include(GNUInstallDirs) # provides CMAKE_INSTALL_* variables
-
-include_directories(${StdLib_INCLUDE_DIR})
+set (EXTS_TARGET cpp_integration_exts)
 
 set(INCLUDES
     aggregate.h
@@ -46,24 +36,10 @@ set(SOURCES
     component.cpp
 )
 
-feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)
+list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
+list(TRANSFORM INCLUDES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 
-add_library(${PROJECT_NAME}
-    ${INCLUDES}
-    ${SOURCES}
+ts_build_extension ( ${EXTS_TARGET}
+    SOURCES ${SOURCES} ${INCLUDES}
+    INCLUDE_PATHS ${CMAKE_CURRENT_LIST_DIR}
 )
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  DEPENDENCIES "${StdLib_LIBRARY}"
-)
-
-target_link_libraries(${PROJECT_NAME})
-

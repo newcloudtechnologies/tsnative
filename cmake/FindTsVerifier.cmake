@@ -20,5 +20,3 @@ set(TS_VERIFIER "${TS_VERIFIER_DIR}/verifier${CMAKE_EXECUTABLE_SUFFIX}")
 
 find_package_handle_standard_args(TsVerifier DEFAULT_MSG
   TS_VERIFIER)
-
-message(STATUS "Verifier found: ${TS_VERIFIER}")

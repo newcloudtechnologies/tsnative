@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./out/build/test_app",
+    "paths": {
+      "cpp": ["declarations"]
+    }
+  },
+  "libs": []
+}

@@ -70,7 +70,16 @@ llvm_map_components_to_libnames(llvm_libs support FrontendOpenMP)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${CLANG_LIB} clangAST clangBasic clangLex ${llvm_libs})
 
 include(GNUInstallDirs) # provides CMAKE_INSTALL_* variables
-install(FILES
-     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}"
-     DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    PUBLIC_HEADER "include/TS.h"
+)
+
+install(
+    TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}_export
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    PUBLIC_HEADER DESTINATION include
 )

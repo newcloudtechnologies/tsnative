@@ -1,11 +1,8 @@
 node_modules/
-build/
 out/
 *.log
 .idea/
 .vscode/
-bin/
-std/lib
 
 # ignore lock file since prebuilt packages are used
 package-lock.json

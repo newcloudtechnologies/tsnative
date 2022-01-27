@@ -1,18 +1,22 @@
 {
     "name": "tsnative",
-    "version": "0.1.29",
+    "version": "0.2.0",
     "scripts": {
-        "transpile": "tsc",
-        "start": "playground/start.sh",
-        "test": "bash -x -exec 'test/start.sh'",
+        "transpile": "tsc --outDir out/build",
+        "start": "./start.sh",
+        "test": "bash -x -exec 'test/testrunner.sh --clean'",
         "runtime_test": "ts-node test/runtime_test.ts",
-        "clean": "rm -rf out std/lib bin",
+        "stage_app_test" : "bash -x -exec 'test/testrunner.sh --test-filter app'",
+        "package_app_test" : "echo 'TODO: implement end-to-end package test inside tsnative to run before publication'",
+        "clean": "rm -rf out",
         "lint": "tslint --project tsconfig.json",
         "format": "tslint --project tsconfig.json --fix",
-        "build": "sh std/build.sh && sh declarator/build.sh && tsc && npm run pkg",
-        "prepack": "npm run build",
-        "pkg": "pkg compiler --output bin/compiler && pkg verifier --output bin/verifier",
-        "publishToLocalRegistry": "npm-prebuilt-dependencies publish"
+        "build": "npm run build_std && npm run build_host && npm run transpile && npm run pkg",
+        "build_std" : "sh std/build.sh",
+        "build_host" : "sh build_host.sh",
+        "pkg": "pkg compiler --output out/install/bin/compiler && pkg verifier --output out/install/bin/verifier",
+        "pack_stage": "cp package.json out/install && cd out/install && npm pack",
+        "publishToLocalRegistry": "cd out/install && npm-prebuilt-dependencies publish"
     },
     "bin": {
         "tsnative": "tsnative.sh"
@@ -44,14 +48,6 @@
         "chalk": "^4.1.2"
     },
     "files": [
-        "std/include/*",
-        "std/cmake/*",
-        "std/decorators/*",
-        "std/definitions/*",
-        "std/lib/libtsnative-std.a",
-        "declarator/include/*",
-        "cmake/*",
-        "bin/*",
-        "tsnative.sh"
+        "*"
     ]
 }

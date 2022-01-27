@@ -1,21 +1,19 @@
 {
     "name": "tsnative",
     "bin": {
-	   "compiler": "compiler.js"
+	   "compiler": "../out/build/src/main.js"
     },
     "publishConfig": {
         "registry": "https://nexus.devos.club/repository/antiq_npm_local/"
     },
     "pkg": {
         "assets": [
-            "../tsconfig.json",
-            "../out/std/*",
-            "../out/src/*",
-            "../out/src/**/*",
+            "../out/build/src/*",
+            "../out/build/src/**/*",
+            "../out/build/std/constants.js",
+            "../out/build/std/definitions/*",
             "../node_modules/llvm-node/build/Release/llvm-node.node",
-            "../node_modules/segfault-handler/build/Release/segfault-handler.node",
-            "../std/*",
-            "../std/**/*"
+            "../node_modules/segfault-handler/build/Release/segfault-handler.node"
         ]
     },
     "dependencies": {
