@@ -21,7 +21,60 @@
 
 #include "constants/Annotations.h"
 
+#include "utils/Exception.h"
+#include "utils/Strings.h"
+
+#include <map>
 #include <string>
+#include <vector>
+
+namespace
+{
+
+class Overloads
+{
+private:
+    template <typename T>
+    static std::map<std::string, int> frequencyMap(T&& container)
+    {
+        std::map<std::string, int> result;
+
+        for (const auto& it : container)
+        {
+            std::string name = it->name();
+
+            if (result.find(name) == result.end())
+            {
+                result[name] = 1;
+            }
+            else
+            {
+                ++result[name];
+            }
+        }
+
+        return result;
+    }
+
+public:
+    template <typename T>
+    static std::vector<std::string> check(T&& container)
+    {
+        std::vector<std::string> result;
+
+        for (const auto& it : frequencyMap<T>(container))
+        {
+            if (it.second > 1)
+            {
+                result.push_back(it.first);
+            }
+        }
+
+        return result;
+    }
+};
+
+} //  namespace
 
 namespace analyzer
 {
@@ -45,12 +98,38 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
         classBlock->addField(it);
     }
 
-    for (const auto& it : getMethods(item, typeMapper, Collection::get()))
+    std::vector<generator::ts::method_block_t> methods = getMethods(item, typeMapper, Collection::get());
+
+    std::vector<std::string> method_overloads = Overloads::check(methods);
+
+    if (!method_overloads.empty())
+    {
+        throw utils::Exception(
+            R"(overloaded methods detected: "%s",  class: "%s", scope: "%s")",
+            utils::join(method_overloads).c_str(),
+            item->name().c_str(),
+            item->prefix().c_str());
+    }
+
+    for (const auto& it : methods)
     {
         classBlock->addMethod(it);
     }
 
-    for (const auto& it : getClosures(item, typeMapper, Collection::get()))
+    std::vector<generator::ts::method_block_t> closures = getClosures(item, typeMapper, Collection::get());
+
+    std::vector<std::string> closure_overloads = Overloads::check(closures);
+
+   if (!closure_overloads.empty())
+    {
+        throw utils::Exception(
+            R"(overloaded closures detected: "%s",  class: "%s", scope: "%s")",
+            utils::join(closure_overloads).c_str(),
+            item->name().c_str(),
+            item->prefix().c_str());
+    }
+
+    for (const auto& it : closures)
     {
         classBlock->addClosure(it);
     }

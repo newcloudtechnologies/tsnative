@@ -254,15 +254,19 @@ std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const pars
                                                                       const std::string& path)
 {
     std::optional<parser::const_abstract_item_t> result;
+    parser::const_item_list_t items;
 
     try
     {
-        result = collection.getItem(path);
+        items = collection.getItems(path);
     }
     catch (std::exception&)
     {
         // result remains empty
     }
+
+    _ASSERT(items.size() == 1);
+    result = items.at(0);
 
     return result;
 }

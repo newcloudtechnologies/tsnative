@@ -26,6 +26,7 @@ using abstract_item_t = item_t<AbstractItem>;
 using const_abstract_item_t = item_t<const AbstractItem>;
 
 using item_list_t = std::vector<abstract_item_t>;
+using const_item_list_t = std::vector<const_abstract_item_t>;
 
 struct AbstractItem
 {

@@ -18,6 +18,8 @@
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
+#include <algorithm>
+
 namespace analyzer
 {
 
@@ -28,6 +30,19 @@ void makeFunction(parser::const_function_item_t item,
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;
+
+    auto children = block->children();
+
+    auto it = std::find_if(
+        children.begin(), children.end(), [name = item->name()](const auto& it) { return it->name() == name; });
+
+    if (it != children.end())
+    {
+        throw utils::Exception(
+            R"(function with name "%s" is already exist in scope "%s". TypeScrips doesn't support reloading functions)",
+            item->name().c_str(),
+            item->prefix().c_str());
+    }
 
     function_block_t functionBlock = AbstractBlock::make<FunctionBlock>(
         item->name(), collapseType(item->prefix(), mapType(typeMapper, item->returnType())), true);

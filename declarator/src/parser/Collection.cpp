@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <deque>
 #include <functional>
+#include <iterator>
 #include <vector>
 
 namespace
@@ -124,6 +125,13 @@ bool NamespaceChecker::isLocal(CXCursor cursor)
     clang_visitChildren(cursor, NamespaceChecker::visitor, (CXClientData)&context);
 
     return context.m_isLocal;
+}
+
+template <typename T>
+inline typename T::value_type _expectedOne(T&& container)
+{
+    _ASSERT(container.size() == 1);
+    return container.at(0);
 }
 
 } // namespace
@@ -434,30 +442,36 @@ void Collection::populate(const CXCursor& cursor)
 
 bool Collection::existItem(const std::string& path, const std::string& name) const
 {
-    const_abstract_item_t item = getItem(path, name);
+    const_item_list_t items = getItems(path, name);
 
-    return item ? true : false;
+    return !items.empty();
 }
 
-const_abstract_item_t Collection::getItem(const std::string& path) const
+const_item_list_t Collection::getItems(const std::string& path) const
 {
-    return const_cast<Collection*>(this)->getItem(path);
+    auto items = const_cast<Collection*>(this)->getItems(path);
+    return {items.begin(), items.end()};
 }
 
-abstract_item_t Collection::getItem(const std::string& path)
+item_list_t Collection::getItems(const std::string& path)
 {
-    abstract_item_t result;
+    item_list_t result;
 
-    auto find = [path](const item_list_t& items, const std::string& name) -> abstract_item_t
+    auto find_all = [path](const item_list_t& items, const std::string& name) -> item_list_t
     {
-        auto it = std::find_if(items.begin(), items.end(), [name](const auto& it) { return it->name() == name; });
+        item_list_t result;
+        std::copy_if(items.begin(),
+                     items.end(),
+                     std::back_inserter(result),
+                     [name](const auto& it) { return it->name() == name; });
 
-        if (it == items.end())
+        if (result.empty())
         {
-            throw utils::Exception(R"(path "%s" is not correct: name "%s" is not found)", path.c_str(), name.c_str());
+            throw utils::Exception(
+                R"(path "%s" is not correct: no any item with name "%s")", path.c_str(), name.c_str());
         }
 
-        return *it;
+        return result;
     };
 
     auto split = [](std::string s)
@@ -508,10 +522,10 @@ abstract_item_t Collection::getItem(const std::string& path)
 
     if (path.empty())
     {
-        return m_root;
+        return {m_root};
     }
 
-    item_list_t items = m_root->children();
+    item_list_t children = m_root->children();
 
     std::vector<std::string> names = split(path);
 
@@ -519,11 +533,19 @@ abstract_item_t Collection::getItem(const std::string& path)
     {
         std::string name = names.at(i);
 
-        abstract_item_t item = find(items, name);
-
         // not last element
         if (i < names.size() - 1)
         {
+            item_list_t items = find_all(children, name);
+
+            if (items.size() != 1)
+            {
+                throw utils::Exception(
+                    R"(path "%s" is not correct: many items "%s" found)", path.c_str(), name.c_str());
+            }
+
+            abstract_item_t item = items.at(0);
+
             if (!AbstractItem::isContainer(item))
             {
                 throw utils::Exception(
@@ -532,26 +554,34 @@ abstract_item_t Collection::getItem(const std::string& path)
 
             auto containerItem = std::static_pointer_cast<ContainerItem>(item);
 
-            items = containerItem->children();
+            children = containerItem->children();
         }
         else
         {
-            result = item;
+            result = find_all(children, name);
         }
     }
 
     return result;
 }
 
-const_abstract_item_t Collection::getItem(const std::string& parentPath, const std::string& name) const
+const_item_list_t Collection::getItems(const std::string& parentPath, const std::string& name) const
 {
-    return const_cast<Collection*>(this)->getItem(parentPath, name);
+    auto items = const_cast<Collection*>(this)->getItems(parentPath, name);
+    return {items.begin(), items.end()};
 }
 
-abstract_item_t Collection::getItem(const std::string& parentPath, const std::string& name)
+item_list_t Collection::getItems(const std::string& parentPath, const std::string& name)
 {
-    abstract_item_t result;
-    abstract_item_t item = getItem(parentPath);
+    item_list_t result;
+    item_list_t items = getItems(parentPath);
+
+    if (items.size() != 1)
+    {
+        throw utils::Exception(R"(many items found with this path: "%s")", parentPath.c_str());
+    }
+
+    abstract_item_t item = items.at(0);
 
     if (name.empty())
         return result;
@@ -559,14 +589,12 @@ abstract_item_t Collection::getItem(const std::string& parentPath, const std::st
     if (AbstractItem::isContainer(item))
     {
         auto parent = std::static_pointer_cast<const ContainerItem>(item);
-        for (const auto& it : parent->children())
-        {
-            if (it->name() == name)
-            {
-                result = it;
-                break;
-            }
-        }
+        item_list_t children = parent->children();
+
+        std::copy_if(children.begin(),
+                     children.end(),
+                     std::back_inserter(result),
+                     [name](const auto& it) { return it->name() == name; });
     }
 
     return result;
@@ -611,7 +639,7 @@ void Collection::addNamespace(const std::string& name,
     if (existItem(prefix, name))
     {
         // Replace existed namespace declaration by "local"
-        abstract_item_t item = getItem(prefix, name);
+        abstract_item_t item = _expectedOne(getItems(prefix, name));
         _ASSERT(item->type() == AbstractItem::Type::NAMESPACE);
 
         if (!item->isLocal() && isLocal)
@@ -624,7 +652,7 @@ void Collection::addNamespace(const std::string& name,
     else
     {
         // Put to collection first namespace declaration
-        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
         auto item = AbstractItem::make<NamespaceItem>(name, prefix, isLocal, decl);
         parent->addItem(item);
     }
@@ -639,7 +667,7 @@ void Collection::addClass(const std::string& name,
 
     if (!existItem(prefix, name))
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
         parser::class_item_t item;
 
         AnnotationList annotations(getAnnotations(decl));
@@ -664,7 +692,7 @@ void Collection::addClassTemplate(const std::string& name,
 {
     if (!existItem(prefix, name))
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
         auto item = AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, decl);
         parent->addItem(item);
     }
@@ -674,7 +702,7 @@ void Collection::addEnum(const std::string& name, const std::string& prefix, boo
 {
     if (!existItem(prefix, name))
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
         auto item = AbstractItem::make<EnumItem>(name, prefix, isLocal, decl);
         parent->addItem(item);
     }
@@ -685,12 +713,9 @@ void Collection::addFunction(const std::string& name,
                              bool isLocal,
                              const clang::FunctionDecl* decl)
 {
-    if (!existItem(prefix, name))
-    {
-        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
-        auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
-        parent->addItem(item);
-    }
+    auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
+    auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
+    parent->addItem(item);
 }
 
 void Collection::addFunctionTemplate(const std::string& name,
@@ -698,12 +723,9 @@ void Collection::addFunctionTemplate(const std::string& name,
                                      bool isLocal,
                                      const clang::FunctionTemplateDecl* decl)
 {
-    if (!existItem(prefix, name))
-    {
-        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
-        auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);
-        parent->addItem(item);
-    }
+    auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
+    auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);
+    parent->addItem(item);
 }
 
 } //  namespace parser

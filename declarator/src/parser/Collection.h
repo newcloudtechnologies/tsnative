@@ -64,11 +64,11 @@ public:
     static Collection& get();
 
     bool existItem(const std::string& path, const std::string& name) const;
-    const_abstract_item_t getItem(const std::string& path) const;
-    abstract_item_t getItem(const std::string& path);
+    const_item_list_t getItems(const std::string& path) const;
+    item_list_t getItems(const std::string& path);
 
-    const_abstract_item_t getItem(const std::string& parentPath, const std::string& name) const;
-    abstract_item_t getItem(const std::string& parentPath, const std::string& name);
+    const_item_list_t getItems(const std::string& parentPath, const std::string& name) const;
+    item_list_t getItems(const std::string& parentPath, const std::string& name);
 
     void visit(std::function<void(const abstract_item_t item)> handler) const;
 };
