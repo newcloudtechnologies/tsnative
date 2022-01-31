@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iterable.h"
+#include "tsnumber.h"
 
 #include <iostream>
 #include <string>
@@ -12,28 +13,28 @@ class string : public Iterable<string*>
 {
 public:
     string();
-    string(double d);
+    string(Number* d);
     string(const int8_t* s);
     string(const std::string& s);
     string(const char* s);
 
-    double length() const;
+    Number* length() const;
     string* concat(const string& other) const;
 
     bool startsWith(const string& other) const;
-    bool startsWith(const string& other, double startIndex) const;
+    bool startsWith(const string& other, Number* startIndex) const;
 
     bool endsWith(const string& other) const;
-    bool endsWith(const string& other, double startIndex) const;
+    bool endsWith(const string& other, Number* startIndex) const;
 
     Array<string*>* split(const string& pattern) const;
-    Array<string*>* split(const string& pattern, double limit) const;
+    Array<string*>* split(const string& pattern, Number* limit) const;
 
-    string* slice(double startIndex) const;
-    string* slice(double startIndex, double endIndex) const;
+    string* slice(Number* startIndex) const;
+    string* slice(Number* startIndex, Number* endIndex) const;
 
-    string* substring(double startIndex) const;
-    string* substring(double startIndex, double endIndex) const;
+    string* substring(Number* startIndex) const;
+    string* substring(Number* startIndex, Number* endIndex) const;
 
     string* trim() const;
 
@@ -41,19 +42,19 @@ public:
     string* toUpperCase() const;
 
     bool includes(const string& pattern) const;
-    bool includes(const string& pattern, double startIndex) const;
+    bool includes(const string& pattern, Number* startIndex) const;
 
-    double indexOf(const string& pattern) const;
-    double indexOf(const string& pattern, double startIndex) const;
+    Number* indexOf(const string& pattern) const;
+    Number* indexOf(const string& pattern, Number* startIndex) const;
 
-    double lastIndexOf(const string& pattern) const;
-    double lastIndexOf(const string& pattern, double startIndex) const;
+    Number* lastIndexOf(const string& pattern) const;
+    Number* lastIndexOf(const string& pattern, Number* startIndex) const;
 
     bool operator==(const string& other) const;
     bool operator==(string* other) const;
     string* operator+(const string& other) const;
 
-    string* operator[](double index) const;
+    string* operator[](Number* index) const;
 
     std::string cpp_str() const;
 
@@ -92,7 +93,7 @@ struct hash<::string*>
 template <>
 struct equal_to<::string*>
 {
-    bool operator()(::string* lhs, ::string* rhs) const
+    bool operator()(::string* const& lhs, ::string* const& rhs) const
     {
         return *lhs == *rhs;
     }

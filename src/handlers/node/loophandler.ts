@@ -15,8 +15,7 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { last } from "lodash";
-import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
+import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 import { LoopHelper } from "./loophelper";
 
 export class LoopHandler extends AbstractNodeHandler {
@@ -204,17 +203,14 @@ export class LoopHandler extends AbstractNodeHandler {
           updated = this.generator.builder.asVoidStar(updated);
 
           for (let i = 0; i < identifiers.length; ++i) {
-            const llvmIntegralIndex = LLVMConstantInt.get(this.generator, i);
-            const llvmDoubleIndex = this.generator.builder.createSIToFP(
-              llvmIntegralIndex,
-              LLVMType.getDoubleType(this.generator)
-            );
+            const llvmIntegralIndex = LLVMConstantFP.get(this.generator, i);
+            const llvmNumberIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
 
             const elementType = elementTypes[i];
 
             const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
               updated,
-              llvmDoubleIndex,
+              llvmNumberIndex,
             ]);
             const destructedValue = this.generator.builder.createBitCast(
               destructedValueUntyped,

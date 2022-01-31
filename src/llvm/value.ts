@@ -11,13 +11,12 @@
 
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
-import * as ts from "typescript";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "./type";
 import { Prototype } from "../scope";
+import { OperationFlags } from "../tsbuiltins";
 
-export enum Conversion {
-  Narrowing,
-  Promotion,
+export enum MathFlags {
+  Inplace = 1,
 }
 
 export class LLVMValue {
@@ -87,8 +86,12 @@ export class LLVMValue {
 
   adjustToType(type: LLVMType): LLVMValue {
     let value = this as LLVMValue;
-    if (value.type.equals(type) || value.type.isConvertibleTo(type)) {
+    if (value.type.equals(type)) {
       return value;
+    }
+
+    if (value.type.isTSNumber() && type.isIntegerType()) {
+      return value.asLLVMInteger();
     }
 
     if (value.isUnion() && value.containsType(type)) {
@@ -151,7 +154,7 @@ export class LLVMValue {
     }
 
     const pointerElementType = this.type.getPointerElementType();
-    return pointerElementType.isString() || pointerElementType.isCppPrimitiveType();
+    return pointerElementType.isString() || pointerElementType.isTSNumber() || pointerElementType.isCppPrimitiveType();
   }
 
   isIntersection(): this is LLVMIntersection {
@@ -192,11 +195,12 @@ export class LLVMValue {
   }
 
   makeBoolean(): LLVMValue {
-    const value = this.getValue();
-
-    if (value.type.isDoubleType()) {
-      return this.generator.builder.createFCmpONE(value, LLVMConstant.createNullValue(value.type, this.generator));
+    if (this.type.isTSNumber()) {
+      const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
+      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(this)]);
     }
+
+    const value = this.getValue();
 
     if (value.type.isIntegerType()) {
       return this.generator.builder.createICmpNE(value, LLVMConstant.createNullValue(value.type, this.generator));
@@ -205,7 +209,9 @@ export class LLVMValue {
     if (value.type.isString()) {
       const lengthGetter = this.generator.builtinString.getLLVMLength();
       const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(value)]);
-      return this.generator.builder.createFCmpONE(length, LLVMConstant.createNullValue(length.type, this.generator));
+
+      const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
+      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(length)]);
     }
 
     if (value.isUnion()) {
@@ -229,26 +235,6 @@ export class LLVMValue {
     throw new Error(`Unable to convert operand of type ${value.type.toString()} to boolean value`);
   }
 
-  castFPToIntegralType(target: LLVMType, signed: boolean): LLVMValue {
-    return signed
-      ? this.generator.builder.createFPToSI(this, target)
-      : this.generator.builder.createFPToUI(this, target);
-  }
-
-  promoteIntegralToFP(target: LLVMType, signed: boolean): LLVMValue {
-    if (this.type.isDoubleType()) {
-      return this;
-    }
-
-    return signed
-      ? this.generator.builder.createSIToFP(this, target)
-      : this.generator.builder.createUIToFP(this, target);
-  }
-
-  canPerformNumericOperation() {
-    return this.type.isIntegerType() || this.type.isDoubleType();
-  }
-
   makeAssignment(other: LLVMValue): LLVMValue {
     const value = this as LLVMValue;
 
@@ -256,10 +242,7 @@ export class LLVMValue {
       throw new Error(`Assignment destination expected to be of PointerType, got '${value.type.toString()}'`);
     }
 
-    const typename = value.type.unwrapPointer().getIntegralLLVMTypeTypename();
-    if (typename) {
-      other = other.adjustToIntegralType(typename);
-    } else if (value.isUnion()) {
+    if (value.isUnion()) {
       let unionValue = value.initialize(other);
       if (!value.type.getPointerElementType().equals(unionValue.type)) {
         unionValue = unionValue.adjustToType(value.type.getPointerElementType());
@@ -274,107 +257,6 @@ export class LLVMValue {
     return value;
   }
 
-  /* tslint:disable:object-literal-sort-keys */
-  private readonly integralAdjust: {
-    [type: string]: {
-      isSigned: boolean;
-      typeGetter: (_: LLVMGenerator) => LLVMType;
-    };
-  } = {
-    int8_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt8Type,
-    },
-    int16_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt16Type,
-    },
-    int32_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt32Type,
-    },
-    int64_t: {
-      isSigned: true,
-      typeGetter: LLVMType.getInt64Type,
-    },
-    uint8_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt8Type,
-    },
-    uint16_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt16Type,
-    },
-    uint32_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt32Type,
-    },
-    uint64_t: {
-      isSigned: false,
-      typeGetter: LLVMType.getInt64Type,
-    },
-  };
-  /* tslint:enable:object-literal-sort-keys */
-
-  adjustToIntegralType(typename: string): LLVMValue {
-    let value = this as LLVMValue;
-    const loaded = this.generator.createLoadIfNecessary(this);
-    if (!loaded.type.isIntegerType()) {
-      const adjustParameters = this.integralAdjust[typename];
-      const typeGetter = adjustParameters.typeGetter(this.generator);
-
-      value = adjustParameters.isSigned
-        ? this.generator.builder.createFPToSI(loaded, typeGetter)
-        : this.generator.builder.createFPToUI(loaded, typeGetter);
-
-      // @todo: how to avoid extra allocation?
-      const allocated = this.generator.gc.allocate(value.type);
-      value = allocated.makeAssignment(value);
-    }
-
-    return value;
-  }
-
-  // @todo: refactor this
-  handleBinaryWithConversion(
-    lhsExpression: ts.Expression,
-    rhsExpression: ts.Expression,
-    rhsValue: LLVMValue,
-    conversion: Conversion,
-    handler: (l: LLVMValue, r: LLVMValue) => LLVMValue
-  ): LLVMValue {
-    const convertor =
-      conversion === Conversion.Narrowing
-        ? LLVMValue.prototype.castFPToIntegralType
-        : LLVMValue.prototype.promoteIntegralToFP;
-
-    if (this.type.isIntegerType() && rhsValue.type.isDoubleType()) {
-      const lhsTsType = this.generator.ts.checker.getTypeAtLocation(lhsExpression);
-      const signed = lhsTsType.isSigned();
-      const destinationType = conversion === Conversion.Narrowing ? this.type : rhsValue.type;
-      let convertedArg = conversion === Conversion.Narrowing ? rhsValue : this;
-      const untouchedArg = conversion === Conversion.Narrowing ? this : rhsValue;
-      convertedArg = convertor.call(convertedArg, destinationType, signed);
-      const args: [LLVMValue, LLVMValue] =
-        conversion === Conversion.Narrowing ? [untouchedArg, convertedArg] : [convertedArg, untouchedArg];
-      return handler.apply(this.generator.builder, args);
-    }
-
-    if (this.type.isDoubleType() && rhsValue.type.isIntegerType()) {
-      const rhsTsType = this.generator.ts.checker.getTypeAtLocation(rhsExpression);
-      const signed = rhsTsType.isSigned();
-      const destinationType = conversion === Conversion.Narrowing ? rhsValue.type : this.type;
-      let convertedArg = conversion === Conversion.Narrowing ? this : rhsValue;
-      const untouchedArg = conversion === Conversion.Narrowing ? rhsValue : this;
-      convertedArg = convertor.call(convertedArg, destinationType, signed);
-      const args: [LLVMValue, LLVMValue] =
-        conversion === Conversion.Narrowing ? [convertedArg, untouchedArg] : [untouchedArg, convertedArg];
-      return handler.apply(this.generator.builder, args);
-    }
-
-    throw new Error("Invalid types to handle with conversion");
-  }
-
   createHeapAllocated(): LLVMValue {
     if (this.type.isPointer()) {
       throw new Error("Expected value to be not of PointerType");
@@ -383,6 +265,277 @@ export class LLVMValue {
     const allocated = this.generator.gc.allocate(this.type);
     this.generator.builder.createSafeStore(this, allocated);
     return allocated;
+  }
+
+  createNegate(): LLVMValue {
+    // @todo: check type
+    const fn = this.generator.builtinNumber.createMathFn("negate", OperationFlags.Unary);
+    const thisUntyped = this.generator.builder.asVoidStar(this);
+    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+  }
+
+  createPrefixIncrement(): LLVMValue {
+    // @todo: check type
+    const fn = this.generator.builtinNumber.createMathFn("prefixIncrement", OperationFlags.Unary);
+    const thisUntyped = this.generator.builder.asVoidStar(this);
+    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+  }
+
+  createPostfixIncrement(): LLVMValue {
+    // @todo: check type
+    const fn = this.generator.builtinNumber.createMathFn("postfixIncrement", OperationFlags.Unary);
+    const thisUntyped = this.generator.builder.asVoidStar(this);
+    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+  }
+
+  createPrefixDecrement(): LLVMValue {
+    // @todo: check type
+    const fn = this.generator.builtinNumber.createMathFn("prefixDecrement", OperationFlags.Unary);
+    const thisUntyped = this.generator.builder.asVoidStar(this);
+    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+  }
+
+  createPostfixDecrement(): LLVMValue {
+    // @todo: check type
+    const fn = this.generator.builtinNumber.createMathFn("postfixDecrement", OperationFlags.Unary);
+    const thisUntyped = this.generator.builder.asVoidStar(this);
+    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+  }
+
+  createAdd(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isString()) {
+      // mkrv @todo: handle inPlace flag correcty
+      const concat = this.generator.builtinString.getLLVMConcat();
+      const untypedThis = this.generator.builder.asVoidStar(this);
+
+      const result = this.generator.builder.createSafeCall(concat, [untypedThis, other]);
+      if (flags === MathFlags.Inplace) {
+        return this.makeAssignment(result);
+      }
+
+      return result;
+    } else if (this.type.isTSNumber()) {
+      const fnName = `add${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to binary plus: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createSub(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fnName = `sub${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to binary minus: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createMul(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fnName = `mul${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to binary multiply: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createDiv(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fnName = `div${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to binary division: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createMod(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fnName = `mod${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to binary modulo: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createBitwiseAnd(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    if (this.type.isTSNumber() && other.type.isTSNumber()) {
+      const fnName = `bitwiseAnd${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to bitwise and: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createBitwiseOr(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    if (this.type.isTSNumber() && other.type.isTSNumber()) {
+      const fnName = `bitwiseOr${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to bitwise or: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createBitwiseXor(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    if (this.type.isTSNumber() && other.type.isTSNumber()) {
+      const fnName = `bitwiseXor${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to bitwise xor: '${this.type.toString()}' '${other.type.toString()}'`);
+  }
+
+  createBitwiseLeftShift(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    if (this.type.isTSNumber() && other.type.isTSNumber()) {
+      const fnName = `bitwiseLeftShift${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(
+      `Invalid operand types to bitwise left shift: '${this.type.toString()}' '${other.type.toString()}'`
+    );
+  }
+
+  createBitwiseRightShift(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    if (this.type.isTSNumber() && other.type.isTSNumber()) {
+      const fnName = `bitwiseRightShift${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const fn = this.generator.builtinNumber.createMathFn(fnName);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(
+      `Invalid operand types to bitwise right shift: '${this.type.toString()}' '${other.type.toString()}'`
+    );
+  }
+
+  createEquals(other: LLVMValue): LLVMValue {
+    const left = this.generator.createLoadIfNecessary(this);
+    const right = this.generator.createLoadIfNecessary(other);
+
+    const leftType = left.type;
+    const rightType = right.type;
+
+    if (leftType.isTSNumber() && rightType.isTSNumber()) {
+      const fn = this.generator.builtinNumber.createBooleanFn("equals");
+      const thisUntyped = this.generator.builder.asVoidStar(left);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, right]).createHeapAllocated();
+    } else if (leftType.isString() && rightType.isString()) {
+      const equals = this.generator.builtinString.getLLVMEquals();
+      return this.generator.builder.createSafeCall(equals, [left, right]).createHeapAllocated();
+    } else if (leftType.isIntegerType() && rightType.isIntegerType()) {
+      return this.generator.builder.createICmpEQ(left, right).createHeapAllocated();
+    } else if (this.isUnion()) {
+      const extracted = this.extract(rightType.ensurePointer());
+      return extracted.createEquals(right);
+    } else if (!this.isIntersection() && other.isIntersection()) {
+      if (!leftType.isPointer()) {
+        throw new Error(`Expected left hand side operand to be of PointerType, got ${leftType.toString()}`);
+      }
+
+      const extracted = other.extract(leftType);
+      return this.createEquals(extracted);
+    } else if (leftType.isPointerToStruct() && rightType.isPointerToStruct()) {
+      const lhsAddress = this.generator.builder.createPtrToInt(left, LLVMType.getInt32Type(this.generator));
+      const rhsAddress = this.generator.builder.createPtrToInt(right, LLVMType.getInt32Type(this.generator));
+      return this.generator.builder.createICmpEQ(lhsAddress, rhsAddress).createHeapAllocated();
+    }
+
+    throw new Error(`Invalid operand types to strict equals: 
+                            lhs: ${leftType.toString()} ${leftType.typeIDName}
+                            rhs: ${rightType.toString()} ${rightType.typeIDName}`);
+  }
+
+  createNotEquals(other: LLVMValue): LLVMValue {
+    return this.generator.builder
+      .createNot(this.generator.builder.createLoad(this.createEquals(other)))
+      .createHeapAllocated();
+  }
+
+  createLessThan(other: LLVMValue): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fn = this.generator.builtinNumber.createBooleanFn("lessThan");
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to less than: 
+                            lhs: ${this.type.toString()} ${this.type.typeIDName}
+                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+  }
+
+  createLessThanEquals(other: LLVMValue): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fn = this.generator.builtinNumber.createBooleanFn("lessEqualsThan");
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to less equals than: 
+                            lhs: ${this.type.toString()} ${this.type.typeIDName}
+                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+  }
+
+  createGreaterThan(other: LLVMValue): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fn = this.generator.builtinNumber.createBooleanFn("greaterThan");
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to greater than: 
+                            lhs: ${this.type.toString()} ${this.type.typeIDName}
+                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+  }
+
+  createGreaterThanEquals(other: LLVMValue): LLVMValue {
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const fn = this.generator.builtinNumber.createBooleanFn("greaterEqualsThan");
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+
+    throw new Error(`Invalid operand types to greater equals than: 
+                            lhs: ${this.type.toString()} ${this.type.typeIDName}
+                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+  }
+
+  asLLVMInteger(): LLVMValue {
+    if (!this.type.isTSNumber()) {
+      throw new Error(
+        `Expected LLVMValue.asLLVMInteger to be called on Number type, called on '${this.type.toString()}'`
+      );
+    }
+
+    const llvmDouble = this.generator.builder.createSafeInBoundsGEP(this, [0, 0]).getValue();
+    return this.generator.builder.createFPToSI(llvmDouble, LLVMType.getInt32Type(this.generator));
   }
 
   get unwrapped() {
@@ -643,6 +796,7 @@ export class LLVMUnion extends LLVMValue {
     if (
       !optionalWithClassOrTypeLiteral &&
       !initializer.type.isString() &&
+      !initializer.type.isTSNumber() &&
       !initializer.type.isTSClass() &&
       !unionValue.isOptionalClosure() &&
       initializer.type.unwrapPointer().isStructType()
@@ -706,13 +860,11 @@ export class LLVMUnion extends LLVMValue {
       });
     } else {
       if (runtimeIndex) {
-        if (runtimeIndex.type.isDoubleType()) {
-          runtimeIndex = this.generator.builder.createFPToSI(runtimeIndex, LLVMType.getInt32Type(this.generator));
+        if (!runtimeIndex.type.isTSNumber()) {
+          throw new Error(`Expected runtime index to be of Number type, got '${runtimeIndex.type.toString()}'`);
         }
 
-        if (!runtimeIndex.type.isIntegerType(32)) {
-          throw new Error(`Expected runtime index to be of int32/double type, got '${runtimeIndex.type.toString()}'`);
-        }
+        runtimeIndex = runtimeIndex.asLLVMInteger();
 
         const nullIndex = LLVMConstantInt.get(this.generator, 0);
         const arrayType = LLVMArrayType.get(
@@ -777,7 +929,7 @@ export class LLVMUnion extends LLVMValue {
       return this;
     }
 
-    if (destinationValueType.isStructType() && !type.isTSClass() && !type.isString()) {
+    if (destinationValueType.isStructType() && !type.isTSClass() && !type.isString() && !type.isTSNumber()) {
       const unionMeta = this.generator.meta.getUnionMeta(unionStructType.name!);
       const objectMeta = this.generator.meta.getObjectMeta((destinationValueType as LLVMStructType).name!);
 

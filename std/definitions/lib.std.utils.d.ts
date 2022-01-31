@@ -1,11 +1,13 @@
-import { int32_t, int64_t, uint32_t } from "./lib.std.numeric"
+// @ts-ignore
+export type TSClosure = Function;
 
+// @ts-ignore
 export declare class TSClosure {
     constructor(
         fn: void,
         env: void,
-        numArgs: int32_t,
-        optionals: int64_t
+        numArgs: number,
+        optionals: number
     );
 
     // @ts-ignore
@@ -13,10 +15,4 @@ export declare class TSClosure {
     call(): void;
 
     getEnvironment(): void;
-}
-
-export declare class SizeOf {
-    static array(): uint32_t;
-    static string(): uint32_t;
-    static closure(): uint32_t;
 }

@@ -1,4 +1,4 @@
-// @ts-nocheck
+import { TSClosure } from "std/definitions/lib.std.utils"
 
 export declare class Point {
     constructor(x: number, y: number);

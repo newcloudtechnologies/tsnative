@@ -16,7 +16,6 @@ set (EXTS_TARGET cpp_integration_exts)
 set(INCLUDES
     aggregate.h
     rect.h
-    acceptor.h
     point.h
     printable.h
     dummy_base.h
@@ -28,7 +27,6 @@ set(SOURCES
     nested_namespaces.cpp
     point.cpp
     rect.cpp
-    acceptor.cpp
     generics.cpp
     printable.cpp
     dummy_base.cpp

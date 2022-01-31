@@ -16,12 +16,11 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import {
   BuiltinString,
-  BuiltinInt8,
-  BuiltinUInt32,
   GC,
   BuiltinTSClosure,
   BuiltinTSTuple,
   BuiltinIteratorResult,
+  BuiltinNumber,
 } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
 import { DEFINITIONS, GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
@@ -63,9 +62,8 @@ export class LLVMGenerator {
   readonly expressionHandlerChain = new ExpressionHandlerChain(this);
   readonly nodeHandlerChain = new NodeHandlerChain(this);
 
-  readonly builtinInt8: BuiltinInt8;
-  readonly builtinUInt32: BuiltinUInt32;
   readonly builtinString: BuiltinString;
+  readonly builtinNumber: BuiltinNumber;
 
   private builtinTSTuple: BuiltinTSTuple | undefined;
   private builtinTSClosure: BuiltinTSClosure | undefined;
@@ -87,10 +85,8 @@ export class LLVMGenerator {
     this.irBuilder = new Builder(this, null);
     this.symbolTable = new SymbolTable();
 
-    this.builtinInt8 = new BuiltinInt8(this);
-    this.builtinUInt32 = new BuiltinUInt32(this);
-
     this.builtinString = new BuiltinString(this);
+    this.builtinNumber = new BuiltinNumber(this);
 
     this.sizeOf = new SizeOf();
 

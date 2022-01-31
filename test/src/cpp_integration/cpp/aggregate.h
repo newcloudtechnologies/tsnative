@@ -8,21 +8,18 @@ namespace cpp {
 
 class Aggregate {
 public:
-  Aggregate(Point *point, Array<string *> *array, string *s, double d,
-            int8_t i);
+  Aggregate(Point *point, Array<string *> *array, string *s, Number* d);
 
   Point *getPoint() const;
   Array<string *> *getStringArray() const;
   string *getString() const;
-  double getDouble() const;
-  int8_t getInt8() const;
+  Number* getNumber() const;
 
 private:
   Point *_point = nullptr;
   Array<string *> *_array = nullptr;
   string *_s = nullptr;
-  double _d = 0;
-  int8_t _i = 0;
+  Number* _n = nullptr;
 };
 
 } // namespace cpp

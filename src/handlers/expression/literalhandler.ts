@@ -80,17 +80,8 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
-    const declaredType = this.getDeclaredType(expression);
-
-    if (declaredType && declaredType.isCppIntegralType()) {
-      return LLVMConstantInt.get(
-        this.generator,
-        parseInt(expression.text, 10), // mkrv: @todo: support only decimal numbers
-        declaredType.getIntegralBitwidth()
-      ).createHeapAllocated();
-    }
-
-    return LLVMConstantFP.get(this.generator, parseFloat(expression.text)).createHeapAllocated();
+    const value = LLVMConstantFP.get(this.generator, parseFloat(expression.text));
+    return this.generator.builtinNumber.create(value);
   }
 
   private handleStringLiteral(expression: ts.StringLiteral): LLVMValue {
@@ -98,7 +89,8 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const constructor = this.generator.builtinString.getLLVMConstructor();
     const ptr = this.generator.builder.createGlobalStringPtr(expression.text);
     const allocated = this.generator.gc.allocate(llvmThisType.getPointerElementType());
-    this.generator.builder.createSafeCall(constructor, [allocated, ptr]);
+    const thisUntyped = this.generator.builder.asVoidStar(allocated);
+    this.generator.builder.createSafeCall(constructor, [thisUntyped, ptr]);
     return allocated;
   }
 

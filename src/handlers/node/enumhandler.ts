@@ -25,7 +25,7 @@ export class EnumHandler extends AbstractNodeHandler {
         node.members.forEach((member, index) => {
           let value = member.initializer
             ? this.generator.handleExpression(member.initializer, env)
-            : LLVMConstantFP.get(this.generator, index);
+            : this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, index));
           if (!value.type.isPointer()) {
             value = value.createHeapAllocated();
           }

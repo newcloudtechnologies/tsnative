@@ -1,4 +1,4 @@
-import { VTable, VTableSize, VirtualDestructor, Virtual } from "std/decorators/decorators";
+import { VTable, VTableSize, VirtualDestructor, Virtual, ValueType } from "std/decorators/decorators";
 
 export declare class AnotherWidget {
     constructor();
@@ -21,6 +21,7 @@ export declare class Component {
 
     test(): void;
 
+    @ValueType
     m: number;
 }
 

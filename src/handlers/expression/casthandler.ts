@@ -31,7 +31,6 @@ export class CastHandler extends AbstractExpressionHandler {
 
         const value = this.generator.handleExpression(asExpression.expression, env);
 
-        const sourceTSType = this.generator.ts.checker.getTypeAtLocation(asExpression.expression);
         const nakedValueType = value.type.unwrapPointer();
 
         const destinationTSType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
@@ -39,20 +38,6 @@ export class CastHandler extends AbstractExpressionHandler {
         const nakedDestinationType = destinationLLVMType.unwrapPointer();
 
         if (!value.isUnion()) {
-          if (nakedValueType.isDoubleType() && destinationTSType.isCppIntegralType()) {
-            return value
-              .getValue()
-              .castFPToIntegralType(destinationLLVMType, destinationTSType.isSigned())
-              .createHeapAllocated();
-          }
-
-          if (sourceTSType.isCppIntegralType() && nakedDestinationType.isDoubleType()) {
-            return value
-              .getValue()
-              .promoteIntegralToFP(destinationLLVMType, sourceTSType.isSigned())
-              .createHeapAllocated();
-          }
-
           return this.generator.builder.createBitCast(value, destinationTSType.getLLVMType().ensurePointer());
         }
 

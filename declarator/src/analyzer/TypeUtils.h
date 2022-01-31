@@ -24,20 +24,22 @@ class TypeMapper
     const std::map<std::string, std::string> STD_TABLE = {
         {"char", "--"},
         {"wchar_t", "--"},
-        {"unsigned char", "uint8_t"},
-        {"int", "int32_t"},
-        {"unsigned int", "uint32_t"},
-        {"short", "int16_t"},
-        {"unsigned short", "uint16_t"},
-        {"long", "int64_t"},
-        {"unsigned long", "uint64_t"},
+        {"unsigned char", "--"},
+        {"int", "--"},
+        {"unsigned int", "--"},
+        {"short", "--"},
+        {"unsigned short", "--"},
+        {"long", "--"},
+        {"unsigned long", "--"},
         {"long long", "--"},
         {"unsigned long long", "--"},
         {"float", "--"},
-        {"double", "number"},
+        {"double", "--"},
         {"long double", "--"},
         {"bool", "boolean"},
         {"void", "void"},
+        {"Number", "number"},
+        {"String", "string"}
     };
 
     std::map<std::string, std::string> m_table;

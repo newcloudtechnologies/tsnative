@@ -310,48 +310,6 @@ export class TSType {
     return this.isObject() && !this.isArray() && !this.isString();
   }
 
-  isCppIntegralType() {
-    switch (this.toString()) {
-      case "int8_t":
-      case "int16_t":
-      case "int32_t":
-      case "int64_t":
-
-      case "uint8_t":
-      case "uint16_t":
-      case "uint32_t":
-      case "uint64_t":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  getIntegralBitwidth() {
-    if (!this.isCppIntegralType()) {
-      throw new Error(
-        `Expected 'TSType.getIntegralBitwidth' to be called on cpp integral type, called on '${this.toString()}'`
-      );
-    }
-
-    switch (this.toString()) {
-      case "int8_t":
-      case "uint8_t":
-        return 8;
-      case "int16_t":
-      case "uint16_t":
-        return 16;
-      case "int32_t":
-      case "uint32_t":
-        return 32;
-      case "int64_t":
-      case "uint64_t":
-        return 64;
-      default:
-        throw new Error(`Unhandled cpp integral type '${this.toString()}' in 'TSType.getIntegralBitwidth'`);
-    }
-  }
-
   isPrimitive() {
     return (
       this.isNumber() ||
@@ -360,7 +318,6 @@ export class TSType {
       this.isUndefined() ||
       this.isNull() ||
       this.isVoid() ||
-      this.isCppIntegralType() ||
       this.isEnum()
     );
   }
@@ -529,6 +486,10 @@ export class TSType {
       return "string";
     }
 
+    if (this.isNumber()) {
+      return "Number";
+    }
+
     let suffix = "";
 
     let typeArguments: string[] = [];
@@ -642,41 +603,6 @@ export class TSType {
     );
 
     return properties;
-  }
-
-  getIntegralType() {
-    switch (this.toString()) {
-      case "int8_t":
-      case "uint8_t":
-        return LLVMType.getInt8Type(this.checker.generator);
-      case "int16_t":
-      case "uint16_t":
-        return LLVMType.getInt16Type(this.checker.generator);
-      case "int32_t":
-      case "uint32_t":
-        return LLVMType.getInt32Type(this.checker.generator);
-      case "int64_t":
-      case "uint64_t":
-        return LLVMType.getInt64Type(this.checker.generator);
-      default:
-        throw new Error("Expected integral type");
-    }
-  }
-
-  isSigned() {
-    switch (this.toString()) {
-      case "int8_t":
-      case "int16_t":
-      case "int32_t":
-      case "int64_t":
-        return true;
-      case "uint8_t":
-      case "uint16_t":
-      case "uint32_t":
-      case "uint64_t":
-      default:
-        return false;
-    }
   }
 
   // @todo: tslint will warn 'no-unused-variables' if this method is marked as private
@@ -849,10 +775,6 @@ export class TSType {
       return this.getUnionStructType().getPointer();
     }
 
-    if (this.isCppIntegralType()) {
-      return this.getIntegralType();
-    }
-
     if (this.isEnum()) {
       return this.getEnumElementType();
     }
@@ -862,7 +784,7 @@ export class TSType {
     }
 
     if (this.isNumber()) {
-      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      return this.checker.generator.builtinNumber.getLLVMType();
     }
 
     if (this.isString()) {
@@ -979,7 +901,7 @@ export class TSType {
     let typename = this.toString();
 
     if (this.isNumber()) {
-      typename = "number";
+      typename = "Number*";
     } else if (this.isString()) {
       return "string*";
     } else if (this.isUnionOrIntersection()) {
@@ -1007,45 +929,14 @@ export class TSType {
       }
     }
 
-    const getInt64Type = () => {
-      switch (process.platform) {
-        case "win32":
-        case "darwin":
-          return "long long";
-        default:
-          return "long";
-      }
-    };
-
-    const getUInt64Type = () => `unsigned ${getInt64Type()}`;
-
     switch (typename) {
       case "String": // @todo
         return "string*";
-      case "Number":
-      case "number":
-        return "double";
       case "Boolean":
       case "boolean":
       case "true":
       case "false":
         return "bool";
-      case "int8_t":
-        return "signed char";
-      case "int16_t":
-        return "short";
-      case "int32_t":
-        return "int";
-      case "int64_t":
-        return getInt64Type();
-      case "uint8_t":
-        return "unsigned char";
-      case "uint16_t":
-        return "unsigned short";
-      case "uint32_t":
-        return "unsigned int";
-      case "uint64_t":
-        return getUInt64Type();
       default:
         if (!typename) {
           throw new Error(`Type '${this.toString()}' is not mapped to C++ type`);
@@ -1074,15 +965,20 @@ export class TSType {
       throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
     }
 
+    if (declaration.isAmbient()) {
+      // c++ enums considered to be of int32_t
+      return LLVMType.getInt32Type(this.checker.generator);
+    }
+
     if (declaration.isEnum()) {
       // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
       // Pretend it is a numeric enum for now.
-      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      return this.checker.generator.builtinNumber.getLLVMType();
     }
 
     if (!declaration.initializer) {
       // initializer absence indicates that it is numeric enum
-      return LLVMType.getDoubleType(this.checker.generator).getPointer();
+      return this.checker.generator.builtinNumber.getLLVMType();
     }
 
     const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
@@ -1098,12 +994,12 @@ export class TSType {
     if (declaration.isEnum()) {
       // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
       // Pretend it is a numeric enum for now.
-      return "double";
+      return "Number*";
     }
 
     if (!declaration.initializer) {
       // initializer absence indicates that it is numeric enum
-      return "double";
+      return "Number*";
     }
 
     const initializerType = this.checker.getTypeAtLocation(declaration.initializer);

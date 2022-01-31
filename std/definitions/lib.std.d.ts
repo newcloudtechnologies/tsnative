@@ -1,3 +1,53 @@
+declare class Number {
+  constructor(_: any);
+
+  private add(other: number): number;
+  private sub(other: number): number;
+  private mul(other: number): number;
+  private div(other: number): number;
+  private mod(other: number): number;
+
+  private addInplace(other: number): number;
+  private subInplace(other: number): number;
+  private mulInplace(other: number): number;
+  private divInplace(other: number): number;
+  private modInplace(other: number): number;
+
+
+  private bitwiseAnd(other: number): number;
+  private bitwiseOr(other: number): number;
+  private bitwiseXor(other: number): number;
+  private bitwiseLeftShift(other: number): number;
+  private bitwiseRightShift(other: number): number;
+
+  private bitwiseAndInplace(other: number): number;
+  private bitwiseOrInplace(other: number): number;
+  private bitwiseXorInplace(other: number): number;
+  private bitwiseLeftShiftInplace(other: number): number;
+  private bitwiseRightShiftInplace(other: number): number;
+
+  private negate(): number;
+
+  private prefixIncrement(): number;
+  private postfixIncrement(): number;
+
+  private prefixDecrement(): number;
+  private postfixDecrement(): number;
+
+  private equals(other: number): boolean;
+  private lessThan(other: number): boolean;
+  private lessEqualsThan(other: number): boolean;
+  private greaterThan(other: number): boolean;
+  private greaterEqualsThan(other: number): boolean;
+
+  private toBool(): boolean;
+
+  toString(): string;
+}
+
+//@ts-ignore
+declare type number = Number;
+
 declare class Array<T> {
   constructor();
 

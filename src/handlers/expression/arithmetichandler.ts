@@ -12,26 +12,25 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
-import { Conversion, LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
-import { Builder } from "../../builder/builder";
+import { LLVMValue } from "../../llvm/value";
 
 export class ArithmeticHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
-    if (ts.isBinaryExpression(expression)) {
-      const binaryExpression = expression as ts.BinaryExpression;
-      const { left, right } = binaryExpression;
-      switch (binaryExpression.operatorToken.kind) {
+    if (ts.isBinaryExpression(expression) && this.canHandle(expression)) {
+      const left = this.generator.handleExpression(expression.left, env);
+      const right = this.generator.handleExpression(expression.right, env);
+
+      switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.PlusToken:
-          return this.handleBinaryPlus(left, right, env);
+          return left.createAdd(right);
         case ts.SyntaxKind.MinusToken:
-          return this.handleBinaryMinus(left, right, env);
+          return left.createSub(right);
         case ts.SyntaxKind.AsteriskToken:
-          return this.handleMultiply(left, right, env);
+          return left.createMul(right);
         case ts.SyntaxKind.SlashToken:
-          return this.handleDivision(left, right, env);
+          return left.createDiv(right);
         case ts.SyntaxKind.PercentToken:
-          return this.handleModulo(left, right, env);
+          return left.createMod(right);
         default:
           break;
       }
@@ -44,110 +43,16 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleBinaryPlus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
-
-    left = left.getValue();
-    right = right.adjustToType(left.type);
-
-    if (left.type.isString() && right.type.isString()) {
-      const concat = this.generator.builtinString.getLLVMConcat();
-      const untypedThis = this.generator.builder.asVoidStar(left);
-
-      return this.generator.builder.createSafeCall(concat, [untypedThis, right]);
+  private canHandle(expression: ts.BinaryExpression) {
+    switch (expression.operatorToken.kind) {
+      case ts.SyntaxKind.PlusToken:
+      case ts.SyntaxKind.MinusToken:
+      case ts.SyntaxKind.AsteriskToken:
+      case ts.SyntaxKind.SlashToken:
+      case ts.SyntaxKind.PercentToken:
+        return true;
+      default:
+        return false;
     }
-
-    if (left.canPerformNumericOperation() && right.canPerformNumericOperation() && right.type.equals(left.type)) {
-      return this.generator.builder.createAdd(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Narrowing, Builder.prototype.createAdd)
-        .createHeapAllocated();
-    }
-
-    throw new Error(`Invalid operand types to binary plus: '${left.type.toString()}' '${right.type.toString()}'`);
-  }
-
-  private handleBinaryMinus(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
-
-    left = left.getValue();
-    right = right.adjustToType(left.type);
-
-    if (left.canPerformNumericOperation() && right.canPerformNumericOperation() && right.type.equals(left.type)) {
-      return this.generator.builder.createSub(left, right).createHeapAllocated();
-    }
-
-    if (left.type.isConvertibleTo(right.type)) {
-      return left
-        .handleBinaryWithConversion(lhs, rhs, right, Conversion.Narrowing, Builder.prototype.createSub)
-        .createHeapAllocated();
-    }
-
-    throw new Error(`Invalid operand types to binary minus: '${left.type.toString()}' '${right.type.toString()}'`);
-  }
-
-  private handleMultiply(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
-
-    left = left
-      .getValue()
-      .promoteIntegralToFP(
-        LLVMType.getDoubleType(this.generator),
-        this.generator.ts.checker.getTypeAtLocation(lhs).isSigned()
-      );
-    right = right
-      .getValue()
-      .promoteIntegralToFP(
-        LLVMType.getDoubleType(this.generator),
-        this.generator.ts.checker.getTypeAtLocation(rhs).isSigned()
-      );
-
-    return this.generator.builder.createMul(left, right).createHeapAllocated();
-  }
-
-  private handleDivision(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
-
-    left = left
-      .getValue()
-      .promoteIntegralToFP(
-        LLVMType.getDoubleType(this.generator),
-        this.generator.ts.checker.getTypeAtLocation(lhs).isSigned()
-      );
-    right = right
-      .getValue()
-      .promoteIntegralToFP(
-        LLVMType.getDoubleType(this.generator),
-        this.generator.ts.checker.getTypeAtLocation(rhs).isSigned()
-      );
-
-    return this.generator.builder.createDiv(left, right).createHeapAllocated();
-  }
-
-  private handleModulo(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    let left = this.generator.handleExpression(lhs, env);
-    let right = this.generator.handleExpression(rhs, env);
-
-    left = left
-      .getValue()
-      .promoteIntegralToFP(
-        LLVMType.getDoubleType(this.generator),
-        this.generator.ts.checker.getTypeAtLocation(lhs).isSigned()
-      );
-    right = right
-      .getValue()
-      .promoteIntegralToFP(
-        LLVMType.getDoubleType(this.generator),
-        this.generator.ts.checker.getTypeAtLocation(rhs).isSigned()
-      );
-
-    return this.generator.builder.createRem(left, right).createHeapAllocated();
   }
 }

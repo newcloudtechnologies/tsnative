@@ -11,6 +11,7 @@
 #include "iterable.h"
 #include "stdstring.h"
 #include "tsclosure.h"
+#include "tsnumber.h"
 
 #include "iterators/arrayiterator.h"
 
@@ -34,35 +35,35 @@ public:
         return GC::track(array);
     }
 
-    double push(T v);
+    Number* push(T v);
 
     template <typename... Ts>
-    double push(T t, Ts... ts);
+    Number* push(T t, Ts... ts);
 
-    double length() const;
+    Number* length() const;
 
     using SubscriptionReturnType = typename std::conditional<std::is_pointer<T>::value, T, T&>::type;
-    typename Array::SubscriptionReturnType operator[](double index);
+    typename Array::SubscriptionReturnType operator[](Number* index);
 
     void forEach(TSClosure* closure) const;
 
-    double indexOf(T value) const;
-    double indexOf(T value, double fromIndex) const;
+    Number* indexOf(T value) const;
+    Number* indexOf(T value, Number* fromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
     // but somehow meta information have to be provided for code generator on TS side
     template <typename U>
     Array<U>* map(TSClosure* closure);
 
-    Array<T>* splice(double start);
-    Array<T>* splice(double start, double deleteCount);
+    Array<T>* splice(Number* start);
+    Array<T>* splice(Number* start, Number* deleteCount);
 
     Array<T>* concat(Array<T> const& other);
 
     string* toString();
 
     IterableIterator<T>* iterator() override;
-    IterableIterator<double>* keys();
+    IterableIterator<Number*>* keys();
     IterableIterator<T>* values();
 
     template <typename U>
@@ -105,40 +106,42 @@ Array<T>::Array()
 }
 
 template <typename T>
-double Array<T>::push(T t)
+Number* Array<T>::push(T t)
 {
     storage_.push_back(t);
-    return storage_.size();
+    return GC::createHeapAllocated<Number>(storage_.size());
 }
 
 template <typename T>
-double Array<T>::length() const
+Number* Array<T>::length() const
 {
-    return static_cast<double>(storage_.size());
+    return GC::createHeapAllocated<Number>(storage_.size());
 }
 
 template <typename T>
-typename Array<T>::SubscriptionReturnType Array<T>::operator[](double index)
+typename Array<T>::SubscriptionReturnType Array<T>::operator[](Number* index)
 {
-    return storage_.at(index);
+    return storage_.at(index->valueOf());
 }
 
 template <typename T>
 void Array<T>::forEach(TSClosure* closure) const
 {
+    auto numArgs = closure->getNumArgs()->valueOf();
+
     for (size_t i = 0; i < storage_.size(); ++i)
     {
-        if (closure->getNumArgs() > 0)
+        if (numArgs > 0)
         {
             closure->setEnvironmentElement(getPointerToValue(i), 0);
         }
 
-        if (closure->getNumArgs() > 1)
+        if (numArgs > 1)
         {
-            closure->setEnvironmentElement(GC::createHeapAllocated<double>(i), 1);
+            closure->setEnvironmentElement(GC::createHeapAllocated<Number>(i), 1);
         }
 
-        if (closure->getNumArgs() > 2)
+        if (numArgs > 2)
         {
             closure->setEnvironmentElement(const_cast<Array<T>*>(this), 2);
         }
@@ -148,20 +151,20 @@ void Array<T>::forEach(TSClosure* closure) const
 }
 
 template <typename T>
-double Array<T>::indexOf(T value) const
+Number* Array<T>::indexOf(T value) const
 {
-    return this->indexOf(value, 0);
+    return this->indexOf(value, GC::createHeapAllocated<Number>(0.0));
 }
 
 template <typename T>
-double Array<T>::indexOf(T value, double fromIndex) const
+Number* Array<T>::indexOf(T value, Number* fromIndex) const
 {
-    int index = static_cast<int>(fromIndex);
-    int length = static_cast<int>(this->length());
+    int index = static_cast<int>(fromIndex->valueOf());
+    int length = static_cast<int>(this->length()->valueOf());
 
     if (index >= length)
     {
-        return -1;
+        return GC::createHeapAllocated<Number>(-1);
     }
     else if (index < 0 && abs(index) >= length)
     {
@@ -177,28 +180,30 @@ double Array<T>::indexOf(T value, double fromIndex) const
         index = length + index;
     }
 
-    auto it = std::find(storage_.cbegin() + index, storage_.cend(), value);
+    auto it = std::find_if(storage_.begin() + index, storage_.end(), [&value](T v) { return std::equal_to<T>()(v, value); });
 
     if (it == storage_.cend())
     {
-        return -1;
+        return GC::createHeapAllocated<Number>(-1);
     }
 
-    return std::distance(storage_.cbegin(), it);
+    return GC::createHeapAllocated<Number>(std::distance(storage_.cbegin(), it));
 }
 
 template <typename T>
-Array<T>* Array<T>::splice(double start)
+Array<T>* Array<T>::splice(Number* start)
 {
-    auto begin = (start >= 0 ? storage_.begin() : storage_.end()) + start;
+    auto startValue = start->valueOf();
+
+    auto begin = (startValue >= 0 ? storage_.begin() : storage_.end()) + startValue;
     auto end = storage_.end();
 
-    if (start < 0)
+    if (startValue < 0)
     {
         begin = std::max(begin, storage_.begin());
     }
 
-    if (start >= 0 && begin >= end)
+    if (startValue >= 0 && begin >= end)
     {
         return {};
     }
@@ -210,21 +215,24 @@ Array<T>* Array<T>::splice(double start)
 }
 
 template <typename T>
-Array<T>* Array<T>::splice(double start, double deleteCount)
+Array<T>* Array<T>::splice(Number* start, Number* deleteCount)
 {
     Array<T> removed;
 
-    auto begin = (start >= 0 ? storage_.begin() : storage_.end()) + start;
-    auto end = begin + deleteCount;
+    auto startValue = start->valueOf();
+    auto deleteCountValue = deleteCount->valueOf();
 
-    if (start < 0)
+    auto begin = (startValue >= 0 ? storage_.begin() : storage_.end()) + startValue;
+    auto end = begin + deleteCountValue;
+
+    if (startValue < 0)
     {
         begin = std::max(begin, storage_.begin());
     }
 
-    end = std::min(begin + deleteCount, storage_.end());
+    end = std::min(begin + deleteCountValue, storage_.end());
 
-    if (start >= 0 && begin >= end)
+    if (startValue >= 0 && begin >= end)
     {
         return GC::createHeapAllocated<Array<T>>(removed);
     }
@@ -264,19 +272,21 @@ template <typename U>
 Array<U>* Array<T>::map(TSClosure* closure)
 {
     Array<U> transformedArray;
+    auto numArgs = closure->getNumArgs()->valueOf();
+
     for (size_t i = 0; i < storage_.size(); ++i)
     {
-        if (closure->getNumArgs() > 0)
+        if (numArgs > 0)
         {
             closure->setEnvironmentElement(getPointerToValue(i), 0);
         }
 
-        if (closure->getNumArgs() > 1)
+        if (numArgs > 1)
         {
-            closure->setEnvironmentElement(GC::createHeapAllocated<double>(i), 1);
+            closure->setEnvironmentElement(GC::createHeapAllocated<Number>(i), 1);
         }
 
-        if (closure->getNumArgs() > 2)
+        if (numArgs > 2)
         {
             closure->setEnvironmentElement(const_cast<Array<T>*>(this), 2);
         }
@@ -290,7 +300,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
 template <typename T>
 template <typename... Ts>
-double Array<T>::push(T t, Ts... ts)
+Number* Array<T>::push(T t, Ts... ts)
 {
     storage_.push_back(t);
     return push(ts...);
@@ -304,13 +314,16 @@ IterableIterator<T>* Array<T>::iterator()
 }
 
 template <typename T>
-IterableIterator<double>* Array<T>::keys()
+IterableIterator<Number*>* Array<T>::keys()
 {
     std::vector<double> indexes(storage_.size());
     std::iota(indexes.begin(), indexes.end(), 0);
 
-    auto keysArray = Array<double>::fromStdVector(indexes);
-    auto it = new ArrayIterator<double>(keysArray);
+    std::vector<Number*> boxedIndexes(indexes.size());
+    std::transform(indexes.begin(), indexes.end(), boxedIndexes.end(), [](double v) { return new Number(v); });
+
+    auto keysArray = Array<Number*>::fromStdVector(boxedIndexes);
+    auto it = new ArrayIterator<Number*>(keysArray);
     return GC::track(it);
 }
 

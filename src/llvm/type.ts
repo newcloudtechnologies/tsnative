@@ -103,6 +103,11 @@ export class LLVMType {
     return this.type.isDoubleTy();
   }
 
+  isTSNumber() {
+    const nakedType = this.unwrapPointer();
+    return nakedType.type.isStructTy() && nakedType.type.name === "number";
+  }
+
   isVoid() {
     return this.type.isVoidTy();
   }
@@ -234,22 +239,6 @@ export class LLVMType {
       .map((typeName) => typeName.replace(/%|\*/g, ""));
   }
 
-  getIntegralLLVMTypeTypename() {
-    if (this.isIntegerType(8)) {
-      return "int8_t";
-    }
-
-    if (this.isIntegerType(16)) {
-      return "int16_t";
-    }
-
-    if (this.isIntegerType(32)) {
-      return "int32_t";
-    }
-
-    return "";
-  }
-
   getPointerElementType() {
     if (!this.type.isPointerTy()) {
       throw new Error(`Expected pointer type, got '${this.toString()}'`);
@@ -291,18 +280,6 @@ export class LLVMType {
     }
 
     return this;
-  }
-
-  isConvertibleTo(destination: LLVMType) {
-    if (this.type.isIntegerTy() && destination.type.isDoubleTy()) {
-      return true;
-    }
-
-    if (this.type.isDoubleTy() && destination.type.isIntegerTy()) {
-      return true;
-    }
-
-    return false;
   }
 
   ensurePointer(): LLVMType {

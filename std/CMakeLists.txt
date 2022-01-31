@@ -9,11 +9,10 @@ list(APPEND CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/cmake)
 find_package(absl)
 
 set( SOURCES
-    src/console.cpp
     src/gc.cpp
-    src/sizeof.cpp
     src/stdstring.cpp
     src/tsclosure.cpp
+    src/tsnumber.cpp
 )
 
 add_library(${PROJECT_NAME}

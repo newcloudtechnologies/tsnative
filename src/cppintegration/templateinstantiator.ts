@@ -144,7 +144,7 @@ export class TemplateInstantiator {
 
   private instantiateIteratorResult(type: TSType) {
     const instance = `template class IteratorResult<${type.toCppType()}>;`;
-    const doubleSpecialization = "template class IteratorResult<double>;";
+    const doubleSpecialization = "template class IteratorResult<Number*>;";
 
     return [instance, doubleSpecialization];
   }

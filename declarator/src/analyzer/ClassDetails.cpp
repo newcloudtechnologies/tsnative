@@ -498,10 +498,8 @@ std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_it
     _ASSERT(size >= 0);
 
     const std::vector<std::pair<std::string, int>> denominators = {
-        {"uint64_t", sizeof(uint64_t)},
-        {"uint32_t", sizeof(uint32_t)},
-        {"uint16_t", sizeof(uint16_t)},
-        {"uint8_t", sizeof(uint8_t)},
+        {"number", sizeof(double)},
+        {"boolean", sizeof(bool)}
     };
 
     int n = 0;

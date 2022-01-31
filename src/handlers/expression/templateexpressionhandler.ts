@@ -32,6 +32,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     const stringConstructor = this.generator.builtinString.getLLVMConstructor();
     const stringConcat = this.generator.builtinString.getLLVMConcat();
     let allocated = this.generator.gc.allocate(stringType.getPointerElementType());
+    allocated = this.generator.builder.asVoidStar(allocated);
 
     const head = this.generator.builder.createGlobalStringPtr(expression.head.rawText || "");
     this.generator.builder.createSafeCall(stringConstructor, [allocated, head]);
@@ -49,7 +50,10 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
       if (span.literal.rawText) {
         const allocatedLiteral = this.generator.gc.allocate(stringType.getPointerElementType());
         const literal = this.generator.builder.createGlobalStringPtr(span.literal.rawText);
-        this.generator.builder.createSafeCall(stringConstructor, [allocatedLiteral, literal]);
+        this.generator.builder.createSafeCall(stringConstructor, [
+          this.generator.builder.asVoidStar(allocatedLiteral),
+          literal,
+        ]);
 
         allocated = this.generator.builder.createSafeCall(stringConcat, [
           this.generator.builder.asVoidStar(allocated),
@@ -63,7 +67,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
 
   private llvmValueToString(expression: ts.Expression, value: LLVMValue) {
     const nakedType = value.type.unwrapPointer();
-    if (!nakedType.isCppPrimitiveType() && !nakedType.isString() && !nakedType.isArray()) {
+    if (!nakedType.isCppPrimitiveType() && !nakedType.isTSNumber() && !nakedType.isString() && !nakedType.isArray()) {
       throw new Error("Only primitives, strings and arrays are supported");
     }
 
@@ -73,7 +77,11 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     if (nakedType.isCppPrimitiveType()) {
       const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(expression);
       allocated = this.generator.gc.allocate(stringType.getPointerElementType());
+      allocated = this.generator.builder.asVoidStar(allocated);
       this.generator.builder.createSafeCall(stringFromPrimitiveConstructor, [allocated, value.getValue()]);
+    } else if (nakedType.isTSNumber()) {
+      const toString = this.generator.builtinNumber.createToString();
+      allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
     } else if (nakedType.isArray()) {
       const arrayType = this.generator.ts.checker.getTypeAtLocation(expression);
       const toString = this.generator.ts.array.createToString(arrayType, expression);

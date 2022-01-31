@@ -9,7 +9,7 @@
  *
  */
 
-import { flatten } from "lodash";
+import { flatten, zipWith } from "lodash";
 import * as fs from "fs";
 
 export class NmSymbolExtractor {
@@ -28,7 +28,20 @@ export class NmSymbolExtractor {
       })
     );
 
-    return { mangledSymbols, demangledSymbols };
+    const zipped: [string, string][] = zipWith(demangledSymbols, mangledSymbols, (key: string, value: string) => {
+      return [key, value];
+    });
+
+    const filtered = new Map<string, string>(zipped);
+    const isServiceSymbol = (symbol: string) => symbol.startsWith("#");
+
+    filtered.forEach((_, key) => {
+      if (isServiceSymbol(key)) {
+        filtered.delete(key);
+      }
+    });
+
+    return { mangledSymbols: Array.from(filtered.values()), demangledSymbols: Array.from(filtered.keys()) };
   }
 
   private getExportedSymbols(rawOutput: string): string[] {
@@ -43,8 +56,19 @@ export class NmSymbolExtractor {
       return symbol;
     };
 
+    // mkrv @todo: it would be nice to filter all the service stuff like std, __gcc, __clang, etc
+    const lambdaPattern = new RegExp(/(?=::.lambda.+\()/);
+    const isLambda = (line: string) => {
+      return line.match(lambdaPattern);
+    };
+
+    const isServiceLine = (line: string) => {
+      return isLambda(line);
+    };
+
     const symbols: (string | null)[] = lines.map((line) => {
       const trimmed = line.trim();
+
       const symbolTypePattern = new RegExp(/(?<=\s)\w(?=\s)/);
       const symbolTypeMatches = trimmed.match(symbolTypePattern);
 
@@ -54,7 +78,11 @@ export class NmSymbolExtractor {
 
       const symbolType = symbolTypeMatches[0];
       if (symbolType === "V" || symbolType === "R" || symbolType === "S") {
-        const symbol = trimmed.split(` ${symbolType} `)[1];
+        let symbol = trimmed.split(` ${symbolType} `)[1];
+        if (isServiceLine(line)) {
+          symbol = "#" + symbol;
+        }
+
         return cutLeadingUnderscopeIfNecessary(symbol);
       }
 
@@ -65,9 +93,14 @@ export class NmSymbolExtractor {
           return null;
         }
 
-        const symbol = signatureMatches[0];
+        let symbol = signatureMatches[0];
+        if (isServiceLine(line)) {
+          symbol = "#" + symbol;
+        }
+
         return cutLeadingUnderscopeIfNecessary(symbol);
       }
+
       return null;
     });
     return symbols.filter(Boolean) as string[];

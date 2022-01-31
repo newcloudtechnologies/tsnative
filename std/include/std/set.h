@@ -4,9 +4,10 @@
 #include "gc.h"
 #include "iterable.h"
 #include "tsclosure.h"
+#include "tsnumber.h"
 
-#include "iterators/setiterator.h"
 #include "datatypes/orderedset.h"
+#include "iterators/setiterator.h"
 
 #include <utility>
 
@@ -21,7 +22,7 @@ public:
     void forEach(TSClosure* visitor) const;
     bool has(V value) const;
     Set<V>* add(V value);
-    double size() const;
+    Number* size() const;
 
     IterableIterator<V>* values();
     IterableIterator<V>* iterator() override;
@@ -64,19 +65,21 @@ template <typename V>
 void Set<V>::forEach(TSClosure* visitor) const
 {
     const auto& ordered = _set.ordered();
+    auto numArgs = visitor->getNumArgs()->valueOf();
+
     for (size_t i = 0; i < ordered.size(); ++i)
     {
-        if (visitor->getNumArgs() > 0)
+        if (numArgs > 0)
         {
             visitor->setEnvironmentElement(getPointerToValue(ordered.at(i)), 0);
         }
 
-        if (visitor->getNumArgs() > 1)
+        if (numArgs > 1)
         {
             visitor->setEnvironmentElement(getPointerToValue(ordered.at(i)), 1);
         }
 
-        if (visitor->getNumArgs() > 2)
+        if (numArgs > 2)
         {
             visitor->setEnvironmentElement(const_cast<Set<V>*>(this), 2);
         }
@@ -99,9 +102,9 @@ Set<V>* Set<V>::add(V value)
 }
 
 template <typename V>
-double Set<V>::size() const
+Number* Set<V>::size() const
 {
-    return static_cast<double>(_set.size());
+    return GC::createHeapAllocated<Number>(_set.size());
 }
 
 template <typename V>

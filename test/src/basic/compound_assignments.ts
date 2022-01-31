@@ -78,14 +78,10 @@
   }
   {
     // Arithmetical shift right
+    // mkrv @todo: not every cpp compiler implement arithmetic right shift on signed values
     let i: number = -2;
     i >>= 1;
+
     console.assert(i === -1, "Bitwise arithmetical shift right test failed");
-  }
-  {
-    // Logical shift right
-    let i: number = -2;
-    i >>>= 1;
-    console.assert(i === 0x7fffffff, "Bitwise logical shift right test failed");
   }
 }

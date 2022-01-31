@@ -1,22 +1,24 @@
 #pragma once
 
+#include <std/tsnumber.h>
+
 namespace cpp {
 
 class Point {
 public:
-  Point(double x, double y);
+  Point(const Number* x, const Number* y);
 
-  double x() const;
-  double y() const;
+  const Number* x() const;
+  const Number* y() const;
 
-  void setX(double x);
-  void setY(double y);
+  void setX(Number* x);
+  void setY(Number* y);
 
   Point* clone() const;
 
 private:
-  double _x;
-  double _y;
+  Number _x{0.0};
+  Number _y{0.0};
 };
 
 } // namespace cpp
