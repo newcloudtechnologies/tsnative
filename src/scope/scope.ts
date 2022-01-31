@@ -9,7 +9,6 @@
  *
  */
 
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GenericTypeMapper, LLVMGenerator } from "../generator";
 
@@ -174,12 +173,6 @@ export class Environment {
 
     return envType;
   }
-}
-
-export function injectUndefined(scope: Scope, generator: LLVMGenerator) {
-  const declarationLLVMType = LLVMType.getInt8Type(generator).getPointer();
-  const undef = llvm.Constant.getNullValue(declarationLLVMType.unwrapped);
-  scope.set("undefined", LLVMValue.create(undef, generator));
 }
 
 export function setLLVMFunctionScope(
