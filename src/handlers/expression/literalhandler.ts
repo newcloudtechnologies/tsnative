@@ -2,7 +2,7 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
-import { LLVMStructType, LLVMType } from "../../llvm/type";
+import { LLVMStructType } from "../../llvm/type";
 import { TSTuple } from "../../ts/tuple";
 import { TSType } from "../../ts/type";
 import { TSSymbol } from "../../ts/symbol";
@@ -55,9 +55,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleLiteral(elements: ts.NodeArray<ts.Expression>, env?: Environment) {
-    const initializers = elements.map((e) =>
-      this.generator.createLoadIfNecessary(this.generator.handleExpression(e, env))
-    );
+    const initializers = elements.map((e) => this.generator.handleExpression(e, env));
     const types = elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
 
     const constructor = this.generator.tuple.getLLVMConstructor(types);
@@ -70,13 +68,11 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleBooleanLiteral(expression: ts.BooleanLiteral): LLVMValue {
-    const allocated = this.generator.gc.allocate(LLVMType.getIntNType(1, this.generator));
-    if (expression.kind === ts.SyntaxKind.TrueKeyword) {
-      this.generator.builder.createSafeStore(LLVMConstantInt.getTrue(this.generator), allocated);
-    } else {
-      this.generator.builder.createSafeStore(LLVMConstantInt.getFalse(this.generator), allocated);
-    }
-    return allocated;
+    const value =
+      expression.kind === ts.SyntaxKind.TrueKeyword
+        ? LLVMConstantInt.getTrue(this.generator)
+        : LLVMConstantInt.getFalse(this.generator);
+    return this.generator.builtinBoolean.create(value);
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
@@ -399,9 +395,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
         const tsType = this.generator.ts.checker.getTypeAtLocation(element);
         elementValue =
-          tsType.isObject() || tsType.isFunction()
-            ? this.generator.builder.asVoidStar(elementValue)
-            : this.generator.createLoadIfNecessary(elementValue);
+          tsType.isObject() || tsType.isFunction() ? this.generator.builder.asVoidStar(elementValue) : elementValue;
 
         this.generator.builder.createSafeCall(push, [this.generator.builder.asVoidStar(allocated), elementValue]);
       }

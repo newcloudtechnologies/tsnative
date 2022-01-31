@@ -12,14 +12,12 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
-import { LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
+import { LLVMConstantInt, LLVMValue } from "../../llvm/value";
 
 export class NullKeywordHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (expression.kind === ts.SyntaxKind.NullKeyword) {
-      const allocated = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
-      return allocated;
+      return this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
     }
 
     if (this.next) {

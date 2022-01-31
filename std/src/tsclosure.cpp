@@ -4,7 +4,7 @@ TSClosure::TSClosure(void* fn, void** env, Number* numArgs, Number* optionals)
     : fn(fn)
     , env(env)
     , numArgs(numArgs)
-    , optionals(static_cast<int64_t>(optionals->valueOf()))
+    , optionals(static_cast<int64_t>(optionals->unboxed()))
 {
 }
 

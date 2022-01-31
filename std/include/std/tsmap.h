@@ -1,11 +1,11 @@
 #pragma once
 
-#include "array.h"
 #include "gc.h"
 #include "iterable.h"
+#include "tsarray.h"
 #include "tsclosure.h"
 #include "tsnumber.h"
-#include "tuple.h"
+#include "tstuple.h"
 
 #include "datatypes/orderedmap.h"
 #include "iterators/mapiterator.h"
@@ -13,38 +13,25 @@
 template <typename K, typename V>
 class Map : public Iterable<Tuple<K, V>*>
 {
+    static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value, "TS Map keys/values expected to be of pointer type");
+
 public:
     Map();
 
     void clear();
-    bool remove(K key);
+    Boolean* remove(K key);
     void forEach(TSClosure* visitor) const;
     V get(K key) const;
-    bool has(K key) const;
+    Boolean* has(K key) const;
     Map<K, V>* set(K key, V value);
     Number* size() const;
 
     IterableIterator<V>* values();
 
-    using KPointer = typename std::conditional<std::is_pointer<K>::value, K, typename std::add_pointer<K>::type>::type;
-    using VPointer = typename std::conditional<std::is_pointer<V>::value, V, typename std::add_pointer<V>::type>::type;
-
     IterableIterator<Tuple<K, V>*>* iterator() override;
     IterableIterator<K>* keys();
 
 private:
-    template <typename U = V>
-    typename std::enable_if<std::is_pointer<U>::value, U>::type getPointerToValue(U value) const
-    {
-        return value;
-    }
-
-    template <typename U = V>
-    typename std::enable_if<!std::is_pointer<U>::value, U>::type* getPointerToValue(U value) const
-    {
-        return GC::createHeapAllocated<U>(value);
-    }
-
     OrderedMap<K, V> _map;
 };
 
@@ -60,27 +47,27 @@ void Map<K, V>::clear()
 }
 
 template <typename K, typename V>
-bool Map<K, V>::remove(K key)
+Boolean* Map<K, V>::remove(K key)
 {
-    return _map.remove(key);
+    return GC::createHeapAllocated<Boolean>(_map.remove(key));
 }
 
 template <typename K, typename V>
 void Map<K, V>::forEach(TSClosure* visitor) const
 {
     const auto& orderedKeys = _map.orderedKeys();
-    auto numArgs = visitor->getNumArgs()->valueOf();
+    auto numArgs = visitor->getNumArgs()->unboxed();
 
     for (size_t i = 0; i < orderedKeys.size(); ++i)
     {
         if (numArgs > 0)
         {
-            visitor->setEnvironmentElement(getPointerToValue(get(orderedKeys.at(i))), 0);
+            visitor->setEnvironmentElement(get(orderedKeys.at(i)), 0);
         }
 
         if (numArgs > 1)
         {
-            visitor->setEnvironmentElement(getPointerToValue(orderedKeys.at(i)), 1);
+            visitor->setEnvironmentElement(orderedKeys.at(i), 1);
         }
 
         if (numArgs > 2)
@@ -99,9 +86,9 @@ V Map<K, V>::get(K key) const
 }
 
 template <typename K, typename V>
-bool Map<K, V>::has(K key) const
+Boolean* Map<K, V>::has(K key) const
 {
-    return _map.has(key);
+    return GC::createHeapAllocated<Boolean>(_map.has(key));
 }
 
 template <typename K, typename V>

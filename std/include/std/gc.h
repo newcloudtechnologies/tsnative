@@ -5,16 +5,10 @@
 
 #include "tsnumber.h"
 
-template <typename T>
-using remove_specifiers =
-    typename std::remove_pointer<typename std::remove_reference<typename std::remove_cv<T>::type>::type>::type;
-
 class GC
 {
 public:
-    static void* allocate(Number* numBytes);
     static void* allocate(double numBytes);
-    static void* allocate(size_t numBytes);
 
     template <typename Source>
     static Source track(Source value)
@@ -24,14 +18,20 @@ public:
         return value;
     }
 
+    template <typename Source>
+    static Source untrack(Source value)
+    {
+        static_assert(std::is_pointer<Source>::value);
+        // @todo: here we stop tracking existing pointer
+        return value;
+    }
+
+    // mkrv @todo: better remove this method
     template <typename Destination, typename Source>
     static Destination* createHeapAllocated(Source value)
     {
-        static_assert(std::is_same<remove_specifiers<Source>, remove_specifiers<Destination>>::value ||
-                      std::is_convertible<remove_specifiers<Source>, remove_specifiers<Destination>>::value ||
-                      std::is_constructible<Destination, Source>::value);
+        static_assert(std::is_constructible<Destination, Source>::value);
 
-        void* mem = GC::allocate(sizeof(Destination));
-        return new (mem) Destination(value);
+        return GC::track(new Destination(value));
     }
 };

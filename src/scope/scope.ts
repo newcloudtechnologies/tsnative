@@ -623,6 +623,18 @@ export class Scope {
     throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
   }
 
+  overwriteThroughParentChain(identifier: string, value: ScopeValue) {
+    if (this.map.get(identifier)) {
+      this.map.set(identifier, value);
+      return;
+    } else if (this.parent) {
+      this.parent.overwriteThroughParentChain(identifier, value);
+      return;
+    }
+
+    throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+  }
+
   remove(identifier: string) {
     this.map.delete(identifier);
   }

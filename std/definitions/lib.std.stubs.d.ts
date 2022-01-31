@@ -1,4 +1,3 @@
-interface Boolean { }
 interface Function { }
 interface IArguments { }
 interface Object { }

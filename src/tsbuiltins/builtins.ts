@@ -35,7 +35,7 @@ export class GC {
     this.allocateFn = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
   }
 
-  allocate(type: LLVMType) {
+  allocate(type: LLVMType, name?: string) {
     if (type.isPointer()) {
       throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
     }
@@ -46,7 +46,7 @@ export class GC {
       LLVMConstantFP.get(this.generator, size || 1),
     ]);
 
-    return this.generator.builder.createBitCast(returnValue, type.getPointer());
+    return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
   }
 }
 
@@ -140,10 +140,7 @@ export class BuiltinTSTuple extends Builtin {
     }
 
     const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [
-      this.getLLVMType(),
-      ...argTypes.map((type) => type.getLLVMType().correctCppPrimitiveType()),
-    ];
+    const llvmArgumentTypes = [this.getLLVMType(), ...argTypes.map((type) => type.getLLVMType())];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;
@@ -411,7 +408,7 @@ export class BuiltinNumber extends Builtin {
       throw new Error(`Number method 'toBool' for '${thisType.toString()}' not found`);
     }
 
-    const llvmReturnType = LLVMType.getIntNType(1, this.generator);
+    const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     if (flags === OperationFlags.Binary) {
       llvmArgumentTypes.push(this.llvmType);
@@ -454,6 +451,32 @@ export class BuiltinNumber extends Builtin {
     return fn;
   }
 
+  getUnboxed(value: LLVMValue) {
+    const declaration = this.getDeclaration();
+
+    const unboxedDeclaration = declaration.members.find((m) => m.name?.getText() === "unboxed")!;
+    const thisType = this.getTSType();
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      unboxedDeclaration,
+      undefined,
+      thisType,
+      [],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Number unbox fn for '${thisType.toString()}' not found`);
+    }
+
+    const llvmReturnType = LLVMType.getDoubleType(this.generator);
+    const llvmArgumentTypes = [this.llvmType];
+
+    const { fn: unboxFn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return this.generator.builder.createSafeCall(unboxFn, [value]);
+  }
+
   getLLVMType() {
     return this.llvmType;
   }
@@ -466,6 +489,223 @@ export class BuiltinNumber extends Builtin {
 
     this.generator.builder.createSafeCall(constructorFn, [thisUntyped, value]);
     return allocated;
+  }
+
+  private getCloneFn() {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+    const llvmThisType = this.getLLVMType();
+
+    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "clone")!;
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      equalsDeclaration,
+      undefined,
+      thisType,
+      [thisType],
+      this.generator
+    );
+
+    const llvmReturnType = llvmThisType;
+    const llvmArgumentTypes = [llvmThisType];
+    const { fn: clone } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return clone;
+  }
+
+  clone(value: LLVMValue) {
+    const cloneFn = this.getCloneFn();
+    return this.generator.builder.createSafeCall(cloneFn, [value]);
+  }
+}
+
+export class BuiltinBoolean extends Builtin {
+  private readonly llvmType: LLVMType;
+
+  constructor(generator: LLVMGenerator) {
+    super("boolean", generator);
+    const structType = LLVMStructType.create(generator, "boolean");
+    structType.setBody([LLVMType.getInt8Type(generator).getPointer()]);
+    this.llvmType = structType.getPointer();
+  }
+
+  getLLVMType() {
+    return this.llvmType;
+  }
+
+  getUnboxed(value: LLVMValue) {
+    const declaration = this.getDeclaration();
+
+    const unboxedDeclaration = declaration.members.find((m) => m.name?.getText() === "unboxed")!;
+    const thisType = this.getTSType();
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      unboxedDeclaration,
+      undefined,
+      thisType,
+      [],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Boolean constructor for '${thisType.toString()}' not found`);
+    }
+
+    const llvmReturnType = LLVMType.getIntNType(1, this.generator);
+    const llvmArgumentTypes = [this.llvmType];
+
+    const { fn: unboxFn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return this.generator.builder.createSafeCall(unboxFn, [value]);
+  }
+
+  getLLVMEquals() {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+    const llvmThisType = this.getLLVMType();
+
+    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "equals")!;
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      equalsDeclaration,
+      undefined,
+      thisType,
+      [thisType],
+      this.generator
+    );
+
+    const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
+    const llvmArgumentTypes = [llvmThisType, llvmThisType];
+    const { fn: equals } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return equals;
+  }
+
+  private createCtorFn() {
+    const declaration = this.getDeclaration();
+
+    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
+    const thisType = this.getTSType();
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      constructorDeclaration,
+      undefined,
+      thisType,
+      [],
+      this.generator,
+      undefined,
+      ["bool"]
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Boolean constructor for '${thisType.toString()}' not found`);
+    }
+
+    const llvmReturnType = LLVMType.getVoidType(this.generator);
+    const llvmArgumentTypes = [
+      LLVMType.getInt8Type(this.generator).getPointer(),
+      LLVMType.getIntNType(1, this.generator),
+    ];
+
+    const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return constructor;
+  }
+
+  create(value: LLVMValue) {
+    const constructorFn = this.createCtorFn();
+
+    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const thisUntyped = this.generator.builder.asVoidStar(allocated);
+
+    this.generator.builder.createSafeCall(constructorFn, [thisUntyped, value]);
+    return allocated;
+  }
+
+  createNegateFn() {
+    const declaration = this.getDeclaration();
+
+    const negateDeclaration = declaration.members.find((m) => m.name?.getText() === "negate")!;
+    const thisType = this.getTSType();
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      negateDeclaration,
+      undefined,
+      thisType,
+      [],
+      this.generator,
+      undefined
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error("Boolean.negate not found");
+    }
+
+    const llvmReturnType = this.llvmType;
+    const llvmArgumentTypes = [this.llvmType];
+
+    const { fn: negateFn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return negateFn;
+  }
+
+  private getCloneFn() {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+    const llvmThisType = this.getLLVMType();
+
+    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "clone")!;
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      equalsDeclaration,
+      undefined,
+      thisType,
+      [thisType],
+      this.generator
+    );
+
+    const llvmReturnType = llvmThisType;
+    const llvmArgumentTypes = [llvmThisType];
+    const { fn: clone } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return clone;
+  }
+
+  clone(value: LLVMValue) {
+    const cloneFn = this.getCloneFn();
+    return this.generator.builder.createSafeCall(cloneFn, [value]);
+  }
+
+  createToString() {
+    const declaration = this.getDeclaration();
+
+    const fnDeclaration = declaration.members.find((m) => m.name?.getText() === "toString");
+    if (!fnDeclaration) {
+      throw new Error(`Unable to find method 'toString' at '${declaration.getText()}'`);
+    }
+
+    const thisType = this.getTSType();
+
+    const argTypes: TSType[] = [];
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      fnDeclaration,
+      undefined,
+      thisType,
+      argTypes,
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Number method 'toString' for '${thisType.toString()}' not found`);
+    }
+
+    const llvmReturnType = this.generator.builtinString.getLLVMType();
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return fn;
   }
 }
 
@@ -509,7 +749,7 @@ export class BuiltinString extends Builtin {
     const llvmReturnType = LLVMType.getVoidType(this.generator);
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     if (argTypes.length > 0) {
-      llvmArgumentTypes.push(argTypes[0].getLLVMType().correctCppPrimitiveType());
+      llvmArgumentTypes.push(argTypes[0].getLLVMType());
     } else {
       llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
     }
@@ -564,11 +804,38 @@ export class BuiltinString extends Builtin {
       this.generator
     );
 
-    const llvmReturnType = LLVMType.getIntNType(1, this.generator);
+    const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
     const llvmArgumentTypes = [llvmThisType, llvmThisType];
     const { fn: equals } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return equals;
+  }
+
+  private getCloneFn() {
+    const declaration = this.getDeclaration();
+    const thisType = this.getTSType();
+    const llvmThisType = this.getLLVMType();
+
+    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "clone")!;
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      equalsDeclaration,
+      undefined,
+      thisType,
+      [thisType],
+      this.generator
+    );
+
+    const llvmReturnType = llvmThisType;
+    const llvmArgumentTypes = [llvmThisType];
+    const { fn: clone } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return clone;
+  }
+
+  clone(value: LLVMValue) {
+    const cloneFn = this.getCloneFn();
+    return this.generator.builder.createSafeCall(cloneFn, [value]);
   }
 }
 
@@ -630,7 +897,7 @@ export class BuiltinIteratorResult extends Builtin {
       throw new Error(`External symbol for 'value' is not found at '${declaration.getText()}'`);
     }
 
-    const llvmReturnType = LLVMType.getIntNType(1, this.generator);
+    const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     const { fn: doneGetter } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 

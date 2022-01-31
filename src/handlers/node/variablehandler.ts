@@ -11,7 +11,7 @@
 
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
 import { LLVMStructType } from "../../llvm/type";
-import { LLVMConstant, LLVMConstantFP, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
+import { LLVMConstantFP, LLVMConstantInt, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 
@@ -56,17 +56,13 @@ export class VariableHandler extends AbstractNodeHandler {
 
     const type = this.generator.ts.checker.getTypeAtLocation(declaration);
 
-    if (!type.isArray() && !type.isSet() && !type.isMap()) {
-      if (initializer.isTSPrimitivePtr()) {
-        // mimics 'value' semantic for primitives
-        initializer = this.generator.builder.createLoad(initializer);
+    if (initializer.isTSPrimitivePtr()) {
+      // mimics 'value' semantic for primitives
+      initializer = initializer.clone();
 
-        // convert c++ enumerator values to ts' number
-        if (type.isEnum() && initializer.type.isIntegerType()) {
-          initializer = this.generator.builtinNumber.create(initializer);
-        }
-
-        initializer = initializer.createHeapAllocated();
+      // convert c++ enumerator values to ts' number
+      if (type.isEnum() && initializer.type.isIntegerType()) {
+        initializer = this.generator.builtinNumber.create(initializer);
       }
     }
 
@@ -132,31 +128,24 @@ export class VariableHandler extends AbstractNodeHandler {
     addClassScope(declaration, this.generator.symbolTable.globalScope, this.generator);
 
     let initializer: LLVMValue | undefined;
-    if (!declaration.initializer || declaration.initializer.kind === ts.SyntaxKind.NullKeyword) {
-      let declarationLLVMType;
-      const typeReference = declaration.type as ts.TypeReferenceNode;
-      if (typeReference && typeReference.typeName) {
-        const typename = (declaration.type as ts.TypeReferenceNode).typeName.getText();
-        const typeAliasScope = this.generator.symbolTable.currentScope.tryGetThroughParentChain(typename) as Scope;
-        if (typeAliasScope) {
-          declarationLLVMType = typeAliasScope.thisData!.llvmType;
-        }
-      }
-
-      if (!declarationLLVMType) {
-        const declarationType = this.generator.ts.checker.getTypeAtLocation(declaration);
-        declarationLLVMType = declarationType.getLLVMType();
-      }
-      initializer = LLVMConstant.createNullValue(declarationLLVMType.unwrapPointer(), this.generator);
+    if (
+      !declaration.initializer ||
+      declaration.initializer.kind === ts.SyntaxKind.NullKeyword ||
+      declaration.initializer.kind === ts.SyntaxKind.UndefinedKeyword
+    ) {
+      const declarationType = this.generator.ts.checker.getTypeAtLocation(declaration);
+      const declarationLLVMType = declarationType.getLLVMType();
 
       const allocated = this.generator.gc.allocate(declarationLLVMType.unwrapPointer());
-      this.generator.builder.createSafeStore(initializer, allocated);
 
       if (allocated.isOptionalUnion()) {
         allocated.initializeNullOptional();
+      } else {
+        initializer = this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
+        this.generator.builder.createSafeStore(initializer, allocated);
       }
 
-      parentScope.set(name, new HeapVariableDeclaration(allocated, initializer, name, declaration));
+      parentScope.set(name, new HeapVariableDeclaration(allocated, allocated, name, declaration));
       initializer = undefined;
     } else {
       this.checkAssignmentFromMethod(declaration);
@@ -216,12 +205,12 @@ export class VariableHandler extends AbstractNodeHandler {
 
     identifiers.forEach((identifier, index) => {
       const name = identifier.getText();
-      const llvmIntegralIndex = LLVMConstantFP.get(this.generator, index);
-      const llvmDoubleIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
+      const llvmDoubleIndex = LLVMConstantFP.get(this.generator, index);
+      const llvmNumberIndex = this.generator.builtinNumber.create(llvmDoubleIndex);
 
       const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
         arrayUntyped,
-        llvmDoubleIndex,
+        llvmNumberIndex,
       ]);
       const destructedValue = this.generator.builder.createBitCast(destructedValueUntyped, elementType.getLLVMType());
 

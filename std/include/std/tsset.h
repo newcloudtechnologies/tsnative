@@ -1,8 +1,8 @@
 #pragma once
 
-#include "array.h"
 #include "gc.h"
 #include "iterable.h"
+#include "tsarray.h"
 #include "tsclosure.h"
 #include "tsnumber.h"
 
@@ -14,13 +14,15 @@
 template <typename V>
 class Set : public Iterable<V>
 {
+    static_assert(std::is_pointer<V>::value, "TS Set elements expected to be of pointer type");
+
 public:
     Set();
 
     void clear();
-    bool remove(V value);
+    Boolean* remove(V value);
     void forEach(TSClosure* visitor) const;
-    bool has(V value) const;
+    Boolean* has(V value) const;
     Set<V>* add(V value);
     Number* size() const;
 
@@ -29,18 +31,6 @@ public:
     IterableIterator<V>* keys();
 
 private:
-    template <typename U = V>
-    typename std::enable_if<std::is_pointer<U>::value, U>::type getPointerToValue(U value) const
-    {
-        return value;
-    }
-
-    template <typename U = V>
-    typename std::enable_if<!std::is_pointer<U>::value, U>::type* getPointerToValue(U value) const
-    {
-        return GC::createHeapAllocated<U>(value);
-    }
-
     OrderedSet<V> _set;
 };
 
@@ -56,27 +46,27 @@ void Set<V>::clear()
 }
 
 template <typename V>
-bool Set<V>::remove(V value)
+Boolean* Set<V>::remove(V value)
 {
-    return _set.remove(value);
+    return GC::createHeapAllocated<Boolean>(_set.remove(value));
 }
 
 template <typename V>
 void Set<V>::forEach(TSClosure* visitor) const
 {
     const auto& ordered = _set.ordered();
-    auto numArgs = visitor->getNumArgs()->valueOf();
+    auto numArgs = visitor->getNumArgs()->unboxed();
 
     for (size_t i = 0; i < ordered.size(); ++i)
     {
         if (numArgs > 0)
         {
-            visitor->setEnvironmentElement(getPointerToValue(ordered.at(i)), 0);
+            visitor->setEnvironmentElement(ordered.at(i), 0);
         }
 
         if (numArgs > 1)
         {
-            visitor->setEnvironmentElement(getPointerToValue(ordered.at(i)), 1);
+            visitor->setEnvironmentElement(ordered.at(i), 1);
         }
 
         if (numArgs > 2)
@@ -89,9 +79,9 @@ void Set<V>::forEach(TSClosure* visitor) const
 }
 
 template <typename V>
-bool Set<V>::has(V value) const
+Boolean* Set<V>::has(V value) const
 {
-    return _set.has(value);
+    return GC::createHeapAllocated<Boolean>(_set.has(value));
 }
 
 template <typename V>

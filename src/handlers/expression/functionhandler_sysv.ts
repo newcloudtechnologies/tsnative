@@ -40,7 +40,7 @@ export class SysVFunctionHandler {
     const llvmArgumentTypes = [llvmThisType];
 
     const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
-    const llvmReturnType = tsReturnType.getLLVMType().correctCppPrimitiveType();
+    const llvmReturnType = tsReturnType.getLLVMType();
 
     const returnsVoidStar =
       !tsReturnType.isSymbolless() && tsReturnType.getSymbol().valueDeclaration?.isClassOrInterface();
@@ -62,18 +62,11 @@ export class SysVFunctionHandler {
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
     const args = [thisValueUntyped];
 
-    if (!llvmReturnType.isCppPrimitiveType()) {
-      let callResult = this.generator.builder.createSafeCall(fn, args);
-      if (returnsVoidStar) {
-        callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
-      }
-      return callResult;
+    let callResult = this.generator.builder.createSafeCall(fn, args);
+    if (returnsVoidStar) {
+      callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
     }
-
-    const allocated = this.generator.gc.allocate(llvmReturnType);
-    const callResult = this.generator.builder.createSafeCall(fn, args);
-    this.generator.builder.createSafeStore(callResult, allocated);
-    return allocated;
+    return callResult;
   }
 
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): LLVMValue {
@@ -92,7 +85,7 @@ export class SysVFunctionHandler {
         return LLVMType.getInt8Type(this.generator).getPointer();
       }
 
-      return argumentType.getLLVMType().correctCppPrimitiveType();
+      return argumentType.getLLVMType();
     });
 
     let thisValue;
@@ -132,7 +125,7 @@ export class SysVFunctionHandler {
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
     const returnType = resolvedSignature.getReturnType();
-    const llvmReturnType = returnType.getLLVMType().correctCppPrimitiveType();
+    const llvmReturnType = returnType.getLLVMType();
 
     const returnsVoidStar = !returnType.isSymbolless() && returnType.getSymbol().valueDeclaration?.isClassOrInterface();
 
@@ -154,25 +147,18 @@ export class SysVFunctionHandler {
       args.unshift(thisValueUntyped);
     }
 
-    if (!llvmReturnType.isCppPrimitiveType()) {
-      if (!llvmReturnType.isPointer() && !llvmReturnType.isVoid()) {
-        throw new Error(
-          `Error at '${expression.getText()}': returning values from C++ in not allowed. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
-        );
-      }
-
-      let callResult = this.generator.builder.createSafeCall(fn, args);
-      if (returnsVoidStar) {
-        callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
-      }
-      return callResult;
+    if (!llvmReturnType.isPointer() && !llvmReturnType.isVoid()) {
+      throw new Error(
+        `Error at '${expression.getText()}': returning values from C++ in not allowed. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
+      );
     }
 
-    const allocated = this.generator.gc.allocate(llvmReturnType);
-    const callResult = this.generator.builder.createSafeCall(fn, args);
-    this.generator.builder.createSafeStore(callResult, allocated);
+    let callResult = this.generator.builder.createSafeCall(fn, args);
+    if (returnsVoidStar) {
+      callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+    }
 
-    return allocated;
+    return callResult;
   }
 
   handleNewExpression(
@@ -209,7 +195,7 @@ export class SysVFunctionHandler {
         return LLVMType.getInt8Type(this.generator).getPointer();
       }
 
-      return llvmType.correctCppPrimitiveType();
+      return llvmType;
     });
 
     let args =

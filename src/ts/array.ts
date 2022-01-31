@@ -149,7 +149,7 @@ export class TSArray {
     const parameterType =
       elementType.isObject() || elementType.isUnionOrIntersection()
         ? LLVMType.getInt8Type(this.generator).getPointer()
-        : elementType.getLLVMType().correctCppPrimitiveType();
+        : elementType.getLLVMType();
 
     const { fn: push } = this.generator.llvm.function.create(
       this.generator.builtinNumber.getLLVMType(),

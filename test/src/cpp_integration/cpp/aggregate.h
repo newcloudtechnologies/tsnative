@@ -1,24 +1,24 @@
 #pragma once
 
 #include "point.h"
-#include <std/array.h>
-#include <std/stdstring.h>
+#include <std/tsarray.h>
+#include <std/tsstring.h>
 
 namespace cpp {
 
 class Aggregate {
 public:
-  Aggregate(Point *point, Array<string *> *array, string *s, Number* d);
+  Aggregate(Point *point, Array<String *> *array, String *s, Number* d);
 
   Point *getPoint() const;
-  Array<string *> *getStringArray() const;
-  string *getString() const;
+  Array<String *> *getStringArray() const;
+  String *getString() const;
   Number* getNumber() const;
 
 private:
   Point *_point = nullptr;
-  Array<string *> *_array = nullptr;
-  string *_s = nullptr;
+  Array<String *> *_array = nullptr;
+  String *_s = nullptr;
   Number* _n = nullptr;
 };
 

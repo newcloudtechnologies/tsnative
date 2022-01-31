@@ -2,6 +2,7 @@
 
 #include "tsoptional.h"
 #include "tsnumber.h"
+#include "tsboolean.h"
 
 class TSClosure
 {
@@ -31,7 +32,7 @@ void TSClosure::setEnvironmentElement(T* value, int index)
     {
         TSOptional<T>* optional = static_cast<TSOptional<T>*>(env[index]);
 
-        *(optional->marker) = 0;
+        optional->marker = GC::createHeapAllocated<Boolean>(true);
         optional->value = value;
 
         return;

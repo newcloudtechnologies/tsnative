@@ -482,13 +482,17 @@ export class TSType {
       return "Array__" + types + "__class";
     }
 
-    if (this.isString()) {
-      return "string";
-    }
+    // if (this.isString()) {
+    //   return "String";
+    // }
 
-    if (this.isNumber()) {
-      return "Number";
-    }
+    // if (this.isNumber()) {
+    //   return "Number";
+    // }
+
+    // if (this.isBoolean()) {
+    //   return "Boolean";
+    // }
 
     let suffix = "";
 
@@ -567,14 +571,7 @@ export class TSType {
         (decorator) => decorator.getText() === "@ValueType"
       );
 
-      const isCppClassPrimitiveMember =
-        ts.isClassDeclaration(declaration.parent) &&
-        Declaration.create(declaration.parent, this.checker.generator).isAmbient() &&
-        llvmType.unwrapPointer().isCppPrimitiveType();
-
-      const valueType = hasValueTypeDecorator || isCppClassPrimitiveMember;
-
-      return { type: valueType ? llvmType.unwrapPointer() : llvmType, name: property.name };
+      return { type: hasValueTypeDecorator ? llvmType.unwrapPointer() : llvmType, name: property.name };
     };
 
     const symbol = this.getSymbol();
@@ -780,7 +777,7 @@ export class TSType {
     }
 
     if (this.isBoolean()) {
-      return LLVMType.getIntNType(1, this.checker.generator).getPointer();
+      return this.checker.generator.builtinBoolean.getLLVMType();
     }
 
     if (this.isNumber()) {
@@ -817,15 +814,15 @@ export class TSType {
     }
 
     if (this.isUndefined()) {
-      return LLVMType.getInt8Type(this.checker.generator).getPointer();
+      return this.checker.generator.builtinBoolean.getLLVMType();
+    }
+
+    if (this.isNull()) {
+      return this.checker.generator.builtinBoolean.getLLVMType();
     }
 
     if (this.isObject()) {
       return this.getStructType().getPointer();
-    }
-
-    if (this.isNull()) {
-      return LLVMType.getInt8Type(this.checker.generator).getPointer();
     }
 
     if (this.isTuple()) {
@@ -901,9 +898,11 @@ export class TSType {
     let typename = this.toString();
 
     if (this.isNumber()) {
-      typename = "Number*";
+      return "Number*";
     } else if (this.isString()) {
-      return "string*";
+      return "String*";
+    } else if (this.isBoolean()) {
+      return "Boolean*";
     } else if (this.isUnionOrIntersection()) {
       return "void*";
     } else if (!this.isSymbolless()) {
@@ -929,26 +928,12 @@ export class TSType {
       }
     }
 
-    switch (typename) {
-      case "String": // @todo
-        return "string*";
-      case "Boolean":
-      case "boolean":
-      case "true":
-      case "false":
-        return "bool";
-      default:
-        if (!typename) {
-          throw new Error(`Type '${this.toString()}' is not mapped to C++ type`);
-        }
-
-        if (this.isClassOrInterface()) {
-          typename += "*";
-        }
-
-        const namespace = this.getNamespace();
-        return namespace.length > 0 ? namespace + "::" + typename : typename;
+    if (this.isClassOrInterface()) {
+      typename += "*";
     }
+
+    const namespace = this.getNamespace();
+    return namespace.length > 0 ? namespace + "::" + typename : typename;
   }
 
   isSame(type: TSType) {

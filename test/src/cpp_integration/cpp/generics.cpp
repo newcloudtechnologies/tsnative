@@ -1,7 +1,7 @@
 #include <cstdint>
 
 #include <std/gc.h>
-#include <std/stdstring.h>
+#include <std/tsstring.h>
 
 template <typename T, typename R>
 R sum(T op1, T op2) { return op1 + op2; }
@@ -13,9 +13,9 @@ Number *sum(Number *op1, Number *op2)
 }
 
 template <>
-Number *sum(const string &op1, const string &op2)
+Number *sum(String *op1, String *op2)
 {
-  return op1.length()->add(op2.length());
+  return op1->length()->add(op2->length());
 }
 
 namespace NS
@@ -28,9 +28,9 @@ namespace NS
     template <>
     Number *getGenericNumber() { return GC::createHeapAllocated<Number>(42); }
     template <>
-    string *getGenericNumber()
+    String *getGenericNumber()
     {
-      return GC::createHeapAllocated<string>("forty two");
+      return GC::createHeapAllocated<String>("forty two");
     }
 
   } // namespace innerNS
@@ -49,17 +49,17 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<std::is_same<T, string *>::value, T>::type
+  typename std::enable_if<std::is_same<T, String *>::value, T>::type
   getWithAdditionOfTwo(T v) const
   {
-    return v->concat("_2");
+    return v->concat(GC::createHeapAllocated<String>("_2"));
   }
 };
 
 ClassWithTemplateMethod::ClassWithTemplateMethod() {}
 
 template Number *ClassWithTemplateMethod::getWithAdditionOfTwo(Number *) const;
-template string *ClassWithTemplateMethod::getWithAdditionOfTwo(string *) const;
+template String *ClassWithTemplateMethod::getWithAdditionOfTwo(String *) const;
 
 template <typename FirstMemberType, typename SecondMemberType>
 class ClassWithTemplateMembers
@@ -87,8 +87,8 @@ ClassWithTemplateMembers<FirstMemberType, SecondMemberType>::get() const
   return m_2;
 }
 
-template class ClassWithTemplateMembers<Number *, string *>;
-template class ClassWithTemplateMembers<string *, string *>;
+template class ClassWithTemplateMembers<Number *, String *>;
+template class ClassWithTemplateMembers<String *, String *>;
 
 template <typename T>
 class TemplateClassWithTemplateMethod
@@ -105,12 +105,12 @@ public:
   }
 
   template <typename U>
-  typename std::enable_if<std::is_same<U, string *>::value &&
+  typename std::enable_if<std::is_same<U, String *>::value &&
                               std::is_same<T, Number *>::value,
                           U>::type
   transform(U value) const
   {
-    return value->concat(std::to_string(_transformBase->valueOf()));
+    return value->concat(_transformBase->toString());
   }
 
 private:
@@ -125,8 +125,8 @@ TemplateClassWithTemplateMethod<T>::TemplateClassWithTemplateMethod(
 template class TemplateClassWithTemplateMethod<Number *>;
 template Number *
 TemplateClassWithTemplateMethod<Number *>::transform(Number *) const;
-template string *
-TemplateClassWithTemplateMethod<Number *>::transform(string *) const;
+template String *
+TemplateClassWithTemplateMethod<Number *>::transform(String *) const;
 
 /*
 class MyClass {

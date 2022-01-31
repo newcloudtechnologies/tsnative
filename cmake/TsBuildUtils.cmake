@@ -226,31 +226,21 @@ function(instantiate_functions target dep_target entry sources includes output_d
 endfunction()
 
 function(compile_cpp target dep_target includes definitions entry output_dir compiled)
-    string(REPLACE ".cpp" ".o" output "${entry}")
+    get_filename_component(bin_name "${entry}" NAME)
 
-    list(TRANSFORM includes PREPEND "-I")
+    # TODO: refactor this whole sequence
+    # 1 use object library
+    add_library(${target} STATIC ${entry})
+    set_target_properties(${target} PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY ${output_dir}
+        ARCHIVE_OUTPUT_NAME ${bin_name})
 
-    set(ISYSROOT )
-    if(APPLE)
-        set(ISYSROOT_ARG "-isysroot ${CMAKE_OSX_SYSROOT}")
-        separate_arguments(ISYSROOT NATIVE_COMMAND ${ISYSROOT_ARG})
-    endif()
-
-    add_custom_command(
-        OUTPUT ${output}
-        DEPENDS ${entry}
-        WORKING_DIRECTORY ${output_dir}
-        COMMAND echo "Compiling cpp..."
-        COMMAND ${CMAKE_CXX_COMPILER}
-        ARGS ${ISYSROOT} -std=c++${CMAKE_CXX_STANDARD} -c ${includes} ${definitions} ${entry}
-    )
-
-    add_custom_target(${target}
-        DEPENDS ${output}
-    )
+    target_link_libraries(${target} PRIVATE ${TS_EXTENSION_TARGET})
+    # 2 use $<TARGET_FILE:${target}> to obtain output file name later for nm
+    set (output ${output_dir}/${CMAKE_STATIC_LIBRARY_PREFIX}${bin_name}${CMAKE_STATIC_LIBRARY_SUFFIX})
 
     add_dependencies(${target} ${dep_target})
-
+    # 3 simplify structure!
     set(${compiled} ${output} PARENT_SCOPE)
 endfunction()
 
@@ -440,7 +430,7 @@ function (ts_build_extension NAME ...)
     set_target_properties(${NAME} PROPERTIES
         # TODO: can we extract lib name from cmake's internal props or generator expressions like $<TARGET_FILE:${NAME}> 
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        INCLUDES "${ARG_INCLUDE_PATHS}"
+        INCLUDE_PATHS "${ARG_INCLUDE_PATHS}"
         LIBRARY_DEPENDENCIES "${ARG_LIBRARY_DEPENDENCIES}"
     )
     

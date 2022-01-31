@@ -5,6 +5,8 @@
 
 #include "gc.h"
 
+#include <iostream>
+
 template <size_t I, typename Tuple>
 struct typeless_tuple_element
 {
@@ -78,25 +80,28 @@ template <typename... Ts>
 void* Tuple<Ts...>::operator[](Number* index)
 {
     return typeless_tuple_element<sizeof...(Ts), typename std::remove_pointer<decltype(_tuple)>::type>::get(
-        *_tuple, static_cast<size_t>(index->valueOf()));
+        *_tuple, static_cast<size_t>(index->unboxed()));
 }
 
-template<typename Type, unsigned N, unsigned Last>
-struct tuple_printer {
+template <typename Type, unsigned N, unsigned Last>
+struct tuple_printer
+{
 
-    static void print(std::ostream& out, const Type& value) {
+    static void print(std::ostream& out, const Type& value)
+    {
         out << std::get<N>(value) << ", ";
         tuple_printer<Type, N + 1, Last>::print(out, value);
     }
 };
 
-template<typename Type, unsigned N>
-struct tuple_printer<Type, N, N> {
+template <typename Type, unsigned N>
+struct tuple_printer<Type, N, N>
+{
 
-    static void print(std::ostream& out, const Type& value) {
+    static void print(std::ostream& out, const Type& value)
+    {
         out << std::get<N>(value);
     }
-
 };
 
 template <typename... Ts>

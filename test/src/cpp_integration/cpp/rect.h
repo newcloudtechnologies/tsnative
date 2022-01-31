@@ -2,7 +2,7 @@
 
 #include "point.h"
 
-#include <std/array.h>
+#include <std/tsarray.h>
 
 class Number;
 
@@ -10,7 +10,7 @@ namespace cpp {
 
 class Rect {
 public:
-  Rect(const Point &topLeft, const Point &bottomRight);
+  Rect(const Point& topLeft, const Point& bottomRight);
 
   Number* getSquare();
 

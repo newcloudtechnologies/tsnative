@@ -161,9 +161,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     const subscription = this.generator.ts.array.createSubscription(arrayType);
     const array = this.generator.handleExpression(expression.expression, env);
     const arrayUntyped = this.generator.builder.asVoidStar(array);
-    const index = this.generator.createLoadIfNecessary(
-      this.generator.handleExpression(expression.argumentExpression, env)
-    );
+    const index = this.generator.handleExpression(expression.argumentExpression, env);
 
     let elementType = arrayType.getTypeGenericArguments()[0];
     if (elementType.isFunction()) {
@@ -225,9 +223,6 @@ export class AccessHandler extends AbstractExpressionHandler {
         }
 
         llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
-        if (!llvmValue.type.getPointerElementType().isCppPrimitiveType()) {
-          llvmValue = this.generator.builder.createLoad(llvmValue);
-        }
       } else if (llvmValue.type.isIntersection()) {
         const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
         if (!intersectionName) {
@@ -241,9 +236,6 @@ export class AccessHandler extends AbstractExpressionHandler {
         }
 
         llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
-        if (!llvmValue.type.getPointerElementType().isCppPrimitiveType()) {
-          llvmValue = this.generator.builder.createLoad(llvmValue);
-        }
       }
 
       if (
@@ -286,8 +278,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       expression.parent.parent.left === expression.parent;
 
-    return (isThisAccess && isInitialization && inTSClassConstructor) ||
-      elementPtr.type.getPointerElementType().isCppPrimitiveType()
+    return isThisAccess && isInitialization && inTSClassConstructor
       ? elementPtr
       : this.generator.builder.createLoad(elementPtr);
   }

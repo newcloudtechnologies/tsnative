@@ -1,6 +1,9 @@
 #include "std/tsnumber.h"
 #include "std/gc.h"
-#include "std/stdstring.h"
+#include "std/tsboolean.h"
+#include "std/tsstring.h"
+
+#include "std/private/tsnumber_p.h"
 
 #include <cmath>
 #include <iomanip>
@@ -8,197 +11,188 @@
 #include <sstream>
 
 Number::Number(double v)
-    : _value(v)
+    : _d(new NumberPrivate(v))
 {
 }
 
 Number::Number(Number* v)
-    : _value(v->_value)
+    : _d(new NumberPrivate(v->unboxed()))
 {
 }
 
 Number* Number::add(const Number* other) const
 {
-    auto result = this->valueOf() + other->valueOf();
-    return GC::createHeapAllocated<Number>(result);
+    return _d->add(other);
 }
 
 Number* Number::sub(const Number* other) const
 {
-    auto result = this->valueOf() - other->valueOf();
-    return GC::createHeapAllocated<Number>(result);
+    return _d->sub(other);
 }
 
 Number* Number::mul(const Number* other) const
 {
-    auto result = this->valueOf() * other->valueOf();
-    return GC::createHeapAllocated<Number>(result);
+    return _d->mul(other);
 }
 
 Number* Number::div(const Number* other) const
 {
-    auto result = this->valueOf() / other->valueOf();
-    return GC::createHeapAllocated<Number>(result);
+    return _d->div(other);
 }
 
 Number* Number::mod(const Number* other) const
 {
-    auto result = std::fmod(this->valueOf(), other->valueOf());
-    return GC::createHeapAllocated<Number>(result);
+    return _d->mod(other);
 }
 
 Number* Number::addInplace(const Number* other)
 {
-    _value += other->_value;
+    _d->addInplace(other);
     return this;
 }
 
 Number* Number::subInplace(const Number* other)
 {
-    _value -= other->_value;
+    _d->subInplace(other);
     return this;
 }
 
 Number* Number::mulInplace(const Number* other)
 {
-    _value *= other->_value;
+    _d->mulInplace(other);
     return this;
 }
 
 Number* Number::divInplace(const Number* other)
 {
-    _value /= other->_value;
+    _d->divInplace(other);
     return this;
 }
 
 Number* Number::modInplace(const Number* other)
 {
-    _value = std::fmod(_value, other->_value);
+    _d->modInplace(other);
     return this;
 }
 
 Number* Number::negate()
 {
-    _value = -_value;
+    _d->negate();
     return this;
 }
 
 Number* Number::prefixIncrement()
 {
-    ++_value;
+    _d->prefixIncrement();
     return this;
 }
 
 Number* Number::postfixIncrement()
 {
-    auto oldValue = GC::createHeapAllocated<Number>(_value);
-    ++_value;
-
-    return oldValue;
+    return _d->postfixIncrement();
 }
 
 Number* Number::prefixDecrement()
 {
-    --_value;
+    _d->postfixDecrement();
     return this;
 }
 
 Number* Number::postfixDecrement()
 {
-    auto oldValue = GC::createHeapAllocated<Number>(_value);
-    --_value;
-
-    return oldValue;
+    return _d->postfixDecrement();
 }
 
 Number* Number::bitwiseAnd(const Number* other) const
 {
-    auto result = static_cast<uint64_t>(this->valueOf()) & static_cast<uint64_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(static_cast<double>(result));
+    return _d->bitwiseAnd(other);
 }
 Number* Number::bitwiseOr(const Number* other) const
 {
-    auto result = static_cast<uint64_t>(this->valueOf()) | static_cast<uint64_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(static_cast<double>(result));
+    return _d->bitwiseOr(other);
 }
 Number* Number::bitwiseXor(const Number* other) const
 {
-    auto result = static_cast<uint64_t>(this->valueOf()) ^ static_cast<uint64_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(static_cast<double>(result));
+    return _d->bitwiseXor(other);
 }
 Number* Number::bitwiseLeftShift(const Number* other) const
 {
-    auto result = static_cast<uint64_t>(this->valueOf()) << static_cast<uint64_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(static_cast<double>(result));
+    return _d->bitwiseLeftShift(other);
 }
 Number* Number::bitwiseRightShift(const Number* other) const
 {
-    // mkrv @todo: actually it is a compiler-dependent stuff
-    auto result = static_cast<int64_t>(this->valueOf()) >> static_cast<int64_t>(other->valueOf());
-    return GC::createHeapAllocated<Number>(static_cast<double>(result));
+    return _d->bitwiseRightShift(other);
 }
 
 Number* Number::bitwiseAndInplace(const Number* other)
 {
-    _value = static_cast<uint64_t>(_value) & static_cast<uint64_t>(other->_value);
+    _d->bitwiseAndInplace(other);
     return this;
 }
 Number* Number::bitwiseOrInplace(const Number* other)
 {
-    _value = static_cast<uint64_t>(_value) | static_cast<uint64_t>(other->_value);
+    _d->bitwiseOrInplace(other);
     return this;
 }
 Number* Number::bitwiseXorInplace(const Number* other)
 {
-    _value = static_cast<uint64_t>(_value) ^ static_cast<uint64_t>(other->_value);
+    _d->bitwiseXorInplace(other);
     return this;
 }
 Number* Number::bitwiseLeftShiftInplace(const Number* other)
 {
-    _value = static_cast<uint64_t>(_value) << static_cast<uint64_t>(other->_value);
+    _d->bitwiseLeftShiftInplace(other);
     return this;
 }
 Number* Number::bitwiseRightShiftInplace(const Number* other)
 {
-    // mkrv @todo: actually it is a compiler-dependent stuff
-    _value = static_cast<int64_t>(_value) >> static_cast<int64_t>(other->_value);
+    _d->bitwiseRightShiftInplace(other);
     return this;
 }
 
-bool Number::equals(const Number* other) const
+Boolean* Number::equals(const Number* other) const
 {
-    // mkrv @todo: well, this is how doubles shouldn't be compared
-    return _value == other->_value;
+    return _d->equals(other);
 }
 
-bool Number::lessThan(const Number* other) const
+Boolean* Number::lessThan(const Number* other) const
 {
-    return _value < other->_value;
+    return _d->lessThan(other);
 }
 
-bool Number::lessEqualsThan(const Number* other) const
+Boolean* Number::lessEqualsThan(const Number* other) const
 {
-    return _value <= other->_value;
+    return _d->lessEqualsThan(other);
 }
 
-bool Number::greaterThan(const Number* other) const
+Boolean* Number::greaterThan(const Number* other) const
 {
-    return _value > other->_value;
+    return _d->greaterThan(other);
 }
 
-bool Number::greaterEqualsThan(const Number* other) const
+Boolean* Number::greaterEqualsThan(const Number* other) const
 {
-    return _value >= other->_value;
+    return _d->greaterEqualsThan(other);
 }
 
-bool Number::toBool() const
+Boolean* Number::toBool() const
 {
-    return _value != 0.0;
+    return _d->toBool();
 }
 
-string* Number::toString()
+double Number::unboxed() const
+{
+    return _d->unboxed();
+}
+
+Number* Number::clone() const
+{
+    return GC::track(new Number(this->unboxed()));
+}
+
+String* Number::toString()
 {
     std::ostringstream oss;
     oss << this;
-    return GC::createHeapAllocated<string>(oss.str());
+    return GC::createHeapAllocated<String>(oss.str());
 }

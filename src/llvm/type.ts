@@ -108,6 +108,11 @@ export class LLVMType {
     return nakedType.type.isStructTy() && nakedType.type.name === "number";
   }
 
+  isTSBoolean() {
+    const nakedType = this.unwrapPointer();
+    return nakedType.type.isStructTy() && nakedType.type.name === "boolean";
+  }
+
   isVoid() {
     return this.type.isVoidTy();
   }
@@ -166,10 +171,6 @@ export class LLVMType {
     return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.TypeLiteral));
   }
 
-  isCppPrimitiveType() {
-    return this.type.isIntegerTy() || this.type.isDoubleTy();
-  }
-
   isPointer() {
     return this.type.isPointerTy();
   }
@@ -212,6 +213,11 @@ export class LLVMType {
 
   isOptionalUnion() {
     return this.isUnionWithUndefined() || this.isUnionWithNull();
+  }
+
+  isUndefined() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.name?.startsWith("undefined"));
   }
 
   isClosure() {
@@ -272,14 +278,6 @@ export class LLVMType {
 
   isDeeperPointerLevel(other: LLVMType) {
     return this.getPointerLevel() > other.getPointerLevel();
-  }
-
-  correctCppPrimitiveType(): LLVMType | LLVMStructType {
-    if (this.type.isPointerTy() && this.getPointerElementType().isCppPrimitiveType()) {
-      return LLVMType.make(this.type.elementType, this.generator);
-    }
-
-    return this;
   }
 
   ensurePointer(): LLVMType {

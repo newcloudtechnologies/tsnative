@@ -31,7 +31,7 @@ export class SizeOf {
   }
 
   getByName(name: string): number | undefined {
-    if (name === "string") {
+    if (name === "String") {
       return SIZEOF_STRING;
     } else if (name.startsWith("Array__")) {
       return SIZEOF_ARRAY;

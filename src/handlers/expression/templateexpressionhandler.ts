@@ -67,18 +67,14 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
 
   private llvmValueToString(expression: ts.Expression, value: LLVMValue) {
     const nakedType = value.type.unwrapPointer();
-    if (!nakedType.isCppPrimitiveType() && !nakedType.isTSNumber() && !nakedType.isString() && !nakedType.isArray()) {
-      throw new Error("Only primitives, strings and arrays are supported");
+    if (!value.isTSPrimitivePtr()) {
+      throw new Error("Only primitives and arrays are supported");
     }
 
-    const stringType = this.generator.builtinString.getLLVMType();
-
     let allocated;
-    if (nakedType.isCppPrimitiveType()) {
-      const stringFromPrimitiveConstructor = this.generator.builtinString.getLLVMConstructor(expression);
-      allocated = this.generator.gc.allocate(stringType.getPointerElementType());
-      allocated = this.generator.builder.asVoidStar(allocated);
-      this.generator.builder.createSafeCall(stringFromPrimitiveConstructor, [allocated, value.getValue()]);
+    if (nakedType.isTSBoolean()) {
+      const toString = this.generator.builtinBoolean.createToString();
+      allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
     } else if (nakedType.isTSNumber()) {
       const toString = this.generator.builtinNumber.createToString();
       allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);

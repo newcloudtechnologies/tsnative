@@ -10,9 +10,7 @@
  */
 
 {
-  let s: string
-
-  s = "Hello world, welcome to the universe.";
+  let s: string = "Hello world, welcome to the universe.";
 
   console.assert(s.length === 37, "String: length failed");
   console.assert("".length === 0, "String: ''.length failed");

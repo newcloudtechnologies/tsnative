@@ -18,9 +18,7 @@ export class BranchHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isIfStatement(node)) {
       const statement = node as ts.IfStatement;
-      const condition = this.generator
-        .createLoadIfNecessary(this.generator.handleExpression(statement.expression, env))
-        .makeBoolean();
+      const condition = this.generator.handleExpression(statement.expression, env).makeBoolean();
 
       const thenBlock = BasicBlock.create(this.generator.context, "then", this.generator.currentFunction);
       const elseBlock = BasicBlock.create(this.generator.context, "else", this.generator.currentFunction);

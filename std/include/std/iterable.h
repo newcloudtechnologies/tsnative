@@ -1,6 +1,7 @@
 #pragma once
 
-#include "gc.h"
+#include <std/gc.h>
+#include <std/tsboolean.h>
 
 #include <type_traits>
 
@@ -10,7 +11,7 @@ class IteratorResult
 public:
     IteratorResult(bool done, T value);
 
-    bool done() const;
+    Boolean* done() const;
 
     typename std::conditional<std::is_pointer<T>::value, T, T*>::type value() const;
 
@@ -27,19 +28,19 @@ private:
         return GC::createHeapAllocated<U>(_value);
     }
 
-    bool _done;
+    Boolean* _done = nullptr;
     T _value;
 };
 
 template <typename T>
 IteratorResult<T>::IteratorResult(bool done, T value)
-    : _done(done)
+    : _done(GC::createHeapAllocated<Boolean>(done))
     , _value(value)
 {
 }
 
 template <typename T>
-bool IteratorResult<T>::done() const
+Boolean* IteratorResult<T>::done() const
 {
     return _done;
 }

@@ -76,8 +76,8 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
     const lhsBoolean = left.makeBoolean();
 
@@ -85,12 +85,15 @@ export class LogicHandler extends AbstractExpressionHandler {
       return this.generator.builder.createSelect(lhsBoolean, right, left);
     }
 
-    throw new Error("Invalid operand types to logical AND");
+    throw new Error(`Invalid operand types to logical AND:
+        lhs: ${left.type.toString()}
+        rhs: ${right.type.toString()}
+        Error at: ${lhs.parent.getText()}`);
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    const left = this.generator.createLoadIfNecessary(this.generator.handleExpression(lhs, env));
-    const right = this.generator.createLoadIfNecessary(this.generator.handleExpression(rhs, env));
+    const left = this.generator.handleExpression(lhs, env);
+    const right = this.generator.handleExpression(rhs, env);
 
     const lhsBoolean = left.makeBoolean();
 

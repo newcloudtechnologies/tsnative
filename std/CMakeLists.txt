@@ -10,9 +10,14 @@ find_package(absl)
 
 set( SOURCES
     src/gc.cpp
-    src/stdstring.cpp
+    src/tsstring.cpp
     src/tsclosure.cpp
     src/tsnumber.cpp
+    src/tsboolean.cpp
+
+    src/private/tsboolean_p.cpp
+    src/private/tsnumber_p.cpp
+    src/private/tsstring_p.cpp
 )
 
 add_library(${PROJECT_NAME}

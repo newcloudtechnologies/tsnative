@@ -1,6 +1,7 @@
 #pragma once
 
-#include "stdstring.h"
+#include "tsstring.h"
+#include "tsboolean.h"
 
 #include <exception>
 #include <iostream>
@@ -23,10 +24,10 @@ template <typename T, typename... Ts>
 void logImpl(T v, Ts... ts);
 
 template <typename... Ts>
-void logImpl(string* v, Ts... ts);
+void logImpl(String* v, Ts... ts);
 
 template <typename... Ts>
-void assert(bool assumption, Ts... ts);
+void assert(Boolean* assumption, Ts... ts);
 
 } // namespace console
 
@@ -49,10 +50,13 @@ void console::logImpl(T v, Ts... ts)
     console::log(ts...);
 }
 
+static String n{"\n"};
+static String rn{"\r\n"};
+
 template <typename... Ts>
-void console::logImpl(string *v, Ts... ts)
+void console::logImpl(String *v, Ts... ts)
 {
-    if (v->endsWith("\n") || v->endsWith("\r\n"))
+    if (v->endsWith(&n)->unboxed() || v->endsWith(&rn)->unboxed())
     {
         std::cout << v;
     }
@@ -65,8 +69,8 @@ void console::logImpl(string *v, Ts... ts)
 }
 
 template <typename... Ts>
-void console::assert(bool assumption, Ts... ts) {
-    if (!assumption) {
+void console::assert(Boolean* assumption, Ts... ts) {
+    if (!assumption->unboxed()) {
         console::log("Assertion failed:", ts...);
         std::terminate();
     }

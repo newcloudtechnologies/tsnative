@@ -29,7 +29,7 @@ Mixin *Mixin::getScaled(Number* factor) const {
 }
 
 VirtualBase::VirtualBase() {}
-string *VirtualBase::virtualMethod() const { return GC::createHeapAllocated<string>(s); }
+const String *VirtualBase::virtualMethod() const { return GC::createHeapAllocated<String>(s); }
 
 DerivedFromVirtualBase::DerivedFromVirtualBase() {}
 const Number* DerivedFromVirtualBase::pureVirtualMethodToOverride() const {

@@ -36,10 +36,11 @@ class TypeMapper
         {"float", "--"},
         {"double", "--"},
         {"long double", "--"},
-        {"bool", "boolean"},
+        {"bool", "--"},
         {"void", "void"},
         {"Number", "number"},
-        {"String", "string"}
+        {"String", "string"},
+        {"Boolean", "boolean"},
     };
 
     std::map<std::string, std::string> m_table;

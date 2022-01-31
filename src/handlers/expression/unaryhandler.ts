@@ -38,7 +38,7 @@ export class UnaryHandler extends AbstractExpressionHandler {
       }
       // case ts.SyntaxKind.TildeToken: @todo
       case ts.SyntaxKind.ExclamationToken:
-        return this.generator.builder.createNot(this.generator.handleExpression(operand, env).makeBoolean());
+        return this.generator.handleExpression(operand, env).makeBoolean().createNegate();
       default:
         throw new Error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
     }

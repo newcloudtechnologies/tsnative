@@ -139,6 +139,8 @@ export class LLVMValue {
         }
       }
 
+      console.log(this.generator.module.print());
+
       throw new Error(`Cannot adjust '${value.type.toString()}' to '${type.toString()}'`);
     }
 
@@ -154,7 +156,7 @@ export class LLVMValue {
     }
 
     const pointerElementType = this.type.getPointerElementType();
-    return pointerElementType.isString() || pointerElementType.isTSNumber() || pointerElementType.isCppPrimitiveType();
+    return pointerElementType.isString() || pointerElementType.isTSNumber() || pointerElementType.isTSBoolean();
   }
 
   isIntersection(): this is LLVMIntersection {
@@ -195,44 +197,45 @@ export class LLVMValue {
   }
 
   makeBoolean(): LLVMValue {
+    if (this.type.isTSBoolean()) {
+      return this;
+    }
+
     if (this.type.isTSNumber()) {
       const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
       return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(this)]);
     }
 
-    const value = this.getValue();
-
-    if (value.type.isIntegerType()) {
-      return this.generator.builder.createICmpNE(value, LLVMConstant.createNullValue(value.type, this.generator));
-    }
-
-    if (value.type.isString()) {
+    if (this.type.isString()) {
       const lengthGetter = this.generator.builtinString.getLLVMLength();
-      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(value)]);
+      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(this)]);
 
       const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
       return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(length)]);
     }
 
-    if (value.isUnion()) {
-      if (value.type.isOptionalUnion()) {
-        let marker = this.generator.builder.createSafeExtractValue(value, [0]);
-        marker = this.generator.builder.createLoad(marker);
-        return this.generator.builder.createICmpNE(marker, LLVMConstantInt.get(this.generator, -1, 8));
+    if (this.isUnion()) {
+      if (this.type.isOptionalUnion()) {
+        const marker = this.generator.builder.createSafeInBoundsGEP(this, [0, 0]);
+        return this.generator.builder.createLoad(marker);
       }
 
-      return LLVMConstantInt.getTrue(this.generator);
+      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
     }
 
-    if (value.type.isClosure()) {
-      return LLVMConstantInt.getTrue(this.generator);
+    if (this.type.isUndefined()) {
+      return this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
     }
 
-    if (value.type.isPointer()) {
-      return LLVMConstantInt.getTrue(this.generator);
+    if (this.type.isClosure()) {
+      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
     }
 
-    throw new Error(`Unable to convert operand of type ${value.type.toString()} to boolean value`);
+    if (this.type.isPointer()) {
+      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+    }
+
+    throw new Error(`Unable to convert operand of type ${this.type.toString()} to boolean value`);
   }
 
   makeAssignment(other: LLVMValue): LLVMValue {
@@ -267,11 +270,18 @@ export class LLVMValue {
     return allocated;
   }
 
+  // @todo: terminology mess
   createNegate(): LLVMValue {
-    // @todo: check type
-    const fn = this.generator.builtinNumber.createMathFn("negate", OperationFlags.Unary);
-    const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    if (this.type.isTSNumber()) {
+      const fn = this.generator.builtinNumber.createMathFn("negate", OperationFlags.Unary);
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    } else if (this.type.isTSBoolean()) {
+      const fn = this.generator.builtinBoolean.createNegateFn();
+      return this.generator.builder.createSafeCall(fn, [this]);
+    }
+
+    throw new Error(`Unhandled type '${this.type.toString()}' in LLVMValue.createNegate`);
   }
 
   createPrefixIncrement(): LLVMValue {
@@ -433,24 +443,22 @@ export class LLVMValue {
   }
 
   createEquals(other: LLVMValue): LLVMValue {
-    const left = this.generator.createLoadIfNecessary(this);
-    const right = this.generator.createLoadIfNecessary(other);
-
-    const leftType = left.type;
-    const rightType = right.type;
+    const leftType = this.type;
+    const rightType = other.type;
 
     if (leftType.isTSNumber() && rightType.isTSNumber()) {
       const fn = this.generator.builtinNumber.createBooleanFn("equals");
-      const thisUntyped = this.generator.builder.asVoidStar(left);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, right]).createHeapAllocated();
+      const thisUntyped = this.generator.builder.asVoidStar(this);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
     } else if (leftType.isString() && rightType.isString()) {
       const equals = this.generator.builtinString.getLLVMEquals();
-      return this.generator.builder.createSafeCall(equals, [left, right]).createHeapAllocated();
-    } else if (leftType.isIntegerType() && rightType.isIntegerType()) {
-      return this.generator.builder.createICmpEQ(left, right).createHeapAllocated();
+      return this.generator.builder.createSafeCall(equals, [this, other]);
+    } else if (leftType.isTSBoolean() && rightType.isTSBoolean()) {
+      const equals = this.generator.builtinBoolean.getLLVMEquals();
+      return this.generator.builder.createSafeCall(equals, [this, other]);
     } else if (this.isUnion()) {
       const extracted = this.extract(rightType.ensurePointer());
-      return extracted.createEquals(right);
+      return extracted.createEquals(other);
     } else if (!this.isIntersection() && other.isIntersection()) {
       if (!leftType.isPointer()) {
         throw new Error(`Expected left hand side operand to be of PointerType, got ${leftType.toString()}`);
@@ -459,9 +467,12 @@ export class LLVMValue {
       const extracted = other.extract(leftType);
       return this.createEquals(extracted);
     } else if (leftType.isPointerToStruct() && rightType.isPointerToStruct()) {
-      const lhsAddress = this.generator.builder.createPtrToInt(left, LLVMType.getInt32Type(this.generator));
-      const rhsAddress = this.generator.builder.createPtrToInt(right, LLVMType.getInt32Type(this.generator));
-      return this.generator.builder.createICmpEQ(lhsAddress, rhsAddress).createHeapAllocated();
+      const lhsAddress = this.generator.builder.createPtrToInt(this, LLVMType.getInt32Type(this.generator));
+      const rhsAddress = this.generator.builder.createPtrToInt(other, LLVMType.getInt32Type(this.generator));
+
+      const raw = this.generator.builder.createICmpEQ(lhsAddress, rhsAddress);
+
+      return this.generator.builtinBoolean.create(raw);
     }
 
     throw new Error(`Invalid operand types to strict equals: 
@@ -470,9 +481,7 @@ export class LLVMValue {
   }
 
   createNotEquals(other: LLVMValue): LLVMValue {
-    return this.generator.builder
-      .createNot(this.generator.builder.createLoad(this.createEquals(other)))
-      .createHeapAllocated();
+    return this.createEquals(other).createNegate();
   }
 
   createLessThan(other: LLVMValue): LLVMValue {
@@ -527,6 +536,18 @@ export class LLVMValue {
                             rhs: ${other.type.toString()} ${other.type.typeIDName}`);
   }
 
+  clone(): LLVMValue {
+    if (this.type.isTSNumber()) {
+      return this.generator.builtinNumber.clone(this);
+    } else if (this.type.isString()) {
+      return this.generator.builtinString.clone(this);
+    } else if (this.type.isTSBoolean()) {
+      return this.generator.builtinBoolean.clone(this);
+    }
+
+    throw new Error(`Expected TS primitive at LLVMValue.clone, got '${this.type.toString()}'`);
+  }
+
   asLLVMInteger(): LLVMValue {
     if (!this.type.isTSNumber()) {
       throw new Error(
@@ -534,7 +555,7 @@ export class LLVMValue {
       );
     }
 
-    const llvmDouble = this.generator.builder.createSafeInBoundsGEP(this, [0, 0]).getValue();
+    const llvmDouble = this.generator.builtinNumber.getUnboxed(this);
     return this.generator.builder.createFPToSI(llvmDouble, LLVMType.getInt32Type(this.generator));
   }
 
@@ -726,10 +747,6 @@ export class LLVMUnion extends LLVMValue {
   }
 
   private indexOfType(type: LLVMType) {
-    if (type.isCppPrimitiveType()) {
-      type = type.getPointer();
-    }
-
     const elementTypes = [];
 
     const unionStructType = this.type.unwrapPointer();
@@ -760,10 +777,10 @@ export class LLVMUnion extends LLVMValue {
   initializeNullOptional() {
     const markerPtr = this.generator.builder.createSafeInBoundsGEP(this, [0, 0]);
     // 'T | null' or 'T | undefined'
-    // this kind of types is represented as LLVM's { i8*, T* }
-    // first element is considered as a marker. value of '-1' in it signals that T is not stored in this union
+    // this kind of types is represented as LLVM's { boolean*, T* }
+    // first element is considered as a marker. value of 'false' in it signals that T is not stored in this union
     // '8' is for the bitwidth
-    const markerValue = LLVMConstantInt.get(this.generator, -1, 8);
+    const markerValue = this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
     this.generator.builder.createSafeStore(markerValue, markerPtr);
   }
 
@@ -797,6 +814,7 @@ export class LLVMUnion extends LLVMValue {
       !optionalWithClassOrTypeLiteral &&
       !initializer.type.isString() &&
       !initializer.type.isTSNumber() &&
+      !initializer.type.isTSBoolean() &&
       !initializer.type.isTSClass() &&
       !unionValue.isOptionalClosure() &&
       initializer.type.unwrapPointer().isStructType()
@@ -900,16 +918,16 @@ export class LLVMUnion extends LLVMValue {
 
         if (this.type.isOptionalUnion()) {
           const isNullOrUndefinedNow = activeIndex === 0;
-          const allocatedMarker = this.generator.gc.allocate(LLVMType.getInt8Type(this.generator));
-          const markerNumericValue = isNullOrUndefinedNow ? -1 : 0;
-          const markerValue = LLVMConstantInt.get(this.generator, markerNumericValue, 8);
-          this.generator.builder.createSafeStore(markerValue, allocatedMarker);
+          const markerIntValue = isNullOrUndefinedNow
+            ? LLVMConstantInt.getFalse(this.generator)
+            : LLVMConstantInt.getTrue(this.generator);
+          const markerValue = this.generator.builtinBoolean.create(markerIntValue);
 
           if (isNullOrUndefinedNow) {
-            initializer = allocatedMarker;
+            initializer = markerValue;
           } else {
             const markerPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, 0]);
-            this.generator.builder.createSafeStore(allocatedMarker, markerPtr);
+            this.generator.builder.createSafeStore(markerValue, markerPtr);
           }
         }
 
@@ -929,7 +947,13 @@ export class LLVMUnion extends LLVMValue {
       return this;
     }
 
-    if (destinationValueType.isStructType() && !type.isTSClass() && !type.isString() && !type.isTSNumber()) {
+    if (
+      destinationValueType.isStructType() &&
+      !type.isTSClass() &&
+      !type.isString() &&
+      !type.isTSNumber() &&
+      !type.isTSBoolean()
+    ) {
       const unionMeta = this.generator.meta.getUnionMeta(unionStructType.name!);
       const objectMeta = this.generator.meta.getObjectMeta((destinationValueType as LLVMStructType).name!);
 

@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment, HeapVariableDeclaration, Scope } from "../../scope";
+import { Environment } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
@@ -110,34 +110,20 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     const subscription = this.generator.ts.tuple.createSubscription(tupleType);
 
     identifiers.forEach((identifier, index) => {
-      const llvmIntegralIndex = LLVMConstantFP.get(this.generator, index);
-      const llvmDoubleIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
+      const llvmDoubleIndex = LLVMConstantFP.get(this.generator, index);
+      const llvmNumberIndex = this.generator.builtinNumber.create(llvmDoubleIndex);
 
       const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
         tupleUntyped,
-        llvmDoubleIndex,
+        llvmNumberIndex,
       ]);
       const destructedValue = this.generator.builder.createBitCast(
         destructedValueUntyped,
         elementTypes[index].getLLVMType()
       );
 
-      const currentScope = this.generator.symbolTable.currentScope;
       const name = identifier.getText();
-      let valueToOverwrite = currentScope.tryGetThroughParentChain(name);
-      if (!valueToOverwrite) {
-        throw new Error(`Identifier '${name}' is not found in scope chain.`);
-      }
-
-      if (valueToOverwrite instanceof Scope) {
-        throw new Error(`'${name}' is Scope unexpectedly.`);
-      }
-
-      if (valueToOverwrite instanceof HeapVariableDeclaration) {
-        valueToOverwrite = valueToOverwrite.allocated;
-      }
-
-      valueToOverwrite.makeAssignment(destructedValue);
+      this.generator.symbolTable.currentScope.overwriteThroughParentChain(name, destructedValue);
     });
 
     // Have to return something.

@@ -55,9 +55,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
     builder.createBr(condition);
     builder.setInsertionPoint(condition);
-    const conditionValue = this.generator.createLoadIfNecessary(
-      this.generator.handleExpression(statement.expression, env)
-    );
+    const conditionValue = this.generator.handleExpression(statement.expression, env);
     builder.createCondBr(conditionValue, body, exiting);
 
     currentFunction.addBasicBlock(bodyLatch);
@@ -97,9 +95,7 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(condition);
         currentFunction.addBasicBlock(condition);
         builder.setInsertionPoint(condition);
-        const conditionValue = this.generator.createLoadIfNecessary(
-          this.generator.handleExpression(statement.condition, env)
-        );
+        const conditionValue = this.generator.handleExpression(statement.condition, env);
         builder.createCondBr(conditionValue, body, exiting);
       } else {
         builder.createBr(body);
@@ -251,9 +247,8 @@ export class LoopHandler extends AbstractNodeHandler {
         const nextTypeless = this.generator.builder.asVoidStar(next);
 
         const doneFn = this.generator.iteratorResult.getDoneGetter(variableType);
-        const done = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
+        const isDone = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
 
-        const isDone = this.generator.createLoadIfNecessary(done);
         builder.createCondBr(isDone, exiting, incrementor);
 
         currentFunction.addBasicBlock(incrementor);

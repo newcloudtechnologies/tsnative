@@ -2,7 +2,11 @@
 
 #include <ostream>
 
-class string;
+#include <std/tsboolean.h>
+
+class String;
+
+class NumberPrivate;
 
 class Number
 {
@@ -10,15 +14,7 @@ public:
     Number(double v);
     Number(Number* v);
 
-    template <typename T>
-    operator T()
-    {
-        static_assert(std::is_arithmetic<T>::value);
-
-        return static_cast<T>(_value);
-    }
-
-    string* toString();
+    String* toString();
 
     Number* add(const Number* other) const;
     Number* sub(const Number* other) const;
@@ -52,28 +48,27 @@ public:
     Number* bitwiseLeftShiftInplace(const Number* other);
     Number* bitwiseRightShiftInplace(const Number* other);
 
-    bool equals(const Number* other) const;
-    bool lessThan(const Number* other) const;
-    bool lessEqualsThan(const Number* other) const;
-    bool greaterThan(const Number* other) const;
-    bool greaterEqualsThan(const Number* other) const;
+    Boolean* equals(const Number* other) const;
+    Boolean* lessThan(const Number* other) const;
+    Boolean* lessEqualsThan(const Number* other) const;
+    Boolean* greaterThan(const Number* other) const;
+    Boolean* greaterEqualsThan(const Number* other) const;
 
-    bool toBool() const;
+    Boolean* toBool() const;
 
-    double valueOf() const
-    {
-        return _value;
-    }
+    double unboxed() const;
+
+    Number* clone() const;
 
     friend std::ostream& operator<<(std::ostream& os, Number* v);
 
 private:
-    double _value = 0.0;
+    NumberPrivate* _d = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& os, Number* v)
 {
-    os << v->_value;
+    os << v->unboxed();
     return os;
 }
 
@@ -84,7 +79,7 @@ struct equal_to<::Number*>
 {
     bool operator()(::Number* const& lhs, ::Number* const& rhs) const
     {
-        return lhs->equals(rhs);
+        return lhs->equals(rhs)->unboxed();
     }
 };
 } // namespace std

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "std/iterable.h"
-#include "std/array.h"
+#include "std/tsarray.h"
 
 template <typename T>
 class MapIterator : public IterableIterator<T>
@@ -14,13 +14,13 @@ public:
 
     IteratorResult<T>* next() override
     {
-        if (currentIndex == static_cast<size_t>(_iterable->length()->valueOf()))
+        if (currentIndex == static_cast<size_t>(_iterable->length()->unboxed()))
         {
             auto result = new IteratorResult<T>{true, {}};
             return GC::track(result);
         }
 
-        T value = _iterable->operator[](GC::createHeapAllocated<Number>(currentIndex));
+        T value = _iterable->operator[](currentIndex);
         ++currentIndex;
 
         auto result = new IteratorResult<T>{false, value};

@@ -10,8 +10,8 @@
  */
 
 // @todo: these values have to be generated using cpp's sizeof operator
-export const SIZEOF_STRING = 32 + 8;
-export const SIZEOF_ARRAY = 80 + 8;
+export const SIZEOF_STRING = 8 + 8;
+export const SIZEOF_ARRAY = 8 + 8;
 export const SIZEOF_TSCLOSURE = 32;
 export const SIZEOF_MAP = 80 + 8;
 export const SIZEOF_SET = 72 + 8;

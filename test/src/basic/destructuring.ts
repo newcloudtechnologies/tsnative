@@ -4,16 +4,17 @@
 
     const [red, yellow, green] = foo;
     console.assert(red === "one", "Basic variable assignment (1)");
-    console.log(yellow === "two", "Basic variable assignment (2)");
-    console.log(green === "three", "Basic variable assignment (3)");
+    console.assert(yellow === "two", "Basic variable assignment (2)");
+    console.assert(green === "three", "Basic variable assignment (3)");
 
     {
-        let a: number, b: number;
+        let a: number = 0;
+        let b: number = 0;
         {
             [a, b] = [1, 2];
         }
         console.assert(a === 1, "Assignment separate from declaration (1)");
-        console.log(b === 2, "Assignment separate from declaration (2)");
+        console.assert(b === 2, "Assignment separate from declaration (2)");
     }
 
     {
@@ -21,8 +22,9 @@
         let b = 3;
 
         [a, b] = [b, a];
+
         console.assert(a === 3, "Swapping variables (1)");
-        console.log(b === 1, "Swapping variables (2)");
+        console.assert(b === 1, "Swapping variables (2)");
     }
 
     /* 

@@ -4,7 +4,7 @@
 
 using namespace cpp;
 
-Rect::Rect(const Point &topLeft, const Point &bottomRight)
+Rect::Rect(const Point &topLeft, const Point& bottomRight)
     : topLeft(topLeft), bottomRight(bottomRight) {}
 
 Number* Rect::getSquare() {

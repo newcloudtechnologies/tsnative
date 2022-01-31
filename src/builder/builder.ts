@@ -199,7 +199,12 @@ export class Builder {
   }
 
   createSelect(condition: LLVMValue, trueValue: LLVMValue, falseValue: LLVMValue, name?: string) {
-    const select = this.builder.createSelect(condition.unwrapped, trueValue.unwrapped, falseValue.unwrapped, name);
+    if (!condition.type.isTSBoolean()) {
+      throw new Error(`Expected boolean condition, got ${condition.type.toString()}`);
+    }
+
+    const unboxed = this.generator.builtinBoolean.getUnboxed(condition);
+    const select = this.builder.createSelect(unboxed.unwrapped, trueValue.unwrapped, falseValue.unwrapped, name);
     return LLVMValue.create(select, this.generator);
   }
 
@@ -209,7 +214,12 @@ export class Builder {
   }
 
   createCondBr(condition: LLVMValue, then: llvm.BasicBlock, elseBlock: llvm.BasicBlock) {
-    const condBr = this.builder.createCondBr(condition.unwrapped, then, elseBlock);
+    if (!condition.type.isTSBoolean()) {
+      throw new Error(`Expected boolean condition, got ${condition.type.toString()}`);
+    }
+
+    const unboxed = this.generator.builtinBoolean.getUnboxed(condition);
+    const condBr = this.builder.createCondBr(unboxed.unwrapped, then, elseBlock);
     return LLVMValue.create(condBr, this.generator);
   }
 

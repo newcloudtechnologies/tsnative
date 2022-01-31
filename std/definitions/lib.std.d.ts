@@ -42,11 +42,31 @@ declare class Number {
 
   private toBool(): boolean;
 
+  private unboxed(): number;
+
+  private clone(): number;
+
   toString(): string;
 }
 
-//@ts-ignore
+// @ts-ignore
 declare type number = Number;
+
+declare class Boolean {
+  constructor(_: any);
+
+  private negate(): boolean;
+  private equals(other: boolean): boolean;
+
+  private unboxed(): number;
+
+  private clone(): boolean;
+
+  toString(): string;
+}
+
+// @ts-ignore
+declare type boolean = Boolean;
 
 declare class Array<T> {
   constructor();
@@ -175,9 +195,9 @@ declare class String {
 
   get length(): number;
 
-  // @ts-ignore
-  @MapsTo("operator==")
   private equals(string): boolean;
+
+  private clone(): string;
 }
 
 // @ts-ignore

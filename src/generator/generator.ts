@@ -21,6 +21,7 @@ import {
   BuiltinTSTuple,
   BuiltinIteratorResult,
   BuiltinNumber,
+  BuiltinBoolean,
 } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
 import { DEFINITIONS, GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
@@ -64,6 +65,7 @@ export class LLVMGenerator {
 
   readonly builtinString: BuiltinString;
   readonly builtinNumber: BuiltinNumber;
+  readonly builtinBoolean: BuiltinBoolean;
 
   private builtinTSTuple: BuiltinTSTuple | undefined;
   private builtinTSClosure: BuiltinTSClosure | undefined;
@@ -87,6 +89,7 @@ export class LLVMGenerator {
 
     this.builtinString = new BuiltinString(this);
     this.builtinNumber = new BuiltinNumber(this);
+    this.builtinBoolean = new BuiltinBoolean(this);
 
     this.sizeOf = new SizeOf();
 
@@ -100,22 +103,28 @@ export class LLVMGenerator {
 
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main.unwrapped as llvm.Function);
 
+    const stdSourceFiles: ts.SourceFile[] = [];
     const sourceFiles: ts.SourceFile[] = [];
+
     for (const sourceFile of this.program.getSourceFiles()) {
-      sourceFiles.push(sourceFile);
+      if (sourceFile.fileName.endsWith(".d.ts")) {
+        stdSourceFiles.push(sourceFile);
+      } else {
+        sourceFiles.push(sourceFile);
+      }
     }
 
     this.builder.setInsertionPoint(entryBlock);
 
-    const undefinedValue = (() => {
-      const type = LLVMType.getInt8Type(this);
-      const allocated = this.gc.allocate(type);
-      // '-1' is a special value for 'undefined'
-      // '8' is for bitwidth
-      const value = LLVMConstantInt.get(this, -1, 8);
-      this.builder.createSafeStore(value, allocated);
+    for (const sourceFile of stdSourceFiles) {
+      this.currentSource = sourceFile;
+      this.symbolTable.addScope(sourceFile.fileName);
 
-      return allocated;
+      sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
+    }
+
+    const undefinedValue = (() => {
+      return this.builtinBoolean.create(LLVMConstantInt.getFalse(this));
     })();
 
     for (const sourceFile of sourceFiles) {
@@ -246,13 +255,6 @@ export class LLVMGenerator {
     throw new Error(
       `Unhandled expression of kind ${expression.kind}: '${ts.SyntaxKind[expression.kind]}' at ${expression.getText()}`
     );
-  }
-
-  createLoadIfNecessary(value: LLVMValue) {
-    if (value.type.isPointer() && value.type.getPointerElementType().isCppPrimitiveType()) {
-      return this.builder.createLoad(value);
-    }
-    return value;
   }
 
   get meta() {
