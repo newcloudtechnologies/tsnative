@@ -15,7 +15,7 @@
 
 #include <TS.h>
 
-#include <std/stdstring.h>
+#include <std/tsstring.h>
 
 namespace cpp
 {

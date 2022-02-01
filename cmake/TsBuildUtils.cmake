@@ -235,7 +235,12 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
         ARCHIVE_OUTPUT_DIRECTORY ${output_dir}
         ARCHIVE_OUTPUT_NAME ${bin_name})
 
-    target_link_libraries(${target} PRIVATE ${TS_EXTENSION_TARGET})
+    target_include_directories(${target} PUBLIC ${StdLib_INCLUDE_DIR})
+
+    if (NOT "${TS_EXTENSION_TARGET}" STREQUAL "fake")
+        target_link_libraries(${target} PRIVATE ${TS_EXTENSION_TARGET})
+    endif()
+
     # 2 use $<TARGET_FILE:${target}> to obtain output file name later for nm
     set (output ${output_dir}/${CMAKE_STATIC_LIBRARY_PREFIX}${bin_name}${CMAKE_STATIC_LIBRARY_SUFFIX})
 

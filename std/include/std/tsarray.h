@@ -66,7 +66,7 @@ public:
     IterableIterator<T>* values();
 
     template <typename U>
-    friend std::ostream& operator<<(std::ostream& os, const Array<U>* array);
+    friend std::ostream& operator<<(std::ostream& os, Array<U>* array);
 
 private:
     DequeueBackend<T>* _d = nullptr;
@@ -249,7 +249,7 @@ IterableIterator<T>* Array<T>::values()
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const Array<T>* array)
+inline std::ostream& operator<<(std::ostream& os, Array<T>* array)
 {
     os << array->_d;
     return os;

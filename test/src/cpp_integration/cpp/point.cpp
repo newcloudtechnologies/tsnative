@@ -4,13 +4,13 @@
 
 using namespace cpp;
 
-Point::Point(const Number* x, const Number* y) : _x(x->unboxed()), _y(y->unboxed()) {}
+Point::Point(Number* x, Number* y) : _x(x), _y(y) {}
 
-const Number* Point::x() const { return &_x; }
-const Number* Point::y() const { return &_y; }
+Number* Point::x() const { return _x; }
+Number* Point::y() const { return _y; }
 
-void Point::setX(Number* x) { _x = x->unboxed(); }
-void Point::setY(Number* y) { _y = y->unboxed(); }
+void Point::setX(Number* x) { _x = x; }
+void Point::setY(Number* y) { _y = y; }
 
 Point *Point::clone() const {
   Point *clone = new Point(*this);

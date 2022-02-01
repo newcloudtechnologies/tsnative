@@ -15,10 +15,10 @@ Number* Rect::getSquare() {
 
 Array<Point*>* Rect::getDiagonal() const
 {
-  auto* p1 = GC::createHeapAllocated<Point>(Point{topLeft.x(), topLeft.y()});
-  auto* p2 = GC::createHeapAllocated<Point>(Point{bottomRight.x(), bottomRight.y()});
+  auto* p1 = GC::track(new Point(topLeft.x(), topLeft.y()));
+  auto* p2 = GC::track(new Point(bottomRight.x(), bottomRight.y()));
   
-  auto* coords = GC::createHeapAllocated<Array<Point*>>(Array<Point*>{});
+  auto* coords = GC::track(new Array<Point*>);
   coords->push(p1);
   coords->push(p2);
   return coords;

@@ -67,8 +67,8 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
 
   private llvmValueToString(expression: ts.Expression, value: LLVMValue) {
     const nakedType = value.type.unwrapPointer();
-    if (!value.isTSPrimitivePtr()) {
-      throw new Error("Only primitives and arrays are supported");
+    if (!value.isTSPrimitivePtr() && !value.type.isArray()) {
+      throw new Error(`Only primitives and arrays are supported, got '${value.type.toString()}'`);
     }
 
     let allocated;

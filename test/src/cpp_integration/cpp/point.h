@@ -6,10 +6,10 @@ namespace cpp {
 
 class Point {
 public:
-  Point(const Number* x, const Number* y);
+  Point(Number* x, Number* y);
 
-  const Number* x() const;
-  const Number* y() const;
+  Number* x() const;
+  Number* y() const;
 
   void setX(Number* x);
   void setY(Number* y);
@@ -17,8 +17,8 @@ public:
   Point* clone() const;
 
 private:
-  Number _x{0.0};
-  Number _y{0.0};
+  Number* _x = nullptr;
+  Number* _y = nullptr;
 };
 
 } // namespace cpp

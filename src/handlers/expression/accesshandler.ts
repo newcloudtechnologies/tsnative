@@ -238,6 +238,8 @@ export class AccessHandler extends AbstractExpressionHandler {
         llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
       }
 
+      llvmValue = this.generator.builder.createLoad(llvmValue);
+
       if (
         !llvmValue.type.isTSClass() &&
         !llvmValue.type.isTSInterface() &&

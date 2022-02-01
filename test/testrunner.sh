@@ -52,7 +52,9 @@ fi
 
 rm -rf ${BUILD_DIR}/CTestTestfile.cmake
 
-# set dirictories containing tests
+mkdir -p ${BUILD_DIR}
+
+# set directories containing tests
 TEST_DIRS=( "${CURRENT_DIR}/src/app" \
             "${CURRENT_DIR}/src/basic" \
             "${CURRENT_DIR}/src/cpp_integration" \
@@ -67,7 +69,10 @@ run_tests() {
     for dir in ${TEST_DIRS[@]}; do
         test_dir_name=${dir##*/}
         test_out_dir="$BUILD_DIR/$test_dir_name"
-        tests=$(find ${dir} -name ${INCLUDE_FILTER} ! -name ${EXCLUDE_FILTER})
+
+        mkdir -p ${test_out_dir}
+
+        tests=$(find ${dir} -name "${INCLUDE_FILTER}" ! -name "${EXCLUDE_FILTER}")
 
         # iterate over test files and build
         # TODO: run tests in parallel
@@ -93,7 +98,7 @@ run_tests() {
     done
 
     # run ctest using a concatenated CTestTestfile.cmake
-    pushd ${BUILD_DIR}; ctest; popd; 
+    pushd ${BUILD_DIR} && ctest --output-on-failure && popd;
 }
 
 # $1 - full path to test file (*.ts)
