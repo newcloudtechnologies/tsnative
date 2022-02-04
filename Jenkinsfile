@@ -27,8 +27,8 @@ pipeline {
 
     parameters {
         booleanParam(name: 'PublishWithoutIncrement', defaultValue: false, description: 'Whether we need to publish artifact to npm registry (without version increment')
-        string(name: 'IMAGE_NAME_FOR_LINUX_BUILD', defaultValue: "${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_BUILD_CMAKE_TS_NAME}", description: 'Name container image for build on Linux')
-        string(name: 'IMAGE_TAG_FOR_LINUX_BUILD', defaultValue: "${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_BUILD_CMAKE_TS_VERSION}", description: 'Tag container image for build on Linux')
+        string(name: 'IMAGE_NAME_FOR_LINUX_BUILD', defaultValue: "${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_BUILD_NAME}", description: 'Name container image for build on Linux')
+        string(name: 'IMAGE_TAG_FOR_LINUX_BUILD', defaultValue: "${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_BUILD_VERSION}", description: 'Tag container image for build on Linux')
     }
 
     stages {
