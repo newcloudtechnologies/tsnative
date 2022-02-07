@@ -15,6 +15,8 @@
 
 #include "parser/Annotation.h"
 
+#include "constants/Annotations.h"
+
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
@@ -27,10 +29,13 @@ void makeFunction(parser::const_function_item_t item,
                   const TypeMapper& typeMapper,
                   generator::ts::container_block_t block)
 {
+    using namespace constants::annotations;
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;
 
+    AnnotationList annotations(getAnnotations(item->decl()));
+    
     auto children = block->children();
 
     auto it = std::find_if(
@@ -44,8 +49,13 @@ void makeFunction(parser::const_function_item_t item,
             item->prefix().c_str());
     }
 
-    function_block_t functionBlock = AbstractBlock::make<FunctionBlock>(
-        item->name(), collapseType(item->prefix(), mapType(typeMapper, item->returnType())), true);
+    std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item->name();
+
+    std::string retType = annotations.exist(TS_RETURN_TYPE)
+                              ? annotations.values(TS_RETURN_TYPE).at(0)
+                              : collapseType(item->prefix(), mapType(typeMapper, item->returnType()));
+
+    function_block_t functionBlock = AbstractBlock::make<FunctionBlock>(name, retType, true);
 
     for (const auto& it : item->parameters())
     {

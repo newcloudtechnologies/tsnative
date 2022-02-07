@@ -16,6 +16,8 @@
 #include "parser/Annotation.h"
 #include "parser/EnumItem.h"
 
+#include "constants/Annotations.h"
+
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
@@ -24,11 +26,16 @@ namespace analyzer
 
 void makeEnum(parser::const_enum_item_t item, const TypeMapper& typeMapper, generator::ts::container_block_t block)
 {
+    using namespace constants::annotations;
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;
 
-    enum_block_t enumBlock = AbstractBlock::make<EnumBlock>(item->name());
+    AnnotationList annotations(getAnnotations(item->decl()));
+
+    std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item->name();
+
+    enum_block_t enumBlock = AbstractBlock::make<EnumBlock>(name);
 
     for (const auto& it : item->enumerators())
     {

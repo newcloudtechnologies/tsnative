@@ -38,3 +38,18 @@ import { VTable } from "std-typescript-llvm/decorators/decorators"
 **Possible issues**
 
 If declarator can't find any C++ header, make sure includes order is correct. Usually first include is "packages/mgt/common/include" which contains TS.h file.
+
+**Tests**
+Run declarator tests: npm run declarator_test
+
+Each generated declaration compares with approprite snippet.
+Declarations generate path: tsnative/out/build/declarator/test/declarations
+Snippets path: tsnative/declarator/test/snippets/(ok|fail)
+
+Ok snippets mean tests passed expected. Fail snippets: tests must be failed.
+
+To add new test you should to create header file and appropriate declaration in snippets dir.
+
+To update any snippet you should to run tests, review header and appropriate generated declaration,
+copy generated declaration snippets dir.
+

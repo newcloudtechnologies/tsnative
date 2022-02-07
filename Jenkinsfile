@@ -201,6 +201,7 @@ pipeline {
                                     // FIXME: enable parallel build once KDM-836 is fixed
                                     npmUtils.npmRun(this, 'test')
                                     npmUtils.npmRun(this, 'runtime_test')
+                                    npmUtils.npmRun(this, 'declarator_test')
                                 }
                             }
                         }
@@ -331,9 +332,13 @@ pipeline {
                         stage("Tests") {
                             steps {
                                 script {
+                                    env.GCC_VERSION = sh(script:'gcc --version | grep -Eo "[0-9]*\\.[0-9]*\\.[0-9]*"', returnStdout: true).trim()
+                                    echo "${GCC_VERSION}"
                                     // FIXME: enable parallel build once KDM-836 (???) is fixed
                                     npmUtils.npmRun(this, 'test')
                                     npmUtils.npmRun(this, 'runtime_test')
+                                    // FIXME: declarator tests on Windows
+                                    // npmUtils.npmRun(this, 'declarator_test')
                                 }
                             }
                         }
@@ -448,6 +453,15 @@ pipeline {
                                     // FIXME: enable parallel build once KDM-836 is fixed
                                     npmUtils.npmRun(this, 'test')
                                     npmUtils.npmRun(this, 'runtime_test')
+
+                                    try {
+                                        npmUtils.npmRun(this, 'declarator_test')
+                                    }
+                                    catch (err)
+                                    {
+                                        // declarator is not adapted for macos yet
+                                        echo err.getMessage()
+                                    }
                                 }
                             }
                         }
@@ -563,6 +577,15 @@ pipeline {
                                     // FIXME: enable parallel build once KDM-836 is fixed
                                     npmUtils.npmRun(this, 'test')
                                     npmUtils.npmRun(this, 'runtime_test')
+
+                                    try {
+                                        npmUtils.npmRun(this, 'declarator_test')
+                                    }
+                                    catch (err)
+                                    {
+                                        // declarator is not adapted for macos yet
+                                        echo err.getMessage()
+                                    }
                                 }
                             }
                         }

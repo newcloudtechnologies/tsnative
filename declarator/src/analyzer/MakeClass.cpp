@@ -24,7 +24,9 @@
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
+#include <iterator>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -56,14 +58,41 @@ private:
         return result;
     }
 
+    template <typename T>
+    static bool is_accessors(const T& container, const std::string& name)
+    {
+        T methods;
+        std::set<std::string> values;
+        std::copy_if(std::begin(container),
+                     std::end(container),
+                     std::back_inserter(methods),
+                     [name](auto item) { return item->name() == name; });
+
+        _ASSERT(methods.size() == 2);
+
+        for (const auto& it : methods)
+        {
+            values.insert(it->accessor());
+        }
+
+        return values.find("set") != values.end() && values.find("get") != values.end();
+    }
+
 public:
     template <typename T>
-    static std::vector<std::string> check(T&& container)
+    static std::vector<std::string> get(T&& container)
     {
         std::vector<std::string> result;
 
         for (const auto& it : frequencyMap<T>(container))
         {
+            // getter and setter
+            if (it.second == 2)
+            {
+                if (is_accessors(container, it.first))
+                    continue;
+            }
+
             if (it.second > 1)
             {
                 result.push_back(it.first);
@@ -84,6 +113,7 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
     using namespace constants::annotations;
     using namespace generator::ts;
     using namespace parser;
+    using namespace utils;
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
@@ -100,15 +130,14 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     std::vector<generator::ts::method_block_t> methods = getMethods(item, typeMapper, Collection::get());
 
-    std::vector<std::string> method_overloads = Overloads::check(methods);
+    std::vector<std::string> method_overloads = Overloads::get(methods);
 
     if (!method_overloads.empty())
     {
-        throw utils::Exception(
-            R"(overloaded methods detected: "%s",  class: "%s", scope: "%s")",
-            utils::join(method_overloads).c_str(),
-            item->name().c_str(),
-            item->prefix().c_str());
+        throw Exception(R"(overloaded methods detected: "%s",  class: "%s", scope: "%s")",
+                        join(method_overloads).c_str(),
+                        item->name().c_str(),
+                        item->prefix().c_str());
     }
 
     for (const auto& it : methods)
@@ -118,15 +147,14 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     std::vector<generator::ts::method_block_t> closures = getClosures(item, typeMapper, Collection::get());
 
-    std::vector<std::string> closure_overloads = Overloads::check(closures);
+    std::vector<std::string> closure_overloads = Overloads::get(closures);
 
-   if (!closure_overloads.empty())
+    if (!closure_overloads.empty())
     {
-        throw utils::Exception(
-            R"(overloaded closures detected: "%s",  class: "%s", scope: "%s")",
-            utils::join(closure_overloads).c_str(),
-            item->name().c_str(),
-            item->prefix().c_str());
+        throw Exception(R"(overloaded closures detected: "%s",  class: "%s", scope: "%s")",
+                        join(closure_overloads).c_str(),
+                        item->name().c_str(),
+                        item->prefix().c_str());
     }
 
     for (const auto& it : closures)

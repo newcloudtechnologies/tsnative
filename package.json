@@ -6,6 +6,7 @@
         "start": "./start.sh",
         "test": "bash -x -exec 'test/testrunner.sh --clean'",
         "runtime_test": "ts-node test/runtime_test.ts",
+        "declarator_test": "ts-node declarator/test/runner.ts",
         "stage_app_test": "bash -x -exec 'test/testrunner.sh --test-filter app'",
         "package_app_test": "echo 'TODO: implement end-to-end package test inside tsnative to run before publication'",
         "clean": "rm -rf out",

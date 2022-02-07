@@ -48,6 +48,7 @@ public:
     bool isStatic() const;
     void setVisibility(const std::string& visibility);
     void setAccessor(const std::string& accessor);
+    std::string accessor() const;
 };
 
 using method_block_t = block_t<MethodBlock>;

@@ -62,6 +62,11 @@ void MethodBlock::setAccessor(const std::string& accessor)
     m_accessor = accessor;
 }
 
+std::string MethodBlock::accessor() const
+{
+    return m_accessor;
+}
+
 void MethodBlock::printBody(generator::print::printer_t printer) const
 {
     using namespace utils;
