@@ -264,7 +264,8 @@ export class ExternalSymbolsProvider {
       declaration.isMethod() ||
       declaration.isIndexSignature() ||
       declaration.isProperty() ||
-      declaration.isGetAccessor()
+      declaration.isGetAccessor() ||
+      declaration.isSetAccessor()
     ) {
       // `.*( | ns)Class::method(`
       // `.*( | ns)Class::method<U>(`
@@ -382,7 +383,7 @@ export class ExternalSymbolsProvider {
     let matching = parameters === this.parametersPattern;
 
     // check arguments pattern if not matched with parameters
-    if (!matching) {
+    if (!matching && parameters.length > 0) {
       matching = parameters === this.argumentsPattern;
     }
 

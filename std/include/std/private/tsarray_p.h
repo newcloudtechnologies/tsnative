@@ -5,6 +5,7 @@
 #include <deque>
 #include <iterator>
 #include <numeric>
+#include <stdexcept>
 #include <vector>
 
 #include "std/gc.h"
@@ -25,6 +26,7 @@ public:
     Number* push(T t, Ts... ts);
 
     Number* length() const;
+    void length(Number*);
 
     T operator[](Number* index) const;
     T operator[](size_t index) const;
@@ -64,6 +66,31 @@ template <typename T>
 Number* DequeueBackend<T>::length() const
 {
     return GC::createHeapAllocated<Number>(storage_.size());
+}
+
+template <typename T>
+void DequeueBackend<T>::length(Number* value)
+{
+    int64_t valueUnboxed = static_cast<int64_t>(value->unboxed());
+
+    if (valueUnboxed < 0)
+    {
+        throw std::invalid_argument("Invalid array length");
+    }
+
+    auto size = storage_.size();
+
+    if (valueUnboxed == size)
+    {
+        return;
+    }
+
+    if (valueUnboxed < size)
+    {
+        std::for_each(storage_.cbegin() + valueUnboxed, storage_.cend(), [](T v) { GC::untrack(v); });
+    }
+
+    storage_.resize(valueUnboxed);
 }
 
 template <typename T>
@@ -219,14 +246,36 @@ std::vector<double> DequeueBackend<T>::keys() const
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array)
+inline std::ostream& operator<<(std::ostream& os, DequeueBackend<T>* array)
 {
     os << std::boolalpha;
     os << "[ ";
     if (!array->storage_.empty())
     {
-        std::copy(array->storage_.cbegin(), array->storage_.cend() - 1, std::ostream_iterator<T>(os, ", "));
-        os << array->storage_.back();
+        std::for_each(array->storage_.cbegin(),
+                      array->storage_.cend() - 1,
+                      [&os](T value)
+                      {
+                          if (value)
+                          {
+                              os << value << ", ";
+                          }
+                          else
+                          {
+                              os << "null"
+                                 << ", ";
+                          }
+                      });
+
+        auto last = array->storage_.back();
+        if (last)
+        {
+            os << last;
+        }
+        else
+        {
+            os << "null";
+        }
     }
     os << " ]";
     return os;

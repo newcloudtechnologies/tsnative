@@ -10,8 +10,8 @@
 
 #include "iterators/arrayiterator.h"
 
-#include <vector>
 #include <sstream>
+#include <vector>
 
 template <typename T>
 class Array : public Iterable<T>
@@ -40,6 +40,7 @@ public:
     Number* push(T t, Ts... ts);
 
     Number* length() const;
+    void length(Number* value);
 
     T operator[](Number* index) const;
     T operator[](size_t index) const;
@@ -96,6 +97,12 @@ template <typename T>
 Number* Array<T>::length() const
 {
     return _d->length();
+}
+
+template <typename T>
+void Array<T>::length(Number* value)
+{
+    _d->length(value);
 }
 
 template <typename T>

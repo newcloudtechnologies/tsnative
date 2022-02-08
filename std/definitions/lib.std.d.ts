@@ -72,6 +72,7 @@ declare class Array<T> {
   constructor();
 
   get length(): number;
+  set length(value: number);
 
   push(...items: T[]): number;
 

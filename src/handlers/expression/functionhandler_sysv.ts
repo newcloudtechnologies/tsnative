@@ -69,6 +69,42 @@ export class SysVFunctionHandler {
     return callResult;
   }
 
+  handleSetAccessExpression(expression: ts.PropertyAccessExpression, qualifiedName: string, env?: Environment) {
+    const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
+    const valueDeclaration = symbol.valueDeclaration;
+    if (!valueDeclaration) {
+      throw new Error(`No value declaration found at '${expression.getText()}'`);
+    }
+
+    const llvmThisType = LLVMType.getInt8Type(this.generator).getPointer();
+
+    const parent = expression.parent as ts.BinaryExpression;
+    const arg = this.generator.handleExpression(parent.right, env);
+
+    const llvmArgumentTypes = [llvmThisType, arg.type];
+
+    const { fn } = this.generator.llvm.function.create(
+      LLVMType.getVoidType(this.generator),
+      llvmArgumentTypes,
+      qualifiedName
+    );
+    const body = valueDeclaration.body;
+    if (body) {
+      const parentClass = valueDeclaration.parent as ts.ClassDeclaration;
+
+      throw new Error(`Name collision at '${expression.getText()}'.
+       Make sure there is no class '${parentClass.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
+    }
+
+    const thisValue = this.generator.handleExpression(expression.expression, env);
+    const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
+    const args = [thisValueUntyped, arg];
+
+    this.generator.builder.createSafeCall(fn, args);
+
+    return arg;
+  }
+
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): LLVMValue {
     const argumentTypes = Expression.create(expression, this.generator).getArgumentTypes();
     const isMethod = Expression.create(expression.expression, this.generator).isMethod();

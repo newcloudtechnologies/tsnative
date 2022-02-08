@@ -434,3 +434,15 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     ];
   })();
 }
+
+{
+  const arr = [1, 2, 3];
+  const expected = [1, 2];
+
+  arr.length = 2;
+
+  console.assert(is_equal(arr, expected), "Array truncation using Array.length setter");
+
+  arr.length = 6;
+  console.assert(arr.length === 6, "Array expansion using Array.length");
+}

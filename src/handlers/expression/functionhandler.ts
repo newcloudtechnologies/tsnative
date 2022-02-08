@@ -798,10 +798,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.generator
     );
 
-    // TODO:
     if (isExternalSymbol) {
-      throw new Error("Unimplemented");
-      //   return this.sysVFunctionHandler.handleSetAccessExpression(expression, qualifiedName, outerEnv);
+      return this.sysVFunctionHandler.handleSetAccessExpression(expression, qualifiedName, outerEnv);
     }
 
     if (!valueDeclaration.body) {
