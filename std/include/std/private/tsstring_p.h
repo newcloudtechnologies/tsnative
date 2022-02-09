@@ -1,60 +1,49 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
-#include "std/tsarray.h"
-#include "std/tsboolean.h"
-#include "std/tsnumber.h"
-
-class StdStringBackend
+class StringPrivate
 {
 public:
-    StdStringBackend();
-    StdStringBackend(const std::string& s);
+    virtual ~StringPrivate() = default;
 
-    Number* length() const;
-    String* concat(String* other) const;
+    virtual int length() const = 0;
+    virtual std::string concat(const std::string& other) const = 0;
 
-    Boolean* startsWith(String* other) const;
-    Boolean* startsWith(String* other, Number* startIndex) const;
+    virtual bool startsWith(const std::string& other) const = 0;
+    virtual bool startsWith(const std::string& other, int startIndex) const = 0;
 
-    Boolean* endsWith(String* other) const;
-    Boolean* endsWith(String* other, Number* startIndex) const;
+    virtual bool endsWith(const std::string& other) const = 0;
+    virtual bool endsWith(const std::string& other, int startIndex) const = 0;
 
-    Array<String*>* split(String* pattern) const;
-    Array<String*>* split(String* pattern, Number* limit) const;
+    virtual std::vector<std::string> split(const std::string& pattern) const = 0;
+    virtual std::vector<std::string> split(const std::string& pattern, int limit) const = 0;
 
-    String* slice(Number* startIndex) const;
-    String* slice(Number* startIndex, Number* endIndex) const;
+    virtual std::string slice(int startIndex) const = 0;
+    virtual std::string slice(int startIndex, int endIndex) const = 0;
 
-    String* substring(Number* startIndex) const;
-    String* substring(Number* startIndex, Number* endIndex) const;
+    virtual std::string substring(int startIndex) const = 0;
+    virtual std::string substring(int startIndex, int endIndex) const = 0;
+    virtual std::string trim() const = 0;
 
-    String* trim() const;
+    virtual std::string toLowerCase() const = 0;
+    virtual std::string toUpperCase() const = 0;
 
-    String* toLowerCase() const;
-    String* toUpperCase() const;
+    virtual bool includes(const std::string& pattern) const = 0;
+    virtual bool includes(const std::string& pattern, int startIndex) const = 0;
 
-    Boolean* includes(String* pattern) const;
-    Boolean* includes(String* pattern, Number* startIndex) const;
+    virtual int indexOf(const std::string& pattern) const = 0;
+    virtual int indexOf(const std::string& pattern, int startIndex) const = 0;
 
-    Number* indexOf(String* pattern) const;
-    Number* indexOf(String* pattern, Number* startIndex) const;
+    virtual int lastIndexOf(const std::string& pattern) const = 0;
+    virtual int lastIndexOf(const std::string& pattern, int startIndex) const = 0;
 
-    Number* lastIndexOf(String* pattern) const;
-    Number* lastIndexOf(String* pattern, Number* startIndex) const;
+    virtual bool equals(const std::string& other) const = 0;
 
-    Boolean* equals(String* other) const;
+    virtual std::string operator[](size_t index) const = 0;
 
-    String* operator+(String* other) const;
+    virtual bool toBool() const = 0;
 
-    String* operator[](Number* index) const;
-    String* operator[](size_t index) const;
-
-    Boolean* toBool() const;
-
-    std::string cpp_str() const;
-
-private:
-    std::string _string;
+    virtual std::string cpp_str() const = 0;
 };

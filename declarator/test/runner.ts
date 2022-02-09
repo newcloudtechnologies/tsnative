@@ -129,7 +129,7 @@ class Declarator extends Process {
                 fs.mkdirSync(output_dir, { recursive: true });
             }
 
-            let { stdout, stderr } = await exec(`${declarator_bin} -x c++ --target=${compiler_abi} -D TS ${headerFilePath} ${includes}`,
+            let { stdout, stderr } = await exec(`${declarator_bin} -x c++ --target=${compiler_abi} -D TS ${headerFilePath} -D USE_STD_ARRAY_BACKEND -D USE_MAP_STD_BACKEND -D USE_SET_STD_BACKEND -D USE_TUPLE_STD_BACKEND -D USE_BOOLEAN_CXX_BUILTIN_BACKEND -D USE_NUMBER_CXX_BUILTIN_BACKEND -D USE_STD_STRING_BACKEND ${includes}`,
                 { env: { 'DECLARATOR_OUTPUT_DIR': output_dir } });
 
             declarator = new Declarator(stdout, stderr, headerFilePath);

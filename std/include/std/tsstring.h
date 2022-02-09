@@ -9,10 +9,9 @@
 
 template <typename T>
 class Array;
-
 class Number;
 
-class StdStringBackend;
+class StringPrivate;
 
 class String : public Iterable<String*>
 {
@@ -57,8 +56,6 @@ public:
 
     Boolean* equals(String* other) const;
 
-    String* operator+(String* other) const;
-
     String* operator[](Number* index) const;
     String* operator[](size_t index) const;
 
@@ -73,7 +70,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, String* s);
 
 private:
-    StdStringBackend* _d = nullptr;
+    StringPrivate* _d = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& os, String* s)

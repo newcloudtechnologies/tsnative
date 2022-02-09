@@ -16,17 +16,17 @@ public:
 
     String* toString();
 
-    Number* add(const Number* other) const;
-    Number* sub(const Number* other) const;
-    Number* mul(const Number* other) const;
-    Number* div(const Number* other) const;
-    Number* mod(const Number* other) const;
+    Number* add(Number* other) const;
+    Number* sub(Number* other) const;
+    Number* mul(Number* other) const;
+    Number* div(Number* other) const;
+    Number* mod(Number* other) const;
 
-    Number* addInplace(const Number* other);
-    Number* subInplace(const Number* other);
-    Number* mulInplace(const Number* other);
-    Number* divInplace(const Number* other);
-    Number* modInplace(const Number* other);
+    Number* addInplace(Number* other);
+    Number* subInplace(Number* other);
+    Number* mulInplace(Number* other);
+    Number* divInplace(Number* other);
+    Number* modInplace(Number* other);
 
     Number* negate();
 
@@ -36,23 +36,23 @@ public:
     Number* prefixDecrement();
     Number* postfixDecrement();
 
-    Number* bitwiseAnd(const Number* other) const;
-    Number* bitwiseOr(const Number* other) const;
-    Number* bitwiseXor(const Number* other) const;
-    Number* bitwiseLeftShift(const Number* other) const;
-    Number* bitwiseRightShift(const Number* other) const;
+    Number* bitwiseAnd(Number* other) const;
+    Number* bitwiseOr(Number* other) const;
+    Number* bitwiseXor(Number* other) const;
+    Number* bitwiseLeftShift(Number* other) const;
+    Number* bitwiseRightShift(Number* other) const;
 
-    Number* bitwiseAndInplace(const Number* other);
-    Number* bitwiseOrInplace(const Number* other);
-    Number* bitwiseXorInplace(const Number* other);
-    Number* bitwiseLeftShiftInplace(const Number* other);
-    Number* bitwiseRightShiftInplace(const Number* other);
+    Number* bitwiseAndInplace(Number* other);
+    Number* bitwiseOrInplace(Number* other);
+    Number* bitwiseXorInplace(Number* other);
+    Number* bitwiseLeftShiftInplace(Number* other);
+    Number* bitwiseRightShiftInplace(Number* other);
 
-    Boolean* equals(const Number* other) const;
-    Boolean* lessThan(const Number* other) const;
-    Boolean* lessEqualsThan(const Number* other) const;
-    Boolean* greaterThan(const Number* other) const;
-    Boolean* greaterEqualsThan(const Number* other) const;
+    Boolean* equals(Number* other) const;
+    Boolean* lessThan(Number* other) const;
+    Boolean* lessEqualsThan(Number* other) const;
+    Boolean* greaterThan(Number* other) const;
+    Boolean* greaterEqualsThan(Number* other) const;
 
     Boolean* toBool() const;
 

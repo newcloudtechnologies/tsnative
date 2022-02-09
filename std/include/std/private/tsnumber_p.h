@@ -1,57 +1,51 @@
 #pragma once
 
-class String;
-class Number;
-class Boolean;
+#include <cstdint>
 
 class NumberPrivate
 {
 public:
-    NumberPrivate();
-    NumberPrivate(double v);
+    virtual ~NumberPrivate() = default;
 
-    Number* add(const Number* other) const;
-    Number* sub(const Number* other) const;
-    Number* mul(const Number* other) const;
-    Number* div(const Number* other) const;
-    Number* mod(const Number* other) const;
+    virtual double add(double other) const = 0;
+    virtual double sub(double other) const = 0;
+    virtual double mul(double other) const = 0;
+    virtual double div(double other) const = 0;
+    virtual double mod(double other) const = 0;
 
-    void addInplace(const Number* other);
-    void subInplace(const Number* other);
-    void mulInplace(const Number* other);
-    void divInplace(const Number* other);
-    void modInplace(const Number* other);
+    virtual void addInplace(double other) = 0;
+    virtual void subInplace(double other) = 0;
+    virtual void mulInplace(double other) = 0;
+    virtual void divInplace(double other) = 0;
+    virtual void modInplace(double other) = 0;
 
-    void negate();
+    virtual void negate() = 0;
 
-    void prefixIncrement();
-    Number* postfixIncrement();
+    virtual void prefixIncrement() = 0;
+    virtual double postfixIncrement() = 0;
 
-    void prefixDecrement();
-    Number* postfixDecrement();
+    virtual void prefixDecrement() = 0;
+    virtual double postfixDecrement() = 0;
 
-    Number* bitwiseAnd(const Number* other) const;
-    Number* bitwiseOr(const Number* other) const;
-    Number* bitwiseXor(const Number* other) const;
-    Number* bitwiseLeftShift(const Number* other) const;
-    Number* bitwiseRightShift(const Number* other) const;
+    virtual uint64_t bitwiseAnd(uint64_t other) const = 0;
+    virtual uint64_t bitwiseOr(uint64_t other) const = 0;
+    virtual uint64_t bitwiseXor(uint64_t other) const = 0;
+    virtual uint64_t bitwiseLeftShift(uint64_t other) const = 0;
+    virtual uint64_t bitwiseRightShift(uint64_t other) const = 0;
 
-    void bitwiseAndInplace(const Number* other);
-    void bitwiseOrInplace(const Number* other);
-    void bitwiseXorInplace(const Number* other);
-    void bitwiseLeftShiftInplace(const Number* other);
-    void bitwiseRightShiftInplace(const Number* other);
+    virtual void bitwiseAndInplace(uint64_t other) = 0;
+    virtual void bitwiseOrInplace(uint64_t other) = 0;
+    virtual void bitwiseXorInplace(uint64_t other) = 0;
+    virtual void bitwiseLeftShiftInplace(uint64_t other) = 0;
+    virtual void bitwiseRightShiftInplace(uint64_t other) = 0;
 
-    Boolean* equals(const Number* other) const;
-    Boolean* lessThan(const Number* other) const;
-    Boolean* lessEqualsThan(const Number* other) const;
-    Boolean* greaterThan(const Number* other) const;
-    Boolean* greaterEqualsThan(const Number* other) const;
+    virtual bool equals(double other) const = 0;
+    virtual bool lessThan(double other) const = 0;
+    virtual bool lessEqualsThan(double other) const = 0;
+    virtual bool greaterThan(double other) const = 0;
+    virtual bool greaterEqualsThan(double other) const = 0;
 
-    Boolean* toBool() const;
+    virtual bool toBool() const = 0;
 
-    double unboxed() const;
-
-private:
-    double _value = 0.0;
+    virtual double unboxed() const = 0;
 };

@@ -1,15 +1,15 @@
 #pragma once
 
-#include "gc.h"
 #include "iterable.h"
-#include "tsarray.h"
-#include "tsclosure.h"
-#include "tsnumber.h"
 
-#include "datatypes/orderedset.h"
-#include "iterators/setiterator.h"
+#ifdef USE_SET_STD_BACKEND
+#include "std/private/tsset_std_p.h"
+#endif
 
-#include <utility>
+#include "std/iterators/setiterator.h"
+#include "std/tsarray.h"
+#include "std/tsboolean.h"
+#include "std/tsclosure.h"
 
 template <typename V>
 class Set : public Iterable<V>
@@ -19,42 +19,49 @@ class Set : public Iterable<V>
 public:
     Set();
 
-    void clear();
-    Boolean* remove(V value);
-    void forEach(TSClosure* visitor) const;
     Boolean* has(V value) const;
     Set<V>* add(V value);
+
+    Boolean* remove(V value);
+    void clear();
+
     Number* size() const;
+
+    void forEach(TSClosure* visitor) const;
 
     IterableIterator<V>* values();
     IterableIterator<V>* iterator() override;
     IterableIterator<V>* keys();
 
 private:
-    OrderedSet<V> _set;
+    SetPrivate<V>* _d = nullptr;
 };
 
 template <typename V>
 Set<V>::Set()
+#ifdef USE_SET_STD_BACKEND
+    : _d(new SetStdPrivate<V>())
+#endif
 {
 }
 
 template <typename V>
 void Set<V>::clear()
 {
-    _set.clear();
+    _d->clear();
 }
 
 template <typename V>
 Boolean* Set<V>::remove(V value)
 {
-    return GC::createHeapAllocated<Boolean>(_set.remove(value));
+    bool result = _d->remove(value);
+    return GC::track(new Boolean(result));
 }
 
 template <typename V>
 void Set<V>::forEach(TSClosure* visitor) const
 {
-    const auto& ordered = _set.ordered();
+    const auto& ordered = _d->ordered();
     auto numArgs = visitor->getNumArgs()->unboxed();
 
     for (size_t i = 0; i < ordered.size(); ++i)
@@ -81,26 +88,28 @@ void Set<V>::forEach(TSClosure* visitor) const
 template <typename V>
 Boolean* Set<V>::has(V value) const
 {
-    return GC::createHeapAllocated<Boolean>(_set.has(value));
+    bool result = _d->has(value);
+    return GC::track(new Boolean(result));
 }
 
 template <typename V>
 Set<V>* Set<V>::add(V value)
 {
-    _set.add(value);
+    _d->add(value);
     return this;
 }
 
 template <typename V>
 Number* Set<V>::size() const
 {
-    return GC::createHeapAllocated<Number>(_set.size());
+    int size = _d->size();
+    return GC::track(new Number(static_cast<double>(size)));
 }
 
 template <typename V>
 IterableIterator<V>* Set<V>::values()
 {
-    auto values = Array<V>::fromStdVector(_set.ordered());
+    auto values = Array<V>::fromStdVector(_d->ordered());
     auto it = new SetIterator<V>(values);
     return GC::track(it);
 }

@@ -3,12 +3,8 @@
 class BooleanPrivate
 {
 public:
-    BooleanPrivate();
-    BooleanPrivate(bool value);
+    virtual ~BooleanPrivate() = default;
 
-    bool value() const;
-    void setValue(bool value);
-
-private:
-    bool _value = false;
+    virtual bool value() const = 0;
+    virtual void setValue(bool value) = 0;
 };

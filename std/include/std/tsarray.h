@@ -6,7 +6,9 @@
 #include "tsnumber.h"
 #include "tsstring.h"
 
-#include "std/private/tsarray_p.h"
+#ifdef USE_STD_ARRAY_BACKEND
+#include "std/private/tsarray_std_p.h"
+#endif
 
 #include "iterators/arrayiterator.h"
 
@@ -58,8 +60,9 @@ public:
     Array<T>* splice(Number* start);
     Array<T>* splice(Number* start, Number* deleteCount);
 
-    Array<T>* concat(Array<T> const& other) const;
+    Array<T>* concat(const Array<T>& other) const;
 
+    std::vector<T> toStdVector() const;
     String* toString() const;
 
     IterableIterator<T>* iterator() override;
@@ -70,14 +73,16 @@ public:
     friend std::ostream& operator<<(std::ostream& os, Array<U>* array);
 
 private:
-    DequeueBackend<T>* _d = nullptr;
+    ArrayPrivate<T>* _d = nullptr;
 };
 
 // All the definitions placed in header to make it possible
 // to create explicit instantiations using only include of this header.
 template <typename T>
 Array<T>::Array()
+#ifdef USE_STD_ARRAY_BACKEND
     : _d(new DequeueBackend<T>())
+#endif
 {
 }
 
@@ -90,31 +95,33 @@ Array<T>::~Array()
 template <typename T>
 Number* Array<T>::push(T t)
 {
-    return _d->push(t);
+    int result = _d->push(t);
+    return GC::track(new Number(static_cast<double>(result)));
 }
 
 template <typename T>
 Number* Array<T>::length() const
 {
-    return _d->length();
+    int result = _d->length();
+    return GC::track(new Number(static_cast<double>(result)));
 }
 
 template <typename T>
 void Array<T>::length(Number* value)
 {
-    _d->length(value);
+    _d->length(static_cast<int>(value->unboxed()));
 }
 
 template <typename T>
 T Array<T>::operator[](Number* index) const
 {
-    return _d->operator[](index);
+    return _d->operator[](static_cast<int>(index->unboxed()));
 }
 
 template <typename T>
 T Array<T>::operator[](size_t index) const
 {
-    return _d->operator[](index);
+    return _d->operator[](static_cast<int>(index));
 }
 
 template <typename T>
@@ -122,7 +129,7 @@ void Array<T>::forEach(TSClosure* closure) const
 {
     auto numArgs = closure->getNumArgs()->unboxed();
 
-    size_t length = static_cast<size_t>(this->length()->unboxed());
+    size_t length = static_cast<size_t>(_d->length());
 
     for (size_t i = 0; i < length; ++i)
     {
@@ -133,7 +140,7 @@ void Array<T>::forEach(TSClosure* closure) const
 
         if (numArgs > 1)
         {
-            closure->setEnvironmentElement(GC::createHeapAllocated<Number>(i), 1);
+            closure->setEnvironmentElement(GC::track(new Number(static_cast<double>(i))), 1);
         }
 
         if (numArgs > 2)
@@ -148,39 +155,47 @@ void Array<T>::forEach(TSClosure* closure) const
 template <typename T>
 Number* Array<T>::indexOf(T value) const
 {
-    return _d->indexOf(value);
+    int result = _d->indexOf(value);
+    return GC::track(new Number(static_cast<double>(result)));
 }
 
 template <typename T>
 Number* Array<T>::indexOf(T value, Number* fromIndex) const
 {
-    return _d->indexOf(value, fromIndex);
+    int result = _d->indexOf(value, static_cast<int>(fromIndex->unboxed()));
+    return GC::track(new Number(static_cast<double>(result)));
 }
 
 template <typename T>
 Array<T>* Array<T>::splice(Number* start)
 {
-    return Array<T>::fromStdVector(_d->splice(start));
+    return Array<T>::fromStdVector(_d->splice(static_cast<int>(start->unboxed())));
 }
 
 template <typename T>
 Array<T>* Array<T>::splice(Number* start, Number* deleteCount)
 {
-    return Array<T>::fromStdVector(_d->splice(start, deleteCount));
+    return Array<T>::fromStdVector(
+        _d->splice(static_cast<int>(start->unboxed()), static_cast<int>(deleteCount->unboxed())));
 }
 
 template <typename T>
 Array<T>* Array<T>::concat(const Array<T>& other) const
 {
-    return Array<T>::fromStdVector(_d->concat(other));
+    return Array<T>::fromStdVector(_d->concat(other.toStdVector()));
+}
+
+template <typename T>
+std::vector<T> Array<T>::toStdVector() const
+{
+    return _d->toStdVector();
 }
 
 template <typename T>
 String* Array<T>::toString() const
 {
-    std::ostringstream oss;
-    oss << this;
-    return GC::createHeapAllocated<String>(oss.str());
+    std::string result = _d->toString();
+    return GC::track(new String(result));
 }
 
 template <typename T>
@@ -193,7 +208,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
     auto transformedArray = new Array<U>();
     auto numArgs = closure->getNumArgs()->unboxed();
 
-    size_t length = static_cast<size_t>(this->length()->unboxed());
+    size_t length = static_cast<size_t>(_d->length());
 
     for (size_t i = 0; i < length; ++i)
     {
@@ -204,7 +219,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
         if (numArgs > 1)
         {
-            closure->setEnvironmentElement(GC::createHeapAllocated<Number>(i), 1);
+            closure->setEnvironmentElement(GC::track(new Number(static_cast<double>(i))), 1);
         }
 
         if (numArgs > 2)
@@ -223,7 +238,10 @@ template <typename T>
 template <typename... Ts>
 Number* Array<T>::push(T t, Ts... ts)
 {
-    return _d->push(t, ts...);
+#ifdef USE_STD_ARRAY_BACKEND
+    int result = static_cast<DequeueBackend<T>*>(_d)->push(t, ts...);
+    return GC::track(new Number(static_cast<double>(result)));
+#endif
 }
 
 template <typename T>
@@ -241,7 +259,7 @@ IterableIterator<Number*>* Array<T>::keys()
 
     for (auto key : keys)
     {
-        keysArray->push(new Number(key));
+        keysArray->push(new Number(static_cast<double>(key)));
     }
 
     auto it = new ArrayIterator<Number*>(keysArray);
@@ -258,6 +276,6 @@ IterableIterator<T>* Array<T>::values()
 template <typename T>
 inline std::ostream& operator<<(std::ostream& os, Array<T>* array)
 {
-    os << array->_d;
+    os << array->_d->toString();
     return os;
 }

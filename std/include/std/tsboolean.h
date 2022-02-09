@@ -20,12 +20,11 @@ public:
     Boolean* negate() const;
     Boolean* equals(Boolean* other) const;
 
+    Boolean* clone() const;
+
     String* toString() const;
 
-    void setValue(bool value);
     bool unboxed() const;
-
-    Boolean* clone() const;
 
     friend std::ostream& operator<<(std::ostream& os, Boolean* v);
 

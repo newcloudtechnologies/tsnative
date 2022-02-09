@@ -3,75 +3,83 @@
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
-#include "std/private/tsnumber_p.h"
+#ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
+#include "std/private/tsnumber_cxx_builtin_p.h"
+#endif
 
-#include <cmath>
-#include <iomanip>
-#include <limits>
 #include <sstream>
 
 Number::Number(double v)
-    : _d(new NumberPrivate(v))
+#ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
+    : _d(new NumberCXXBuiltinPrivate(v))
+#endif
 {
 }
 
 Number::Number(Number* v)
-    : _d(new NumberPrivate(v->unboxed()))
+#ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
+    : _d(new NumberCXXBuiltinPrivate(v->unboxed()))
+#endif
 {
 }
 
-Number* Number::add(const Number* other) const
+Number* Number::add(Number* other) const
 {
-    return _d->add(other);
+    double result = _d->add(other->unboxed());
+    return GC::track(new Number(result));
 }
 
-Number* Number::sub(const Number* other) const
+Number* Number::sub(Number* other) const
 {
-    return _d->sub(other);
+    double result = _d->sub(other->unboxed());
+    return GC::track(new Number(result));
 }
 
-Number* Number::mul(const Number* other) const
+Number* Number::mul(Number* other) const
 {
-    return _d->mul(other);
+    double result = _d->mul(other->unboxed());
+    return GC::track(new Number(result));
 }
 
-Number* Number::div(const Number* other) const
+Number* Number::div(Number* other) const
 {
-    return _d->div(other);
+    double result = _d->div(other->unboxed());
+    return GC::track(new Number(result));
 }
 
-Number* Number::mod(const Number* other) const
+Number* Number::mod(Number* other) const
 {
-    return _d->mod(other);
+    double result = _d->mod(other->unboxed());
+    return GC::track(new Number(result));
 }
 
-Number* Number::addInplace(const Number* other)
+Number* Number::addInplace(Number* other)
 {
-    _d->addInplace(other);
+    _d->addInplace(other->unboxed());
     return this;
 }
 
-Number* Number::subInplace(const Number* other)
+Number* Number::subInplace(Number* other)
 {
-    _d->subInplace(other);
+    _d->subInplace(other->unboxed());
     return this;
 }
 
-Number* Number::mulInplace(const Number* other)
+Number* Number::mulInplace(Number* other)
 {
-    _d->mulInplace(other);
+    _d->mulInplace(other->unboxed());
     return this;
 }
 
-Number* Number::divInplace(const Number* other)
+Number* Number::divInplace(Number* other)
 {
-    _d->divInplace(other);
+    _d->divInplace(other->unboxed());
     return this;
 }
 
-Number* Number::modInplace(const Number* other)
+Number* Number::modInplace(Number* other)
 {
-    _d->modInplace(other);
+    _d->modInplace(other->unboxed());
     return this;
 }
 
@@ -89,7 +97,8 @@ Number* Number::prefixIncrement()
 
 Number* Number::postfixIncrement()
 {
-    return _d->postfixIncrement();
+    double result = _d->postfixIncrement();
+    return GC::track(new Number(result));
 }
 
 Number* Number::prefixDecrement()
@@ -100,84 +109,96 @@ Number* Number::prefixDecrement()
 
 Number* Number::postfixDecrement()
 {
-    return _d->postfixDecrement();
+    double result = _d->postfixDecrement();
+    return GC::track(new Number(result));
 }
 
-Number* Number::bitwiseAnd(const Number* other) const
+Number* Number::bitwiseAnd(Number* other) const
 {
-    return _d->bitwiseAnd(other);
+    uint64_t result = _d->bitwiseAnd(static_cast<uint64_t>(other->unboxed()));
+    return GC::track(new Number(static_cast<double>(result)));
 }
-Number* Number::bitwiseOr(const Number* other) const
+Number* Number::bitwiseOr(Number* other) const
 {
-    return _d->bitwiseOr(other);
+    uint64_t result = _d->bitwiseOr(static_cast<uint64_t>(other->unboxed()));
+    return GC::track(new Number(static_cast<double>(result)));
 }
-Number* Number::bitwiseXor(const Number* other) const
+Number* Number::bitwiseXor(Number* other) const
 {
-    return _d->bitwiseXor(other);
+    uint64_t result = _d->bitwiseXor(static_cast<uint64_t>(other->unboxed()));
+    return GC::track(new Number(static_cast<double>(result)));
 }
-Number* Number::bitwiseLeftShift(const Number* other) const
+Number* Number::bitwiseLeftShift(Number* other) const
 {
-    return _d->bitwiseLeftShift(other);
+    uint64_t result = _d->bitwiseLeftShift(static_cast<uint64_t>(other->unboxed()));
+    return GC::track(new Number(static_cast<double>(result)));
 }
-Number* Number::bitwiseRightShift(const Number* other) const
+Number* Number::bitwiseRightShift(Number* other) const
 {
-    return _d->bitwiseRightShift(other);
+    uint64_t result = _d->bitwiseRightShift(static_cast<uint64_t>(other->unboxed()));
+    return GC::track(new Number(static_cast<double>(static_cast<int64_t>(result))));
 }
 
-Number* Number::bitwiseAndInplace(const Number* other)
+Number* Number::bitwiseAndInplace(Number* other)
 {
-    _d->bitwiseAndInplace(other);
+    _d->bitwiseAndInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
-Number* Number::bitwiseOrInplace(const Number* other)
+Number* Number::bitwiseOrInplace(Number* other)
 {
-    _d->bitwiseOrInplace(other);
+    _d->bitwiseOrInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
-Number* Number::bitwiseXorInplace(const Number* other)
+Number* Number::bitwiseXorInplace(Number* other)
 {
-    _d->bitwiseXorInplace(other);
+    _d->bitwiseXorInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
-Number* Number::bitwiseLeftShiftInplace(const Number* other)
+Number* Number::bitwiseLeftShiftInplace(Number* other)
 {
-    _d->bitwiseLeftShiftInplace(other);
+    _d->bitwiseLeftShiftInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
-Number* Number::bitwiseRightShiftInplace(const Number* other)
+Number* Number::bitwiseRightShiftInplace(Number* other)
 {
-    _d->bitwiseRightShiftInplace(other);
+    _d->bitwiseRightShiftInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
 
-Boolean* Number::equals(const Number* other) const
+Boolean* Number::equals(Number* other) const
 {
-    return _d->equals(other);
+    bool result = _d->equals(other->unboxed());
+    return GC::track(new Boolean(result));
 }
 
-Boolean* Number::lessThan(const Number* other) const
+Boolean* Number::lessThan(Number* other) const
 {
-    return _d->lessThan(other);
+    bool result = _d->lessThan(other->unboxed());
+    return GC::track(new Boolean(result));
 }
 
-Boolean* Number::lessEqualsThan(const Number* other) const
+Boolean* Number::lessEqualsThan(Number* other) const
 {
-    return _d->lessEqualsThan(other);
+    bool result = _d->lessEqualsThan(other->unboxed());
+    return GC::track(new Boolean(result));
 }
 
-Boolean* Number::greaterThan(const Number* other) const
+Boolean* Number::greaterThan(Number* other) const
 {
-    return _d->greaterThan(other);
+    bool result = _d->greaterThan(other->unboxed());
+    return GC::track(new Boolean(result));
 }
 
-Boolean* Number::greaterEqualsThan(const Number* other) const
+Boolean* Number::greaterEqualsThan(Number* other) const
 {
-    return _d->greaterEqualsThan(other);
+    bool result = _d->greaterEqualsThan(other->unboxed());
+    return GC::track(new Boolean(result));
 }
 
 Boolean* Number::toBool() const
 {
-    return _d->toBool();
+    bool result = _d->toBool();
+    return GC::track(new Boolean(result));
 }
 
 double Number::unboxed() const
@@ -193,6 +214,6 @@ Number* Number::clone() const
 String* Number::toString()
 {
     std::ostringstream oss;
-    oss << this;
-    return GC::createHeapAllocated<String>(oss.str());
+    oss << this->unboxed();
+    return GC::track(new String(oss.str()));
 }

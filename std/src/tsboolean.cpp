@@ -5,22 +5,34 @@
 #include "std/tsnumber.h"
 #include "std/tsstring.h"
 
-#include "std/private/tsboolean_p.h"
+#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
+#include "std/private/tsboolean_cxx_builtin_p.h"
+#endif
 
 Boolean::Boolean()
-    : _d(new BooleanPrivate)
+#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
+    : _d(new BooleanCXXBuiltinPrivate)
+#endif
 {
 }
+
 Boolean::Boolean(bool value)
-    : _d(new BooleanPrivate(value))
+#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
+    : _d(new BooleanCXXBuiltinPrivate(value))
+#endif
 {
 }
+
 Boolean::Boolean(Number* value)
-    : _d(new BooleanPrivate(value->toBool()->unboxed()))
+#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
+    : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
+#endif
 {
 }
 Boolean::Boolean(String* value)
-    : _d(new BooleanPrivate(value->toBool()->unboxed()))
+#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
+    : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
+#endif
 {
 }
 
@@ -31,24 +43,19 @@ Boolean::~Boolean()
 
 Boolean* Boolean::negate() const
 {
-    return GC::createHeapAllocated<Boolean>(!_d->value());
+    return GC::track(new Boolean(!_d->value()));
 }
 
 Boolean* Boolean::equals(Boolean* other) const
 {
-    return GC::createHeapAllocated<Boolean>(_d->value() == other->unboxed());
+    return GC::track(new Boolean(_d->value() == other->unboxed()));
 }
 
 String* Boolean::toString() const
 {
     std::ostringstream oss;
     oss << this;
-    return GC::createHeapAllocated<String>(oss.str());
-}
-
-void Boolean::setValue(bool value)
-{
-    _d->setValue(value);
+    return GC::track(new String(oss.str()));
 }
 
 bool Boolean::unboxed() const

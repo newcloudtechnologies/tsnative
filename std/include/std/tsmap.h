@@ -1,61 +1,73 @@
 #pragma once
 
-#include "gc.h"
-#include "iterable.h"
-#include "tsarray.h"
-#include "tsclosure.h"
-#include "tsnumber.h"
-#include "tstuple.h"
+#include "std/gc.h"
+#include "std/iterable.h"
+#include "std/tsarray.h"
+#include "std/tsclosure.h"
+#include "std/tsnumber.h"
+#include "std/tstuple.h"
 
-#include "datatypes/orderedmap.h"
 #include "iterators/mapiterator.h"
+
+#ifdef USE_MAP_STD_BACKEND
+#include "std/private/tsmap_std_p.h"
+#endif
 
 template <typename K, typename V>
 class Map : public Iterable<Tuple<K, V>*>
 {
-    static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value, "TS Map keys/values expected to be of pointer type");
+    static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value,
+                  "TS Map keys/values expected to be of pointer type");
 
 public:
     Map();
 
-    void clear();
-    Boolean* remove(K key);
-    void forEach(TSClosure* visitor) const;
-    V get(K key) const;
-    Boolean* has(K key) const;
     Map<K, V>* set(K key, V value);
+
+    Boolean* has(K key) const;
+    V get(K key) const;
+
+    Boolean* remove(K key);
+    void clear();
+
     Number* size() const;
 
+    void forEach(TSClosure* visitor) const;
+
+    IterableIterator<K>* keys();
     IterableIterator<V>* values();
 
     IterableIterator<Tuple<K, V>*>* iterator() override;
-    IterableIterator<K>* keys();
 
 private:
-    OrderedMap<K, V> _map;
+    MapPrivate<K, V>* _d;
 };
 
 template <typename K, typename V>
 Map<K, V>::Map()
+#ifdef USE_MAP_STD_BACKEND
+    : _d(new MapStdPrivate<K, V>())
+#endif
 {
 }
 
 template <typename K, typename V>
 void Map<K, V>::clear()
 {
-    _map.clear();
+    _d->clear();
 }
 
 template <typename K, typename V>
 Boolean* Map<K, V>::remove(K key)
 {
-    return GC::createHeapAllocated<Boolean>(_map.remove(key));
+    bool result = _d->remove(key);
+    return GC::track(new Boolean(result));
 }
 
 template <typename K, typename V>
 void Map<K, V>::forEach(TSClosure* visitor) const
 {
-    const auto& orderedKeys = _map.orderedKeys();
+    const auto& orderedKeys = _d->orderedKeys();
     auto numArgs = visitor->getNumArgs()->unboxed();
 
     for (size_t i = 0; i < orderedKeys.size(); ++i)
@@ -82,35 +94,37 @@ void Map<K, V>::forEach(TSClosure* visitor) const
 template <typename K, typename V>
 V Map<K, V>::get(K key) const
 {
-    return _map.get(key);
+    return _d->get(key);
 }
 
 template <typename K, typename V>
 Boolean* Map<K, V>::has(K key) const
 {
-    return GC::createHeapAllocated<Boolean>(_map.has(key));
+    bool result = _d->has(key);
+    return GC::track(new Boolean(result));
 }
 
 template <typename K, typename V>
 Map<K, V>* Map<K, V>::set(K key, V value)
 {
-    _map.set(key, value);
+    _d->set(key, value);
     return this;
 }
 
 template <typename K, typename V>
 Number* Map<K, V>::size() const
 {
-    return GC::createHeapAllocated<Number>(_map.size());
+    int size = _d->size();
+    return GC::track(new Number(static_cast<double>(size)));
 }
 
 template <typename K, typename V>
 IterableIterator<V>* Map<K, V>::values()
 {
     std::vector<V> values;
-    values.reserve(_map.size());
+    values.reserve(_d->size());
 
-    for (const K& key : _map.orderedKeys())
+    for (const K& key : _d->orderedKeys())
     {
         values.push_back(get(key));
     }
@@ -123,7 +137,7 @@ IterableIterator<V>* Map<K, V>::values()
 template <typename K, typename V>
 IterableIterator<Tuple<K, V>*>* Map<K, V>::iterator()
 {
-    auto keys = _map.orderedKeys();
+    auto keys = _d->orderedKeys();
     auto zipped = new Array<Tuple<K, V>*>();
 
     for (const K& key : keys)
@@ -139,7 +153,7 @@ IterableIterator<Tuple<K, V>*>* Map<K, V>::iterator()
 template <typename K, typename V>
 IterableIterator<K>* Map<K, V>::keys()
 {
-    auto keys = Array<K>::fromStdVector(_map.orderedKeys());
+    auto keys = Array<K>::fromStdVector(_d->orderedKeys());
     auto it = new ArrayIterator<K>(keys);
     return GC::track(it);
 }
