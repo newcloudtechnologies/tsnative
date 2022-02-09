@@ -1,6 +1,6 @@
 {
     "name": "tsnative",
-    "version": "0.2.9",
+    "version": "0.2.10",
     "scripts": {
         "transpile": "tsc --outDir out/build",
         "start": "./start.sh",
