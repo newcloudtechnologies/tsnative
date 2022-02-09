@@ -10,8 +10,20 @@
 template <typename T>
 struct TSOptional
 {
+    static_assert(std::is_pointer<T>::value, "Optional value type expected to be a pointer");
+
     Boolean* marker = nullptr;
     void* value = nullptr;
+
+    bool hasValue() const
+    {
+        return this->marker && this->marker->unboxed() == true;
+    }
+
+    T getValue() const
+    {
+        return static_cast<T>(value);
+    }
 
     template <typename U>
     friend std::ostream& operator<<(std::ostream& os, TSOptional<U>* optional);
@@ -19,7 +31,7 @@ struct TSOptional
 private:
     String* toString() const
     {
-        if (!this->marker || this->marker->unboxed() == false)
+        if (!hasValue())
         {
             return GC::createHeapAllocated<String>("undefined");
         }
@@ -27,21 +39,10 @@ private:
         return this->toStringImpl();
     }
 
-    template <typename U = T>
-    typename std::enable_if<std::is_arithmetic<U>::value, String*>::type toStringImpl() const
-    {
-        // @todo: never
-
-        std::ostringstream oss;
-        oss << *static_cast<U*>(this->value);
-        return GC::createHeapAllocated<String>(oss.str());
-    }
-
-    template <typename U = T>
-    typename std::enable_if<!std::is_arithmetic<U>::value, String*>::type toStringImpl() const
+    String* toStringImpl() const
     {
         std::ostringstream oss;
-        oss << static_cast<U>(this->value);
+        oss << static_cast<T>(this->value);
         return GC::createHeapAllocated<String>(oss.str());
     }
 };

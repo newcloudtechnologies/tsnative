@@ -78,11 +78,13 @@ declare class Array<T> {
 
   forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void;
 
-  indexOf(searchElement: T, fromIndex?: number): number;
+  indexOf(searchElement: T): number;
+  indexOf(searchElement: T, fromIndex: number): number;
 
   map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[];
 
-  splice(start: number, deleteCount?: number): T[];
+  splice(start: number): T[];
+  splice(start: number, deleteCount: number): T[];
   splice(start: number, deleteCount: number, ...items: T[]): T[];
 
   concat(other: T[]): T[];

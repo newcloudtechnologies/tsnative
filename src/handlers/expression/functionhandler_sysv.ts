@@ -12,7 +12,7 @@ import * as ts from "typescript";
 
 import { LLVMGenerator } from "../../generator";
 import { Environment } from "../../scope";
-import { LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
+import { LLVMGlobalVariable, LLVMUnion, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { Expression } from "../../ts/expression";
 import { ExternalSymbolsProvider } from "../../mangling";
@@ -106,7 +106,6 @@ export class SysVFunctionHandler {
   }
 
   handleCallExpression(expression: ts.CallExpression, qualifiedName: string, env?: Environment): LLVMValue {
-    const argumentTypes = Expression.create(expression, this.generator).getArgumentTypes();
     const isMethod = Expression.create(expression.expression, this.generator).isMethod();
 
     const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
@@ -115,14 +114,6 @@ export class SysVFunctionHandler {
     if (!valueDeclaration) {
       throw new Error(`No value declaration found at '${expression.getText()}'`);
     }
-
-    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
-      if (argumentType.isObject() || argumentType.isFunction()) {
-        return LLVMType.getInt8Type(this.generator).getPointer();
-      }
-
-      return argumentType.getLLVMType();
-    });
 
     let thisValue;
     if (isMethod) {
@@ -135,12 +126,25 @@ export class SysVFunctionHandler {
       }
     }
 
-    let args = expression.arguments.map((argument) => {
+    const args = expression.arguments.map((argument, index) => {
       if (ts.isSpreadElement(argument)) {
         throw new Error("Spread element in arguments is not supported");
       }
 
       const arg = this.generator.handleExpression(argument, env);
+
+      // there may be no parameter declared at argument's index in case of rest arguments
+      const parameterAtIndex = valueDeclaration.parameters[index];
+      if (parameterAtIndex) {
+        const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+
+        if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
+          const llvmType = parameterDeclaration.type.getLLVMType();
+          const value = this.generator.gc.allocate(llvmType.unwrapPointer()) as LLVMUnion;
+          return value.initialize(arg);
+        }
+      }
+
       const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
       if (tsType.isObject() || tsType.isFunction() || arg.type.isClosure()) {
         return this.generator.builder.asVoidStar(arg);
@@ -149,11 +153,9 @@ export class SysVFunctionHandler {
       return arg;
     });
 
-    args = this.adjustArguments(args, llvmArgumentTypes);
+    this.populateOptionals(args, valueDeclaration);
 
-    if (args.some((arg, index) => !arg.type.equals(llvmArgumentTypes[index]))) {
-      throw new Error(`Arguments adjusting failed at '${expression.getText()}'`);
-    }
+    const llvmArgumentTypes = args.map((arg) => arg.type);
 
     if (isMethod) {
       llvmArgumentTypes.unshift(LLVMType.getInt8Type(this.generator).getPointer());
@@ -219,24 +221,24 @@ export class SysVFunctionHandler {
        Make sure there is no class '${valueDeclaration.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
-    const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
-
     const parentScope = valueDeclaration.getScope(thisType);
     const llvmThisType = parentScope.thisData!.llvmType;
 
-    const llvmArgumentTypes = argumentTypes.map((argumentType) => {
-      const llvmType = argumentType.getLLVMType();
-
-      if (argumentType.isObject() || argumentType.isFunction()) {
-        return LLVMType.getInt8Type(this.generator).getPointer();
-      }
-
-      return llvmType;
-    });
-
-    let args =
-      expression.arguments?.map((argument) => {
+    const args =
+      expression.arguments?.map((argument, index) => {
         const arg = this.generator.handleExpression(argument, outerEnv);
+
+        // there may be no parameter declared at argument's index in case of rest arguments
+        const parameterAtIndex = constructorDeclaration.parameters[index];
+        if (parameterAtIndex) {
+          const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+          if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
+            const llvmType = parameterDeclaration.type.getLLVMType();
+            const value = this.generator.gc.allocate(llvmType.unwrapPointer()) as LLVMUnion;
+            return value.initialize(arg);
+          }
+        }
+
         const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
         if (tsType.isObject() || tsType.isFunction()) {
           return this.generator.builder.asVoidStar(arg);
@@ -245,8 +247,9 @@ export class SysVFunctionHandler {
         return arg;
       }) || [];
 
-    args = this.adjustArguments(args, llvmArgumentTypes);
+    this.populateOptionals(args, constructorDeclaration);
 
+    const llvmArgumentTypes = args.map((arg) => arg.type);
     llvmArgumentTypes.unshift(LLVMType.getInt8Type(this.generator).getPointer());
 
     const { fn: constructor } = this.generator.llvm.function.create(
@@ -326,16 +329,23 @@ export class SysVFunctionHandler {
     this.generator.builder.createSafeStore(vtableStructCasted, classVTablePtr);
   }
 
-  private adjustArguments(args: LLVMValue[], llvmArgumentTypes: LLVMType[]) {
-    if (args.length !== llvmArgumentTypes.length) {
-      throw new Error("Expected arrays of same length");
+  private populateOptionals(args: LLVMValue[], declaration: Declaration) {
+    for (let i = args.length; i < declaration.parameters.length; ++i) {
+      const parameterDeclaration = Declaration.create(declaration.parameters[i], this.generator);
+      if (parameterDeclaration.dotDotDotToken) {
+        continue;
+      }
+
+      if (!parameterDeclaration.isOptional()) {
+        throw new Error(`Expected optional argument, got '${parameterDeclaration.getText()}'`);
+      }
+
+      const llvmType = parameterDeclaration.type.getLLVMType();
+      const value = this.generator.gc.allocate(llvmType.unwrapPointer()) as LLVMUnion;
+
+      value.initializeNullOptional();
+
+      args.push(value);
     }
-
-    return args.map((arg, index) => {
-      const destinationType = llvmArgumentTypes[index];
-      const adjusted = arg.adjustToType(destinationType);
-
-      return adjusted;
-    });
   }
 }

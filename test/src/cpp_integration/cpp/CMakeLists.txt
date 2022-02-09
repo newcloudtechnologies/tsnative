@@ -20,6 +20,7 @@ set(INCLUDES
     printable.h
     dummy_base.h
     inheritance.h
+    optional_arguments.h
 )
 
 set(SOURCES
@@ -32,6 +33,7 @@ set(SOURCES
     dummy_base.cpp
     inheritance.cpp
     component.cpp
+    optional_arguments.cpp
 )
 
 list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")

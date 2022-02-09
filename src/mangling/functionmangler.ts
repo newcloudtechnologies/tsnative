@@ -26,22 +26,24 @@ export class FunctionMangler {
     knownGenericTypes?: TSType[],
     knownArgumentTypes?: string[]
   ): { isExternalSymbol: boolean; qualifiedName: string } {
-    const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
-      declaration,
-      expression as ts.CallExpression | ts.NewExpression | undefined,
-      argumentTypes,
-      thisType,
-      generator,
-      declaration.mapping,
-      knownGenericTypes,
-      knownArgumentTypes
-    );
-    const maybeMangled = provider.tryGet(declaration);
-    if (maybeMangled) {
-      return {
-        isExternalSymbol: true,
-        qualifiedName: maybeMangled,
-      };
+    if (declaration.isAmbient()) {
+      const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
+        declaration,
+        expression as ts.CallExpression | ts.NewExpression | undefined,
+        argumentTypes,
+        thisType,
+        generator,
+        declaration.mapping,
+        knownGenericTypes,
+        knownArgumentTypes
+      );
+      const maybeMangled = provider.tryGet(declaration);
+      if (maybeMangled) {
+        return {
+          isExternalSymbol: true,
+          qualifiedName: maybeMangled,
+        };
+      }
     }
 
     const { parent } = declaration;

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "tsoptional.h"
-#include "tsnumber.h"
 #include "tsboolean.h"
+#include "tsnumber.h"
+#include "tsoptional.h"
 
 class TSClosure
 {
@@ -12,7 +12,7 @@ public:
     void** getEnvironment() const;
 
     template <typename T>
-    void setEnvironmentElement(T* value, int index);
+    void setEnvironmentElement(T value, int index);
 
     Number* getNumArgs() const;
 
@@ -26,8 +26,10 @@ private:
 };
 
 template <typename T>
-void TSClosure::setEnvironmentElement(T* value, int index)
+void TSClosure::setEnvironmentElement(T value, int index)
 {
+    static_assert(std::is_pointer<T>::value, "Expected value to be of pointer type");
+
     if ((this->optionals & (1 << index)) != 0)
     {
         TSOptional<T>* optional = static_cast<TSOptional<T>*>(env[index]);
