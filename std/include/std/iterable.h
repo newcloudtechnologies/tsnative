@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/gc.h"
@@ -8,14 +10,14 @@
 #include <type_traits>
 
 template <typename T>
-class IteratorResult
+class TS_EXPORT IteratorResult
 {
 public:
     IteratorResult(bool done, T value);
 
-    Boolean* done() const;
+    TS_METHOD TS_GETTER Boolean *done() const;
 
-    typename std::conditional<std::is_pointer<T>::value, T, T*>::type value() const;
+    TS_METHOD TS_GETTER TS_RETURN_TYPE("T") typename std::conditional<std::is_pointer<T>::value, T, T*>::type value() const;
 
 private:
     template <typename U = T>
@@ -36,8 +38,7 @@ private:
 
 template <typename T>
 IteratorResult<T>::IteratorResult(bool done, T value)
-    : _done(GC::createHeapAllocated<Boolean>(done))
-    , _value(value)
+    : _done(GC::createHeapAllocated<Boolean>(done)), _value(value)
 {
 }
 
@@ -54,19 +55,19 @@ typename std::conditional<std::is_pointer<T>::value, T, T*>::type IteratorResult
 }
 
 template <typename T>
-class Iterator
+class TS_EXPORT Iterator
 {
 public:
-    virtual IteratorResult<T>* next() = 0;
+    TS_METHOD virtual IteratorResult<T>* next() = 0;
 };
 
 template <typename T>
-class Iterable
+class TS_EXPORT Iterable
 {
-    virtual Iterator<T>* iterator() = 0;
+    TS_METHOD virtual Iterator<T>* iterator() = 0;
 };
 
 template <typename T>
-class IterableIterator : public Iterator<T>
+class TS_EXPORT IterableIterator : public Iterator<T>
 {
 };
