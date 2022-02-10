@@ -1,10 +1,16 @@
 #pragma once
 
-#include "std/iterable.h"
-#include "std/tsarray.h"
+#include <TS.h>
+
+#include <std/iterable.h>
+#include <std/tsarray.h>
+
+/*
+error: redefinition of 'ArrayIterator'
+*/
 
 template <typename T>
-class ArrayIterator : public IterableIterator<T>
+class TS_EXPORT ArrayIterator : public IterableIterator<T>
 {
 public:
     ArrayIterator(Array<T>* iterable)
@@ -12,7 +18,7 @@ public:
     {
     }
 
-    IteratorResult<T>* next() override
+    TS_METHOD IteratorResult<T>* next() override
     {
         if (currentIndex == static_cast<size_t>(_iterable->length()->unboxed()))
         {

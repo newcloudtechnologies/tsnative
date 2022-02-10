@@ -1,10 +1,12 @@
 #pragma once
 
-#include "std/iterable.h"
-#include "std/tsarray.h"
+#include <TS.h>
+
+#include <std/iterable.h>
+#include <std/tsarray.h>
 
 template <typename T>
-class SetIterator : public IterableIterator<T>
+class TS_EXPORT SetIterator : public IterableIterator<T>
 {
 public:
     SetIterator(Array<T>* iterable)
@@ -12,7 +14,7 @@ public:
     {
     }
 
-    IteratorResult<T>* next() override
+    TS_METHOD IteratorResult<T>* next() override
     {
         if (currentIndex == static_cast<size_t>(_iterable->length()->unboxed()))
         {
