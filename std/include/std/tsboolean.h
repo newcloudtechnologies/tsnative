@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include <ostream>
@@ -9,24 +11,24 @@ class String;
 
 class BooleanPrivate;
 
-class Boolean
+class TS_EXPORT Boolean
 {
 public:
-    Boolean();
+    TS_METHOD TS_SIGNATURE("constructor(_: any)") Boolean();
     Boolean(bool value);
     Boolean(Number* value);
     Boolean(String* value);
 
     ~Boolean();
 
-    Boolean* negate() const;
-    Boolean* equals(Boolean* other) const;
+    TS_METHOD Boolean* negate() const;
+    TS_METHOD Boolean* equals(Boolean* other) const;
 
-    Boolean* clone() const;
+    TS_METHOD Boolean* clone() const;
 
-    String* toString() const;
+    TS_METHOD String* toString() const;
 
-    bool unboxed() const;
+    TS_METHOD TS_RETURN_TYPE("number") bool unboxed() const;
 
     friend std::ostream& operator<<(std::ostream& os, Boolean* v);
 
