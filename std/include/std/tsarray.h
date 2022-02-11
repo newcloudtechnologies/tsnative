@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/gc.h"
@@ -12,18 +14,16 @@
 #include "std/private/tsarray_std_p.h"
 #endif
 
-#include "std/iterators/arrayiterator.h"
-
 #include <sstream>
 #include <vector>
 
 template <typename T>
-class Array : public Iterable<T>
+class TS_EXPORT Array : public Iterable<T>
 {
     static_assert(std::is_pointer<T>::value, "TS Array elements expected to be of pointer type");
 
 public:
-    Array();
+    TS_METHOD Array();
     // mkrv @todo: at least copy ctor
     ~Array();
 
@@ -38,44 +38,76 @@ public:
         return GC::track(array);
     }
 
-    Number* push(T v);
+    TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(T v);
 
     template <typename... Ts>
     Number* push(T t, Ts... ts);
 
-    Number* length() const;
+    TS_METHOD TS_GETTER Number* length() const;
     void length(Number* value);
 
     T operator[](Number* index) const;
     T operator[](size_t index) const;
 
-    void forEach(TSClosure* closure) const;
+    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void") void forEach(TSClosure* closure) const;
 
     Number* indexOf(T value) const;
-    Number* indexOf(T value, Number* fromIndex) const;
+    // FIXME: TS_SIGNATURE generates "indexOf(searchElement: T): number"
+    TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex?: number): number") Number* indexOf(T value, Number* fromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
     // but somehow meta information have to be provided for code generator on TS side
     template <typename U>
-    Array<U>* map(TSClosure* closure);
+    TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]") Array<U>* map(TSClosure* closure);
 
     Array<T>* splice(Number* start);
-    Array<T>* splice(Number* start, Number* deleteCount);
+    // FIXME: TS_SIGNATURE generates "splice(start: number, deleteCount: number, ...items: T[][]): T[]"
+    TS_METHOD TS_SIGNATURE("splice(start: number, deleteCount: number, ...items: T[]): T[]") Array<T>* splice(Number* start, Number* deleteCount);
 
-    Array<T>* concat(const Array<T>& other) const;
+    TS_METHOD TS_RETURN_TYPE("T[]") Array<T>* concat(const Array<T>& other) const;
 
     std::vector<T> toStdVector() const;
-    String* toString() const;
+    TS_METHOD String* toString() const;
 
-    IterableIterator<T>* iterator() override;
-    IterableIterator<Number*>* keys();
-    IterableIterator<T>* values();
+    // TODO: computed property name
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* iterator() override;
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<number>") IterableIterator<Number*>* keys();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
 
     template <typename U>
     friend std::ostream& operator<<(std::ostream& os, Array<U>* array);
 
 private:
     ArrayPrivate<T>* _d = nullptr;
+};
+
+template <typename T>
+class TS_EXPORT ArrayIterator : public IterableIterator<T>
+{
+public:
+    ArrayIterator(Array<T>* iterable)
+        : _iterable(iterable)
+    {
+    }
+
+    TS_METHOD IteratorResult<T>* next() override
+    {
+        if (currentIndex == static_cast<size_t>(_iterable->length()->unboxed()))
+        {
+            auto result = new IteratorResult<T>{true, {}};
+            return GC::track(result);
+        }
+
+        T value = _iterable->operator[](currentIndex);
+        ++currentIndex;
+
+        auto result = new IteratorResult<T>{false, value};
+        return GC::track(result);
+    }
+
+private:
+    Array<T>* _iterable = nullptr;
+    size_t currentIndex = 0;
 };
 
 // All the definitions placed in header to make it possible
