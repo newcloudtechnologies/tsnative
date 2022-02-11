@@ -52,7 +52,6 @@ public:
     TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void") void forEach(TSClosure* closure) const;
 
     Number* indexOf(T value) const;
-    // FIXME: TS_SIGNATURE generates "indexOf(searchElement: T): number"
     TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex?: number): number") Number* indexOf(T value, Number* fromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
@@ -61,10 +60,9 @@ public:
     TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]") Array<U>* map(TSClosure* closure);
 
     Array<T>* splice(Number* start);
-    // FIXME: TS_SIGNATURE generates "splice(start: number, deleteCount: number, ...items: T[][]): T[]"
     TS_METHOD TS_SIGNATURE("splice(start: number, deleteCount: number, ...items: T[]): T[]") Array<T>* splice(Number* start, Number* deleteCount);
 
-    TS_METHOD TS_RETURN_TYPE("T[]") Array<T>* concat(const Array<T>& other) const;
+    TS_METHOD TS_SIGNATURE("concat(other: T[]): T[]") Array<T>* concat(const Array<T>& other) const;
 
     std::vector<T> toStdVector() const;
     TS_METHOD String* toString() const;
