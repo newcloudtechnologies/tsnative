@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/iterable.h"
@@ -14,27 +16,29 @@
 #endif
 
 template <typename V>
-class Set : public Iterable<V>
+class TS_EXPORT Set : public Iterable<V>
 {
     static_assert(std::is_pointer<V>::value, "TS Set elements expected to be of pointer type");
 
 public:
-    Set();
+    TS_METHOD Set();
 
-    Boolean* has(V value) const;
-    Set<V>* add(V value);
+    TS_METHOD Boolean* has(V value) const;
+    TS_METHOD TS_SIGNATURE("add(value: V): this") Set<V>* add(V value);
 
-    Boolean* remove(V value);
-    void clear();
+    TS_METHOD TS_NAME("delete") TS_DECORATOR("MapsTo('remove')") TS_IGNORE Boolean* remove(V value);
+    TS_METHOD void clear();
 
-    Number* size() const;
+    TS_METHOD TS_GETTER Number* size() const;
 
-    void forEach(TSClosure* visitor) const;
+    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: V, value2: V, set: Set<V>) => void): void") void forEach(TSClosure* visitor) const;
 
-    IterableIterator<V>* values();
-    IterableIterator<V>* iterator() override;
-    IterableIterator<V>* keys();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* values();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* keys();
 
+    // TODO: computed property name
+    TS_METHOD TS_RETURN_TYPE("SetIterator<V>") IterableIterator<V>* iterator() override;
+    
 private:
     SetPrivate<V>* _d = nullptr;
 };
