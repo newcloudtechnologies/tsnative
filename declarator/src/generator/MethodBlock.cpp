@@ -80,7 +80,7 @@ void MethodBlock::printBody(generator::print::printer_t printer) const
                                 !m_accessor.empty() ? (m_accessor + " ").c_str() : "",
                                 name().c_str(),
                                 argumentList.c_str(),
-                                returnType.c_str());
+                                (m_accessor == "set") ? "" : returnType.c_str());
 
     printer->print(img);
     printer->enter();

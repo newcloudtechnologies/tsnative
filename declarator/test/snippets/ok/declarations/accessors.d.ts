@@ -17,6 +17,6 @@ export class Collection {
     constructor();
 
     get capacity(): number;
-    set capacity(value: number): void;
+    set capacity(value: number);
 
 }
