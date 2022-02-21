@@ -44,15 +44,15 @@ public:
     Number* push(T t, Ts... ts);
 
     TS_METHOD TS_GETTER Number* length() const;
-    void length(Number* value);
+    TS_METHOD TS_SETTER void length(Number* value);
 
-    T operator[](Number* index) const;
+    TS_METHOD TS_SIGNATURE("[index: number]: T") T operator[](Number* index) const;
     T operator[](size_t index) const;
 
     TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void") void forEach(TSClosure* closure) const;
 
     Number* indexOf(T value) const;
-    TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex?: number): number") Number* indexOf(T value, Number* fromIndex) const;
+    TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex: number): number") Number* indexOf(T value, Number* fromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
     // but somehow meta information have to be provided for code generator on TS side
@@ -67,8 +67,7 @@ public:
     std::vector<T> toStdVector() const;
     TS_METHOD String* toString() const;
 
-    // TODO: computed property name
-    TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* iterator() override;
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>") TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<T>* iterator() override;
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<number>") IterableIterator<Number*>* keys();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
 
