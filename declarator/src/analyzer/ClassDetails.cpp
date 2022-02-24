@@ -17,6 +17,7 @@
 
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
+#include "parser/NamespaceItem.h"
 
 #include "constants/Annotations.h"
 
@@ -374,6 +375,49 @@ std::string getExtends(parser::const_class_item_t item)
         }
     };
 
+    auto getModuleName = [](const std::string& path, std::string& moduleName) -> bool
+    {
+        bool result = false;
+
+        std::vector<std::string> parts = split(path, "::");
+
+        if (!parts.empty())
+        {
+            moduleName = parts.at(0);
+
+            auto& collection = Collection::get();
+
+            if (collection.existItem("", moduleName))
+            {
+                item_list_t items = collection.getItems(moduleName);
+                _ASSERT(items.size() == 1);
+
+                abstract_item_t item = items.at(0);
+
+                if (item->type() == AbstractItem::Type::NAMESPACE)
+                {
+                    namespace_item_t namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
+                    AnnotationList annotations(getAnnotations(namespaceItem->decl()));
+
+                    if (annotations.exist(TS_MODULE))
+                    {
+                        result = true;
+                    }
+                }
+            }
+        }
+
+        return result;
+    };
+
+    auto isTheSameModule = [getModuleName](const std::string& path1, const std::string& path2) -> bool
+    {
+        std::string moduleName1, moduleName2;
+        return getModuleName(path1, moduleName1) && getModuleName(path2, moduleName2) && moduleName1 == moduleName2;
+    };
+
+    std::string extends;
+
     auto node = InheritanceNode::make(Collection::get(), item);
 
     Collector collector;
@@ -389,7 +433,34 @@ std::string getExtends(parser::const_class_item_t item)
                         join(bases).c_str());
     }
 
-    return !bases.empty() ? collapseType(item->prefix(), bases.at(0)) : "";
+    if (bases.empty())
+    {
+        return "";
+    }
+    else
+    {
+        if (isTheSameModule(bases.at(0), item->prefix()))
+        {
+            extends = collapseType(item->prefix(), bases.at(0));
+        }
+        else
+        {
+            std::vector<std::string> parts = split(bases.at(0), "::");
+
+            std::string moduleName;
+            if (getModuleName(bases.at(0), moduleName))
+            {
+                _ASSERT(parts.at(0) == moduleName);
+
+                // remove module name from path
+                parts.erase(parts.begin());
+            }
+
+            extends = join(parts, ".");
+        }
+    }
+
+    return extends;
 }
 
 std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item,
@@ -497,10 +568,8 @@ std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_it
 
     _ASSERT(size >= 0);
 
-    const std::vector<std::pair<std::string, int>> denominators = {
-        {"number", sizeof(double)},
-        {"boolean", sizeof(bool)}
-    };
+    const std::vector<std::pair<std::string, int>> denominators = {{"number", sizeof(double)},
+                                                                   {"boolean", sizeof(bool)}};
 
     int n = 0;
     for (const auto& it : denominators)

@@ -628,9 +628,9 @@ void Collection::addNamespace(const std::string& name,
                               bool isLocal,
                               const clang::NamespaceDecl* decl)
 {
-#ifndef NDEBUG
+    using namespace constants::annotations;
+
     AnnotationList annotations(getAnnotations(decl));
-#endif
 
     // Local namespace declaration needs to handle annotations (do not forget, processed header is local)
     // Non-local namespace declarations needs to build hierarchy of entities (namespace -> classes and functions, etc)
@@ -642,6 +642,16 @@ void Collection::addNamespace(const std::string& name,
         abstract_item_t item = _expectedOne(getItems(prefix, name));
         _ASSERT(item->type() == AbstractItem::Type::NAMESPACE);
 
+        // update declaration if new is annotated because this ones more important for us
+        // for example: we include headers from  mgt (no annotations) first,
+        // and next include headers from mgt-ts (with annotations)
+        if (!item->isLocal() && (annotations.exist(TS_MODULE) || annotations.exist(TS_NAMESPACE)))
+        {
+            auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
+            namespaceItem->setDecl(decl);
+        }
+
+        // update declaration if new is local and old was not local
         if (!item->isLocal() && isLocal)
         {
             auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
