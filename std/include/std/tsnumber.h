@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/tsboolean.h"
@@ -10,57 +12,57 @@ class String;
 
 class NumberPrivate;
 
-class Number
+class TS_EXPORT Number
 {
 public:
-    Number(double v);
+    TS_METHOD TS_SIGNATURE("constructor(_: any)") Number(double v);
     Number(Number* v);
 
-    String* toString();
+    TS_METHOD String* toString();
 
-    Number* add(Number* other) const;
-    Number* sub(Number* other) const;
-    Number* mul(Number* other) const;
-    Number* div(Number* other) const;
-    Number* mod(Number* other) const;
+    TS_METHOD Number* add(Number* other) const;
+    TS_METHOD Number* sub(Number* other) const;
+    TS_METHOD Number* mul(Number* other) const;
+    TS_METHOD Number* div(Number* other) const;
+    TS_METHOD Number* mod(Number* other) const;
 
-    Number* addInplace(Number* other);
-    Number* subInplace(Number* other);
-    Number* mulInplace(Number* other);
-    Number* divInplace(Number* other);
-    Number* modInplace(Number* other);
+    TS_METHOD Number* addInplace(Number* other);
+    TS_METHOD Number* subInplace(Number* other);
+    TS_METHOD Number* mulInplace(Number* other);
+    TS_METHOD Number* divInplace(Number* other);
+    TS_METHOD Number* modInplace(Number* other);
 
-    Number* negate();
+    TS_METHOD Number* negate();
 
-    Number* prefixIncrement();
-    Number* postfixIncrement();
+    TS_METHOD Number* prefixIncrement();
+    TS_METHOD Number* postfixIncrement();
 
-    Number* prefixDecrement();
-    Number* postfixDecrement();
+    TS_METHOD Number* prefixDecrement();
+    TS_METHOD Number* postfixDecrement();
 
-    Number* bitwiseAnd(Number* other) const;
-    Number* bitwiseOr(Number* other) const;
-    Number* bitwiseXor(Number* other) const;
-    Number* bitwiseLeftShift(Number* other) const;
-    Number* bitwiseRightShift(Number* other) const;
+    TS_METHOD Number* bitwiseAnd(Number* other) const;
+    TS_METHOD Number* bitwiseOr(Number* other) const;
+    TS_METHOD Number* bitwiseXor(Number* other) const;
+    TS_METHOD Number* bitwiseLeftShift(Number* other) const;
+    TS_METHOD Number* bitwiseRightShift(Number* other) const;
 
-    Number* bitwiseAndInplace(Number* other);
-    Number* bitwiseOrInplace(Number* other);
-    Number* bitwiseXorInplace(Number* other);
-    Number* bitwiseLeftShiftInplace(Number* other);
-    Number* bitwiseRightShiftInplace(Number* other);
+    TS_METHOD Number* bitwiseAndInplace(Number* other);
+    TS_METHOD Number* bitwiseOrInplace(Number* other);
+    TS_METHOD Number* bitwiseXorInplace(Number* other);
+    TS_METHOD Number* bitwiseLeftShiftInplace(Number* other);
+    TS_METHOD Number* bitwiseRightShiftInplace(Number* other);
 
-    Boolean* equals(Number* other) const;
-    Boolean* lessThan(Number* other) const;
-    Boolean* lessEqualsThan(Number* other) const;
-    Boolean* greaterThan(Number* other) const;
-    Boolean* greaterEqualsThan(Number* other) const;
+    TS_METHOD Boolean* equals(Number* other) const;
+    TS_METHOD Boolean* lessThan(Number* other) const;
+    TS_METHOD Boolean* lessEqualsThan(Number* other) const;
+    TS_METHOD Boolean* greaterThan(Number* other) const;
+    TS_METHOD Boolean* greaterEqualsThan(Number* other) const;
 
-    Boolean* toBool() const;
+    TS_METHOD Boolean* toBool() const;
 
-    double unboxed() const;
+    TS_METHOD TS_RETURN_TYPE("number") double unboxed() const;
 
-    Number* clone() const;
+    TS_METHOD Number* clone() const;
 
     friend std::ostream& operator<<(std::ostream& os, Number* v);
 
