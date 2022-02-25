@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/tsboolean.h"
@@ -13,11 +15,11 @@
 #undef assert
 #endif
 
-namespace console
+namespace console IS_TS_NAMESPACE
 {
 
 template <typename T>
-void log(T t);
+TS_EXPORT TS_SIGNATURE("function log(message?: any, ...optionalParams: any[]): void") void log(T t);
 
 template <typename T, typename... Ts>
 void log(T v, Ts... ts);
@@ -29,7 +31,7 @@ template <typename... Ts>
 void logImpl(String* v, Ts... ts);
 
 template <typename... Ts>
-void assert(Boolean* assumption, Ts... ts);
+TS_EXPORT TS_SIGNATURE("function assert(assumption: boolean, ...optionalParams: any[]): void") void assert(Boolean* assumption, Ts... ts);
 
 } // namespace console
 
