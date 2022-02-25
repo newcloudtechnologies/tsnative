@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/gc.h"
@@ -11,13 +13,13 @@
 #include <iostream>
 
 template <typename... Ts>
-class Tuple
+class TS_EXPORT Tuple
 {
 public:
-    Tuple(Ts... initializers);
+    TS_METHOD TS_SIGNATURE("constructor(...initializer: any[])") Tuple(Ts... initializers);
 
-    Number* length() const;
-    void* operator[](Number* index);
+    TS_METHOD TS_GETTER Number* length() const;
+    TS_METHOD TS_SIGNATURE("[index: number]: any") void* operator[](Number* index);
 
     template <typename... Us>
     friend std::ostream& operator<<(std::ostream& os, Tuple<Us...>* tuple);
