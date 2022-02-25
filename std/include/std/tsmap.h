@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/gc.h"
@@ -16,30 +18,30 @@
 #endif
 
 template <typename K, typename V>
-class Map : public Iterable<Tuple<K, V>*>
+class TS_EXPORT Map : public Iterable<Tuple<K, V>*>
 {
     static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value,
                   "TS Map keys/values expected to be of pointer type");
 
 public:
-    Map();
+    TS_METHOD Map();
 
-    Map<K, V>* set(K key, V value);
+    TS_METHOD TS_RETURN_TYPE("this") Map<K, V>* set(K key, V value);
 
-    Boolean* has(K key) const;
-    V get(K key) const;
+    TS_METHOD Boolean* has(K key) const;
+    TS_METHOD V get(K key) const;
 
-    Boolean* remove(K key);
-    void clear();
+    TS_METHOD TS_NAME("delete") TS_DECORATOR("MapsTo('remove')") TS_IGNORE Boolean* remove(K key);
+    TS_METHOD void clear();
 
-    Number* size() const;
+    TS_METHOD TS_GETTER Number* size() const;
 
-    void forEach(TSClosure* visitor) const;
+    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void): void") void forEach(TSClosure* visitor) const;
 
-    IterableIterator<K>* keys();
-    IterableIterator<V>* values();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<K>") IterableIterator<K>* keys();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* values();
 
-    IterableIterator<Tuple<K, V>*>* iterator() override;
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): MapIterator<[K, V]>") TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<Tuple<K, V>*>* iterator() override;
 
 private:
     MapPrivate<K, V>* _d;
