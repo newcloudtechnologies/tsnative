@@ -70,6 +70,11 @@ private:
     NumberPrivate* _d = nullptr;
 };
 
+TS_CODE(
+    "// @ts-ignore\n"
+    "declare type number = Number;\n"
+);
+
 inline std::ostream& operator<<(std::ostream& os, Number* v)
 {
     os << v->unboxed();

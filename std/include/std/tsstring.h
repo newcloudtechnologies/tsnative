@@ -78,6 +78,11 @@ private:
     StringPrivate* _d = nullptr;
 };
 
+TS_CODE(
+    "// @ts-ignore\n"
+    "declare type string = String;\n"
+);
+
 inline std::ostream& operator<<(std::ostream& os, String* s)
 {
     os << s->cpp_str();

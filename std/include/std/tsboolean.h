@@ -36,6 +36,11 @@ private:
     BooleanPrivate* _d = nullptr;
 };
 
+TS_CODE(
+    "// @ts-ignore\n"
+    "declare type boolean = Boolean;\n"
+);
+
 inline std::ostream& operator<<(std::ostream& os, Boolean* v)
 {
     os << v->unboxed();
