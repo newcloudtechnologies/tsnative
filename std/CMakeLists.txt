@@ -118,14 +118,13 @@ if (GENERATE_DECLARATIONS)
     set(declaration_list )
 
     generate_declarations(
-        ${PROJECT_NAME} 
-        ${all_target}
         "${TS_HEADERS}" 
         ${CMAKE_CXX_COMPILER_TARGET} 
         "${include_directories}"
         "${IMPORT}"
         ${CMAKE_CURRENT_BINARY_DIR}
         declaration_list
+        TARGET "${PROJECT_NAME}" DEPENDS_ON "${all_target}"
     )
 
 #    message(STATUS "TS_HEADERS=${TS_HEADERS}")

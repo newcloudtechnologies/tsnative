@@ -102,7 +102,30 @@ function(generate_declarations_old lib_target dep_target headers target_compiler
     set(${declaration_list} ${output_list} PARENT_SCOPE)
 endfunction()
 
-function(generate_declarations lib_target dep_target headers target_compiler_abi include_directories import stage_dir declaration_list)
+function(generate_declarations headers target_compiler_abi include_directories import stage_dir declaration_list ...)
+    cmake_parse_arguments(PARSE_ARGV 6 "ARG"
+        ""
+        "TARGET;DEPENDS_ON"
+        ""
+    )
+
+    message("Provided sources are:")
+    foreach(src ${PARSED_ARGS_SRCS})
+        message("- ${src}")
+    endforeach(src)
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_TARGET OR ARG_TARGET STREQUAL "")
+        message (FATAL_ERROR "TARGET is not specified")
+    endif ()
+
+    if (NOT ARG_DEPENDS_ON OR ARG_DEPENDS_ON STREQUAL "")
+        message (FATAL_ERROR "DEPENDS_ON is not specified")
+    endif ()
+
     list(TRANSFORM include_directories PREPEND "-I ")
 
     set (output_list )
@@ -113,7 +136,7 @@ function(generate_declarations lib_target dep_target headers target_compiler_abi
         set (output )
         run_declarator(
             ${declaration_target} 
-            ${lib_target} 
+            ${ARG_TARGET} 
             ${header}
             "${include_directories}"
             ${target_compiler_abi}
@@ -121,7 +144,7 @@ function(generate_declarations lib_target dep_target headers target_compiler_abi
             output
         )
 
-        add_dependencies(${dep_target} ${declaration_target})
+        add_dependencies(${ARG_DEPENDS_ON} ${declaration_target})
         list(APPEND output_list "${output}")
     endforeach()
 
