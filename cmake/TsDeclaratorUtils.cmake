@@ -64,7 +64,7 @@ function(run_declarator target dep_target source includes target_compiler_abi im
     set(${output} ${output_file} PARENT_SCOPE)
 endfunction()
 
-function(generate_declarations lib_target dep_target headers target_compiler_abi import stage_dir declaration_list)
+function(generate_declarations_old lib_target dep_target headers target_compiler_abi import stage_dir declaration_list)
     populate_includes(${lib_target} include_directories)
     list(APPEND include_directories "${TS_DECLARATOR_INCLUDE_DIR}")
     list(APPEND include_directories "${StdLib_INCLUDE_DIR}")
@@ -77,6 +77,32 @@ function(generate_declarations lib_target dep_target headers target_compiler_abi
     endif()
 
     list(FILTER include_directories EXCLUDE REGEX "^$") # remove empty strings
+    list(TRANSFORM include_directories PREPEND "-I ")
+
+    set (output_list )
+    foreach(header ${headers})
+        get_filename_component(header_fn "${header}" NAME)
+        set(declaration_target "decl_${export_name}_${header_fn}_target")
+
+        set (output )
+        run_declarator(
+            ${declaration_target} 
+            ${lib_target} 
+            ${header}
+            "${include_directories}"
+            ${target_compiler_abi}
+            "${import}" ${stage_dir}
+            output
+        )
+
+        add_dependencies(${dep_target} ${declaration_target})
+        list(APPEND output_list "${output}")
+    endforeach()
+
+    set(${declaration_list} ${output_list} PARENT_SCOPE)
+endfunction()
+
+function(generate_declarations lib_target dep_target headers target_compiler_abi include_directories import stage_dir declaration_list)
     list(TRANSFORM include_directories PREPEND "-I ")
 
     set (output_list )
@@ -139,6 +165,7 @@ function(generate_index dep_target exported_name declaration_list output_dir)
     add_dependencies(${dep_target} ${target})
 endfunction()
 
+#[[
 function(format_import module_path items out_list)
     set(result )
 
@@ -152,3 +179,5 @@ function(format_import module_path items out_list)
     list(APPEND ${out_list} ${result})
     set(${out_list} ${${out_list}} PARENT_SCOPE)
 endfunction()
+]]
+
