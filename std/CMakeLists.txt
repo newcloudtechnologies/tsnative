@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(tsnative-std)
+project(tsnative-std LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,8 +17,8 @@ find_package(TsDeclarator REQUIRED)
 
 include(TsDeclaratorUtils)
 
-set(all_target "all_target")
-add_custom_target(${all_target} ALL)
+#set(all_target "all_target")
+set(all_target "${PROJECT_NAME}_ALL")
 
 set(TS_HEADERS
     include/std/console.h
@@ -53,6 +53,18 @@ set(SOURCES
     src/private/tsstring_std_p.cpp
 )
 
+#[[
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    USE_STD_ARRAY_BACKEND
+    USE_MAP_STD_BACKEND
+    USE_SET_STD_BACKEND
+    USE_TUPLE_STD_BACKEND
+    USE_BOOLEAN_CXX_BUILTIN_BACKEND
+    USE_NUMBER_CXX_BUILTIN_BACKEND
+    USE_STD_STRING_BACKEND
+)
+]]
+
 add_compile_definitions(
     USE_STD_ARRAY_BACKEND
     USE_MAP_STD_BACKEND
@@ -63,8 +75,10 @@ add_compile_definitions(
     USE_STD_STRING_BACKEND
 )
 
-add_library(${PROJECT_NAME}
-    ${SOURCES} ${HEADERS}
+add_custom_target(${all_target} ALL)
+
+add_library(${PROJECT_NAME} OBJECT EXCLUDE_FROM_ALL
+    ${HEADERS} ${SOURCES} 
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -82,33 +96,40 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 
-
 if (GENERATE_DECLARATIONS)
     set(IMPORT )
 
-    list(TRANSFORM HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
+    list(TRANSFORM TS_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
+
+    #[[
+    message(STATUS "PROJECT_NAME=${PROJECT_NAME}")
+    message(STATUS "all_target=${all_target}")
+    message(STATUS "TS_HEADERS=${TS_HEADERS}")
+    message(STATUS "CMAKE_CXX_COMPILER_TARGET=${CMAKE_CXX_COMPILER_TARGET}")
+    message(STATUS "IMPORT=${IMPORT}")
+    message(STATUS "CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
+    ]]
+
+    set(include_directories 
+        "${CMAKE_CURRENT_LIST_DIR}/include"
+        "${INSTALL_DIR}/include"
+    )
 
     set(declaration_list )
+
     generate_declarations(
         ${PROJECT_NAME} 
         ${all_target}
         "${TS_HEADERS}" 
         ${CMAKE_CXX_COMPILER_TARGET} 
+        "${include_directories}"
         "${IMPORT}"
         ${CMAKE_CURRENT_BINARY_DIR}
         declaration_list
     )
 
-    message(STATUS "declaration_list=${declaration_list}")
+#    message(STATUS "TS_HEADERS=${TS_HEADERS}")
 
-#[[
-    generate_index(
-        ${PROJECT_NAME}
-        "ts"
-        "${declaration_list}" 
-        "${CMAKE_INSTALL_PREFIX}/declarations"
-    )
-]]
 else()
     add_dependencies(${all_target} ${PROJECT_NAME})
 endif()
