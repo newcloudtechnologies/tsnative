@@ -16,5 +16,5 @@ declare module "console" {
     import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
     import { TSClosure } from "tsnative/std/definitions/lib.std.utils"
 
-    export function log(t: T): void;
+    export function log(): void;
 }

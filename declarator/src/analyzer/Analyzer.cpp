@@ -38,7 +38,7 @@
 #include "generator/NamespaceBlock.h"
 #include "generator/Utils.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
@@ -137,7 +137,7 @@ namespace analyzer
 
 parser::item_list_t getSuitableItems(const parser::Collection& collection)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
     using namespace parser;
 
     parser::item_list_t result;
@@ -159,7 +159,7 @@ parser::item_list_t getSuitableItems(const parser::Collection& collection)
 
 analyzer::TypeMapper makeTypeMapper(const parser::Collection& collection)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
     using namespace parser;
     using namespace utils;
 

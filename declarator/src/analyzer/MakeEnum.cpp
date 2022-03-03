@@ -16,7 +16,7 @@
 #include "parser/Annotation.h"
 #include "parser/EnumItem.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
@@ -26,7 +26,7 @@ namespace analyzer
 
 void makeEnum(parser::const_enum_item_t item, const TypeMapper& typeMapper, generator::ts::container_block_t block)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;

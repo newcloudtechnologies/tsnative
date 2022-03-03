@@ -15,8 +15,6 @@ export class Collection {
     private p0_Collection: boolean;
 
     constructor();
-
     get capacity(): number;
     set capacity(value: number);
-
 }

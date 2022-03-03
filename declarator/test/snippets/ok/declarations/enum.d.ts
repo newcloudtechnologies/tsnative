@@ -29,9 +29,7 @@ declare module "test" {
             private p0_Object: boolean;
 
             constructor();
-
             getType(): Object.Types;
-
         }
     }
 }

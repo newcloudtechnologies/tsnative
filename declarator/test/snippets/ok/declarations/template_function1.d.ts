@@ -11,4 +11,10 @@
  * Don't edit this file.
 */
 
-export function getNumber(): number;
+declare module "console" {
+    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
+    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
+    import { TSClosure } from "tsnative/std/definitions/lib.std.utils"
+
+    export function log(): void;
+}

@@ -15,9 +15,7 @@ export class Collection {
     private p0_Collection: boolean;
 
     constructor();
-
     getStringList(): Array<string>;
-
 }
 
 export function getStringList(): Array<string>;

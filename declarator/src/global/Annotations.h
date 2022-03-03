@@ -11,7 +11,7 @@
 
 #pragma once
 
-namespace constants
+namespace global
 {
 
 namespace annotations
@@ -33,4 +33,4 @@ constexpr const char* TS_CODE = "TS_CODE";
 
 } // namespace annotations
 
-} // namespace constants
+} // namespace global

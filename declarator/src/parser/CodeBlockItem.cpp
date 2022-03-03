@@ -14,7 +14,7 @@
 #include "utils/Exception.h"
 #include "utils/Strings.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
 #include "Annotation.h"
 
@@ -23,14 +23,17 @@
 namespace parser
 {
 
-CodeBlockItem::CodeBlockItem(const std::string& name, const std::string& prefix, const clang::CXXRecordDecl* decl)
-    : ClassItem(AbstractItem::Type::CODE_BLOCK, name, prefix, true, decl)
+CodeBlockItem::CodeBlockItem(const std::string& name,
+                             const std::string& prefix,
+                             bool isLocal,
+                             const clang::CXXRecordDecl* decl)
+    : ClassItem(AbstractItem::Type::CODE_BLOCK, name, prefix, isLocal, decl)
 {
 }
 
 std::string CodeBlockItem::code() const
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
 
     AnnotationList annotations(getAnnotations(decl()));
 

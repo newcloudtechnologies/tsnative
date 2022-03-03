@@ -18,7 +18,7 @@
 #include "generator/ModuleBlock.h"
 #include "generator/NamespaceBlock.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
 #include "utils/Exception.h"
 
@@ -29,7 +29,7 @@ void makeNamespace(parser::const_namespace_item_t item,
                    const std::vector<generator::ts::import_block_t>& importBlocks,
                    generator::ts::container_block_t block)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
     using namespace generator::ts;
     using namespace parser;
 

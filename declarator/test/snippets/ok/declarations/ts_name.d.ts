@@ -21,9 +21,7 @@ export class Collection {
     private p0_CollectionClass: boolean;
 
     constructor();
-
     size(): number;
-
 }
 
 export function getNumber(): number;

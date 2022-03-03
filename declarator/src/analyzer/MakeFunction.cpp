@@ -10,12 +10,13 @@
  */
 
 #include "MakeFunction.h"
+#include "TsUtils.h"
 
 #include "generator/FunctionBlock.h"
 
 #include "parser/Annotation.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
@@ -29,37 +30,82 @@ void makeFunction(parser::const_function_item_t item,
                   const TypeMapper& typeMapper,
                   generator::ts::container_block_t block)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
     using namespace generator::ts;
     using namespace utils;
     using namespace parser;
+    using namespace analyzer;
+
+    auto check_overloads = [block, prefix = item->prefix()](const std::string& name)
+    {
+        auto children = block->children();
+
+        auto it = std::find_if(children.begin(), children.end(), [name](const auto& it) { return it->name() == name; });
+
+        if (it != children.end())
+        {
+            throw utils::Exception(
+                R"(function with name "%s" is already exist in scope "%s". TypeScrips doesn't support reloading functions)",
+                name.c_str(),
+                prefix.c_str());
+        }
+    };
 
     AnnotationList annotations(getAnnotations(item->decl()));
-    
-    auto children = block->children();
 
-    auto it = std::find_if(
-        children.begin(), children.end(), [name = item->name()](const auto& it) { return it->name() == name; });
+    function_block_t functionBlock;
 
-    if (it != children.end())
+    if (annotations.exist(TS_SIGNATURE))
     {
-        throw utils::Exception(
-            R"(function with name "%s" is already exist in scope "%s". TypeScrips doesn't support reloading functions)",
-            item->name().c_str(),
-            item->prefix().c_str());
+        TsSignature signature(annotations.values(TS_SIGNATURE).at(0));
+
+        if (signature.type() == TsSignature::Type::FUNCTION || signature.type() == TsSignature::Type::GENERIC_FUNCTION)
+        {
+            check_overloads(signature.name());
+
+            functionBlock = AbstractBlock::make<FunctionBlock>(signature.name(), signature.retType(), true);
+
+            for (const auto& it : signature.arguments())
+            {
+                functionBlock->addArgument(it.name, it.type, it.isSpread, it.isOptional);
+            }
+
+            if (signature.type() == TsSignature::Type::GENERIC_FUNCTION)
+            {
+                for (const auto& it : signature.templateArguments())
+                {
+                    functionBlock->addTemplateArgument(it);
+                }
+            }
+        }
+        else
+        {
+            throw utils::Exception(
+                R"(incorrect signature type: available types: [FUNCTION, GENERIC_FUNCTION];
+                function: "%s", scope: "%s", signature: "%s")",
+                item->name().c_str(),
+                item->prefix().c_str(),
+                annotations.values(TS_SIGNATURE).at(0).c_str());
+        }
     }
-
-    std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item->name();
-
-    std::string retType = annotations.exist(TS_RETURN_TYPE)
-                              ? annotations.values(TS_RETURN_TYPE).at(0)
-                              : collapseType(item->prefix(), mapType(typeMapper, item->returnType()));
-
-    function_block_t functionBlock = AbstractBlock::make<FunctionBlock>(name, retType, true);
-
-    for (const auto& it : item->parameters())
+    else
     {
-        functionBlock->addArgument(it.name(), collapseType(item->prefix(), mapType(typeMapper, it.type())), false);
+        std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item->name();
+
+        check_overloads(name);
+
+        std::string retType = annotations.exist(TS_RETURN_TYPE)
+                                  ? annotations.values(TS_RETURN_TYPE).at(0)
+                                  : collapseType(item->prefix(), mapType(typeMapper, item->returnType()));
+
+        functionBlock = AbstractBlock::make<FunctionBlock>(name, retType, true);
+
+        for (const auto& it : item->parameters())
+        {
+            // can't detect spread and optional parameters automatically
+            functionBlock->addArgument(
+                it.name(), collapseType(item->prefix(), mapType(typeMapper, it.type())), false, false);
+        }
     }
 
     block->add(functionBlock);

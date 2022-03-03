@@ -24,6 +24,12 @@ ClassBlock::ClassBlock(const std::string& name, bool isExport)
 {
 }
 
+ClassBlock::ClassBlock(Type type, const std::string& name, bool isExport)
+    : AbstractBlock(type, name)
+    , m_isExport(isExport)
+{
+}
+
 std::string ClassBlock::formatExtends() const
 {
     using namespace utils;
@@ -52,38 +58,29 @@ std::string ClassBlock::formatImplements() const
     return img;
 }
 
-std::string ClassBlock::formatParameters() const
+void ClassBlock::addFields(const field_list_block_t& fields)
 {
-    using namespace utils;
-
-    std::string img;
-
-    if (!m_templateParameters.empty())
-    {
-        img = strprintf(R"(<%s>)", formatTemplateParameterList(m_templateParameters).c_str());
-    }
-
-    return img;
+    m_fields.insert(m_fields.end(), fields.begin(), fields.end());
 }
 
-void ClassBlock::addField(const_field_block_t field)
+void ClassBlock::addMethods(const method_list_block_t& methods)
 {
-    m_fields.push_back(field);
+    m_methods.insert(m_methods.end(), methods.begin(), methods.end());
 }
 
-void ClassBlock::addMethod(const_method_block_t method)
+void ClassBlock::addGenericMethods(const generic_method_list_block_t& methods)
 {
-    method->isStatic() ? m_staticMethods.push_back(method) : m_methods.push_back(method);
+    m_genericMethods.insert(m_genericMethods.end(), methods.begin(), methods.end());
 }
 
-void ClassBlock::addClosure(const_method_block_t closure)
+void ClassBlock::addClosures(const closure_list_block_t& closures)
 {
-    m_closures.push_back(closure);
+    m_closures.insert(m_closures.end(), closures.begin(), closures.end());
 }
 
-void ClassBlock::addTemplateParameter(const TemplateParameterValue& p)
+void ClassBlock::addOperators(const operator_list_block_t& operators)
 {
-    m_templateParameters.push_back(p);
+    m_operators.insert(m_operators.end(), operators.begin(), operators.end());
 }
 
 void ClassBlock::addExtends(const std::string& extends)
@@ -96,7 +93,7 @@ void ClassBlock::addImplements(const std::vector<std::string>& implements)
     m_implements = implements;
 }
 
-void ClassBlock::addCodeBlock(const_code_block_t codeBlock)
+void ClassBlock::addCodeBlock(code_block_t codeBlock)
 {
     m_codeBlocks.push_back(codeBlock);
 }
@@ -107,15 +104,13 @@ void ClassBlock::printHeader(generator::print::printer_t printer) const
 
     std::string extends = formatExtends();
     std::string implements = formatImplements();
-    std::string parameters = formatParameters();
 
     std::string inherits = strprintf(
         R"(%s%s)", append_if(!extends.empty() && !implements.empty(), extends, " ").c_str(), implements.c_str());
 
-    std::string img = strprintf(R"(%sclass %s%s %s{)",
+    std::string img = strprintf(R"(%sclass %s %s{)",
                                 m_isExport ? "export " : "",
                                 name().c_str(),
-                                parameters.c_str(),
                                 append_if(!inherits.empty(), inherits, " ").c_str());
 
     printer->print(img);
@@ -126,52 +121,12 @@ void ClassBlock::printBody(generator::print::printer_t printer) const
 {
     printer->tab();
 
-    for (auto i = 0; i < m_fields.size(); i++)
-    {
-        m_fields.at(i)->print(printer);
-
-        if (i == m_fields.size() - 1 && !m_fields.empty())
-        {
-            printer->enter();
-        }
-    }
-
-    for (auto i = 0; i < m_methods.size(); i++)
-    {
-        m_methods.at(i)->print(printer);
-
-        if (m_methods.at(i)->isConstructor() && m_methods.size() > 1)
-        {
-            printer->enter();
-        }
-
-        if (i == m_methods.size() - 1 && !m_staticMethods.empty())
-        {
-            printer->enter();
-        }
-    }
-
-    for (auto i = 0; i < m_staticMethods.size(); i++)
-    {
-        m_staticMethods.at(i)->print(printer);
-
-        if (i == m_staticMethods.size() - 1 && !m_closures.empty())
-        {
-            printer->enter();
-        }
-    }
-
-    for (auto i = 0; i < m_closures.size(); i++)
-    {
-        m_closures.at(i)->print(printer);
-    }
-
-    printer->enter();
-
-    for (auto i = 0; i < m_codeBlocks.size(); i++)
-    {
-        m_codeBlocks.at(i)->print(printer);
-    }
+    print_blocks(m_fields, printer);
+    print_blocks(m_methods, printer);
+    print_blocks(m_genericMethods, printer);
+    print_blocks(m_closures, printer);
+    print_blocks(m_operators, printer);
+    print_blocks(m_codeBlocks, printer);
 
     printer->backspace();
 }
@@ -185,5 +140,4 @@ void ClassBlock::printFooter(generator::print::printer_t printer) const
 }
 
 } // namespace ts
-
 } // namespace generator

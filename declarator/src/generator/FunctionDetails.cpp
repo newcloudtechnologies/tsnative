@@ -22,10 +22,15 @@ namespace generator
 namespace ts
 {
 
-ArgumentValue::ArgumentValue(const std::string& name, const std::string& type, bool isSpread)
+ArgumentValue::ArgumentValue()
+{
+}
+
+ArgumentValue::ArgumentValue(const std::string& name, const std::string& type, bool isSpread, bool isOptional)
     : m_name(name)
     , m_type(type)
     , m_isSpread(isSpread)
+    , m_isOptional(isOptional)
 {
 }
 
@@ -33,16 +38,8 @@ std::string ArgumentValue::toString() const
 {
     using namespace utils;
 
-    std::string img;
-
-    if (m_isSpread)
-    {
-        img += strprintf(R"(...%s: %s[])", m_name.c_str(), m_type.c_str());
-    }
-    else
-    {
-        img += strprintf(R"(%s: %s)", m_name.c_str(), m_type.c_str());
-    }
+    std::string img =
+        strprintf(R"(%s%s%s: %s)", m_isSpread ? "..." : "", m_name.c_str(), m_isOptional ? "?" : "", m_type.c_str());
 
     return img;
 }
@@ -59,6 +56,21 @@ std::string formatArgumentList(const std::vector<ArgumentValue>& arguments)
         arguments.begin(), arguments.end(), std::back_inserter(plist), [](const auto& it) { return it.toString(); });
 
     img = join(plist);
+
+    return img;
+}
+
+std::string formatTemplateArgumentList(const std::vector<std::string>& templateArguments)
+{
+    using namespace utils;
+
+    std::string img;
+
+    if (!templateArguments.empty())
+    {
+        img = join(templateArguments);
+        img = strprintf(R"(<%s>)", img.c_str());
+    }
 
     return img;
 }

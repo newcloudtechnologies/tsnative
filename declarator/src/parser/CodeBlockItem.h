@@ -23,7 +23,7 @@ class CodeBlockItem : public ClassItem
     friend class AbstractItem;
 
 private:
-    CodeBlockItem(const std::string& name, const std::string& prefix, const clang::CXXRecordDecl* decl);
+    CodeBlockItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
 
 public:
     std::string code() const;

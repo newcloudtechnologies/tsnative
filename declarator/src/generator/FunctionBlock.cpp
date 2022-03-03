@@ -28,9 +28,14 @@ FunctionBlock::FunctionBlock(const std::string& name, const std::string& retType
     _ASSERT(!m_retType.empty());
 }
 
-void FunctionBlock::addArgument(const std::string& name, const std::string& type, bool isSpread)
+void FunctionBlock::addArgument(const std::string& name, const std::string& type, bool isSpread, bool isOptional)
 {
-    m_arguments.push_back({name, type, isSpread});
+    m_arguments.push_back({name, type, isSpread, isOptional});
+}
+
+void FunctionBlock::addTemplateArgument(const std::string& type)
+{
+    m_templateArguments.push_back(type);
 }
 
 bool FunctionBlock::isExport() const
@@ -43,12 +48,14 @@ void FunctionBlock::printBody(generator::print::printer_t printer) const
     using namespace utils;
 
     std::string argumentList = formatArgumentList(m_arguments);
+    std::string templateArgumentList = formatTemplateArgumentList(m_templateArguments);
     std::string returnType = formatReturnType(m_retType);
 
-    std::string img = strprintf(R"(%s%s %s(%s)%s;)",
+    std::string img = strprintf(R"(%s%s %s%s(%s)%s;)",
                                 m_isExport ? "export " : "",
                                 "function",
                                 name().c_str(),
+                                !templateArgumentList.empty() ? templateArgumentList.c_str() : "",
                                 argumentList.c_str(),
                                 returnType.c_str());
 

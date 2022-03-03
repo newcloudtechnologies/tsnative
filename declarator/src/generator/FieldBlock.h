@@ -13,6 +13,8 @@
 
 #include "AbstractBlock.h"
 
+#include <vector>
+
 namespace generator
 {
 
@@ -35,6 +37,8 @@ private:
 
 using field_block_t = block_t<FieldBlock>;
 using const_field_block_t = block_t<const FieldBlock>;
+using field_list_block_t = std::vector<field_block_t>;
+using const_field_list_block_t = std::vector<const_field_block_t>;
 
 } // namespace ts
 

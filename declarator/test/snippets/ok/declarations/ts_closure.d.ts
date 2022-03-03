@@ -21,15 +21,14 @@ declare module "global" {
             private p0_Widget: boolean;
 
             constructor(parent: Widget);
-
         }
 
         export class Button {
             private p0_Button: boolean;
 
             constructor(parent: Widget);
-            onClicked(slot: TSClosure): void;
 
+            onClicked(slot: TSClosure): void;
         }
     }
 }

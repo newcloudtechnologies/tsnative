@@ -45,14 +45,14 @@ add_definitions(${LLVM_DEFINITIONS})
 add_subdirectory(src/parser)
 add_subdirectory(src/generator)
 add_subdirectory(src/analyzer)
-add_subdirectory(src/constants)
+add_subdirectory(src/global)
 add_subdirectory(src/utils)
 
 add_llvm_executable(${PROJECT_NAME} ${SOURCES}
     "$<TARGET_OBJECTS:parser>"
     "$<TARGET_OBJECTS:generator>"
     "$<TARGET_OBJECTS:analyzer>"
-    "$<TARGET_OBJECTS:constants>"
+    "$<TARGET_OBJECTS:global>"
     "$<TARGET_OBJECTS:utils>"
 )
 

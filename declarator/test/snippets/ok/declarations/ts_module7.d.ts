@@ -18,7 +18,6 @@ declare module "global" {
 
     export namespace stuffs {
         export class Stuff extends entities.Entity {
-
         }
     }
 }

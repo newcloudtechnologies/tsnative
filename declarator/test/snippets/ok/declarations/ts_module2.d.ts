@@ -21,9 +21,7 @@ declare module "global" {
             private p0_Entity1: boolean;
 
             constructor();
-
             entity1(): void;
-
         }
     }
 
@@ -32,9 +30,7 @@ declare module "global" {
             private p0_Entity2: boolean;
 
             constructor();
-
             entity2(): void;
-
         }
     }
 }

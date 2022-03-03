@@ -44,4 +44,4 @@ add_library(${PROJECT_NAME} OBJECT
     ${SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE parser generator constants utils)
+target_link_libraries(${PROJECT_NAME} PRIVATE parser generator global utils)

@@ -15,32 +15,49 @@
 namespace analyzer
 {
 
-class TsMethod
+class TsSignature
 {
 public:
+    enum Type
+    {
+        UNKNOWN,
+        METHOD,
+        GENERIC_METHOD,
+        FUNCTION,
+        GENERIC_FUNCTION,
+        COMPUTED_PROPERTY_NAME,
+        INDEX_SIGNATURE,
+    };
+
     struct Argument
     {
         std::string name;
         std::string type;
         bool isSpread;
+        bool isOptional;
     };
 
 private:
+    Type m_type = Type::UNKNOWN;
     std::string m_name;
     std::vector<Argument> m_arguments;
+    std::vector<std::string> m_templateArguments;
     std::string m_retType;
 
 private:
     void parse(const std::string& sig);
-    void parseArgumentList(const std::string& args);
-    void parseArgument(const std::string& arg);
+    std::vector<Argument> parseArgumentList(const std::string& args);
+    TsSignature::Argument parseArgument(const std::string& args);
+    std::vector<std::string> parseTemplateArguments(const std::string& arg);
 
 public:
-    TsMethod(const std::string& sig);
+    TsSignature(const std::string& sig);
 
+    Type type() const;
     std::string name() const;
     std::string retType() const;
     std::vector<Argument> arguments() const;
+    std::vector<std::string> templateArguments() const;
 };
 
 class TsImport

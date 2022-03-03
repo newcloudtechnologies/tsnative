@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "AbstractBlock.h"
+#include "AbstractMethodBlock.h"
 #include "FunctionDetails.h"
 
 #include <string>
@@ -23,36 +23,37 @@ namespace generator
 namespace ts
 {
 
-class MethodBlock : public AbstractBlock
+class MethodBlock : public AbstractMethodBlock
 {
     friend class AbstractBlock;
 
 protected:
     std::vector<ArgumentValue> m_arguments;
-    std::string m_retType;
-    std::string m_visibility;
     std::string m_accessor;
     bool m_isConstructor;
     bool m_isStatic;
 
 protected:
-    void printBody(generator::print::printer_t printer) const override;
-
-protected:
     MethodBlock(); // constructor
     MethodBlock(const std::string& name, const std::string& retType, bool isStatic);
 
+    MethodBlock(Type type); // constructor
+    MethodBlock(Type type, const std::string& name, const std::string& retType, bool isStatic);
+
+    void printBody(generator::print::printer_t printer) const override;
+
 public:
-    virtual void addArgument(const std::string& name, const std::string& type, bool isSpread);
+    void addArgument(const ArgumentValue& arg);
     bool isConstructor() const;
     bool isStatic() const;
-    void setVisibility(const std::string& visibility);
     void setAccessor(const std::string& accessor);
     std::string accessor() const;
 };
 
 using method_block_t = block_t<MethodBlock>;
 using const_method_block_t = block_t<const MethodBlock>;
+using method_list_block_t = std::vector<method_block_t>;
+using const_method_list_block_t = std::vector<const_method_block_t>;
 
 } // namespace ts
 

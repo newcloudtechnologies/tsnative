@@ -22,8 +22,15 @@ set(INCLUDES
     NamespaceBlock.h
     EnumBlock.h
     ClassBlock.h
+    GenericClassBlock.h
     FieldBlock.h
+    AbstractMethodBlock.h
     MethodBlock.h
+    GenericMethodBlock.h
+    OperatorBlock.h
+    ClosureBlock.h
+    ComputedPropertyNameBlock.h
+    IndexSignatureBlock.h
     CommentBlock.h
     CodeBlock.h
     FunctionDetails.h
@@ -44,8 +51,15 @@ set(SOURCES
     NamespaceBlock.cpp
     EnumBlock.cpp
     ClassBlock.cpp
+    GenericClassBlock.cpp
     FieldBlock.cpp
+    AbstractMethodBlock.cpp
     MethodBlock.cpp
+    GenericMethodBlock.cpp
+    OperatorBlock.cpp
+    ClosureBlock.cpp
+    ComputedPropertyNameBlock.cpp
+    IndexSignatureBlock.cpp
     CommentBlock.cpp
     CodeBlock.cpp
     FunctionDetails.cpp

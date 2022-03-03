@@ -14,10 +14,12 @@ project(utils LANGUAGES CXX)
 set(INCLUDES
     Exception.h
     Strings.h
+    Env.h
 )
 
 set(SOURCES
     Strings.cpp
+    Env.cpp
 )
 
 add_library(${PROJECT_NAME} OBJECT

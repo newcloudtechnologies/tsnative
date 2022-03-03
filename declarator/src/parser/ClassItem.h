@@ -14,6 +14,7 @@
 #include "ContainerItem.h"
 #include "FieldItem.h"
 #include "MethodItem.h"
+#include "TemplateMethodItem.h"
 
 #include <clang/AST/Decl.h>
 #include <clang/AST/DeclCXX.h>
@@ -39,12 +40,16 @@ protected:
     ClassItem(
         Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
 
+    void visit(std::function<void(const clang::Decl* decl)> handler) const;
+
 public:
     virtual ~ClassItem() = default;
+    virtual int size() const;
+
     std::vector<MethodItem> methods() const;
+    std::vector<TemplateMethodItem> templateMethods() const;
     std::vector<FieldItem> fields() const;
     std::vector<clang::CXXBaseSpecifier> bases() const;
-    int size() const;
     bool hasVirtualDestructor() const;
     bool hasVTable() const;
     int getVTableSize() const;

@@ -17,10 +17,8 @@ export class Entity {
     private p0_Entity: boolean;
 
     constructor();
-
     @Function(1, 2, "str", 3.14)
     @NoRet
     @MapsTo("iterator")
     update(): void;
-
 }

@@ -13,18 +13,14 @@
 #include "ClassDetails.h"
 
 #include "generator/AbstractBlock.h"
-#include "generator/ClassBlock.h"
+#include "generator/GenericClassBlock.h"
 
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
 
-#include "constants/Annotations.h"
-
-#include "utils/Exception.h"
-#include "utils/Strings.h"
+#include "global/Annotations.h"
 
 #include <string>
-#include <vector>
 
 namespace analyzer
 {
@@ -33,58 +29,47 @@ void makeGenericClass(parser::const_class_template_item_t item,
                       const TypeMapper& typeMapper,
                       generator::ts::container_block_t block)
 {
-    using namespace constants::annotations;
+    using namespace global;
+    using namespace global::annotations;
     using namespace generator::ts;
     using namespace parser;
+
+    auto classCollection = ClassCollection::make(item, Collection::get(), typeMapper);
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
     std::string name = (annotations.exist(TS_NAME)) ? annotations.values(TS_NAME).at(0) : item->name();
 
-    auto classBlock = AbstractBlock::make<ClassBlock>(name, true);
+    auto genericClassBlock = AbstractBlock::make<GenericClassBlock>(name, true);
 
     for (const auto& it : item->templateParameters())
     {
-        classBlock->addTemplateParameter({it.name(), it.isParameterPack()});
+        genericClassBlock->addTemplateParameter({it.name(), it.isParameterPack()});
     }
 
-    classBlock->addExtends(getExtends(item));
+    genericClassBlock->addExtends(Extends::get(item));
 
-    for (const auto& it : getFields(item, typeMapper, Collection::get()))
-    {
-        classBlock->addField(it);
-    }
-
-    for (const auto& it : getMethods(item, typeMapper, Collection::get()))
-    {
-        classBlock->addMethod(it);
-    }
-
-    for (const auto& it : getTemplateMethods(item, typeMapper, Collection::get()))
-    {
-        classBlock->addMethod(it);
-    }
-
-    for (const auto& it : getClosures(item, typeMapper, Collection::get()))
-    {
-        classBlock->addClosure(it);
-    }
+    genericClassBlock->addFields(classCollection.fields);
+    genericClassBlock->addMethods(classCollection.methods);
+    genericClassBlock->addGenericMethods(classCollection.generic_methods);
+    genericClassBlock->addClosures(classCollection.closures);
+    genericClassBlock->addOperators(classCollection.operators);
 
     if (annotations.exist(TS_DECORATOR))
     {
         for (const auto& it : annotations.values(TS_DECORATOR))
         {
             decorator_t decorator = Decorator::fromString(it);
-            classBlock->addDecorator(decorator);
+            genericClassBlock->addDecorator(decorator);
         }
     }
 
     if (annotations.exist(TS_IGNORE))
     {
-        classBlock->setIgnore();
+        genericClassBlock->setIgnore();
     }
 
-    block->add(classBlock);
+    block->add(genericClassBlock);
 }
 
 } // namespace analyzer

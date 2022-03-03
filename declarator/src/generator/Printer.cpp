@@ -80,16 +80,36 @@ void Printer::tab()
 void Printer::backspace()
 {
     _ASSERT(--m_tabulator >= 0);
+
+    // clear all new lines except one
+    // after backspace generator usually prints scope closing symbol (for example "}")
+    // so we need only one new line to output this symbol
+    if (m_enterMarks > 0)
+    {
+        m_enterMarks = 1;
+    }
 }
 
 void Printer::enter()
 {
-    m_sheet->render(m_traits.NewLine);
+    // encrease new line counter (do nothing here)
+    // output new lines to the file on next text printing
+    m_enterMarks++;
 }
 
 void Printer::print(const std::string& text)
 {
     std::string img;
+
+    // generate new lines
+    if (m_enterMarks > 0)
+    {
+        while (m_enterMarks > 0)
+        {
+            m_sheet->render(m_traits.NewLine);
+            --m_enterMarks;
+        }
+    }
 
     for (auto i = 0; i < m_tabulator; i++)
     {

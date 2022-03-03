@@ -18,29 +18,73 @@
 namespace analyzer
 {
 
-void TsMethod::parse(const std::string& sig)
+void TsSignature::parse(const std::string& sig)
 {
-    std::regex regexp(R"(^([\w\<\>\,\s]*)\((.*)\)(\:\s*([\w\[\]]*))?)");
-
     std::smatch match;
 
-    if (!std::regex_search(sig.begin(), sig.end(), match, regexp))
+    auto regex_search = [sig, &match](const std::string& pattern)
+    { return std::regex_search(sig.begin(), sig.end(), match, std::regex(pattern)); };
+
+    // method: readResponse0(fInfos: FileInfo_t): void
+    if (regex_search(R"(^([\w]*)\((.*)\)(\s*\:\s*)?([\w]*((\<(.*)\>)|(\[\]))?)?)"))
     {
-        throw utils::Exception(R"(invalid method signature: "%s")", sig.c_str());
+        m_type = Type::METHOD;
+        m_name = match[1];
+        m_arguments = parseArgumentList(match[2]);
+        m_retType = match[4];
     }
-
-    m_name = match[1];
-    std::string args = match[2];
-    m_retType = match[4];
-
-    parseArgumentList(args);
+    // generic method: map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
+    else if (regex_search(R"(^([\w]*)(\<(.*)\>)(\((.*)\))(\s*\:\s*)([\w]*((\<(.*)\>)|(\[\]))?))"))
+    {
+        m_type = Type::GENERIC_METHOD;
+        m_name = match[1];
+        m_templateArguments = parseTemplateArguments(match[3]);
+        m_arguments = parseArgumentList(match[5]);
+        m_retType = match[7];
+    }
+    // function: function map(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
+    else if (regex_search(R"(^(function\s*)([\w]*)(\((.*)\))(\s*\:\s*)([\w]*((\<(.*)\>)|(\[\]))?))"))
+    {
+        m_type = Type::FUNCTION;
+        m_name = match[2];
+        m_arguments = parseArgumentList(match[4]);
+        m_retType = match[6];
+    }
+    // generic function: function map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
+    else if (regex_search(R"(^(function\s*)([\w]*)(\<(.*)\>)(\((.*)\))(\s*\:\s*)([\w]*((\<(.*)\>)|(\[\]))?))"))
+    {
+        m_type = Type::GENERIC_FUNCTION;
+        m_name = match[2];
+        m_templateArguments = parseTemplateArguments(match[4]);
+        m_arguments = parseArgumentList(match[6]);
+        m_retType = match[8];
+    }
+    // computed property name: [Symbol.iterator](): ArrayIterator<T>
+    else if (regex_search(R"(^(\[([\w\.]*)\])(\((.*)\))(\:\s*)([\w]*((\<(.*)\>)|(\[\]))?))"))
+    {
+        m_type = Type::COMPUTED_PROPERTY_NAME;
+        m_name = match[2];
+        m_retType = match[6];
+    }
+    // index signature: [index: number]: T
+    else if (regex_search(R"(^(\[(.*)\])(\:\s*)([\w]*))"))
+    {
+        m_type = Type::INDEX_SIGNATURE;
+        m_arguments = parseArgumentList(match[2]);
+        m_retType = match[4];
+    }
+    else
+    {
+        throw utils::Exception(R"(unsupported signature: "%s")", sig.c_str());
+    }
 }
 
-void TsMethod::parseArgumentList(const std::string& args)
+std::vector<TsSignature::Argument> TsSignature::parseArgumentList(const std::string& args)
 {
-    std::regex regexp(R"(((\.\.\.)?[\w]+\s*\:\s*)((\([^)]+\)\s*\=\>\s[\w\[\]\_]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
+    std::vector<Argument> result;
 
-    std::vector<std::string> tokens;
+    std::regex regexp(
+        R"(((\.\.\.)?[\w]+(\[\])?(\?)?\s*\:\s*)((\([^)]+\)\s*\=\>\s[\w\[\]\_]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
 
     auto _begin = std::sregex_iterator(args.begin(), args.end(), regexp);
     auto _end = std::sregex_iterator();
@@ -48,13 +92,16 @@ void TsMethod::parseArgumentList(const std::string& args)
     for (auto it = _begin; it != _end; ++it)
     {
         std::string arg = (*it).str();
-        parseArgument(arg);
+        result.push_back(parseArgument(arg));
     }
+
+    return result;
 }
 
-void TsMethod::parseArgument(const std::string& arg)
+TsSignature::Argument TsSignature::parseArgument(const std::string& arg)
 {
-    std::regex regexp(R"((\.\.\.)?([\w]+)\s*\:\s*((\([^)]+\)\s*\=\>\s*[\w\[\]]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
+    std::regex regexp(
+        R"((\.\.\.)?([\w]+)(\?)?\s*\:\s*((\([^)]+\)\s*\=\>\s*[\w\[\]]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
     std::smatch match;
 
     if (!std::regex_search(arg.begin(), arg.end(), match, regexp))
@@ -64,29 +111,61 @@ void TsMethod::parseArgument(const std::string& arg)
 
     std::string dots = match[1];
     std::string name = match[2];
-    std::string type = match[3];
+    std::string questionMark = match[3];
+    std::string type = match[4];
 
-    m_arguments.push_back({name, type, (dots == "...") ? true : false});
+    bool isSpread = !dots.empty() && dots == "...";
+    bool isOptional = !questionMark.empty() && questionMark == "?";
+
+    return {name, type, isSpread, isOptional};
 }
 
-TsMethod::TsMethod(const std::string& sig)
+std::vector<std::string> TsSignature::parseTemplateArguments(const std::string& args)
+{
+    std::vector<std::string> result;
+
+    std::regex regexp(R"(([^,^\s]+))");
+
+    auto _begin = std::sregex_iterator(args.begin(), args.end(), regexp);
+    auto _end = std::sregex_iterator();
+
+    for (auto it = _begin; it != _end; ++it)
+    {
+        std::string arg = (*it).str();
+        result.push_back(arg);
+    }
+
+    return result;
+}
+
+TsSignature::TsSignature(const std::string& sig)
 {
     parse(sig);
 }
 
-std::string TsMethod::name() const
+TsSignature::Type TsSignature::type() const
+{
+    return m_type;
+}
+
+std::string TsSignature::name() const
 {
     return m_name;
 }
 
-std::string TsMethod::retType() const
+std::string TsSignature::retType() const
 {
     return m_retType;
 }
 
-std::vector<TsMethod::Argument> TsMethod::arguments() const
+std::vector<TsSignature::Argument> TsSignature::arguments() const
 {
     return m_arguments;
+}
+
+std::vector<std::string> TsSignature::templateArguments() const
+{
+    return m_templateArguments;
 }
 
 void TsImport::parse(const std::string& sig)

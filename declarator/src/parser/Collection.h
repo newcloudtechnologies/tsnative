@@ -12,6 +12,7 @@
 #pragma once
 
 #include "TranslationUnit.h"
+#include "Visitor.h"
 
 #include <clang-c/Index.h>
 
@@ -30,6 +31,7 @@ class Collection
     friend class Finder;
 
 private:
+    CXTranslationUnit m_tu = nullptr;
     item_t<TranslationUnitItem> m_root;
 
 private:
@@ -57,10 +59,11 @@ private:
 private:
     Collection();
     static Collection& do_get();
-    void populate(const CXCursor& cursor);
+    static Collection& do_init(CXTranslationUnit tu);
+    void populate();
 
 public:
-    static void init(const CXCursor& cursor);
+    static void init(CXTranslationUnit tu);
     static Collection& get();
 
     bool existItem(const std::string& path, const std::string& name) const;

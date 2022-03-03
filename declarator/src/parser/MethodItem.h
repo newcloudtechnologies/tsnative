@@ -35,6 +35,7 @@ public:
     bool isConstructor() const;
     bool isDestructor() const;
     bool isVirtual() const;
+    bool isPureVirtual() const;
     bool isStatic() const;
     clang::QualType returnType() const;
     std::vector<ParameterValue> parameters() const;

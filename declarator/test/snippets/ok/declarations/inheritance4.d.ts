@@ -15,7 +15,6 @@ export class Entity {
     private p0_Entity: boolean;
 
     entity(): void;
-
 }
 
 export class Derived extends Entity {
@@ -25,7 +24,6 @@ export class Derived extends Entity {
     private p3_Derived: boolean;
     private p4_Derived: boolean;
 
-    derived(): void;
     templateBase(): void;
-
+    derived(): void;
 }

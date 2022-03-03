@@ -13,12 +13,15 @@ project(parser LANGUAGES CXX)
 
 set(INCLUDES
     Collection.h
+    Diagnostics.h
     TranslationUnit.h
     Annotation.h
+    Visitor.h
     AbstractItem.h
     ContainerItem.h
     NamespaceItem.h
     ParameterValue.h
+    TemplateInstantiator.h
     TemplateParameterValue.h
     ClassItem.h
     ClassTemplateItem.h
@@ -33,12 +36,15 @@ set(INCLUDES
 
 set(SOURCES
     Collection.cpp
+    Diagnostics.cpp
     TranslationUnit.cpp
     Annotation.cpp
+    Visitor.cpp
     AbstractItem.cpp
     ContainerItem.cpp
     NamespaceItem.cpp
     ParameterValue.cpp
+    TemplateInstantiator.cpp
     TemplateParameterValue.cpp
     ClassItem.cpp
     ClassTemplateItem.cpp
@@ -56,4 +62,4 @@ add_library(${PROJECT_NAME} OBJECT
     ${SOURCES}
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE constants utils)
+target_link_libraries(${PROJECT_NAME} PRIVATE global utils)

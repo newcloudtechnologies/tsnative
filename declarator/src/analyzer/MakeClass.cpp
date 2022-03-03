@@ -19,101 +19,21 @@
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
-#include "utils/Exception.h"
-#include "utils/Strings.h"
-
-#include <iterator>
-#include <map>
-#include <set>
 #include <string>
-#include <vector>
-
-namespace
-{
-
-class Overloads
-{
-private:
-    template <typename T>
-    static std::map<std::string, int> frequencyMap(T&& container)
-    {
-        std::map<std::string, int> result;
-
-        for (const auto& it : container)
-        {
-            std::string name = it->name();
-
-            if (result.find(name) == result.end())
-            {
-                result[name] = 1;
-            }
-            else
-            {
-                ++result[name];
-            }
-        }
-
-        return result;
-    }
-
-    template <typename T>
-    static bool is_accessors(const T& container, const std::string& name)
-    {
-        T methods;
-        std::set<std::string> values;
-        std::copy_if(std::begin(container),
-                     std::end(container),
-                     std::back_inserter(methods),
-                     [name](auto item) { return item->name() == name; });
-
-        _ASSERT(methods.size() == 2);
-
-        for (const auto& it : methods)
-        {
-            values.insert(it->accessor());
-        }
-
-        return values.find("set") != values.end() && values.find("get") != values.end();
-    }
-
-public:
-    template <typename T>
-    static std::vector<std::string> get(T&& container)
-    {
-        std::vector<std::string> result;
-
-        for (const auto& it : frequencyMap<T>(container))
-        {
-            // getter and setter
-            if (it.second == 2)
-            {
-                if (is_accessors(container, it.first))
-                    continue;
-            }
-
-            if (it.second > 1)
-            {
-                result.push_back(it.first);
-            }
-        }
-
-        return result;
-    }
-};
-
-} //  namespace
 
 namespace analyzer
 {
 
 void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, generator::ts::container_block_t block)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
     using namespace generator::ts;
     using namespace parser;
     using namespace utils;
+
+    auto classCollection = ClassCollection::make(item, Collection::get(), typeMapper);
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
@@ -121,46 +41,13 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     auto classBlock = AbstractBlock::make<ClassBlock>(name, true);
 
-    classBlock->addExtends(getExtends(item));
+    classBlock->addExtends(Extends::get(item));
 
-    for (const auto& it : getFillerFields(item))
-    {
-        classBlock->addField(it);
-    }
-
-    std::vector<generator::ts::method_block_t> methods = getMethods(item, typeMapper, Collection::get());
-
-    std::vector<std::string> method_overloads = Overloads::get(methods);
-
-    if (!method_overloads.empty())
-    {
-        throw Exception(R"(overloaded methods detected: "%s",  class: "%s", scope: "%s")",
-                        join(method_overloads).c_str(),
-                        item->name().c_str(),
-                        item->prefix().c_str());
-    }
-
-    for (const auto& it : methods)
-    {
-        classBlock->addMethod(it);
-    }
-
-    std::vector<generator::ts::method_block_t> closures = getClosures(item, typeMapper, Collection::get());
-
-    std::vector<std::string> closure_overloads = Overloads::get(closures);
-
-    if (!closure_overloads.empty())
-    {
-        throw Exception(R"(overloaded closures detected: "%s",  class: "%s", scope: "%s")",
-                        join(closure_overloads).c_str(),
-                        item->name().c_str(),
-                        item->prefix().c_str());
-    }
-
-    for (const auto& it : closures)
-    {
-        classBlock->addClosure(it);
-    }
+    classBlock->addFields(classCollection.fields);
+    classBlock->addMethods(classCollection.methods);
+    classBlock->addGenericMethods(classCollection.generic_methods);
+    classBlock->addClosures(classCollection.closures);
+    classBlock->addOperators(classCollection.operators);
 
     if (annotations.exist(TS_DECORATOR))
     {

@@ -22,24 +22,37 @@ namespace ts
 {
 
 MethodBlock::MethodBlock()
-    : AbstractBlock(Type::METHOD, "constructor")
+    : AbstractMethodBlock(Type::METHOD, "constructor", "")
     , m_isConstructor(true)
     , m_isStatic(false)
 {
 }
 
 MethodBlock::MethodBlock(const std::string& name, const std::string& retType, bool isStatic)
-    : AbstractBlock(Type::METHOD, name)
-    , m_retType(retType)
+    : AbstractMethodBlock(Type::METHOD, name, retType)
     , m_isConstructor(false)
     , m_isStatic(isStatic)
 {
     _ASSERT(!m_retType.empty());
 }
 
-void MethodBlock::addArgument(const std::string& name, const std::string& type, bool isSpread)
+MethodBlock::MethodBlock(Type type)
+    : AbstractMethodBlock(type, "constructor", "")
+    , m_isConstructor(true)
+    , m_isStatic(false)
 {
-    m_arguments.push_back({name, type, isSpread});
+}
+
+MethodBlock::MethodBlock(Type type, const std::string& name, const std::string& retType, bool isStatic)
+    : AbstractMethodBlock(type, name, retType)
+    , m_isConstructor(false)
+    , m_isStatic(isStatic)
+{
+}
+
+void MethodBlock::addArgument(const ArgumentValue& arg)
+{
+    m_arguments.push_back(arg);
 }
 
 bool MethodBlock::isConstructor() const
@@ -50,11 +63,6 @@ bool MethodBlock::isConstructor() const
 bool MethodBlock::isStatic() const
 {
     return m_isStatic;
-}
-
-void MethodBlock::setVisibility(const std::string& visibility)
-{
-    m_visibility = visibility;
 }
 
 void MethodBlock::setAccessor(const std::string& accessor)
@@ -74,13 +82,14 @@ void MethodBlock::printBody(generator::print::printer_t printer) const
     std::string argumentList = formatArgumentList(m_arguments);
     std::string returnType = formatReturnType(m_retType);
 
-    std::string img = strprintf(R"(%s%s%s%s(%s)%s;)",
-                                !m_visibility.empty() ? (m_visibility + " ").c_str() : "",
-                                m_isStatic ? "static " : "",
-                                !m_accessor.empty() ? (m_accessor + " ").c_str() : "",
-                                name().c_str(),
-                                argumentList.c_str(),
-                                (m_accessor == "set") ? "" : returnType.c_str());
+    std::string img = strprintf(
+        R"(%s%s%s%s(%s)%s;)",
+        m_accessModifier.type() != AccessModifier::Type::PUBLIC ? (m_accessModifier.typeAsString() + " ").c_str() : "",
+        m_isStatic ? "static " : "",
+        !m_accessor.empty() ? (m_accessor + " ").c_str() : "",
+        name().c_str(),
+        argumentList.c_str(),
+        (m_accessor == "set") ? "" : returnType.c_str());
 
     printer->print(img);
     printer->enter();

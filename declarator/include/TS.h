@@ -52,5 +52,5 @@
 #define TS_GETTER
 #define TS_SETTER
 #define TS_IGNORE
-#define TS_CODE
+#define TS_CODE(code)
 #endif

@@ -14,9 +14,8 @@
 export class Event {
     private p0_Event: boolean;
 
-    event(): void;
     entity(): void;
-
+    event(): void;
 }
 
 export class CustomEvent extends Event {
@@ -24,10 +23,9 @@ export class CustomEvent extends Event {
     private p1_CustomEvent: boolean;
     private p2_CustomEvent: boolean;
 
-    customEvent(): void;
     abc(): void;
-    a(): void;
-    b(): void;
     c(): void;
-
+    b(): void;
+    a(): void;
+    customEvent(): void;
 }

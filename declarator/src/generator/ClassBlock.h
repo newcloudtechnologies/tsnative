@@ -13,9 +13,12 @@
 
 #include "AbstractBlock.h"
 #include "ClassDetails.h"
+#include "ClosureBlock.h"
 #include "CodeBlock.h"
 #include "FieldBlock.h"
+#include "GenericMethodBlock.h"
 #include "MethodBlock.h"
+#include "OperatorBlock.h"
 
 #include <string>
 #include <vector>
@@ -30,22 +33,21 @@ class ClassBlock : public AbstractBlock
 {
     friend class AbstractBlock;
 
+protected:
     std::string m_extends;
     std::vector<std::string> m_implements;
-    std::vector<TemplateParameterValue> m_templateParameters;
-    std::vector<const_field_block_t> m_fields;
-    std::vector<const_method_block_t> m_methods;
-    std::vector<const_method_block_t> m_staticMethods;
-    std::vector<const_method_block_t> m_closures;
-    std::vector<const_code_block_t> m_codeBlocks;
+    std::vector<generator::ts::field_block_t> m_fields;
+    std::vector<generator::ts::method_block_t> m_methods;
+    std::vector<generator::ts::generic_method_block_t> m_genericMethods;
+    std::vector<generator::ts::closure_block_t> m_closures;
+    std::vector<generator::ts::operator_block_t> m_operators;
+    std::vector<code_block_t> m_codeBlocks;
     bool m_isExport;
 
-private:
+protected:
     std::string formatExtends() const;
     std::string formatImplements() const;
-    std::string formatParameters() const;
 
-protected:
     void printHeader(generator::print::printer_t printer) const override;
     void printBody(generator::print::printer_t printer) const override;
     void printFooter(generator::print::printer_t printer) const override;
@@ -53,14 +55,18 @@ protected:
 private:
     ClassBlock(const std::string& name, bool isExport);
 
+protected:
+    ClassBlock(Type type, const std::string& name, bool isExport);
+
 public:
-    void addField(const_field_block_t field);
-    void addMethod(const_method_block_t method);
-    void addClosure(const_method_block_t closure);
-    void addTemplateParameter(const TemplateParameterValue& p);
+    void addFields(const field_list_block_t& fields);
+    void addMethods(const method_list_block_t& methods);
+    void addGenericMethods(const generic_method_list_block_t& methods);
+    void addClosures(const closure_list_block_t& closures);
+    void addOperators(const operator_list_block_t& operators);
     void addExtends(const std::string& extends);
     void addImplements(const std::vector<std::string>& implements);
-    void addCodeBlock(const_code_block_t codeBlock);
+    void addCodeBlock(code_block_t codeBlock);
 };
 
 using class_block_t = block_t<ClassBlock>;

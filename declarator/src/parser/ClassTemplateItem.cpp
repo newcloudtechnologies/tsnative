@@ -10,8 +10,11 @@
  */
 
 #include "ClassTemplateItem.h"
+#include "TemplateInstantiator.h"
 
 #include "utils/Exception.h"
+
+#include "global/Settings.h"
 
 namespace parser
 {
@@ -25,38 +28,29 @@ ClassTemplateItem::ClassTemplateItem(const std::string& name,
 {
 }
 
-void ClassTemplateItem::visit(std::function<void(const clang::Decl* decl)> handler) const
-{
-    auto* recordDecl = static_cast<const ClassItem*>(this)->decl();
-
-    for (const auto& it : recordDecl->decls())
-    {
-        handler(it);
-    }
-}
-
-std::vector<TemplateMethodItem> ClassTemplateItem::templateMethods() const
-{
-    std::vector<TemplateMethodItem> result;
-
-    visit(
-        [&result](const clang::Decl* decl)
-        {
-            if (decl->getKind() == clang::Decl::Kind::FunctionTemplate)
-            {
-                const auto* functionTemplateDecl = clang::dyn_cast_or_null<const clang::FunctionTemplateDecl>(decl);
-                _ASSERT(functionTemplateDecl);
-
-                result.push_back(functionTemplateDecl);
-            }
-        });
-
-    return result;
-}
-
 std::vector<TemplateParameterValue> ClassTemplateItem::templateParameters() const
 {
     return getTemplateParameters(m_decl);
+}
+
+int ClassTemplateItem::size() const
+{
+    using namespace global;
+
+    auto& settings = Settings::get();
+
+    if (m_size < 0)
+    {
+        // size of templated class is size of specialization
+        ClassTemplateInstantiator instantiator(
+            shared_from_this(), settings.source(), settings.includeDirs(), settings.compilerAbi());
+
+        auto instance = instantiator.instantiate();
+
+        m_size = instance->size();
+    }
+
+    return m_size;
 }
 
 const clang::ClassTemplateDecl* ClassTemplateItem::decl() const

@@ -51,6 +51,11 @@ bool MethodItem::isVirtual() const
     return m_decl->isVirtual();
 }
 
+bool MethodItem::isPureVirtual() const
+{
+    return m_decl->isVirtual() && m_decl->isPure();
+}
+
 bool MethodItem::isStatic() const
 {
     return m_decl->isStatic();

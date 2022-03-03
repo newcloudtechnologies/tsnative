@@ -28,6 +28,7 @@ class FunctionBlock : public AbstractBlock
     friend class AbstractBlock;
 
     std::vector<ArgumentValue> m_arguments;
+    std::vector<std::string> m_templateArguments;
     std::string m_retType;
     bool m_isExport;
 
@@ -38,7 +39,8 @@ private:
     FunctionBlock(const std::string& name, const std::string& retType, bool isExport);
 
 public:
-    void addArgument(const std::string& name, const std::string& type, bool isSpread);
+    void addArgument(const std::string& name, const std::string& type, bool isSpread, bool isOptional);
+    void addTemplateArgument(const std::string& type);
     bool isExport() const;
 };
 

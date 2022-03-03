@@ -21,7 +21,6 @@ declare module "test" {
             private p0_Entity: boolean;
 
             entity(): void;
-
         }
 
         export class Base extends Entity {
@@ -34,12 +33,10 @@ declare module "test" {
             private p6_Base: boolean;
 
             base(): void;
-
         }
 
         export class Derived extends Base {
             derived(): void;
-
         }
     }
 }

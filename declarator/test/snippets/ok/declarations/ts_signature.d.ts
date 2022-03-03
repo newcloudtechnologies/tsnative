@@ -16,8 +16,6 @@ export class FileInfo_t {
     private p1_FileInfo_t: boolean;
     private p2_FileInfo_t: boolean;
     private p3_FileInfo_t: boolean;
-
-
 }
 
 export class AnyWidget {
@@ -27,4 +25,9 @@ export class AnyWidget {
     readResponse1(fInfos: readonly FileInfo_t[]): void;
     readResponse2(fInfos: Array<FileInfo_t>): void;
 
+    map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[];
 }
+
+export function mapWidget<U>(callbackfn: (value: U, index: number, array: readonly U[]) => U): U[];
+
+export function someFunc(n: number, m: number): number;

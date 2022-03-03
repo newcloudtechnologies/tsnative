@@ -20,7 +20,7 @@
 #include "FunctionTemplateItem.h"
 #include "NamespaceItem.h"
 
-#include "constants/Annotations.h"
+#include "global/Annotations.h"
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
@@ -38,17 +38,6 @@ namespace
 
 using namespace parser;
 
-const clang::Decl* getCursorDecl(const CXCursor& cursor)
-{
-    return static_cast<const clang::Decl*>(cursor.data[0]);
-}
-
-std::string getLocation(const clang::NamedDecl* decl)
-{
-    clang::SourceRange range = decl->getSourceRange();
-    return range.printToString(decl->getASTContext().getSourceManager());
-}
-
 int sizeOf(const CXCursor& cursor)
 {
     int result = -1;
@@ -60,71 +49,6 @@ int sizeOf(const CXCursor& cursor)
     }
 
     return result;
-}
-
-class NamespaceChecker
-{
-    bool m_isLocal = false;
-
-private:
-    static CXChildVisitResult visitor(CXCursor current, CXCursor parent, CXClientData client_data);
-    static std::string getName(CXCursor cursor);
-
-public:
-    NamespaceChecker() = default;
-
-    static bool isLocal(CXCursor cursor);
-};
-
-CXChildVisitResult NamespaceChecker::visitor(CXCursor current, CXCursor parent, CXClientData client_data)
-{
-    auto* context = static_cast<NamespaceChecker*>(client_data);
-
-#ifndef NDEBUG
-    std::string name = getName(current);
-#endif
-
-    // Looking for entities (recursively) inside namespace and checking: does it local or not
-    // If namespace contains local entity it means namespace is local
-    if (!context->m_isLocal)
-    {
-        if (current.kind == CXCursorKind::CXCursor_Namespace)
-        {
-            clang_visitChildren(current, NamespaceChecker::visitor, client_data);
-        }
-
-        if (!context->m_isLocal)
-        {
-            CXSourceLocation location = clang_getCursorLocation(current);
-            context->m_isLocal = clang_Location_isFromMainFile(location) != 0 ? true : false;
-        }
-
-        return CXChildVisit_Continue;
-    }
-    else
-    {
-        return CXChildVisit_Break;
-    }
-}
-
-std::string NamespaceChecker::getName(CXCursor cursor)
-{
-    auto* decl = getCursorDecl(cursor);
-    const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-    return namedDecl ? namedDecl->getNameAsString() : "";
-}
-
-bool NamespaceChecker::isLocal(CXCursor cursor)
-{
-    NamespaceChecker context;
-
-#ifndef NDEBUG
-    std::string name = getName(cursor);
-#endif
-
-    clang_visitChildren(cursor, NamespaceChecker::visitor, (CXClientData)&context);
-
-    return context.m_isLocal;
 }
 
 template <typename T>
@@ -139,60 +63,93 @@ inline typename T::value_type _expectedOne(T&& container)
 namespace parser
 {
 
-class Collection::Finder
+class Collection::Finder : public Visitor
 {
     Collection& m_collection;
 
-    std::vector<std::string> m_namespaces;
-    std::vector<std::string> m_classes;
-
 public:
-    Finder(Collection& collection)
-        : m_collection(collection)
+    Finder(const CXTranslationUnit& tu, Collection& collection)
+        : Visitor(tu)
+        , m_collection(collection)
     {
     }
 
 private:
-    void enterNamespace(const std::string& name)
+    Result onVisit(const clang::NamedDecl* decl, bool isLocal) override
     {
-        m_namespaces.push_back(name);
-    }
+        using namespace clang;
 
-    void leaveNamespace()
-    {
-        m_namespaces.pop_back();
-    }
+        auto kind = decl->getKind();
 
-    void enterClass(const std::string& name)
-    {
-        m_classes.push_back(name);
-    }
-
-    void leaveClass()
-    {
-        m_classes.pop_back();
-    }
-
-    std::string getPrefix() const
-    {
-        std::string result;
-        std::vector<std::string> parts;
-
-        parts.reserve(m_namespaces.size() + m_classes.size());
-        parts.insert(parts.end(), m_namespaces.begin(), m_namespaces.end());
-        parts.insert(parts.end(), m_classes.begin(), m_classes.end());
-
-        for (auto i = 0; i < parts.size(); i++)
+        switch (kind)
         {
-            result += parts.at(i);
-
-            if (i < parts.size() - 1)
+            case Decl::Kind::Namespace:
             {
-                result += "::";
+                addNamespace(decl, isLocal);
+                return Result::RECURSE;
+            }
+            case Decl::Kind::CXXRecord:
+            {
+                addClass(decl, isLocal);
+                return Result::RECURSE;
+            }
+            case Decl::Kind::ClassTemplate:
+            {
+                addClassTemplate(decl, isLocal);
+                return Result::CONTINUE;
+            }
+            case Decl::Kind::Enum:
+            {
+                addEnum(decl, isLocal);
+                return Result::CONTINUE;
+            }
+            case Decl::Kind::Function:
+            {
+                addFunction(decl, isLocal);
+                return Result::CONTINUE;
+            }
+            case Decl::Kind::FunctionTemplate:
+            {
+                addFunctionTemplate(decl, isLocal);
+                return Result::CONTINUE;
+            }
+            default:
+            {
+                return Result::IGNORE;
+            }
+        };
+    }
+
+    void enterScope(const clang::NamedDecl* decl) override
+    {
+    }
+
+    void releaseScope(const clang::NamedDecl* decl) override
+    {
+    }
+
+private:
+    void getPrefixAndName(const std::string& qualifiedName, std::string& prefix, std::string& name)
+    {
+        using namespace utils;
+
+        if (!qualifiedName.empty())
+        {
+            std::vector<std::string> parts = split(qualifiedName, "::");
+
+            _ASSERT(!parts.empty());
+
+            if (parts.size() > 1)
+            {
+                name = parts.back();
+                parts.pop_back();
+                prefix = join(parts, "::");
+            }
+            else if (parts.size() == 1)
+            {
+                name = parts.at(0);
             }
         }
-
-        return result;
     }
 
     void addNamespace(const clang::NamedDecl* decl, bool isLocal)
@@ -200,7 +157,11 @@ private:
         const auto* namespaceDecl = clang::dyn_cast_or_null<const clang::NamespaceDecl>(decl);
         _ASSERT(namespaceDecl);
 
-        m_collection.addNamespace(namespaceDecl->getNameAsString(), getPrefix(), isLocal, namespaceDecl);
+        std::string prefix, name;
+        std::string qualifiedName = namespaceDecl->getQualifiedNameAsString();
+        getPrefixAndName(qualifiedName, prefix, name);
+
+        m_collection.addNamespace(name, prefix, isLocal, namespaceDecl);
     }
 
     void addClass(const clang::NamedDecl* decl, bool isLocal)
@@ -215,13 +176,17 @@ private:
         // filter specializations
         if (!recordDecl->getTemplateInstantiationPattern())
         {
-            m_collection.addClass(recordDecl->getNameAsString(), getPrefix(), isLocal, recordDecl);
+            std::string prefix, name;
+            std::string qualifiedName = recordDecl->getQualifiedNameAsString();
+            getPrefixAndName(qualifiedName, prefix, name);
+
+            m_collection.addClass(name, prefix, isLocal, recordDecl);
         }
     }
 
     void addClassTemplate(const clang::NamedDecl* decl, bool isLocal)
     {
-        using namespace constants::annotations;
+        using namespace global::annotations;
 
         const auto* classTemplateDecl = clang::dyn_cast_or_null<const clang::ClassTemplateDecl>(decl);
         _ASSERT(classTemplateDecl);
@@ -230,7 +195,11 @@ private:
         if (!classTemplateDecl->isThisDeclarationADefinition())
             return;
 
-        m_collection.addClassTemplate(classTemplateDecl->getNameAsString(), getPrefix(), isLocal, classTemplateDecl);
+        std::string prefix, name;
+        std::string qualifiedName = classTemplateDecl->getQualifiedNameAsString();
+        getPrefixAndName(qualifiedName, prefix, name);
+
+        m_collection.addClassTemplate(name, prefix, isLocal, classTemplateDecl);
 
         clang::LangOptions lo;
         clang::PrintingPolicy pp(lo);
@@ -239,7 +208,7 @@ private:
         // specializations for current template declaration
         for (const auto& it : classTemplateDecl->specializations())
         {
-            std::string specName = classTemplateDecl->getNameAsString();
+            std::string specName = name;
 
             auto writenType = it->getTypeAsWritten();
 
@@ -297,7 +266,7 @@ private:
                 setAnnotations(it, instantiationAnnotations.toString());
             }
 
-            m_collection.addClass(specName, getPrefix(), isLocal, it);
+            m_collection.addClass(specName, prefix, isLocal, it);
         }
     }
 
@@ -310,7 +279,11 @@ private:
         if (!enumDecl->isThisDeclarationADefinition())
             return;
 
-        m_collection.addEnum(enumDecl->getNameAsString(), getPrefix(), isLocal, enumDecl);
+        std::string prefix, name;
+        std::string qualifiedName = enumDecl->getQualifiedNameAsString();
+        getPrefixAndName(qualifiedName, prefix, name);
+
+        m_collection.addEnum(name, prefix, isLocal, enumDecl);
     }
 
     void addFunction(const clang::NamedDecl* decl, bool isLocal)
@@ -322,7 +295,11 @@ private:
         if (!isLocal)
             return;
 
-        m_collection.addFunction(funcDecl->getNameAsString(), getPrefix(), isLocal, funcDecl);
+        std::string prefix, name;
+        std::string qualifiedName = funcDecl->getQualifiedNameAsString();
+        getPrefixAndName(qualifiedName, prefix, name);
+
+        m_collection.addFunction(name, prefix, isLocal, funcDecl);
     }
 
     void addFunctionTemplate(const clang::NamedDecl* decl, bool isLocal)
@@ -334,78 +311,11 @@ private:
         if (!isLocal)
             return;
 
-        m_collection.addFunctionTemplate(funcTemplateDecl->getNameAsString(), getPrefix(), isLocal, funcTemplateDecl);
-    }
+        std::string prefix, name;
+        std::string qualifiedName = funcTemplateDecl->getQualifiedNameAsString();
+        getPrefixAndName(qualifiedName, prefix, name);
 
-public:
-    static CXChildVisitResult visitor(CXCursor current, CXCursor parent, CXClientData client_data)
-    {
-        auto* context = static_cast<Finder*>(client_data);
-        const auto* decl = getCursorDecl(current);
-
-        CXSourceLocation location = clang_getCursorLocation(current);
-        bool isLocal = clang_Location_isFromMainFile(location) != 0;
-
-        if (current.kind == CXCursorKind::CXCursor_Namespace)
-        {
-            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-            _ASSERT(namedDecl);
-
-            std::string namespaceName = namedDecl->getNameAsString();
-
-            // special way for namespaces
-            isLocal = NamespaceChecker::isLocal(current);
-
-            context->addNamespace(namedDecl, isLocal);
-
-            context->enterNamespace(namespaceName);
-            clang_visitChildren(current, Finder::visitor, (CXClientData)context);
-            context->leaveNamespace();
-        }
-        else if (current.kind == CXCursorKind::CXCursor_ClassDecl || current.kind == CXCursorKind::CXCursor_StructDecl)
-        {
-            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-            _ASSERT(namedDecl);
-
-            context->addClass(namedDecl, isLocal);
-
-            std::string className = namedDecl->getNameAsString();
-
-            context->enterClass(className);
-            clang_visitChildren(current, Finder::visitor, (CXClientData)context);
-            context->leaveClass();
-        }
-        else if (current.kind == CXCursorKind::CXCursor_ClassTemplate)
-        {
-            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-            _ASSERT(namedDecl);
-
-            // TODO: looking for nested items inside class template
-            context->addClassTemplate(namedDecl, isLocal);
-        }
-        else if (current.kind == CXCursorKind::CXCursor_EnumDecl)
-        {
-            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-            _ASSERT(namedDecl);
-
-            context->addEnum(namedDecl, isLocal);
-        }
-        else if (current.kind == CXCursorKind::CXCursor_FunctionDecl)
-        {
-            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-            _ASSERT(namedDecl);
-
-            context->addFunction(namedDecl, isLocal);
-        }
-        else if (current.kind == CXCursorKind::CXCursor_FunctionTemplate)
-        {
-            const auto* namedDecl = clang::dyn_cast_or_null<const clang::NamedDecl>(decl);
-            _ASSERT(namedDecl);
-
-            context->addFunctionTemplate(namedDecl, isLocal);
-        }
-
-        return CXChildVisit_Continue;
+        m_collection.addFunctionTemplate(name, prefix, isLocal, funcTemplateDecl);
     }
 };
 
@@ -422,10 +332,17 @@ Collection& Collection::do_get()
     return inst;
 }
 
-void Collection::init(const CXCursor& cursor)
+Collection& Collection::do_init(CXTranslationUnit tu)
 {
     auto& instance = Collection::do_get();
-    instance.populate(cursor);
+    instance.m_tu = tu;
+    return instance;
+}
+
+void Collection::init(CXTranslationUnit tu)
+{
+    auto& instance = Collection::do_init(tu);
+    instance.populate();
 }
 
 Collection& Collection::get()
@@ -433,11 +350,11 @@ Collection& Collection::get()
     return Collection::do_get();
 }
 
-void Collection::populate(const CXCursor& cursor)
+void Collection::populate()
 {
-    Finder finder(*this);
+    Finder finder(m_tu, *this);
 
-    clang_visitChildren(cursor, Finder::visitor, (CXClientData)&finder);
+    finder.start();
 }
 
 bool Collection::existItem(const std::string& path, const std::string& name) const
@@ -628,7 +545,7 @@ void Collection::addNamespace(const std::string& name,
                               bool isLocal,
                               const clang::NamespaceDecl* decl)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
 
     AnnotationList annotations(getAnnotations(decl));
 
@@ -673,7 +590,7 @@ void Collection::addClass(const std::string& name,
                           bool isLocal,
                           const clang::CXXRecordDecl* decl)
 {
-    using namespace constants::annotations;
+    using namespace global::annotations;
 
     if (!existItem(prefix, name))
     {
@@ -684,7 +601,7 @@ void Collection::addClass(const std::string& name,
 
         if (annotations.exist(TS_CODE))
         {
-            item = AbstractItem::make<CodeBlockItem>(name, prefix, decl);
+            item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
         }
         else
         {
@@ -723,9 +640,12 @@ void Collection::addFunction(const std::string& name,
                              bool isLocal,
                              const clang::FunctionDecl* decl)
 {
-    auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-    auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
-    parent->addItem(item);
+    if (!existItem(prefix, name))
+    {
+        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
+        auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
+        parent->addItem(item);
+    }
 }
 
 void Collection::addFunctionTemplate(const std::string& name,
@@ -733,9 +653,12 @@ void Collection::addFunctionTemplate(const std::string& name,
                                      bool isLocal,
                                      const clang::FunctionTemplateDecl* decl)
 {
-    auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-    auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);
-    parent->addItem(item);
+    if (!existItem(prefix, name))
+    {
+        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
+        auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);
+        parent->addItem(item);
+    }
 }
 
 } //  namespace parser

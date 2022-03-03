@@ -54,6 +54,7 @@ private:
     PrinterTraits m_traits;
     sheet_t m_sheet;
     int m_tabulator = 0;
+    int m_enterMarks = false;
 
 private:
     Printer(const PrinterTraits& traits, sheet_t sheet);
@@ -66,6 +67,20 @@ public:
 
     static printer_t make(const PrinterTraits& traits, sheet_t sheet);
 };
+
+template <template <typename, typename> typename Container, typename T, typename A>
+void print_blocks(const Container<T, A>& blocks, generator::print::printer_t printer)
+{
+    for (const auto& it : blocks)
+    {
+        it->print(printer);
+    }
+
+    if (!blocks.empty())
+    {
+        printer->enter();
+    }
+}
 
 } // namespace print
 } // namespace generator

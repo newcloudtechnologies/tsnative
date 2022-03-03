@@ -34,6 +34,29 @@ ClassItem::ClassItem(
     _ASSERT(m_decl);
 }
 
+void ClassItem::visit(std::function<void(const clang::Decl* decl)> handler) const
+{
+    for (const auto& it : m_decl->decls())
+    {
+        handler(it);
+    }
+}
+
+int ClassItem::size() const
+{
+    int result = -1;
+
+    if (m_decl->hasDefinition())
+    {
+        const auto* type = m_decl->getTypeForDecl();
+        auto info = m_decl->getASTContext().getTypeInfo(type);
+
+        result = info.Width / sizeof(info.Width);
+    }
+
+    return result;
+}
+
 std::vector<MethodItem> ClassItem::methods() const
 {
     std::vector<MethodItem> result;
@@ -45,6 +68,25 @@ std::vector<MethodItem> ClassItem::methods() const
             result.push_back(it);
         }
     }
+
+    return result;
+}
+
+std::vector<TemplateMethodItem> ClassItem::templateMethods() const
+{
+    std::vector<TemplateMethodItem> result;
+
+    visit(
+        [&result](const clang::Decl* decl)
+        {
+            if (decl->getKind() == clang::Decl::Kind::FunctionTemplate)
+            {
+                const auto* functionTemplateDecl = clang::dyn_cast_or_null<const clang::FunctionTemplateDecl>(decl);
+                _ASSERT(functionTemplateDecl);
+
+                result.push_back(functionTemplateDecl);
+            }
+        });
 
     return result;
 }
@@ -74,21 +116,6 @@ std::vector<clang::CXXBaseSpecifier> ClassItem::bases() const
         {
             result.push_back(it);
         }
-    }
-
-    return result;
-}
-
-int ClassItem::size() const
-{
-    int result = -1;
-
-    if (m_decl->hasDefinition())
-    {
-        const auto* type = m_decl->getTypeForDecl();
-        auto info = m_decl->getASTContext().getTypeInfo(type);
-
-        result = info.Width / sizeof(info.Width);
     }
 
     return result;

@@ -13,16 +13,24 @@
 
 #include "TypeUtils.h"
 
+#include "generator/AbstractBlock.h"
+#include "generator/AbstractMethodBlock.h"
 #include "generator/ClassBlock.h"
-#include "generator/ContainerBlock.h"
+#include "generator/ClosureBlock.h"
+#include "generator/ComputedPropertyNameBlock.h"
 #include "generator/FieldBlock.h"
+#include "generator/GenericMethodBlock.h"
+#include "generator/IndexSignatureBlock.h"
 #include "generator/MethodBlock.h"
+#include "generator/OperatorBlock.h"
 
 #include "parser/ClassItem.h"
 #include "parser/ClassTemplateItem.h"
 #include "parser/Collection.h"
 
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace analyzer
 {
@@ -50,6 +58,9 @@ private:
     std::string getTemplateName(const std::string& actualTypeName) const;
 
 public:
+    InheritanceNode(const InheritanceNode& other);
+    InheritanceNode& operator=(const InheritanceNode& other);
+
     static InheritanceNode make(const parser::Collection& collection, parser::const_class_item_t item);
 
     parser::const_class_item_t item() const;
@@ -57,24 +68,52 @@ public:
     std::vector<InheritanceNode> bases() const;
 };
 
-std::string getExtends(parser::const_class_item_t item);
+struct ClassCollection
+{
+    std::vector<generator::ts::method_block_t> methods;
+    std::vector<generator::ts::generic_method_block_t> generic_methods;
+    std::vector<generator::ts::closure_block_t> closures;
+    std::vector<generator::ts::operator_block_t> operators;
+    std::vector<generator::ts::field_block_t> fields;
 
-std::vector<generator::ts::field_block_t> getFields(parser::const_class_item_t item,
-                                                    const analyzer::TypeMapper& typeMapper,
-                                                    const parser::Collection& collection);
+private:
+    parser::const_class_item_t m_item;
+    const parser::Collection& m_collection;
+    const TypeMapper& m_typeMapper;
 
-std::vector<generator::ts::field_block_t> getFillerFields(parser::const_class_item_t item);
+private:
+    ClassCollection(parser::const_class_item_t item,
+                    const parser::Collection& collection,
+                    const TypeMapper& typeMapper);
 
-std::vector<generator::ts::method_block_t> getMethods(parser::const_class_item_t item,
-                                                      const analyzer::TypeMapper& typeMapper,
-                                                      const parser::Collection& collection);
+    std::vector<parser::const_class_item_t> getBases() const;
 
-std::vector<generator::ts::method_block_t> getClosures(parser::const_class_item_t item,
-                                                       const analyzer::TypeMapper& typeMapper,
-                                                       const parser::Collection& collection);
+    generator::ts::abstract_method_block_t makeMethod(const parser::MethodItem& item,
+                                                      const std::string& className,
+                                                      const std::string& classPrefix);
 
-std::vector<generator::ts::method_block_t> getTemplateMethods(parser::const_class_template_item_t item,
-                                                              const analyzer::TypeMapper& typeMapper,
-                                                              const parser::Collection& collection);
+    void check() const;
+    void extract();
+    void extract(parser::const_class_item_t item);
+    void collect(const parser::MethodItem& item);
+    void generateFields();
+
+public:
+    static ClassCollection make(parser::const_class_item_t item,
+                                const parser::Collection& collection,
+                                const TypeMapper& typeMapper);
+};
+
+class Extends
+{
+private:
+    static std::vector<std::string> exportedBases(parser::const_class_item_t item);
+    static bool getModuleName(const std::string& path, std::string& moduleName);
+    static bool isTheSameModule(const std::string& path1, const std::string& path2);
+    static std::string normalize(const std::string& expr);
+
+public:
+    static std::string get(parser::const_class_item_t item);
+};
 
 } // namespace analyzer

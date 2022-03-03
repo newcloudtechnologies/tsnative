@@ -12,9 +12,9 @@
 #include "AbstractBlock.h"
 #include "ContainerBlock.h"
 #include "FileBlock.h"
+#include "Ignore.h"
 #include "ModuleBlock.h"
 #include "NamespaceBlock.h"
-#include "Ignore.h"
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
@@ -108,13 +108,19 @@ std::string typeToString(AbstractBlock::Type type)
 {
     const std::map<int, std::string> types = {
         {AbstractBlock::Type::CLASS, "Class"},
+        {AbstractBlock::Type::GENERIC_CLASS, "GenericClass"},
         {AbstractBlock::Type::COMMENT, "Comment"},
         {AbstractBlock::Type::CODE_BLOCK, "CodeBlock"},
         {AbstractBlock::Type::FIELD, "Field"},
         {AbstractBlock::Type::FILE, "File"},
         {AbstractBlock::Type::IMPORT, "Import"},
         {AbstractBlock::Type::METHOD, "Method"},
+        {AbstractBlock::Type::GENERIC_METHOD, "GenericMethod"},
+        {AbstractBlock::Type::CLOSURE, "Closure"},
+        {AbstractBlock::Type::COMPUTED_PROPERTY_NAME, "ComputedPropertyName"},
+        {AbstractBlock::Type::INDEX_SIGNATURE, "IndexSignature"},
         {AbstractBlock::Type::FUNCTION, "Function"},
+        {AbstractBlock::Type::GENERIC_FUNCTION, "GenericFunction"},
         {AbstractBlock::Type::MODULE, "Module"},
         {AbstractBlock::Type::NAMESPACE, "Namespace"},
         {AbstractBlock::Type::ENUM, "Enum"},

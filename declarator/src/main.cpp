@@ -19,9 +19,13 @@
 #include "generator/Printer.h"
 
 #include "parser/Collection.h"
+#include "parser/Diagnostics.h"
 
+#include "utils/Env.h"
 #include "utils/Exception.h"
 #include "utils/Strings.h"
+
+#include "global/Settings.h"
 
 #include <clang-c/Index.h>
 #include <clang/AST/Type.h>
@@ -32,7 +36,6 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -61,98 +64,24 @@ const std::string stdImportSignatures =
 
 } //  namespace
 
-std::string getEnv(const std::string& env)
+std::string getDeclarationName(const std::string& source)
 {
-    char* value = std::getenv(env.c_str());
-    return (value == NULL) ? "" : value;
-}
+    std::filesystem::path source_path(source);
+    std::string source_fn = source_path.filename().string();
 
-std::string getTUFilename(CXTranslationUnit unit)
-{
-    std::string p = clang_getCString(clang_getTranslationUnitSpelling(unit));
-    std::filesystem::path fullPath(p);
-    std::string result = fullPath.filename().string();
+    std::string result = source_fn;
+
+    if (result.rfind(".") != std::string::npos)
+    {
+        result = result.substr(0, result.rfind(".")) += ".d.ts";
+    }
+    else
+    {
+        result += ".d.ts";
+    }
 
     return result;
 }
-
-class Diagnostics
-{
-    friend Diagnostics getDiagnostic(CXTranslationUnit unit);
-
-    std::vector<std::string> fatal_errors;
-    std::vector<std::string> errors;
-    std::vector<std::string> warnings;
-
-public:
-    bool check() const
-    {
-        return fatal_errors.empty() && errors.empty();
-    }
-
-    std::string print() const
-    {
-        std::ostringstream out;
-
-        for (const auto& it : fatal_errors)
-        {
-            out << it << "\n";
-        }
-
-        for (const auto& it : errors)
-        {
-            out << it << "\n";
-        }
-
-        for (const auto& it : warnings)
-        {
-            out << it << "\n";
-        }
-
-        return out.str();
-    }
-
-    static Diagnostics get(CXTranslationUnit unit)
-    {
-        Diagnostics result;
-
-        for (int i = 0; i != clang_getNumDiagnostics(unit); ++i)
-        {
-            CXDiagnostic diag = clang_getDiagnostic(unit, i);
-            CXString diag_msg = clang_formatDiagnostic(diag, clang_defaultDiagnosticDisplayOptions());
-
-            CXDiagnosticSeverity severity = clang_getDiagnosticSeverity(diag);
-
-            switch (severity)
-            {
-                case CXDiagnosticSeverity::CXDiagnostic_Fatal:
-                {
-                    std::string msg = clang_getCString(diag_msg);
-                    result.fatal_errors.push_back(msg);
-                    break;
-                }
-                case CXDiagnosticSeverity::CXDiagnostic_Error:
-                {
-                    std::string msg = clang_getCString(diag_msg);
-                    result.errors.push_back(msg);
-                    break;
-                }
-                case CXDiagnosticSeverity::CXDiagnostic_Warning:
-                case CXDiagnosticSeverity::CXDiagnostic_Note:
-                {
-                    std::string msg = clang_getCString(diag_msg);
-                    result.warnings.push_back(msg);
-                    break;
-                }
-            };
-
-            clang_disposeString(diag_msg);
-            clang_disposeDiagnostic(diag);
-        }
-
-        return result;
-    }
-};
 
 generator::ts::block_t<generator::ts::File> makeFile()
 {
@@ -197,7 +126,7 @@ generator::print::printer_t makePrinter(const std::string& filename)
 {
     using namespace generator::print;
 
-    std::string DECLARATOR_OUTPUT_DIR = getEnv("DECLARATOR_OUTPUT_DIR");
+    std::string DECLARATOR_OUTPUT_DIR = utils::getEnv("DECLARATOR_OUTPUT_DIR");
 
     sheet_t sheet;
 
@@ -219,6 +148,7 @@ generator::print::printer_t makePrinter(const std::string& filename)
 
 int main(int argc, char** argv)
 {
+    using namespace global;
     using namespace generator::ts;
     using namespace parser;
     using namespace analyzer;
@@ -245,22 +175,13 @@ int main(int argc, char** argv)
             throw std::runtime_error(diag.print());
         }
 
-        std::string tuFn = getTUFilename(unit);
+        Settings::init(argc, argv);
 
-        if (tuFn.rfind(".") != std::string::npos)
-        {
-            tuFn = tuFn.substr(0, tuFn.rfind(".")) += ".d.ts";
-        }
-        else
-        {
-            tuFn += ".d.ts";
-        }
+        Collection::init(unit);
 
-        auto printer = makePrinter(tuFn);
+        std::string declaration_fn = getDeclarationName(Settings::get().source());
 
-        CXCursor cursor = clang_getTranslationUnitCursor(unit);
-
-        Collection::init(cursor);
+        auto printer = makePrinter(declaration_fn);
 
         auto typeMapper = makeTypeMapper(Collection::get());
 

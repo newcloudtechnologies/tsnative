@@ -16,8 +16,6 @@ export class Entity {
     private p0_Entity: boolean;
 
     constructor();
-
     //@ts-ignore
     update(): void;
-
 }
