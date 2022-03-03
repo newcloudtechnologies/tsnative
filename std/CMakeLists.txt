@@ -4,9 +4,43 @@ project(tsnative-std)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" ON)    #  OFF
+
+get_filename_component(INSTALL_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/install" REALPATH)
+list(APPEND CMAKE_MODULE_PATH "${INSTALL_DIR}/cmake")
+
 # temporary hack: allows us to build std using abseil deployed to install dir
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/cmake)
 find_package(absl)
+
+find_package(TsDeclarator REQUIRED)
+
+include(TsDeclaratorUtils)
+
+set(all_target "all_target")
+add_custom_target(${all_target} ALL)
+
+set(TS_HEADERS
+    include/std/console.h
+    include/std/iterable.h
+    include/std/tsarray.h
+    include/std/tsboolean.h
+    include/std/tsmap.h
+    include/std/tsnumber.h
+    include/std/tsset.h
+    include/std/tsstring.h
+    include/std/tstuple.h
+    include/std/iterators/mapiterator.h
+    include/std/iterators/setiterator.h
+    include/std/iterators/stringiterator.h
+)
+
+set(HEADERS
+    ${TS_HEADERS}
+    include/std/gc.h
+    include/std/tsclosure.h
+    include/std/tsoptional.h
+)
 
 set(SOURCES
     src/gc.cpp
@@ -14,10 +48,19 @@ set(SOURCES
     src/tsclosure.cpp
     src/tsnumber.cpp
     src/tsboolean.cpp
-
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
+)
+
+add_compile_definitions(
+    USE_STD_ARRAY_BACKEND
+    USE_MAP_STD_BACKEND
+    USE_SET_STD_BACKEND
+    USE_TUPLE_STD_BACKEND
+    USE_BOOLEAN_CXX_BUILTIN_BACKEND
+    USE_NUMBER_CXX_BUILTIN_BACKEND
+    USE_STD_STRING_BACKEND
 )
 
 add_library(${PROJECT_NAME}
@@ -37,6 +80,39 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC 
         $<BUILD_INTERFACE:absl::time>
 )
+
+
+
+if (GENERATE_DECLARATIONS)
+    set(IMPORT )
+
+    list(TRANSFORM HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
+
+    set(declaration_list )
+    generate_declarations(
+        ${PROJECT_NAME} 
+        ${all_target}
+        "${TS_HEADERS}" 
+        ${CMAKE_CXX_COMPILER_TARGET} 
+        "${IMPORT}"
+        ${CMAKE_CURRENT_BINARY_DIR}
+        declaration_list
+    )
+
+    message(STATUS "declaration_list=${declaration_list}")
+
+#[[
+    generate_index(
+        ${PROJECT_NAME}
+        "ts"
+        "${declaration_list}" 
+        "${CMAKE_INSTALL_PREFIX}/declarations"
+    )
+]]
+else()
+    add_dependencies(${all_target} ${PROJECT_NAME})
+endif()
+
 
 include(GNUInstallDirs)
 
