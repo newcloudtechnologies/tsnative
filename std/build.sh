@@ -44,6 +44,7 @@ cmake -G "Unix Makefiles" \
     -S "${CURRENT_DIR}" \
     -B "${PROJECT_BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_COMPILER_TARGET="x86_64-linux-gnu" \
     -DCMAKE_INSTALL_PREFIX:STRING="$INSTALL_DIR" \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
