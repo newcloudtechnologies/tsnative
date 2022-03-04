@@ -8,66 +8,77 @@
 # at http://ncloudtech.com/contact.html
 #
 
-function(populate_includes target dir_list)
-    set(result "")
+#   target dep_target source includes target_compiler_abi import stage_dir output
 
-    get_target_property(targets ${target} LINK_LIBRARIES)
-    list(FILTER targets EXCLUDE REGEX "^[$][<][$][<].*[>].*[>]")
+function(run_declarator ...)
+    cmake_parse_arguments(PARSE_ARGV 0 "ARG"
+        ""
+        "TARGET;DEPENDS_ON;SOURCE;TARGET_COMPILER_ABI;IMPORT;OUTPUT_DIR;OUT_DECLARATION"
+        "INCLUDES;"
+    )
 
-    list(PREPEND targets ${target})
-    message(STATUS "[${target}] targets=${targets}")
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
 
-    foreach(item ${targets})
-        get_target_property(includes ${item} INTERFACE_INCLUDE_DIRECTORIES)
-        list(FILTER includes EXCLUDE REGEX "^[$][<].*[>]$")
-        list(FILTER includes EXCLUDE REGEX ".*[-]NOTFOUND")
+    if (NOT ARG_TARGET OR ARG_TARGET STREQUAL "")
+        message (FATAL_ERROR "TARGET is not specified")
+    endif ()
 
-        set(real_path_includes )
-        foreach(item ${includes})
-            get_filename_component(real_path_item "${item}" REALPATH)
-            list(APPEND real_path_includes ${real_path_item})
-        endforeach()
+    if (NOT ARG_DEPENDS_ON OR ARG_DEPENDS_ON STREQUAL "")
+        message (FATAL_ERROR "DEPENDS_ON is not specified")
+    endif ()
 
-        list(APPEND result ${real_path_includes})
-    endforeach()
+    if (NOT ARG_SOURCE)
+        message (FATAL_ERROR "SOURCE is not specified")
+    endif ()
 
-    set(${dir_list} ${result} PARENT_SCOPE)
-endfunction()
+    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
+        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
 
-function(run_declarator target dep_target source includes target_compiler_abi import stage_dir output)
-    get_filename_component(source_fn "${source}" NAME)
+    if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")
+        message (FATAL_ERROR "OUTPUT_DIR is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DECLARATION)
+        message (FATAL_ERROR "OUT_DECLARATION is not specified")
+    endif ()
+
+    if (NOT ARG_INCLUDES)
+        message (FATAL_ERROR "INCLUDES is not specified")
+    endif ()
+
+    get_filename_component(source_fn "${ARG_SOURCE}" NAME)
     string(REPLACE ".h" ".d.ts" OUTPUT_FN "${source_fn}")
 
-    string(REPLACE ";" " " includes "${includes}")
+    set(INCLUDES ${ARG_INCLUDES})
+    string(REPLACE ";" " " INCLUDES "${INCLUDES}")
 
-    set(output_dir "${stage_dir}/declarations")
-    set(output_file "${output_dir}/${OUTPUT_FN}")
-
-    message(STATUS "source=${source}")
+    set(OUTPUT_DIR "${ARG_OUTPUT_DIR}/declarations")
+    set(OUTPUT_FILE "${OUTPUT_DIR}/${OUTPUT_FN}")
 
     if(NOT "$ENV{SYSROOT_DIR}" STREQUAL "")
         set(SYSROOT "--sysroot=$ENV{SYSROOT_DIR}")
         message(STATUS "SYSROOT=$ENV{SYSROOT_DIR}")
     endif()
 
-    set(command "DECLARATOR_OUTPUT_DIR=${output_dir} DECLARATOR_IMPORT=\"${import}\" ${TS_DECLARATOR} -x c++ --target=${target_compiler_abi} ${SYSROOT} -D TS ${source} ${includes}")
+    set(command "DECLARATOR_OUTPUT_DIR=${OUTPUT_DIR} DECLARATOR_IMPORT=\"${ARG_IMPORT}\" ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} -D TS ${ARG_SOURCE} ${INCLUDES}")
 
     add_custom_command(
-        OUTPUT ${output_file}
+        OUTPUT ${OUTPUT_FILE}
         DEPENDS ${source}
         COMMAND echo "Run declarator..."
-        COMMAND mkdir -p "${output_dir}"
+        COMMAND mkdir -p "${OUTPUT_DIR}"
         VERBATIM COMMAND sh -c "${command}"
     )
 
-# COMMAND sh -c "DECLARATOR_OUTPUT_DIR=${output_dir} DECLARATOR_IMPORT=${import} ${TS_DECLARATOR} -x c++ --target=${target_compiler_abi} ${SYSROOT} -D TS ${source} ${includes}"
-
-    add_custom_target(${target}
-        DEPENDS ${output_file}
+    add_custom_target(${ARG_TARGET}
+        DEPENDS ${OUTPUT_FILE}
     )
 
-    add_dependencies(${target} ${dep_target})
-    set(${output} ${output_file} PARENT_SCOPE)
+    add_dependencies(${ARG_TARGET} ${ARG_DEPENDS_ON})
+    set(${output} ${OUTPUT_FILE} PARENT_SCOPE)
 endfunction()
 
 function(generate_declarations ...)
@@ -76,8 +87,6 @@ function(generate_declarations ...)
         "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT;OUTPUT_DIR"
         "INCLUDE_DIRECTORIES;HEADERS;DECLARATIONS"
     )
-
-#    message(STATUS "OUTPUT_DIR=${OUTPUT_DIR}")
 
     if (ARG_UNPARSED_ARGUMENTS)
         message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
@@ -113,14 +122,14 @@ function(generate_declarations ...)
 
         set (output )
         run_declarator(
-            ${declaration_target}
-            ${ARG_TARGET}
-            "${header}"
-            "${include_directories}"
-            "${ARG_TARGET_COMPILER_ABI}"
-            "${ARG_IMPORT}"
-            "${ARG_OUTPUT_DIR}"
-            output
+            TARGET ${declaration_target}
+            DEPENDS_ON ${ARG_TARGET}
+            SOURCE "${header}"
+            INCLUDES "${include_directories}"
+            TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
+            IMPORT "${ARG_IMPORT}"
+            OUTPUT_DIR "${ARG_OUTPUT_DIR}"
+            OUT_DECLARATION output
         )
 
         add_dependencies(${ARG_DEPENDS_ON} ${declaration_target})
