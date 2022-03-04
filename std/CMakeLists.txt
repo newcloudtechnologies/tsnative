@@ -110,13 +110,13 @@ if (GENERATE_DECLARATIONS)
     generate_declarations(
         TARGET "${PROJECT_NAME}"
         DEPENDS_ON "${all_target}"
-        HEADERS ${TS_HEADERS}
+        SOURCES ${TS_HEADERS}
         TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
         IMPORT "${IMPORT}"
-        DECLARATIONS declaration_list
+        INCLUDE_DIRECTORIES "${include_directories}"
         OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/temp"
-        INCLUDE_DIRECTORIES "${include_directories}"
+        OUT_DECLARATIONS declaration_list
     )
 
 #    message(STATUS "TS_HEADERS=${TS_HEADERS}")
