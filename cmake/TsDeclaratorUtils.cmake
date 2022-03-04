@@ -43,18 +43,24 @@ function(run_declarator target dep_target source includes target_compiler_abi im
     set(output_dir "${stage_dir}/declarations")
     set(output_file "${output_dir}/${OUTPUT_FN}")
 
+    message(STATUS "source=${source}")
+
     if(NOT "$ENV{SYSROOT_DIR}" STREQUAL "")
         set(SYSROOT "--sysroot=$ENV{SYSROOT_DIR}")
         message(STATUS "SYSROOT=$ENV{SYSROOT_DIR}")
     endif()
+
+    set(command "DECLARATOR_OUTPUT_DIR=${output_dir} DECLARATOR_IMPORT=\"${import}\" ${TS_DECLARATOR} -x c++ --target=${target_compiler_abi} ${SYSROOT} -D TS ${source} ${includes}")
 
     add_custom_command(
         OUTPUT ${output_file}
         DEPENDS ${source}
         COMMAND echo "Run declarator..."
         COMMAND mkdir -p "${output_dir}"
-        COMMAND sh -c "DECLARATOR_OUTPUT_DIR=${output_dir} DECLARATOR_IMPORT=${import} ${TS_DECLARATOR} -x c++ --target=${target_compiler_abi} ${SYSROOT} -D TS ${source} ${includes}"
+        VERBATIM COMMAND sh -c "${command}"
     )
+
+# COMMAND sh -c "DECLARATOR_OUTPUT_DIR=${output_dir} DECLARATOR_IMPORT=${import} ${TS_DECLARATOR} -x c++ --target=${target_compiler_abi} ${SYSROOT} -D TS ${source} ${includes}"
 
     add_custom_target(${target}
         DEPENDS ${output_file}
@@ -102,17 +108,14 @@ function(generate_declarations_old lib_target dep_target headers target_compiler
     set(${declaration_list} ${output_list} PARENT_SCOPE)
 endfunction()
 
-function(generate_declarations headers target_compiler_abi include_directories import stage_dir declaration_list ...)
-    cmake_parse_arguments(PARSE_ARGV 6 "ARG"
+function(generate_declarations OUTPUT_DIR DECLARATION_LIST ...)
+    cmake_parse_arguments(PARSE_ARGV 2 "ARG"
         ""
-        "TARGET;DEPENDS_ON"
-        ""
+        "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT"
+        "INCLUDE_DIRECTORIES;HEADERS"
     )
 
-    message("Provided sources are:")
-    foreach(src ${PARSED_ARGS_SRCS})
-        message("- ${src}")
-    endforeach(src)
+    message(STATUS "OUTPUT_DIR=${OUTPUT_DIR}")
 
     if (ARG_UNPARSED_ARGUMENTS)
         message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
@@ -126,21 +129,27 @@ function(generate_declarations headers target_compiler_abi include_directories i
         message (FATAL_ERROR "DEPENDS_ON is not specified")
     endif ()
 
-    list(TRANSFORM include_directories PREPEND "-I ")
+    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
+        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
+
+    set(include_directories ${ARG_INCLUDE_DIRECTORIES})
+    list(TRANSFORM include_directories PREPEND "-I")
 
     set (output_list )
-    foreach(header ${headers})
+    foreach(header ${ARG_HEADERS})
         get_filename_component(header_fn "${header}" NAME)
         set(declaration_target "decl_${export_name}_${header_fn}_target")
 
         set (output )
         run_declarator(
-            ${declaration_target} 
-            ${ARG_TARGET} 
-            ${header}
+            ${declaration_target}
+            ${ARG_TARGET}
+            "${header}"
             "${include_directories}"
-            ${target_compiler_abi}
-            "${import}" ${stage_dir}
+            "${ARG_TARGET_COMPILER_ABI}"
+            "${ARG_IMPORT}"
+            "${OUTPUT_DIR}"
             output
         )
 
@@ -148,7 +157,7 @@ function(generate_declarations headers target_compiler_abi include_directories i
         list(APPEND output_list "${output}")
     endforeach()
 
-    set(${declaration_list} ${output_list} PARENT_SCOPE)
+    set(${DECLARATION_LIST} ${output_list} PARENT_SCOPE)
 endfunction()
 
 function(generate_index dep_target exported_name declaration_list output_dir)

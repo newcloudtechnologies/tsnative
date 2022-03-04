@@ -101,15 +101,6 @@ if (GENERATE_DECLARATIONS)
 
     list(TRANSFORM TS_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 
-    #[[
-    message(STATUS "PROJECT_NAME=${PROJECT_NAME}")
-    message(STATUS "all_target=${all_target}")
-    message(STATUS "TS_HEADERS=${TS_HEADERS}")
-    message(STATUS "CMAKE_CXX_COMPILER_TARGET=${CMAKE_CXX_COMPILER_TARGET}")
-    message(STATUS "IMPORT=${IMPORT}")
-    message(STATUS "CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
-    ]]
-
     set(include_directories 
         "${CMAKE_CURRENT_LIST_DIR}/include"
         "${INSTALL_DIR}/include"
@@ -118,13 +109,14 @@ if (GENERATE_DECLARATIONS)
     set(declaration_list )
 
     generate_declarations(
-        "${TS_HEADERS}" 
-        ${CMAKE_CXX_COMPILER_TARGET} 
-        "${include_directories}"
-        "${IMPORT}"
         ${CMAKE_CURRENT_BINARY_DIR}
         declaration_list
-        TARGET "${PROJECT_NAME}" DEPENDS_ON "${all_target}"
+        TARGET "${PROJECT_NAME}"
+        DEPENDS_ON "${all_target}"
+        HEADERS ${TS_HEADERS}
+        TARGET_COMPILER_ABI ${CMAKE_CXX_COMPILER_TARGET}
+        IMPORT "${IMPORT}"
+        INCLUDE_DIRECTORIES "${include_directories}"
     )
 
 #    message(STATUS "TS_HEADERS=${TS_HEADERS}")
