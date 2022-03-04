@@ -13,7 +13,7 @@
 function(run_declarator ...)
     cmake_parse_arguments(PARSE_ARGV 0 "ARG"
         ""
-        "TARGET;DEPENDS_ON;SOURCE;TARGET_COMPILER_ABI;IMPORT;OUTPUT_DIR;OUT_DECLARATION"
+        "TARGET;DEPENDS_ON;SOURCE;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
         "INCLUDES;"
     )
 
@@ -63,7 +63,8 @@ function(run_declarator ...)
         message(STATUS "SYSROOT=$ENV{SYSROOT_DIR}")
     endif()
 
-    set(command "DECLARATOR_OUTPUT_DIR=${OUTPUT_DIR} DECLARATOR_IMPORT=\"${ARG_IMPORT}\" ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} -D TS ${ARG_SOURCE} ${INCLUDES}")
+    set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
+    set(command "${variables} ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} -D TS ${ARG_SOURCE} ${INCLUDES}")
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
@@ -84,7 +85,7 @@ endfunction()
 function(generate_declarations ...)
     cmake_parse_arguments(PARSE_ARGV 0 "ARG"
         ""
-        "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT;OUTPUT_DIR"
+        "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
         "INCLUDE_DIRECTORIES;HEADERS;DECLARATIONS"
     )
 
@@ -128,6 +129,7 @@ function(generate_declarations ...)
             INCLUDES "${include_directories}"
             TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
             IMPORT "${ARG_IMPORT}"
+            TEMP_DIR "${ARG_TEMP_DIR}"
             OUTPUT_DIR "${ARG_OUTPUT_DIR}"
             OUT_DECLARATION output
         )
