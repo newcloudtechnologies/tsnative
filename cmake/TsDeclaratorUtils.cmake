@@ -82,11 +82,24 @@ function(run_declarator ...)
     set(${output} ${OUTPUT_FILE} PARENT_SCOPE)
 endfunction()
 
+### Generate TS declarations for given c++ sources
+### Args:
+# TARGET - given target
+# DEPENDS_ON - depends target
+# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
+# IMPORT - extra import string:
+# (e.g. cmake: set(IMPORT "import { M1 } from \'path/to/M1\'; import { M2 } from \'path/to/M2\'"))
+# TEMP_DIR - absolute path to temporary directory
+# OUTPUT_DIR - absolute path to output directory
+# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
+# SOURCES - list of c++ sources (i.e. headers) to generate declarations (with absolute paths)
+# [OUT] OUT_DECLARATIONS - generated files-declarations
+# 
 function(generate_declarations ...)
     cmake_parse_arguments(PARSE_ARGV 0 "ARG"
         ""
         "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
-        "INCLUDE_DIRECTORIES;HEADERS;DECLARATIONS"
+        "INCLUDE_DIRECTORIES;SOURCES;OUT_DECLARATIONS"
     )
 
     if (ARG_UNPARSED_ARGUMENTS)
@@ -109,23 +122,29 @@ function(generate_declarations ...)
         message (FATAL_ERROR "OUTPUT_DIR is not specified")
     endif ()
 
-    if (NOT ARG_DECLARATIONS)
-        message (FATAL_ERROR "DECLARATIONS is not specified")
+    if (NOT ARG_OUT_DECLARATIONS)
+        message (FATAL_ERROR "OUT_DECLARATIONS is not specified")
     endif ()
 
     set(include_directories ${ARG_INCLUDE_DIRECTORIES})
     list(TRANSFORM include_directories PREPEND "-I")
 
     set (output_list )
-    foreach(header ${ARG_HEADERS})
-        get_filename_component(header_fn "${header}" NAME)
-        set(declaration_target "decl_${export_name}_${header_fn}_target")
+    foreach(source ${ARG_SOURCES})
+
+        # generate target: convert path of source file to dot-separated string
+        get_filename_component(directory_fn "${source}" DIRECTORY)
+        get_filename_component(source_fn "${source}" NAME)
+        string(REPLACE "/" "." directory_fn "${directory_fn}")
+        string(REPLACE "\\" "." directory_fn "${directory_fn}")
+        string(REPLACE ".h" ".d.ts" source_fn "${source_fn}")
+        set(declaration_target "${directory_fn}.${source_fn}")
 
         set (output )
         run_declarator(
-            TARGET ${declaration_target}
+            TARGET "${declaration_target}"
             DEPENDS_ON ${ARG_TARGET}
-            SOURCE "${header}"
+            SOURCE "${source}"
             INCLUDES "${include_directories}"
             TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
             IMPORT "${ARG_IMPORT}"
@@ -138,7 +157,7 @@ function(generate_declarations ...)
         list(APPEND output_list "${output}")
     endforeach()
 
-    set(${ARG_DECLARATIONS} ${output_list} PARENT_SCOPE)
+    set(${ARG_OUT_DECLARATIONS} ${output_list} PARENT_SCOPE)
 endfunction()
 
 function(generate_index dep_target exported_name declaration_list output_dir)
