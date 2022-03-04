@@ -4,7 +4,7 @@ project(tsnative-std LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" ON)    #  OFF
+option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)    # ON 
 
 get_filename_component(INSTALL_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/install" REALPATH)
 list(APPEND CMAKE_MODULE_PATH "${INSTALL_DIR}/cmake")
@@ -95,7 +95,6 @@ target_link_libraries(${PROJECT_NAME}
         $<BUILD_INTERFACE:absl::time>
 )
 
-
 if (GENERATE_DECLARATIONS)
     set(IMPORT )
 
@@ -109,8 +108,8 @@ if (GENERATE_DECLARATIONS)
     set(declaration_list )
 
     generate_declarations(
-        ${CMAKE_CURRENT_BINARY_DIR}
-        declaration_list
+        OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}
+        DECLARATIONS declaration_list
         TARGET "${PROJECT_NAME}"
         DEPENDS_ON "${all_target}"
         HEADERS ${TS_HEADERS}

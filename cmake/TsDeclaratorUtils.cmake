@@ -70,52 +70,14 @@ function(run_declarator target dep_target source includes target_compiler_abi im
     set(${output} ${output_file} PARENT_SCOPE)
 endfunction()
 
-function(generate_declarations_old lib_target dep_target headers target_compiler_abi import stage_dir declaration_list)
-    populate_includes(${lib_target} include_directories)
-    list(APPEND include_directories "${TS_DECLARATOR_INCLUDE_DIR}")
-    list(APPEND include_directories "${StdLib_INCLUDE_DIR}")
-
-    # FIXME: need to research how to force declarator to find all standard headers
-    if (WIN32)
-        set (MINGW_GCC_INCLUDE_PATH "/mingw64/lib/gcc/$ENV{CBE_TARGET_ABI}/${CMAKE_CXX_COMPILER_VERSION}/include")
-        list(APPEND include_directories "${MINGW_GCC_INCLUDE_PATH}")
-        message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
-    endif()
-
-    list(FILTER include_directories EXCLUDE REGEX "^$") # remove empty strings
-    list(TRANSFORM include_directories PREPEND "-I ")
-
-    set (output_list )
-    foreach(header ${headers})
-        get_filename_component(header_fn "${header}" NAME)
-        set(declaration_target "decl_${export_name}_${header_fn}_target")
-
-        set (output )
-        run_declarator(
-            ${declaration_target} 
-            ${lib_target} 
-            ${header}
-            "${include_directories}"
-            ${target_compiler_abi}
-            "${import}" ${stage_dir}
-            output
-        )
-
-        add_dependencies(${dep_target} ${declaration_target})
-        list(APPEND output_list "${output}")
-    endforeach()
-
-    set(${declaration_list} ${output_list} PARENT_SCOPE)
-endfunction()
-
-function(generate_declarations OUTPUT_DIR DECLARATION_LIST ...)
-    cmake_parse_arguments(PARSE_ARGV 2 "ARG"
+function(generate_declarations ...)
+    cmake_parse_arguments(PARSE_ARGV 0 "ARG"
         ""
-        "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT"
-        "INCLUDE_DIRECTORIES;HEADERS"
+        "TARGET;DEPENDS_ON;TARGET_COMPILER_ABI;IMPORT;OUTPUT_DIR"
+        "INCLUDE_DIRECTORIES;HEADERS;DECLARATIONS"
     )
 
-    message(STATUS "OUTPUT_DIR=${OUTPUT_DIR}")
+#    message(STATUS "OUTPUT_DIR=${OUTPUT_DIR}")
 
     if (ARG_UNPARSED_ARGUMENTS)
         message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
@@ -131,6 +93,14 @@ function(generate_declarations OUTPUT_DIR DECLARATION_LIST ...)
 
     if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
         message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
+
+    if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")
+        message (FATAL_ERROR "OUTPUT_DIR is not specified")
+    endif ()
+
+    if (NOT ARG_DECLARATIONS)
+        message (FATAL_ERROR "DECLARATIONS is not specified")
     endif ()
 
     set(include_directories ${ARG_INCLUDE_DIRECTORIES})
@@ -149,7 +119,7 @@ function(generate_declarations OUTPUT_DIR DECLARATION_LIST ...)
             "${include_directories}"
             "${ARG_TARGET_COMPILER_ABI}"
             "${ARG_IMPORT}"
-            "${OUTPUT_DIR}"
+            "${ARG_OUTPUT_DIR}"
             output
         )
 
@@ -157,7 +127,7 @@ function(generate_declarations OUTPUT_DIR DECLARATION_LIST ...)
         list(APPEND output_list "${output}")
     endforeach()
 
-    set(${DECLARATION_LIST} ${output_list} PARENT_SCOPE)
+    set(${ARG_DECLARATIONS} ${output_list} PARENT_SCOPE)
 endfunction()
 
 function(generate_index dep_target exported_name declaration_list output_dir)
