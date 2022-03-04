@@ -108,13 +108,13 @@ if (GENERATE_DECLARATIONS)
     set(declaration_list )
 
     generate_declarations(
-        OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}
-        DECLARATIONS declaration_list
         TARGET "${PROJECT_NAME}"
         DEPENDS_ON "${all_target}"
         HEADERS ${TS_HEADERS}
-        TARGET_COMPILER_ABI ${CMAKE_CXX_COMPILER_TARGET}
+        TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
         IMPORT "${IMPORT}"
+        DECLARATIONS declaration_list
+        OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/temp"
         INCLUDE_DIRECTORIES "${include_directories}"
     )
