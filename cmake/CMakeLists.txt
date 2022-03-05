@@ -53,34 +53,35 @@ add_custom_target(build_anyway ALL)
 
 # FIXME? StdLib_INCLUDE_DIR point to ${TSNATIVE_ROOT}/include
 # and helps to find declarator's TS.h
-set (__INCLUDE_PATHS "${StdLib_INCLUDE_DIR}")
+set (include_paths "${StdLib_INCLUDE_DIR}")
 
 if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     message(STATUS "Loading extension from ${PROJECT_TS_EXTENSION_DIR}")
-    # FIXME: as we directly include user's cmake script we have to especially
-    # accurate naming our local variables to avoid collisions with common var name like INCLUDES
 
-    # TODO: can we use add_subdirectory() here ?
-    include("${PROJECT_TS_EXTENSION_DIR}/CMakeLists.txt")
+    # get last directory name which is extension's target
+    get_filename_component(TS_EXTENSION_TARGET "${PROJECT_TS_EXTENSION_DIR}" NAME)
+    add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
 
     get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDE_PATHS)
     get_target_property(exts_LIBRARY ${TS_EXTENSION_TARGET} OUTPUT)
     get_target_property(exts_LIBRARY_DEPENDENCIES ${TS_EXTENSION_TARGET} LIBRARY_DEPENDENCIES)
     get_target_property(exts_DEFINITIONS ${TS_EXTENSION_TARGET} DEFINITIONS)
 
+#[[
     # TODO: why?
     get_target_property(EXTRA_CMAKE ${TS_EXTENSION_TARGET} EXTRA_CMAKE)
     if (${EXTRA_CMAKE})
         include(${EXTRA_CMAKE})
     endif()
-    
+]]
+#    printvar(EXTRA_CMAKE)
+
     printvar(exts_INCLUDES)
     printvar(exts_LIBRARY)
     printvar(exts_LIBRARY_DEPENDENCIES)
     printvar(exts_DEFINITIONS)
-    printvar(EXTRA_CMAKE)
 
-    list (APPEND __INCLUDE_PATHS ${exts_INCLUDES})
+    list (APPEND include_paths ${exts_INCLUDES})
 else()
     set(TS_EXTENSION_TARGET fake)
     add_custom_target(${TS_EXTENSION_TARGET})
@@ -93,7 +94,7 @@ list(APPEND DEPENDENCIES
 
 build(binary_target ${TS_EXTENSION_TARGET} 
     "${PROJECT_ENTRY_NAME}"
-    "${__INCLUDE_PATHS}"
+    "${include_paths}"
     "${DEPENDENCIES}"
     "${exts_DEFINITIONS}"
     "-O3"
