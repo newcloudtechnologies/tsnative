@@ -102,7 +102,12 @@ if (GENERATE_DECLARATIONS)
         OUT_DECLARATIONS TS_DECLARATIONS
     )
 
-    message(STATUS "TS_DECLARATIONS=${TS_DECLARATIONS}")
+#    message(STATUS "TS_DECLARATIONS=${TS_DECLARATIONS}")
+
+    install(
+        DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/declarations"
+        DESTINATION "std"
+    )
 endif()
 
 include(GNUInstallDirs)
