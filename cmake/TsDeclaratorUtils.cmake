@@ -118,7 +118,7 @@ endfunction()
 # INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
 # SOURCES - list of c++ sources (i.e. headers) to generate declarations (with absolute paths)
 # [OUT] OUT_DECLARATIONS - generated files-declarations
-function(generate_declarations NAME ...)
+function(generate_declarations_ex NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
@@ -169,6 +169,14 @@ function(generate_declarations NAME ...)
     set(${ARG_OUT_DECLARATIONS} ${output_list} PARENT_SCOPE)
 endfunction()
 
+
+### Generate TS declarations for given c++ sources
+### Loads SOURCES, INCLUDE_DIRECTORIES, IMPORT from target's properties
+### Args:
+# NAME - target name
+# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
+# OUTPUT_DIR - absolute path to output directory
+# [OUT] OUT_DECLARATIONS - generated files-declarations
 function(ts_generate_declarations NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
@@ -193,15 +201,10 @@ function(ts_generate_declarations NAME ...)
     endif ()
 
     get_target_property(SOURCES ${NAME} TS_SOURCES)
-    message(STATUS "SOURCES=${SOURCES}")
-
     get_target_property(INCLUDE_DIRECTORIES ${NAME} TS_INCLUDE_DIRECTORIES)
-    message(STATUS "INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
-
     get_target_property(IMPORT ${NAME} TS_IMPORT)
-    message(STATUS "IMPORT=${IMPORT}")
 
-    generate_declarations(${NAME}
+    generate_declarations_ex(${NAME}
         SOURCES ${SOURCES}
         TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
         IMPORT "${IMPORT}"
