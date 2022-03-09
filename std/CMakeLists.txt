@@ -17,9 +17,6 @@ find_package(TsDeclarator REQUIRED)
 
 include(TsDeclaratorUtils)
 
-#set(all_target "all_target")
-set(all_target "${PROJECT_NAME}_ALL")
-
 set(TS_HEADERS
     include/std/console.h
     include/std/iterable.h
@@ -53,32 +50,19 @@ set(SOURCES
     src/private/tsstring_std_p.cpp
 )
 
-#[[
-target_compile_definitions(${PROJECT_NAME} PUBLIC
-    USE_STD_ARRAY_BACKEND
-    USE_MAP_STD_BACKEND
-    USE_SET_STD_BACKEND
-    USE_TUPLE_STD_BACKEND
-    USE_BOOLEAN_CXX_BUILTIN_BACKEND
-    USE_NUMBER_CXX_BUILTIN_BACKEND
-    USE_STD_STRING_BACKEND
-)
-]]
-
-add_compile_definitions(
-    USE_STD_ARRAY_BACKEND
-    USE_MAP_STD_BACKEND
-    USE_SET_STD_BACKEND
-    USE_TUPLE_STD_BACKEND
-    USE_BOOLEAN_CXX_BUILTIN_BACKEND
-    USE_NUMBER_CXX_BUILTIN_BACKEND
-    USE_STD_STRING_BACKEND
-)
-
-add_custom_target(${all_target} ALL)
-
-add_library(${PROJECT_NAME} EXCLUDE_FROM_ALL
+add_library(${PROJECT_NAME}
     ${HEADERS} ${SOURCES} 
+)
+
+target_compile_definitions(${PROJECT_NAME}
+    PUBLIC
+        USE_STD_ARRAY_BACKEND
+        USE_MAP_STD_BACKEND
+        USE_SET_STD_BACKEND
+        USE_TUPLE_STD_BACKEND
+        USE_BOOLEAN_CXX_BUILTIN_BACKEND
+        USE_NUMBER_CXX_BUILTIN_BACKEND
+        USE_STD_STRING_BACKEND
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -97,9 +81,7 @@ target_link_libraries(${PROJECT_NAME}
 
 if (GENERATE_DECLARATIONS)
     set(IMPORT )
-
     list(TRANSFORM TS_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
-
     set(include_directories 
         "${CMAKE_CURRENT_LIST_DIR}/include"
         "${INSTALL_DIR}/include"
@@ -107,9 +89,7 @@ if (GENERATE_DECLARATIONS)
 
     set(declaration_list )
 
-    generate_declarations(
-        TARGET "${PROJECT_NAME}"
-        DEPENDS_ON "${all_target}"
+    ts_generate_declarations(${PROJECT_NAME}
         SOURCES ${TS_HEADERS}
         TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
         IMPORT "${IMPORT}"
@@ -119,12 +99,8 @@ if (GENERATE_DECLARATIONS)
         OUT_DECLARATIONS declaration_list
     )
 
-#    message(STATUS "TS_HEADERS=${TS_HEADERS}")
-
-else()
-    add_dependencies(${all_target} ${PROJECT_NAME})
+    message(STATUS "declaration_list=${declaration_list}")
 endif()
-
 
 include(GNUInstallDirs)
 
