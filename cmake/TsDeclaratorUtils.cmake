@@ -68,7 +68,7 @@ function(run_declarator ...)
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
-        DEPENDS ${source}
+        DEPENDS ${ARG_SOURCE}
         COMMAND echo "Run declarator..."
         COMMAND mkdir -p "${OUTPUT_DIR}"
         VERBATIM COMMAND sh -c "${command}"
