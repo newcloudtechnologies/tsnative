@@ -8,6 +8,21 @@
 # at http://ncloudtech.com/contact.html
 #
 
+define_property(TARGET PROPERTY TS_SOURCES
+    BRIEF_DOCS "sources c++ (headers) to generate declarations"
+    FULL_DOCS "sources c++ (headers) to generate declarations"
+)
+
+define_property(TARGET PROPERTY TS_INCLUDE_DIRECTORIES
+    BRIEF_DOCS "list of include directories neened to declarator"
+    FULL_DOCS "list of include directories neened to declarator"
+)
+
+define_property(TARGET PROPERTY TS_IMPORT
+    BRIEF_DOCS "list of extra import signatures"
+    FULL_DOCS "list of extra import signatures"
+)
+
 ### Invokes declarator with given c++ source
 ### Args:
 # NAME - target name
@@ -19,7 +34,7 @@
 # OUTPUT_DIR - absolute path to output directory
 # INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
 # [OUT] OUT_DECLARATION - generated file-declarations
-function(ts_run_declarator NAME ...)
+function(run_declarator NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "SOURCE;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
@@ -103,11 +118,11 @@ endfunction()
 # INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
 # SOURCES - list of c++ sources (i.e. headers) to generate declarations (with absolute paths)
 # [OUT] OUT_DECLARATIONS - generated files-declarations
-function(ts_generate_declarations NAME ...)
+function(generate_declarations NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
-        "INCLUDE_DIRECTORIES;SOURCES;OUT_DECLARATIONS"
+        "SOURCES;INCLUDE_DIRECTORIES;OUT_DECLARATIONS"
     )
 
     if (ARG_UNPARSED_ARGUMENTS)
@@ -138,7 +153,7 @@ function(ts_generate_declarations NAME ...)
     foreach(source ${ARG_SOURCES})
 
         set (output )
-        ts_run_declarator(${NAME}
+        run_declarator(${NAME}
             SOURCE "${source}"
             INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES}
             TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
@@ -152,6 +167,50 @@ function(ts_generate_declarations NAME ...)
     endforeach()
 
     set(${ARG_OUT_DECLARATIONS} ${output_list} PARENT_SCOPE)
+endfunction()
+
+function(ts_generate_declarations NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "TARGET_COMPILER_ABI;OUTPUT_DIR"
+        "OUT_DECLARATIONS"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
+        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
+
+    if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")
+        message (FATAL_ERROR "OUTPUT_DIR is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DECLARATIONS)
+        message (FATAL_ERROR "OUT_DECLARATIONS is not specified")
+    endif ()
+
+    get_target_property(SOURCES ${NAME} TS_SOURCES)
+    message(STATUS "SOURCES=${SOURCES}")
+
+    get_target_property(INCLUDE_DIRECTORIES ${NAME} TS_INCLUDE_DIRECTORIES)
+    message(STATUS "INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
+
+    get_target_property(IMPORT ${NAME} TS_IMPORT)
+    message(STATUS "IMPORT=${IMPORT}")
+
+    generate_declarations(${NAME}
+        SOURCES ${SOURCES}
+        TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
+        IMPORT "${IMPORT}"
+        INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
+        OUTPUT_DIR "${ARG_OUTPUT_DIR}"
+        TEMP_DIR "${ARG_OUTPUT_DIR}/temp"
+        OUT_DECLARATIONS ${ARG_OUT_DECLARATIONS}
+    )
+
 endfunction()
 
 
