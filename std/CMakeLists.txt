@@ -80,7 +80,8 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 if (GENERATE_DECLARATIONS)
-    set(IMPORT "")
+    set(IMPORT "import { ts } from \'mgt/declarations\'")
+#    set(IMPORT "import { Module1 } from \'path/to/Module1\'; import { Module2 } from \'path/to/Module2\'; import { Module3, Module4 } from \'path/to/Modules34\'")
     set(TS_SOURCES ${TS_HEADERS})
     set(TS_DECLARATIONS )
     set(INCLUDE_DIRECTORIES 
