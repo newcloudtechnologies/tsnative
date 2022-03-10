@@ -23,6 +23,7 @@ define_property(TARGET PROPERTY TS_IMPORT
     FULL_DOCS "list of extra import signatures"
 )
 
+
 ### Recursively populates c++ include directories from target
 ### Args:
 # TARGET - given target
@@ -47,6 +48,7 @@ function(get_target_includes TARGET INCLUDE_LIST)
 
     set(${INCLUDE_LIST} ${result} PARENT_SCOPE)
 endfunction()
+
 
 ### Invokes declarator with given c++ source
 ### Args:
@@ -131,6 +133,7 @@ function(run_declarator NAME ...)
     add_dependencies(${NAME} ${TARGET})
     set(${ARG_OUT_DECLARATION} ${OUTPUT_FILE} PARENT_SCOPE)
 endfunction()
+
 
 ### Generate TS declarations for given c++ sources
 ### Args:
@@ -240,58 +243,3 @@ function(ts_generate_declarations NAME ...)
     )
 
 endfunction()
-
-
-#[[
-function(generate_index dep_target exported_name declaration_list output_dir)
-    set(target "${dep_target}_index_target")
-    set(output_file "${output_dir}/index.ts")
-    set(declarations )
-
-    foreach(declaration_item ${declaration_list})
-        get_filename_component(declaration "${declaration_item}" NAME)
-        list(APPEND declarations "${declaration}")
-    endforeach()
-
-    # prepare content of file
-    set(content_list )
-    foreach(declaration ${declarations})
-        set(s "/// <reference path='${declaration}' />")
-        list(APPEND content_list "${s}")
-    endforeach()
-
-    list(APPEND content_list "export { ${exported_name} } from 'mgt';")
-
-    # out to file semicolon separated list and then replace all semicolons to "\n"
-    # and replace "'" to """
-    add_custom_command(
-        OUTPUT ${output_file}
-        COMMAND echo "Generate index.ts ..."
-        COMMAND mkdir -p "${output_dir}"
-        VERBATIM COMMAND sh -c "echo \"${content_list}\" > \"${output_file}\""
-        VERBATIM COMMAND sh -c "sed -i 's/;/\\n/g' ${output_file}"
-        VERBATIM COMMAND sh -c "sed -i \"s/\'/\\\"/g\" ${output_file}"
-    )
-
-    add_custom_target(${target}
-        DEPENDS ${output_file}
-    )
-
-    add_dependencies(${dep_target} ${target})
-endfunction()
-
-function(format_import module_path items out_list)
-    set(result )
-
-    foreach(item ${items})
-        set(template "%1:%2")
-        string(REPLACE "%1" "${item}" R1 ${template})
-        string(REPLACE "%2" "${module_path}" R2 ${R1})
-        list(APPEND result ${R2})
-    endforeach()
-
-    list(APPEND ${out_list} ${result})
-    set(${out_list} ${${out_list}} PARENT_SCOPE)
-endfunction()
-]]
-
