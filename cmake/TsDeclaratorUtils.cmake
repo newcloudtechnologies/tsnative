@@ -23,6 +23,31 @@ define_property(TARGET PROPERTY TS_IMPORT
     FULL_DOCS "list of extra import signatures"
 )
 
+### Recursively populates c++ include directories from target
+### Args:
+# TARGET - given target
+# [OUT] INCLUDE_LIST - list of include directories
+function(get_target_includes TARGET INCLUDE_LIST)
+    set(result )
+
+    get_target_property(includes ${TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+    list(FILTER includes EXCLUDE REGEX ".*[-]NOTFOUND")
+    list(APPEND result ${includes})
+
+    get_target_property(libraries ${TARGET} INTERFACE_LINK_LIBRARIES)
+    list(FILTER libraries EXCLUDE REGEX "^[$][<].*[>]")
+
+    foreach(item ${libraries})
+        if (TARGET ${item})
+            set(out_list )
+            get_target_includes(${item} out_list)
+            list(APPEND result ${out_list})
+        endif()
+    endforeach()
+
+    set(${INCLUDE_LIST} ${result} PARENT_SCOPE)
+endfunction()
+
 ### Invokes declarator with given c++ source
 ### Args:
 # NAME - target name
