@@ -80,8 +80,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 if (GENERATE_DECLARATIONS)
-    set(IMPORT "import { ts } from \'mgt/declarations\'")
-#    set(IMPORT "import { Module1 } from \'path/to/Module1\'; import { Module2 } from \'path/to/Module2\'; import { Module3, Module4 } from \'path/to/Modules34\'")
+    set(IMPORT "")
     set(TS_SOURCES ${TS_HEADERS})
     set(TS_DECLARATIONS )
     set(INCLUDE_DIRECTORIES 
@@ -102,8 +101,6 @@ if (GENERATE_DECLARATIONS)
         OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         OUT_DECLARATIONS TS_DECLARATIONS
     )
-
-#    message(STATUS "TS_DECLARATIONS=${TS_DECLARATIONS}")
 
     install(
         DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/declarations"
