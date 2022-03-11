@@ -237,6 +237,7 @@ function(ts_generate_declarations NAME ...)
     get_target_property(INCLUDE_DIRECTORIES ${NAME} TS_INCLUDE_DIRECTORIES)
     get_target_property(IMPORT ${NAME} TS_IMPORT)
 
+    set(DECLARATIONS )
     generate_declarations_ex(${NAME}
         SOURCES ${SOURCES}
         TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
@@ -244,7 +245,86 @@ function(ts_generate_declarations NAME ...)
         INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         OUTPUT_DIR "${ARG_OUTPUT_DIR}"
         TEMP_DIR "${ARG_OUTPUT_DIR}/temp"
-        OUT_DECLARATIONS ${ARG_OUT_DECLARATIONS}
+        OUT_DECLARATIONS DECLARATIONS
+    )
+    
+    set(${ARG_OUT_DECLARATIONS} ${DECLARATIONS} PARENT_SCOPE)
+endfunction()
+
+
+### Generate TS module index
+### Args:
+# NAME - target name
+# EXPORTED_NAME - exported name from export signature
+# MODULE_NAME - module name from export signature
+#   (e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}')
+# DECLARATIONS - list of declaration files
+# [OUT] OUT_DIRECTORY - directory with generated index.ts file
+function(ts_generate_index NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "EXPORTED_NAME;MODULE_NAME;OUT_DIRECTORY;"
+        "DECLARATIONS;"
     )
 
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_EXPORTED_NAME OR ARG_EXPORTED_NAME STREQUAL "")
+        message (FATAL_ERROR "EXPORTED_NAME is not specified")
+    endif ()
+
+    if (NOT ARG_MODULE_NAME OR ARG_MODULE_NAME STREQUAL "")
+        message (FATAL_ERROR "MODULE_NAME is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DIRECTORY)
+        message (FATAL_ERROR "OUT_DIRECTORY is not specified")
+    endif ()
+
+    if (NOT ARG_DECLARATIONS)
+        message (FATAL_ERROR "DECLARATIONS is not specified")
+    endif ()
+
+    set(output_file "${ARG_OUT_DIRECTORY}/index.ts")
+
+    # generate target: convert path to dot-separated string
+    set(directory_fn "${ARG_OUT_DIRECTORY}")
+    string(REPLACE "/" "." directory_fn "${directory_fn}")
+    string(REPLACE "\\" "." directory_fn "${directory_fn}")
+    set(TARGET "${directory_fn}.index.ts")
+
+    # generate filenames of declarations without full paths
+    set(declarations )
+    foreach(declaration_item ${ARG_DECLARATIONS})
+        get_filename_component(declaration "${declaration_item}" NAME)
+        list(APPEND declarations "${declaration}")
+    endforeach()
+
+    # prepare content of file
+    set(content_list )
+    foreach(declaration ${declarations})
+        set(s "/// <reference path='${declaration}' />")
+        list(APPEND content_list "${s}")
+    endforeach()
+
+    list(APPEND content_list "export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}';")
+
+    # out to file semicolon separated list and then replace all semicolons to "\n"
+    # and replace "'" to """
+    add_custom_command(
+        OUTPUT ${output_file}
+        COMMAND echo "Generate index.ts ..."
+        COMMAND mkdir -p "${ARG_OUT_DIRECTORY}"
+        VERBATIM COMMAND sh -c "echo \"${content_list}\" >> \"${output_file}\""
+        VERBATIM COMMAND sh -c "sed -i 's/;/\\n/g' ${output_file}"
+        VERBATIM COMMAND sh -c "sed -i \"s/\'/\\\"/g\" ${output_file}"
+    )
+
+    add_custom_target(${TARGET}
+        DEPENDS ${output_file}
+    )
+    
+    add_dependencies(${NAME} ${TARGET})
 endfunction()
