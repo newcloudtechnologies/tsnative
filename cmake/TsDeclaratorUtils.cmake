@@ -28,6 +28,16 @@ define_property(TARGET PROPERTY TS_IMPORT
     FULL_DOCS "list of extra import signatures"
 )
 
+define_property(TARGET PROPERTY TS_EXPORTED_NAME
+    BRIEF_DOCS "exported name from export signature"
+    FULL_DOCS "e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}'"
+)
+
+define_property(TARGET PROPERTY TS_MODULE_NAME
+    BRIEF_DOCS "module name from export signature"
+    FULL_DOCS "e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}'"
+)
+
 
 ### Recursively populates c++ include directories from target
 ### Args:
@@ -259,8 +269,8 @@ endfunction()
 # MODULE_NAME - module name from export signature
 #   (e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}')
 # DECLARATIONS - list of declaration files
-# [OUT] OUT_DIRECTORY - directory with generated index.ts file
-function(ts_generate_index NAME ...)
+# OUT_DIRECTORY - directory with generated index.ts file
+function(ts_generate_index_ex NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "EXPORTED_NAME;MODULE_NAME;OUT_DIRECTORY;"
@@ -327,4 +337,41 @@ function(ts_generate_index NAME ...)
     )
     
     add_dependencies(${NAME} ${TARGET})
+endfunction()
+
+
+### Generate TS module index
+### Loads EXPORTED_NAME, MODULE_NAME from target's property
+### Args:
+# NAME - target name
+# DECLARATIONS - list of declaration files
+# OUT_DIRECTORY - directory with generated index.ts file
+function(ts_generate_index NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "OUT_DIRECTORY;"
+        "DECLARATIONS;"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_OUT_DIRECTORY)
+        message (FATAL_ERROR "OUT_DIRECTORY is not specified")
+    endif ()
+
+    if (NOT ARG_DECLARATIONS)
+        message (FATAL_ERROR "DECLARATIONS is not specified")
+    endif ()
+
+    get_target_property(EXPORTED_NAME ${NAME} TS_EXPORTED_NAME)
+    get_target_property(MODULE_NAME ${NAME} TS_MODULE_NAME)
+
+    ts_generate_index_ex(${NAME}
+        DECLARATIONS ${ARG_DECLARATIONS}
+        OUT_DIRECTORY ${ARG_OUT_DIRECTORY}
+        EXPORTED_NAME ${EXPORTED_NAME}
+        MODULE_NAME ${MODULE_NAME}
+    )
 endfunction()
