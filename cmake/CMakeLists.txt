@@ -63,16 +63,19 @@ if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     get_filename_component(TS_EXTENSION_TARGET "${PROJECT_TS_EXTENSION_DIR}" NAME)
     add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
 
-    # generate declarations
-    set(TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}")
-    set(IMPORT "import { ts } from 'mgt/declarations'") # import ts from mgt
-    set(TS_DECLARATIONS )
+    get_target_property(exts_GENERATE_DECLARATIONS ${TS_EXTENSION_TARGET} TS_GENERATE_DECLARATIONS)
 
+if (exts_GENERATE_DECLARATIONS)
+    set(TS_DECLARATIONS )
     ts_generate_declarations(${TS_EXTENSION_TARGET}
-        TARGET_COMPILER_ABI "${TARGET_COMPILER_ABI}"
-        OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
+        TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
+        OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${TS_EXTENSION_TARGET}"
         OUT_DECLARATIONS TS_DECLARATIONS
     )
+
+    # TODO: generate index.ts
+
+endif()
 
     # load properties from extession
     get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDE_PATHS)
