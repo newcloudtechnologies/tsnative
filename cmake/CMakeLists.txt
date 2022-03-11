@@ -55,6 +55,7 @@ add_custom_target(build_anyway ALL)
 # and helps to find declarator's TS.h
 set (include_paths "${StdLib_INCLUDE_DIR}")
 
+# TODO: support multiple extensions
 if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     message(STATUS "Loading extension from ${PROJECT_TS_EXTENSION_DIR}")
 
@@ -62,19 +63,22 @@ if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     get_filename_component(TS_EXTENSION_TARGET "${PROJECT_TS_EXTENSION_DIR}" NAME)
     add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
 
+    # generate declarations
+    set(TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}")
+    set(IMPORT "import { ts } from 'mgt/declarations'") # import ts from mgt
+    set(TS_DECLARATIONS )
+
+    ts_generate_declarations(${TS_EXTENSION_TARGET}
+        TARGET_COMPILER_ABI "${TARGET_COMPILER_ABI}"
+        OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
+        OUT_DECLARATIONS TS_DECLARATIONS
+    )
+
+    # load properties from extession
     get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDE_PATHS)
     get_target_property(exts_LIBRARY ${TS_EXTENSION_TARGET} OUTPUT)
     get_target_property(exts_LIBRARY_DEPENDENCIES ${TS_EXTENSION_TARGET} LIBRARY_DEPENDENCIES)
     get_target_property(exts_DEFINITIONS ${TS_EXTENSION_TARGET} DEFINITIONS)
-
-#[[
-    # TODO: why?
-    get_target_property(EXTRA_CMAKE ${TS_EXTENSION_TARGET} EXTRA_CMAKE)
-    if (${EXTRA_CMAKE})
-        include(${EXTRA_CMAKE})
-    endif()
-]]
-#    printvar(EXTRA_CMAKE)
 
     printvar(exts_INCLUDES)
     printvar(exts_LIBRARY)
