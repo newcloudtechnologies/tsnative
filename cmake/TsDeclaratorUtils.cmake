@@ -8,6 +8,11 @@
 # at http://ncloudtech.com/contact.html
 #
 
+define_property(TARGET PROPERTY TS_GENERATE_DECLARATIONS
+    BRIEF_DOCS "allows generating TS declarations"
+    FULL_DOCS "allows generating TS declarations"
+)
+
 define_property(TARGET PROPERTY TS_SOURCES
     BRIEF_DOCS "sources c++ (headers) to generate declarations"
     FULL_DOCS "sources c++ (headers) to generate declarations"
