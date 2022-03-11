@@ -63,19 +63,28 @@ if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     get_filename_component(TS_EXTENSION_TARGET "${PROJECT_TS_EXTENSION_DIR}" NAME)
     add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
 
-    get_target_property(exts_GENERATE_DECLARATIONS ${TS_EXTENSION_TARGET} TS_GENERATE_DECLARATIONS)
+    get_target_property(TS_SOURCES ${TS_EXTENSION_TARGET} TS_SOURCES)
 
-if (exts_GENERATE_DECLARATIONS)
-    set(TS_DECLARATIONS )
-    ts_generate_declarations(${TS_EXTENSION_TARGET}
-        TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
-        OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${TS_EXTENSION_TARGET}"
-        OUT_DECLARATIONS TS_DECLARATIONS
-    )
+    # generate TS declarations
+    if (TS_SOURCES)
+        set(TS_DECLARATIONS )
+        ts_generate_declarations(${TS_EXTENSION_TARGET}
+            TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
+            OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${TS_EXTENSION_TARGET}"
+            OUT_DECLARATIONS TS_DECLARATIONS
+        )
 
-    # TODO: generate index.ts
+        get_target_property(TS_EXPORTED_NAME ${TS_EXTENSION_TARGET} TS_EXPORTED_NAME)
+        get_target_property(TS_MODULE_NAME ${TS_EXTENSION_TARGET} TS_MODULE_NAME)
 
-endif()
+        # generate index.ts file
+        if (TS_EXPORTED_NAME AND TS_MODULE_NAME)
+            ts_generate_index(${TS_EXTENSION_TARGET}
+                DECLARATIONS ${TS_DECLARATIONS}
+                OUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${TS_EXTENSION_TARGET}/declarations"
+            )
+        endif()
+    endif()
 
     # load properties from extession
     get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDE_PATHS)
