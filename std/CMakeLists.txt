@@ -103,9 +103,10 @@ if (GENERATE_DECLARATIONS)
     )
 
     install(
-        DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/declarations"
-        DESTINATION "std"
+        FILES ${TS_DECLARATIONS}
+        DESTINATION "std/definitions"
     )
+
 endif()
 
 include(GNUInstallDirs)
