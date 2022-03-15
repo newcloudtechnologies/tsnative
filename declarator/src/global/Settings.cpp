@@ -47,26 +47,49 @@ void Settings::visit(const std::vector<std::string>& args,
 {
     using namespace utils;
 
-    auto nextIndex = [args](auto index)
-    {
-        auto next = index + 1;
-        return (next > 0 && next < args.size()) ? next : -1;
-    };
-
-    auto getOpt = [args](auto index)
+    auto getLongOption = [&args](auto index, std::string& left, std::string& right) -> int
     {
         _ASSERT(index >= 0 && index < args.size());
-        return args.at(index);
-    };
 
-    auto getValue = [](const std::string& opt)
-    {
+        std::string opt = args.at(index);
         std::size_t delim = opt.find("=");
         _ASSERT(delim != opt.npos);
+        _ASSERT(delim > 2); // --longopt=value
 
-        std::string value = opt.substr(delim + 1);
+        left = opt.substr(2, delim - 2);
+        right = opt.substr(delim + 1);
 
-        return value;
+        return index;
+    };
+
+    auto getShortOption = [&args](auto index, std::string& left, std::string& right) -> int
+    {
+        auto result = index;
+
+        _ASSERT(index >= 0 && index < args.size());
+
+        std::string opt = args.at(index);
+
+        if (opt.size() == 2) // -D ANYDEFINE
+        {
+            left = opt.substr(1, 1);
+
+            result++;
+            _ASSERT(result < args.size());
+
+            right = args.at(result);
+        }
+        else if (opt.size() > 2) // -DANYDEFINE
+        {
+            left = opt.substr(1, 1);
+            right = opt.substr(2);
+        }
+        else
+        {
+            throw utils::Exception(R"(incorrect short option: "%s")", opt.c_str());
+        }
+
+        return result;
     };
 
     for (auto i = 0; i < args.size(); i++)
@@ -75,30 +98,15 @@ void Settings::visit(const std::vector<std::string>& args,
 
         if (starts_with(current, "--"))
         {
-            if (starts_with(current, "--target"))
-            {
-                handler("target", getValue(current));
-            }
+            std::string left, right;
+            i = getLongOption(i, left, right);
+            handler(left, right);
         }
         else if (starts_with(current, "-"))
         {
-            if (starts_with(current, "-I"))
-            {
-                i = nextIndex(i);
-                handler("I", getOpt(i));
-            }
-            else if (starts_with(current, "-D"))
-            {
-                i = nextIndex(i);
-                handler("D", getOpt(i));
-            }
-            else
-            {
-                if (!starts_with(getOpt(i + 1), "-"))
-                {
-                    i++;
-                }
-            }
+            std::string left, right;
+            i = getShortOption(i, left, right);
+            handler(left, right);
         }
         else
         {

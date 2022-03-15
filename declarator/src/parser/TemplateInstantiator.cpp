@@ -31,7 +31,11 @@ std::string getInstancePath(const std::string& templateName)
 
     if (DECLARATOR_TEMP_DIR.empty())
     {
-        DECLARATOR_TEMP_DIR = "temp";
+        fs::path DECLARATOR_OUTPUT_DIR(utils::getEnv("DECLARATOR_OUTPUT_DIR"));
+
+        DECLARATOR_OUTPUT_DIR = DECLARATOR_OUTPUT_DIR / "temp";
+
+        DECLARATOR_TEMP_DIR = DECLARATOR_OUTPUT_DIR.u8string();
     }
 
     fs::path path(DECLARATOR_TEMP_DIR);
@@ -107,7 +111,6 @@ ClassTemplateInstantiator::ClassTemplateInstantiator(parser::const_class_templat
 {
     // include source header into instance
     m_instancePath = createInstance(classTemplateItem, {source_path});
-
     m_tu = createTranslationUnit(m_instancePath, include_dirs, compiler_abi);
 }
 

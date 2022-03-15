@@ -13,15 +13,18 @@
 
 #include <TS.h>
 
-#include <string>
-#include <vector>
+namespace mgt IS_TS_MODULE
+{
 
-class TS_EXPORT Collection
+namespace ts IS_TS_NAMESPACE
+{
+
+class TS_EXPORT Widget
 {
 public:
-    TS_METHOD Collection() = default;
-
-    TS_METHOD TS_RETURN_TYPE("Array<string>") std::vector<std::string> getStringList();
+    TS_METHOD Widget(Widget& parent);
 };
 
-TS_EXPORT TS_RETURN_TYPE("Array<string>") std::vector<std::string> getStringList();
+} // namespace IS_TS_NAMESPACE
+
+} // namespace IS_TS_MODULE

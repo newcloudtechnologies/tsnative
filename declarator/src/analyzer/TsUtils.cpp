@@ -170,7 +170,7 @@ std::vector<std::string> TsSignature::templateArguments() const
 
 void TsImport::parse(const std::string& sig)
 {
-    std::regex regexp(R"(import\s*\{\s*([A-Za-z0-9_\s\,]*)\}\s*from\s*\"([A-Za-z\/\.\-\s]*)\")");
+    std::regex regexp(R"(import\s+\{\s*([\w\,\s*]+)\s*\}\s+from\s+(\"|\')([\w\/\.]+)(\"|\'))");
 
     std::smatch match;
 
@@ -179,7 +179,7 @@ void TsImport::parse(const std::string& sig)
         throw utils::Exception(R"(invalid import signature: "%s")", sig.c_str());
     }
 
-    m_path = match[2];
+    m_path = match[3];
     std::string entities = match[1];
 
     parseEntityList(entities);

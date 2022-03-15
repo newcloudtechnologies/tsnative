@@ -58,6 +58,10 @@ public:
 
 std::string mapType(const TypeMapper& typeMapper, const clang::QualType& type);
 
-std::string collapseType(const std::string& currentPrefix, const std::string& type);
+bool getModuleName(const std::string& path, std::string& moduleName);
+
+bool isTheSameModule(const std::string& path1, const std::string& path2);
+
+std::string actialType(const std::string& currentPrefix, const std::string& type);
 
 } // namespace analyzer

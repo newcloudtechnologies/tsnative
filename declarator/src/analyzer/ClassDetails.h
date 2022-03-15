@@ -108,8 +108,6 @@ class Extends
 {
 private:
     static std::vector<std::string> exportedBases(parser::const_class_item_t item);
-    static bool getModuleName(const std::string& path, std::string& moduleName);
-    static bool isTheSameModule(const std::string& path1, const std::string& path2);
     static std::string normalize(const std::string& expr);
 
 public:

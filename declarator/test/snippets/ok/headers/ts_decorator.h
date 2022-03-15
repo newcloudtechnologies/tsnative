@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -8,7 +19,8 @@ public:
     TS_METHOD Entity() = default;
     ~Entity() = default;
 
-    TS_METHOD TS_DECORATOR("Function(1, 2, 'str', 3.14)") TS_DECORATOR("NoRet") TS_DECORATOR("MapsTo('iterator')") void update();
+    TS_METHOD TS_DECORATOR("Function(1, 2, 'str', 3.14)") TS_DECORATOR("NoRet")
+        TS_DECORATOR("MapsTo('iterator')") void update();
 };
 
 /*

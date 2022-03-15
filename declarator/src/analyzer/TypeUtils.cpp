@@ -11,6 +11,13 @@
 
 #include "TypeUtils.h"
 
+#include "parser/Annotation.h"
+#include "parser/Collection.h"
+#include "parser/NamespaceItem.h"
+
+#include "global/Annotations.h"
+
+#include "utils/Exception.h"
 #include "utils/Strings.h"
 
 #include <clang/AST/Decl.h>
@@ -18,6 +25,34 @@
 #include <clang/AST/PrettyPrinter.h>
 
 #include <exception>
+
+namespace
+{
+
+std::string collapseType(const std::string& currentPrefix, const std::string& type)
+{
+    using namespace utils;
+
+    std::vector<std::string> current_parts = split(currentPrefix, "::");
+    std::vector<std::string> given_parts = split(type, "::");
+
+    for (const auto& it : current_parts)
+    {
+        if (given_parts.empty())
+            break;
+
+        std::string given_part = given_parts.front();
+
+        if (it == given_part)
+        {
+            given_parts.erase(given_parts.begin());
+        }
+    }
+
+    return join(given_parts, ".");
+}
+
+} //  namespace
 
 namespace analyzer
 {
@@ -133,27 +168,78 @@ std::string mapType(const TypeMapper& typeMapper, const clang::QualType& type)
     return result;
 }
 
-std::string collapseType(const std::string& currentPrefix, const std::string& type)
+bool getModuleName(const std::string& path, std::string& moduleName)
 {
+    using namespace global::annotations;
     using namespace utils;
+    using namespace parser;
 
-    std::vector<std::string> current_parts = split(currentPrefix, "::");
-    std::vector<std::string> given_parts = split(type, "::");
+    bool result = false;
 
-    for (const auto& it : current_parts)
+    std::vector<std::string> parts = split(path, "::");
+
+    if (!parts.empty())
     {
-        if (given_parts.empty())
-            break;
+        moduleName = parts.at(0);
 
-        std::string given_part = given_parts.front();
+        auto& collection = Collection::get();
 
-        if (it == given_part)
+        if (collection.existItem("", moduleName))
         {
-            given_parts.erase(given_parts.begin());
+            item_list_t items = collection.getItems(moduleName);
+            _ASSERT(items.size() == 1);
+
+            abstract_item_t item = items.at(0);
+
+            if (item->type() == AbstractItem::Type::NAMESPACE)
+            {
+                namespace_item_t namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
+                AnnotationList annotations(getAnnotations(namespaceItem->decl()));
+
+                if (annotations.exist(TS_MODULE))
+                {
+                    result = true;
+                }
+            }
         }
     }
 
-    return join(given_parts, ".");
+    return result;
+}
+
+bool isTheSameModule(const std::string& path1, const std::string& path2)
+{
+    std::string moduleName1, moduleName2;
+    return getModuleName(path1, moduleName1) && getModuleName(path2, moduleName2) && moduleName1 == moduleName2;
+}
+
+std::string actialType(const std::string& currentPrefix, const std::string& type)
+{
+    using namespace utils;
+
+    std::string result;
+
+    if (isTheSameModule(type, currentPrefix))
+    {
+        result = collapseType(currentPrefix, type);
+    }
+    else
+    {
+        std::vector<std::string> parts = split(type, "::");
+
+        std::string moduleName;
+        if (getModuleName(type, moduleName))
+        {
+            _ASSERT(parts.at(0) == moduleName);
+
+            // remove module name from path
+            parts.erase(parts.begin());
+        }
+
+        result = join(parts, ".");
+    }
+
+    return result;
 }
 
 } // namespace analyzer

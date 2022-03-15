@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -10,7 +21,7 @@ public:
     TS_METHOD void entity();
 };
 
-class TS_EXPORT Event: public Entity
+class TS_EXPORT Event : public Entity
 {
 public:
     Event() = default;
@@ -20,6 +31,7 @@ public:
 class A
 {
     int m_iA;
+
 public:
     A() = default;
     ~A() = default;
@@ -42,7 +54,7 @@ public:
     TS_METHOD void c();
 };
 
-class Abc: public A, public B, public C
+class Abc : public A, public B, public C
 {
 public:
     Abc() = default;
@@ -56,4 +68,3 @@ public:
     ~CustomEvent() = default;
     TS_METHOD void customEvent();
 };
-

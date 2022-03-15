@@ -461,7 +461,7 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
 
             std::string retType = annotations.exist(TS_RETURN_TYPE)
                                       ? annotations.values(TS_RETURN_TYPE).at(0)
-                                      : collapseType(classPrefix, mapType(m_typeMapper, item.returnType()));
+                                      : actialType(classPrefix, mapType(m_typeMapper, item.returnType()));
 
             auto block = (item.isConstructor()) ? AbstractBlock::make<MethodBlock>()
                                                 : AbstractBlock::make<MethodBlock>(name, retType, item.isStatic());
@@ -477,7 +477,8 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
 
             for (const auto& it : item.parameters())
             {
-                block->addArgument({it.name(), collapseType(classPrefix, mapType(m_typeMapper, it.type()))});
+                std::string type = actialType(classPrefix, mapType(m_typeMapper, it.type()));
+                block->addArgument({it.name(), type});
             }
 
             result = block;
@@ -721,51 +722,6 @@ std::vector<std::string> Extends::exportedBases(parser::const_class_item_t item)
     return result;
 }
 
-bool Extends::getModuleName(const std::string& path, std::string& moduleName)
-{
-    using namespace global::annotations;
-    using namespace utils;
-    using namespace parser;
-
-    bool result = false;
-
-    std::vector<std::string> parts = split(path, "::");
-
-    if (!parts.empty())
-    {
-        moduleName = parts.at(0);
-
-        auto& collection = Collection::get();
-
-        if (collection.existItem("", moduleName))
-        {
-            item_list_t items = collection.getItems(moduleName);
-            _ASSERT(items.size() == 1);
-
-            abstract_item_t item = items.at(0);
-
-            if (item->type() == AbstractItem::Type::NAMESPACE)
-            {
-                namespace_item_t namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
-                AnnotationList annotations(getAnnotations(namespaceItem->decl()));
-
-                if (annotations.exist(TS_MODULE))
-                {
-                    result = true;
-                }
-            }
-        }
-    }
-
-    return result;
-}
-
-bool Extends::isTheSameModule(const std::string& path1, const std::string& path2)
-{
-    std::string moduleName1, moduleName2;
-    return getModuleName(path1, moduleName1) && getModuleName(path2, moduleName2) && moduleName1 == moduleName2;
-}
-
 std::string Extends::normalize(const std::string& expr)
 {
     using namespace utils;
@@ -848,25 +804,7 @@ std::string Extends::get(parser::const_class_item_t item)
 
         extends = normalize(extends);
 
-        if (isTheSameModule(extends, item->prefix()))
-        {
-            result = collapseType(item->prefix(), extends);
-        }
-        else
-        {
-            std::vector<std::string> parts = split(extends, "::");
-
-            std::string moduleName;
-            if (getModuleName(extends, moduleName))
-            {
-                _ASSERT(parts.at(0) == moduleName);
-
-                // remove module name from path
-                parts.erase(parts.begin());
-            }
-
-            result = join(parts, ".");
-        }
+        result = actialType(item->prefix(), extends);
     }
 
     return result;

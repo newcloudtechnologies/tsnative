@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include "TS.h"
@@ -16,9 +27,6 @@ public:
     TS_METHOD void entity();
 };
 
-}   // namespace stuffs
+} // namespace IS_TS_MODULE
 
-}   // namespace global
-
-
-
+} // namespace IS_TS_NAMESPACE
