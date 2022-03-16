@@ -36,6 +36,9 @@ TS_EXPORT TS_SIGNATURE("function assert(assumption: boolean, ...optionalParams: 
 
 } // namespace IS_TS_DECLARED_NAMESPACE
 
+TS_CODE(
+    "declare type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : never;\n");
+
 template <typename T>
 void console::log(T value)
 {
