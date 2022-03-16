@@ -18,7 +18,7 @@
 #endif
 
 template <typename K, typename V>
-class TS_EXPORT Map : public Iterable<Tuple<K, V>*>
+class TS_DECLARE Map : public Iterable<Tuple<K, V>*>
 {
     static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value,
                   "TS Map keys/values expected to be of pointer type");
@@ -36,12 +36,14 @@ public:
 
     TS_METHOD TS_GETTER Number* size() const;
 
-    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void): void") void forEach(TSClosure* visitor) const;
+    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void): void") void forEach(
+        TSClosure* visitor) const;
 
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<K>") IterableIterator<K>* keys();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* values();
 
-    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): MapIterator<[K, V]>") TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<Tuple<K, V>*>* iterator() override;
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): MapIterator<[K, V]>")
+        TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<Tuple<K, V>*>* iterator() override;
 
 private:
     MapPrivate<K, V>* _d;

@@ -15,7 +15,7 @@
 #undef assert
 #endif
 
-namespace console IS_TS_NAMESPACE
+namespace console IS_TS_DECLARED_NAMESPACE
 {
 
 template <typename T>
@@ -31,9 +31,10 @@ template <typename... Ts>
 void logImpl(String* v, Ts... ts);
 
 template <typename... Ts>
-TS_EXPORT TS_SIGNATURE("function assert(assumption: boolean, ...optionalParams: any[]): void") void assert(Boolean* assumption, Ts... ts);
+TS_EXPORT TS_SIGNATURE("function assert(assumption: boolean, ...optionalParams: any[]): void") void assert(
+    Boolean* assumption, Ts... ts);
 
-} // namespace console
+} // namespace IS_TS_DECLARED_NAMESPACE
 
 template <typename T>
 void console::log(T value)

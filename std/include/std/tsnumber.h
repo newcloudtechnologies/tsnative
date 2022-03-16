@@ -12,7 +12,7 @@ class String;
 
 class NumberPrivate;
 
-class TS_EXPORT Number
+class TS_DECLARE Number
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(_: any)") Number(double v);
@@ -70,10 +70,8 @@ private:
     NumberPrivate* _d = nullptr;
 };
 
-TS_CODE(
-    "// @ts-ignore\n"
-    "declare type number = Number;\n"
-);
+TS_CODE("// @ts-ignore\n"
+        "declare type number = Number;\n");
 
 inline std::ostream& operator<<(std::ostream& os, Number* v)
 {

@@ -16,7 +16,7 @@
 #endif
 
 template <typename V>
-class TS_EXPORT Set : public Iterable<V>
+class TS_DECLARE Set : public Iterable<V>
 {
     static_assert(std::is_pointer<V>::value, "TS Set elements expected to be of pointer type");
 
@@ -31,13 +31,15 @@ public:
 
     TS_METHOD TS_GETTER Number* size() const;
 
-    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: V, value2: V, set: Set<V>) => void): void") void forEach(TSClosure* visitor) const;
+    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: V, value2: V, set: Set<V>) => void): void") void forEach(
+        TSClosure* visitor) const;
 
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* values();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* keys();
 
-    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): SetIterator<T>") TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<V>* iterator() override;
-    
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): SetIterator<T>")
+        TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<V>* iterator() override;
+
 private:
     SetPrivate<V>* _d = nullptr;
 };

@@ -6,7 +6,7 @@
 #include <std/tsarray.h>
 
 template <typename T>
-class TS_EXPORT SetIterator : public IterableIterator<T>
+class TS_DECLARE SetIterator : public IterableIterator<T>
 {
 public:
     SetIterator(Array<T>* iterable)

@@ -11,7 +11,7 @@ class String;
 
 class BooleanPrivate;
 
-class TS_EXPORT Boolean
+class TS_DECLARE Boolean
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(_: any)") Boolean();
@@ -36,10 +36,8 @@ private:
     BooleanPrivate* _d = nullptr;
 };
 
-TS_CODE(
-    "// @ts-ignore\n"
-    "declare type boolean = Boolean;\n"
-);
+TS_CODE("// @ts-ignore\n"
+        "declare type boolean = Boolean;\n");
 
 inline std::ostream& operator<<(std::ostream& os, Boolean* v)
 {

@@ -16,7 +16,7 @@ class Number;
 
 class StringPrivate;
 
-class TS_EXPORT String : public Iterable<String*>
+class TS_DECLARE String : public Iterable<String*>
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(_: any)") String();
@@ -68,7 +68,8 @@ public:
 
     std::string cpp_str() const;
 
-    TS_METHOD TS_RETURN_TYPE("StringIterator<string>") TS_DECORATOR("MapsTo('iterator')") TS_IGNORE IterableIterator<String*>* iterator() override;
+    TS_METHOD TS_RETURN_TYPE("StringIterator<string>")
+        TS_DECORATOR("MapsTo('iterator')") TS_IGNORE IterableIterator<String*>* iterator() override;
 
     TS_METHOD String* clone() const;
 
@@ -78,10 +79,8 @@ private:
     StringPrivate* _d = nullptr;
 };
 
-TS_CODE(
-    "// @ts-ignore\n"
-    "declare type string = String;\n"
-);
+TS_CODE("// @ts-ignore\n"
+        "declare type string = String;\n");
 
 inline std::ostream& operator<<(std::ostream& os, String* s)
 {

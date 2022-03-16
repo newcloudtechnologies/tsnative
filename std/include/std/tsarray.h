@@ -18,7 +18,7 @@
 #include <vector>
 
 template <typename T>
-class TS_EXPORT Array : public Iterable<T>
+class TS_DECLARE Array : public Iterable<T>
 {
     static_assert(std::is_pointer<T>::value, "TS Array elements expected to be of pointer type");
 
@@ -49,25 +49,32 @@ public:
     TS_METHOD TS_SIGNATURE("[index: number]: T") T operator[](Number* index) const;
     T operator[](size_t index) const;
 
-    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void") void forEach(TSClosure* closure) const;
+    TS_METHOD TS_SIGNATURE(
+        "forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void") void forEach(TSClosure*
+                                                                                                              closure)
+        const;
 
     Number* indexOf(T value) const;
-    TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex: number): number") Number* indexOf(T value, Number* fromIndex) const;
+    TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex: number): number") Number* indexOf(
+        T value, Number* fromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
     // but somehow meta information have to be provided for code generator on TS side
     template <typename U>
-    TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]") Array<U>* map(TSClosure* closure);
+    TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]")
+        Array<U>* map(TSClosure* closure);
 
     Array<T>* splice(Number* start);
-    TS_METHOD TS_SIGNATURE("splice(start: number, deleteCount: number, ...items: T[]): T[]") Array<T>* splice(Number* start, Number* deleteCount);
+    TS_METHOD TS_SIGNATURE("splice(start: number, deleteCount: number, ...items: T[]): T[]") Array<T>* splice(
+        Number* start, Number* deleteCount);
 
     TS_METHOD TS_SIGNATURE("concat(other: T[]): T[]") Array<T>* concat(const Array<T>& other) const;
 
     std::vector<T> toStdVector() const;
     TS_METHOD String* toString() const;
 
-    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>") TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<T>* iterator() override;
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>")
+        TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<T>* iterator() override;
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<number>") IterableIterator<Number*>* keys();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
 
@@ -79,7 +86,7 @@ private:
 };
 
 template <typename T>
-class TS_EXPORT ArrayIterator : public IterableIterator<T>
+class TS_DECLARE ArrayIterator : public IterableIterator<T>
 {
 public:
     ArrayIterator(Array<T>* iterable)

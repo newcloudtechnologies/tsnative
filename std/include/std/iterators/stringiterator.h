@@ -6,7 +6,7 @@
 #include <std/tsstring.h>
 
 template <typename T>
-class TS_EXPORT StringIterator : public IterableIterator<T>
+class TS_DECLARE StringIterator : public IterableIterator<T>
 {
 public:
     StringIterator(String* iterable)

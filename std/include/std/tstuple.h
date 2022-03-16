@@ -13,7 +13,7 @@
 #include <iostream>
 
 template <typename... Ts>
-class TS_EXPORT Tuple
+class TS_DECLARE Tuple
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(...initializer: any[])") Tuple(Ts... initializers);
