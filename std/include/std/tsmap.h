@@ -43,7 +43,7 @@ public:
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* values();
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): MapIterator<[K, V]>")
-        TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<Tuple<K, V>*>* iterator() override;
+        TS_DECORATOR("MapsTo('iterator')") TS_IGNORE IterableIterator<Tuple<K, V>*>* iterator() override;
 
 private:
     MapPrivate<K, V>* _d;

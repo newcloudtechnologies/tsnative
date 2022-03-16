@@ -38,7 +38,7 @@ public:
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<V>") IterableIterator<V>* keys();
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): SetIterator<T>")
-        TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<V>* iterator() override;
+        TS_DECORATOR("MapsTo('iterator')") TS_IGNORE IterableIterator<V>* iterator() override;
 
 private:
     SetPrivate<V>* _d = nullptr;

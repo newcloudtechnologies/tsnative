@@ -74,7 +74,7 @@ public:
     TS_METHOD String* toString() const;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>")
-        TS_DECORATOR("MapTo('iterator')") TS_IGNORE IterableIterator<T>* iterator() override;
+        TS_DECORATOR("MapsTo('iterator')") TS_IGNORE IterableIterator<T>* iterator() override;
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<number>") IterableIterator<Number*>* keys();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
 

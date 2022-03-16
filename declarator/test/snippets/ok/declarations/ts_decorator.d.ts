@@ -12,7 +12,7 @@
 */
 
 @NoFields
-@MapTo("Pi", 3.14)
+@MapsTo("Pi", 3.14)
 export class Entity {
     private p0_Entity: boolean;
 
