@@ -30,12 +30,12 @@ set(TS_HEADERS
     include/std/iterators/mapiterator.h
     include/std/iterators/setiterator.h
     include/std/iterators/stringiterator.h
+    include/std/tsclosure.h
     include/std/gc.h
 )
 
 set(HEADERS
     ${TS_HEADERS}
-    include/std/tsclosure.h
     include/std/tsoptional.h
 )
 
