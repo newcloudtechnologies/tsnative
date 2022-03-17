@@ -34,11 +34,11 @@ void makeNamespace(parser::const_namespace_item_t item,
     using namespace parser;
 
     namespace_block_t namespaceBlock;
-    AnnotationList anotations(getItemAnnotations(item));
+    AnnotationList annotations(getItemAnnotations(item));
 
-    _ASSERT(anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE));
+    _ASSERT(annotations.exist(TS_MODULE) || annotations.exist(TS_NAMESPACE));
 
-    if (anotations.exist(TS_MODULE) && !anotations.exist(TS_NAMESPACE))
+    if (annotations.exist(TS_MODULE) && !annotations.exist(TS_NAMESPACE))
     {
         if (!item->prefix().empty())
         {
@@ -52,9 +52,27 @@ void makeNamespace(parser::const_namespace_item_t item,
             namespaceBlock->add(it);
         }
     }
-    else if (anotations.exist(TS_NAMESPACE) && !anotations.exist(TS_MODULE))
+    else if (annotations.exist(TS_NAMESPACE) && !annotations.exist(TS_MODULE))
     {
-        namespaceBlock = AbstractBlock::make<NamespaceBlock>(item->name(), true);
+        bool isExport = false;
+        bool isDeclare = false;
+
+        if (annotations.exist(TS_EXPORT))
+        {
+            isExport = true;
+        }
+
+        if (annotations.exist(TS_DECLARE))
+        {
+            isDeclare = true;
+        }
+
+        if (!isExport && !isDeclare)
+        {
+            throw utils::Exception(R"(namespace "%s" must be either TS_EXPORT or TS_DECLARE)", item->name().c_str());
+        }
+
+        namespaceBlock = AbstractBlock::make<NamespaceBlock>(item->name(), isExport, isDeclare);
     }
     else
     {

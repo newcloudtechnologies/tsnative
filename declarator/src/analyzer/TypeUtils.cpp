@@ -88,7 +88,7 @@ std::string TypeMapper::cleanSuffix(const std::string& type) const
 
     for (const auto& it : {"**", "&&", "*", "&"})
     {
-        auto found = type.find_last_of(it);
+        auto found = type.rfind(it);
 
         if (found != std::string::npos)
         {

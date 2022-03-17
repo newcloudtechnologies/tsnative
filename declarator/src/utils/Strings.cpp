@@ -37,11 +37,6 @@ std::string strprintf(const char* format, ...)
     return std::string(&buffer[0]);
 }
 
-std::string append_if(bool cond, const std::string& origin, const std::string& extra)
-{
-    return cond ? origin + extra : origin;
-}
-
 std::vector<std::string> split(const std::string& s, const std::string& delimiter)
 {
     std::vector<std::string> parts;

@@ -24,8 +24,10 @@
 #define TS_MODULE(name) name __attribute__((annotate("TS_MODULE")))
 #define TS_NAMESPACE(name) name __attribute__((annotate("TS_NAMESPACE")))
 #define IS_TS_MODULE __attribute__((annotate("TS_MODULE")))
-#define IS_TS_NAMESPACE __attribute__((annotate("TS_NAMESPACE")))
+#define IS_TS_NAMESPACE __attribute__((annotate("TS_NAMESPACE;;TS_EXPORT")))
+#define IS_TS_DECLARED_NAMESPACE __attribute__((annotate("TS_NAMESPACE;;TS_DECLARE")))
 #define TS_EXPORT __attribute__((annotate("TS_EXPORT")))
+#define TS_DECLARE __attribute__((annotate("TS_DECLARE")))
 #define TS_METHOD __attribute__((annotate("TS_METHOD")))
 #define TS_CLOSURE __attribute__((annotate("TS_CLOSURE")))
 #define TS_SIGNATURE(sig) __attribute__((annotate(MK_ANNOTATION(TS_SIGNATURE, sig))))
@@ -42,7 +44,9 @@
 #define TS_NAMESPACE(name) name
 #define IS_TS_MODULE
 #define IS_TS_NAMESPACE
+#define IS_TS_DECLARED_NAMESPACE
 #define TS_EXPORT
+#define TS_DECLARE
 #define TS_METHOD
 #define TS_CLOSURE
 #define TS_SIGNATURE(sig)

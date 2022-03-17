@@ -25,16 +25,18 @@ class NamespaceBlock : public ContainerBlock
 {
     friend class AbstractBlock;
 
-    bool m_isExport = false;
+protected:
+    bool m_isExport;
+    bool m_isDeclare;
 
 protected:
-    NamespaceBlock(Type type, const std::string& name);
+    NamespaceBlock(Type type, const std::string& name, bool isExport, bool isDeclare);
 
     void printHeader(generator::print::printer_t printer) const override;
     void printFooter(generator::print::printer_t printer) const override;
 
 private:
-    NamespaceBlock(const std::string& name, bool isExport);
+    NamespaceBlock(const std::string& name, bool isExport, bool isDeclare);
 
 public:
     virtual ~NamespaceBlock() = default;

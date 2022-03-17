@@ -18,8 +18,8 @@ namespace generator
 namespace ts
 {
 
-ModuleBlock::ModuleBlock(const std::string& name)
-    : NamespaceBlock(Type::MODULE, name)
+ModuleBlock::ModuleBlock(const std::string& name, bool isDeclare)
+    : NamespaceBlock(Type::MODULE, name, false, isDeclare)
 {
 }
 
@@ -27,7 +27,7 @@ void ModuleBlock::printHeader(generator::print::printer_t printer) const
 {
     using namespace utils;
 
-    std::string img = strprintf(R"(declare module "%s" {)", name().c_str());
+    std::string img = strprintf(R"(%smodule "%s" {)", m_isDeclare ? "declare " : "", name().c_str());
 
     printer->print(img);
     printer->enter();

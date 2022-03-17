@@ -18,15 +18,17 @@ namespace generator
 namespace ts
 {
 
-ClassBlock::ClassBlock(const std::string& name, bool isExport)
+ClassBlock::ClassBlock(const std::string& name, bool isExport, bool isDeclare)
     : AbstractBlock(Type::CLASS, name)
     , m_isExport(isExport)
+    , m_isDeclare(isDeclare)
 {
 }
 
-ClassBlock::ClassBlock(Type type, const std::string& name, bool isExport)
+ClassBlock::ClassBlock(Type type, const std::string& name, bool isExport, bool isDeclare)
     : AbstractBlock(type, name)
     , m_isExport(isExport)
+    , m_isDeclare(isDeclare)
 {
 }
 
@@ -105,13 +107,16 @@ void ClassBlock::printHeader(generator::print::printer_t printer) const
     std::string extends = formatExtends();
     std::string implements = formatImplements();
 
-    std::string inherits = strprintf(
-        R"(%s%s)", append_if(!extends.empty() && !implements.empty(), extends, " ").c_str(), implements.c_str());
+    std::string inherits =
+        strprintf(R"(%s%s)",
+                  !extends.empty() && !implements.empty() ? (extends + " ").c_str() : extends.c_str(),
+                  implements.c_str());
 
-    std::string img = strprintf(R"(%sclass %s %s{)",
+    std::string img = strprintf(R"(%s%sclass %s %s{)",
                                 m_isExport ? "export " : "",
+                                m_isDeclare ? "declare " : "",
                                 name().c_str(),
-                                append_if(!inherits.empty(), inherits, " ").c_str());
+                                inherits.empty() ? "" : (inherits + " ").c_str());
 
     printer->print(img);
     printer->enter();

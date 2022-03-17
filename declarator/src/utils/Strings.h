@@ -20,7 +20,6 @@ namespace utils
 {
 
 std::string strprintf(const char* format, ...);
-std::string append_if(bool cond, const std::string& origin, const std::string& extra);
 std::vector<std::string> split(const std::string& s, const std::string& delimiter);
 bool starts_with(const std::string& s, const std::string& prefix);
 bool ends_with(const std::string& str, const std::string& suffix);

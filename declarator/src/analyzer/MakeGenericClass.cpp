@@ -20,6 +20,8 @@
 
 #include "global/Annotations.h"
 
+#include "utils/Exception.h"
+
 #include <string>
 
 namespace analyzer
@@ -40,7 +42,25 @@ void makeGenericClass(parser::const_class_template_item_t item,
 
     std::string name = (annotations.exist(TS_NAME)) ? annotations.values(TS_NAME).at(0) : item->name();
 
-    auto genericClassBlock = AbstractBlock::make<GenericClassBlock>(name, true);
+    bool isExport = false;
+    bool isDeclare = false;
+
+    if (annotations.exist(TS_EXPORT))
+    {
+        isExport = true;
+    }
+
+    if (annotations.exist(TS_DECLARE))
+    {
+        isDeclare = true;
+    }
+
+    if (!isExport && !isDeclare)
+    {
+        throw utils::Exception(R"(generic class "%s" must be either TS_EXPORT or TS_DECLARE)", item->name().c_str());
+    }
+
+    auto genericClassBlock = AbstractBlock::make<GenericClassBlock>(name, isExport, isDeclare);
 
     for (const auto& it : item->templateParameters())
     {

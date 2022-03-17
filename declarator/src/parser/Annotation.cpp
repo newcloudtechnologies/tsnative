@@ -21,6 +21,7 @@
 
 namespace
 {
+constexpr const char* DELIMITER = R"(;;)";
 
 std::string getAnnotations(const clang::Decl* decl)
 {
@@ -38,7 +39,7 @@ std::string getAnnotations(const clang::Decl* decl)
             }
             else
             {
-                result += "^;" + annotateAttr->getAnnotation().str();
+                result += DELIMITER + annotateAttr->getAnnotation().str();
             }
         }
     }
@@ -164,7 +165,7 @@ bool setAnnotations(clang::CXXRecordDecl* decl, const std::string& annotations)
 }
 
 AnnotationList::AnnotationList(const std::string& annotations)
-    : m_annotationList(utils::split(annotations, "^;"))
+    : m_annotationList(utils::split(annotations, DELIMITER))
 {
 }
 
@@ -312,7 +313,7 @@ std::vector<std::string> AnnotationList::values(const std::string& annotation) c
 
 std::string AnnotationList::toString() const
 {
-    return utils::join(m_annotationList, "^;");
+    return utils::join(m_annotationList, DELIMITER);
 }
 
 } //  namespace parser

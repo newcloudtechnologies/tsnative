@@ -21,6 +21,8 @@
 
 #include "global/Annotations.h"
 
+#include "utils/Exception.h"
+
 #include <string>
 
 namespace analyzer
@@ -39,7 +41,25 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     std::string name = (annotations.exist(TS_NAME)) ? annotations.values(TS_NAME).at(0) : item->name();
 
-    auto classBlock = AbstractBlock::make<ClassBlock>(name, true);
+    bool isExport = false;
+    bool isDeclare = false;
+
+    if (annotations.exist(TS_EXPORT))
+    {
+        isExport = true;
+    }
+
+    if (annotations.exist(TS_DECLARE))
+    {
+        isDeclare = true;
+    }
+
+    if (!isExport && !isDeclare)
+    {
+        throw utils::Exception(R"(class "%s" must be either TS_EXPORT or TS_DECLARE)", item->name().c_str());
+    }
+
+    auto classBlock = AbstractBlock::make<ClassBlock>(name, isExport, isDeclare);
 
     classBlock->addExtends(Extends::get(item));
 

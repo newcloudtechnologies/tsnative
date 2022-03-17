@@ -34,7 +34,7 @@ protected:
                         generator::print::printer_t printer) const override;
 
 private:
-    ModuleBlock(const std::string& name);
+    ModuleBlock(const std::string& name, bool isDeclare = true);
 };
 
 using module_block_t = block_t<ModuleBlock>;

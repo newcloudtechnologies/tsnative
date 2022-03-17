@@ -37,7 +37,7 @@ protected:
     void printHeader(generator::print::printer_t printer) const override;
 
 private:
-    GenericClassBlock(const std::string& name, bool isExport);
+    GenericClassBlock(const std::string& name, bool isExport, bool isDeclare);
 
 public:
     void addTemplateParameter(const TemplateParameterValue& p);

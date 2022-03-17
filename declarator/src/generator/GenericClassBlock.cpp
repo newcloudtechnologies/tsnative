@@ -18,8 +18,8 @@ namespace generator
 namespace ts
 {
 
-GenericClassBlock::GenericClassBlock(const std::string& name, bool isExport)
-    : ClassBlock(Type::GENERIC_CLASS, name, isExport)
+GenericClassBlock::GenericClassBlock(const std::string& name, bool isExport, bool isDeclare)
+    : ClassBlock(Type::GENERIC_CLASS, name, isExport, isDeclare)
 {
 }
 
@@ -50,14 +50,17 @@ void GenericClassBlock::printHeader(generator::print::printer_t printer) const
     std::string implements = formatImplements();
     std::string templateParameters = formatTemplateParameters();
 
-    std::string inherits = strprintf(
-        R"(%s%s)", append_if(!extends.empty() && !implements.empty(), extends, " ").c_str(), implements.c_str());
+    std::string inherits =
+        strprintf(R"(%s%s)",
+                  !extends.empty() && !implements.empty() ? (extends + " ").c_str() : extends.c_str(),
+                  implements.c_str());
 
-    std::string img = strprintf(R"(%sclass %s%s %s{)",
+    std::string img = strprintf(R"(%s%sclass %s%s %s{)",
                                 m_isExport ? "export " : "",
+                                m_isDeclare ? "declare " : "",
                                 name().c_str(),
                                 templateParameters.c_str(),
-                                append_if(!inherits.empty(), inherits, " ").c_str());
+                                inherits.empty() ? "" : (inherits + " ").c_str());
 
     printer->print(img);
     printer->enter();

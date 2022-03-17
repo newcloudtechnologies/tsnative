@@ -43,6 +43,7 @@ protected:
     std::vector<generator::ts::operator_block_t> m_operators;
     std::vector<code_block_t> m_codeBlocks;
     bool m_isExport;
+    bool m_isDeclare;
 
 protected:
     std::string formatExtends() const;
@@ -53,10 +54,10 @@ protected:
     void printFooter(generator::print::printer_t printer) const override;
 
 private:
-    ClassBlock(const std::string& name, bool isExport);
+    ClassBlock(const std::string& name, bool isExport, bool isDeclare);
 
 protected:
-    ClassBlock(Type type, const std::string& name, bool isExport);
+    ClassBlock(Type type, const std::string& name, bool isExport, bool isDeclare);
 
 public:
     void addFields(const field_list_block_t& fields);

@@ -147,8 +147,9 @@ parser::item_list_t getSuitableItems(const parser::Collection& collection)
         {
             AnnotationList anotations(getItemAnnotations(item));
 
-            if (item->isLocal() && (anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE) ||
-                                    anotations.exist(TS_EXPORT) || anotations.exist(TS_CODE)))
+            if (item->isLocal() &&
+                (anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE) || anotations.exist(TS_EXPORT) ||
+                 anotations.exist(TS_DECLARE) || anotations.exist(TS_CODE)))
             {
                 result.push_back(item);
             }
@@ -233,7 +234,7 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
         // Create namespace with name of class and put enum there.
         if (hasNamesake)
         {
-            result = AbstractBlock::make<NamespaceBlock>(name, true);
+            result = AbstractBlock::make<NamespaceBlock>(name, true, false);
             parent->add_before(name, result);
         }
 
