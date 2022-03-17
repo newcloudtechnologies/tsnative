@@ -46,7 +46,6 @@ function(get_target_includes TARGET INCLUDE_LIST)
     list(APPEND result ${includes})
 
     get_target_property(libraries ${TARGET} INTERFACE_LINK_LIBRARIES)
-    list(FILTER libraries EXCLUDE REGEX "^[$][<].*[>]")
 
     foreach(item ${libraries})
         if (TARGET ${item})
@@ -55,6 +54,8 @@ function(get_target_includes TARGET INCLUDE_LIST)
             list(APPEND result ${out_list})
         endif()
     endforeach()
+
+    list(REMOVE_DUPLICATES result)
 
     set(${INCLUDE_LIST} ${result} PARENT_SCOPE)
 endfunction()
