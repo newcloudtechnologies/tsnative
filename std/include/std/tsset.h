@@ -16,6 +16,9 @@
 #endif
 
 template <typename V>
+class SetPrivate;
+
+template <typename V>
 class TS_DECLARE Set : public Iterable<V>
 {
     static_assert(std::is_pointer<V>::value, "TS Set elements expected to be of pointer type");

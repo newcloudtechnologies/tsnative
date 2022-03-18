@@ -13,6 +13,9 @@
 #include <iostream>
 
 template <typename... Ts>
+class TuplePrivate;
+
+template <typename... Ts>
 class TS_DECLARE Tuple
 {
 public:
