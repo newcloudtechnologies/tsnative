@@ -11,7 +11,7 @@
 # TODO: Create intermediate lib that acts as an extesion and links this one.
 # This way we won't need to recompile this lib for every cpp_integration test
 
-set (EXTS_TARGET cpp_integration_exts)
+set (EXTS_TARGET cpp)  # cpp_integration_exts
 
 set(INCLUDES
     aggregate.h

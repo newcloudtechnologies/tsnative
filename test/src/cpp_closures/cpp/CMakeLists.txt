@@ -8,7 +8,7 @@
 # at http://ncloudtech.com/contact.html
 #
 
-set (EXTS_TARGET cpp_exts)
+set (EXTS_TARGET cpp)  # cpp_exts
 
 set(INCLUDES
     button.h

@@ -8,7 +8,7 @@
 # at http://ncloudtech.com/contact.html
 #
 
-set (EXTS_TARGET test_app_ext)
+set (EXTS_TARGET cpp)  # test_app_ext
 
 set (SOURCES "${CMAKE_CURRENT_LIST_DIR}/Ext.cpp")
 set (HEADERS "${CMAKE_CURRENT_LIST_DIR}/Ext.h")
