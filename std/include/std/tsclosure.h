@@ -1,12 +1,14 @@
 #pragma once
 
-#include <TS.h>
+#include "private/options.h"
 
 #include "std/private/options.h"
 
 #include "std/tsboolean.h"
 #include "std/tsnumber.h"
 #include "std/tsoptional.h"
+
+#include <TS.h>
 
 TS_CODE("// @ts-ignore\n"
         "export type TSClosure = Function;\n");

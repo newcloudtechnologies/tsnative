@@ -1,6 +1,6 @@
 #pragma once
 
-#include <TS.h>
+#include "private/options.h"
 
 #include "std/private/options.h"
 
@@ -16,6 +16,8 @@
 #ifdef USE_MAP_STD_BACKEND
 #include "std/private/tsmap_std_p.h"
 #endif
+
+#include <TS.h>
 
 template <typename K, typename V>
 class TS_DECLARE Map : public Iterable<Tuple<K, V>*>

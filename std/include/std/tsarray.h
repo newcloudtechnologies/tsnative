@@ -1,6 +1,6 @@
 #pragma once
 
-#include <TS.h>
+#include "private/options.h"
 
 #include "std/private/options.h"
 
@@ -13,6 +13,8 @@
 #ifdef USE_STD_ARRAY_BACKEND
 #include "std/private/tsarray_std_p.h"
 #endif
+
+#include <TS.h>
 
 #include <sstream>
 #include <vector>

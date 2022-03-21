@@ -1,5 +1,7 @@
 #pragma once
 
+#include "private/options.h"
+
 #include <TS.h>
 
 #include "std/private/options.h"
