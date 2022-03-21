@@ -76,7 +76,7 @@ function(run_declarator NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "SOURCE;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
-        "INCLUDE_DIRECTORIES;"
+        "DEFINITIONS;INCLUDE_DIRECTORIES;"
     )
 
     if (ARG_UNPARSED_ARGUMENTS)
@@ -118,8 +118,15 @@ function(run_declarator NAME ...)
         message(STATUS "SYSROOT=$ENV{SYSROOT_DIR}")
     endif()
 
+    set(DEFINITIONS )
+    list(APPEND DEFINITIONS "-DTS")
+    foreach(def ${ARG_DEFINITIONS})
+        list(APPEND DEFINITIONS "-D${def}")
+    endforeach()
+    string(REPLACE ";" " " DEFINITIONS "${DEFINITIONS}")
+
     set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
-    set(command "${variables} ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} -D TS ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
+    set(command "${variables} ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} ${DEFINITIONS} ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
@@ -161,7 +168,7 @@ function(generate_declarations_ex NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
-        "SOURCES;INCLUDE_DIRECTORIES;OUT_DECLARATIONS"
+        "DEFINITIONS;SOURCES;INCLUDE_DIRECTORIES;OUT_DECLARATIONS"
     )
 
     if (ARG_UNPARSED_ARGUMENTS)
@@ -194,6 +201,7 @@ function(generate_declarations_ex NAME ...)
         set (output )
         run_declarator(${NAME}
             SOURCE "${source}"
+            DEFINITIONS ${ARG_DEFINITIONS}
             INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES}
             TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
             IMPORT "${ARG_IMPORT}"
@@ -220,7 +228,7 @@ function(ts_generate_declarations NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
         "TARGET_COMPILER_ABI;OUTPUT_DIR"
-        "OUT_DECLARATIONS"
+        "DEFINITIONS;OUT_DECLARATIONS"
     )
 
     if (ARG_UNPARSED_ARGUMENTS)
@@ -248,6 +256,7 @@ function(ts_generate_declarations NAME ...)
         SOURCES ${SOURCES}
         TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
         IMPORT "${IMPORT}"
+        DEFINITIONS ${ARG_DEFINITIONS}
         INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         OUTPUT_DIR "${ARG_OUTPUT_DIR}"
         TEMP_DIR "${ARG_OUTPUT_DIR}/temp"
