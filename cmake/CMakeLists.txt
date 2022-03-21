@@ -16,6 +16,8 @@ macro (printvar NAME)
     message(STATUS "${NAME} = ${${NAME}}")
 endmacro()
 
+option(USE_STD_BACKENDS "Use standard backends of std library" ON)
+
 # include(CMakePrintSystemInformation)
 
 if(IS_TEST)
@@ -46,6 +48,18 @@ if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 14)
 endif()
 
+set(DEFINITIONS )
+
+if (USE_STD_BACKENDS)
+    list(APPEND DEFINITIONS USE_STD_ARRAY_BACKEND)
+    list(APPEND DEFINITIONS USE_MAP_STD_BACKEND)
+    list(APPEND DEFINITIONS USE_SET_STD_BACKEND)
+    list(APPEND DEFINITIONS USE_TUPLE_STD_BACKEND)
+    list(APPEND DEFINITIONS USE_BOOLEAN_CXX_BUILTIN_BACKEND)
+    list(APPEND DEFINITIONS USE_NUMBER_CXX_BUILTIN_BACKEND)
+    list(APPEND DEFINITIONS USE_STD_STRING_BACKEND)
+endif()
+
 include(TsBuildUtils)
 include(TsDeclaratorUtils)
 
@@ -54,6 +68,8 @@ add_custom_target(build_anyway ALL)
 # FIXME? StdLib_INCLUDE_DIR point to ${TSNATIVE_ROOT}/include
 # and helps to find declarator's TS.h
 set (include_paths "${StdLib_INCLUDE_DIR}")
+
+add_compile_definitions(${DEFINITIONS})
 
 # TODO: support multiple extensions
 if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
@@ -102,16 +118,6 @@ else()
     set(TS_EXTENSION_TARGET fake)
     add_custom_target(${TS_EXTENSION_TARGET})
 endif()
-
-add_compile_definitions(
-    USE_STD_ARRAY_BACKEND
-    USE_MAP_STD_BACKEND
-    USE_SET_STD_BACKEND
-    USE_TUPLE_STD_BACKEND
-    USE_BOOLEAN_CXX_BUILTIN_BACKEND
-    USE_NUMBER_CXX_BUILTIN_BACKEND
-    USE_STD_STRING_BACKEND
-)
 
 list(APPEND DEPENDENCIES
     "${exts_LIBRARY}"
