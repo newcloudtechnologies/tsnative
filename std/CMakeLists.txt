@@ -15,6 +15,7 @@ find_package(absl)
 
 find_package(TsDeclarator REQUIRED)
 
+include(StdUtils)
 include(TsDeclaratorUtils)
 
 set(TS_HEADERS
@@ -56,13 +57,7 @@ add_library(${PROJECT_NAME}
 
 target_compile_definitions(${PROJECT_NAME}
     PUBLIC
-        USE_STD_ARRAY_BACKEND
-        USE_MAP_STD_BACKEND
-        USE_SET_STD_BACKEND
-        USE_TUPLE_STD_BACKEND
-        USE_BOOLEAN_CXX_BUILTIN_BACKEND
-        USE_NUMBER_CXX_BUILTIN_BACKEND
-        USE_STD_STRING_BACKEND
+        ${STD_DEFINITIONS}
 )
 
 target_include_directories(${PROJECT_NAME}
