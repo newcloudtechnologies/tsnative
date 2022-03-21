@@ -46,7 +46,6 @@ if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 14)
 endif()
 
-include(StdUtils)
 include(TsBuildUtils)
 include(TsDeclaratorUtils)
 
@@ -55,8 +54,6 @@ add_custom_target(build_anyway ALL)
 # FIXME? StdLib_INCLUDE_DIR point to ${TSNATIVE_ROOT}/include
 # and helps to find declarator's TS.h
 set (include_paths "${StdLib_INCLUDE_DIR}")
-
-add_compile_definitions(${STD_DEFINITIONS})
 
 # TODO: support multiple extensions
 if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")

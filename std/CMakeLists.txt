@@ -15,7 +15,6 @@ find_package(absl)
 
 find_package(TsDeclarator REQUIRED)
 
-include(StdUtils)
 include(TsDeclaratorUtils)
 
 set(TS_HEADERS
@@ -55,11 +54,6 @@ add_library(${PROJECT_NAME}
     ${HEADERS} ${SOURCES} 
 )
 
-target_compile_definitions(${PROJECT_NAME}
-    PUBLIC
-        ${STD_DEFINITIONS}
-)
-
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -93,7 +87,6 @@ if (GENERATE_DECLARATIONS)
 
     ts_generate_declarations(${PROJECT_NAME}
         TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
-        DEFINITIONS ${STD_DEFINITIONS}
         OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         OUT_DECLARATIONS TS_DECLARATIONS
     )
