@@ -4,7 +4,7 @@ project(tsnative-std LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)
+option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" ON)
 
 get_filename_component(INSTALL_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/install" REALPATH)
 list(APPEND CMAKE_MODULE_PATH "${INSTALL_DIR}/cmake")
@@ -93,6 +93,7 @@ if (GENERATE_DECLARATIONS)
 
     ts_generate_declarations(${PROJECT_NAME}
         TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
+        DEFINITIONS ${STD_DEFINITIONS}
         OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         OUT_DECLARATIONS TS_DECLARATIONS
     )
