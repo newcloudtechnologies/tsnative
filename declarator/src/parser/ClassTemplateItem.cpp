@@ -42,8 +42,11 @@ int ClassTemplateItem::size() const
     if (m_size < 0)
     {
         // size of templated class is size of specialization
-        ClassTemplateInstantiator instantiator(
-            shared_from_this(), settings.source(), settings.includeDirs(), settings.compilerAbi());
+        ClassTemplateInstantiator instantiator(shared_from_this(),
+                                               settings.source(),
+                                               settings.includeDirs(),
+                                               settings.definitions(),
+                                               settings.compilerAbi());
 
         auto instance = instantiator.instantiate();
 

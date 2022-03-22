@@ -24,6 +24,7 @@ private:
     std::string m_source;
     std::string m_compiler_abi;
     std::vector<std::string> m_include_dirs;
+    std::vector<std::string> m_definitions;
 
 private:
     Settings();
@@ -38,6 +39,7 @@ public:
     std::string source() const;
     std::string compilerAbi() const;
     std::vector<std::string> includeDirs() const;
+    std::vector<std::string> definitions() const;
 };
 
 } // namespace global

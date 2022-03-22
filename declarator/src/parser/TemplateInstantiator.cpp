@@ -107,11 +107,12 @@ public:
 ClassTemplateInstantiator::ClassTemplateInstantiator(parser::const_class_template_item_t classTemplateItem,
                                                      const std::string& source_path,
                                                      const std::vector<std::string>& include_dirs,
+                                                     const std::vector<std::string>& definitions,
                                                      const std::string& compiler_abi)
 {
     // include source header into instance
     m_instancePath = createInstance(classTemplateItem, {source_path});
-    m_tu = createTranslationUnit(m_instancePath, include_dirs, compiler_abi);
+    m_tu = createTranslationUnit(m_instancePath, include_dirs, definitions, compiler_abi);
 }
 
 ClassTemplateInstantiator::~ClassTemplateInstantiator()
@@ -202,11 +203,13 @@ void ClassTemplateInstantiator::deleteInstance(const std::string& instance_path)
 
 CXTranslationUnit ClassTemplateInstantiator::createTranslationUnit(const std::string& instance_path,
                                                                    const std::vector<std::string>& include_dirs,
+                                                                   const std::vector<std::string>& definitions,
                                                                    const std::string& compiler_abi)
 {
     std::string target = utils::strprintf("--target=%s", compiler_abi.c_str());
 
     std::vector<std::string> Is;
+    std::vector<std::string> Ds;
 
     for (const auto& it : include_dirs)
     {
@@ -214,9 +217,20 @@ CXTranslationUnit ClassTemplateInstantiator::createTranslationUnit(const std::st
         Is.push_back(it);
     }
 
-    std::vector<const char*> args = {"-x", "c++", "-D", "TS", target.c_str()};
+    for (const auto& it : definitions)
+    {
+        Ds.push_back("-D");
+        Ds.push_back(it);
+    }
+
+    std::vector<const char*> args = {"-x", "c++", target.c_str()};
 
     for (const auto& it : Is)
+    {
+        args.push_back(it.c_str());
+    }
+
+    for (const auto& it : Ds)
     {
         args.push_back(it.c_str());
     }

@@ -31,6 +31,10 @@ void Settings::do_init(int argc, char** argv)
               {
                   m_include_dirs.push_back(val);
               }
+              if (opt == "D")
+              {
+                  m_definitions.push_back(val);
+              }
               else if (opt == "target")
               {
                   m_compiler_abi = val;
@@ -140,6 +144,11 @@ std::string Settings::compilerAbi() const
 std::vector<std::string> Settings::includeDirs() const
 {
     return m_include_dirs;
+}
+
+std::vector<std::string> Settings::definitions() const
+{
+    return m_definitions;
 }
 
 } // namespace global

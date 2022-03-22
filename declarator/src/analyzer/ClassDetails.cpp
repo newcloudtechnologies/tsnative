@@ -704,7 +704,7 @@ std::vector<std::string> Extends::exportedBases(parser::const_class_item_t item)
             AnnotationList annotations(getAnnotations(it.item()->decl()));
 
             // collect all annotated classes
-            if (annotations.exist(TS_EXPORT))
+            if (annotations.exist(TS_EXPORT) || annotations.exist(TS_DECLARE))
             {
                 result.push_back(getFullName(it.item()->prefix(), it.actualTypeName()));
             }

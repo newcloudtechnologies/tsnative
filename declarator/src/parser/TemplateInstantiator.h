@@ -41,6 +41,7 @@ private:
 
     CXTranslationUnit createTranslationUnit(const std::string& instance_path,
                                             const std::vector<std::string>& include_dirs,
+                                            const std::vector<std::string>& definitions,
                                             const std::string& compiler_abi);
     void deleteTranslationUnit(CXTranslationUnit tu);
 
@@ -48,6 +49,7 @@ public:
     ClassTemplateInstantiator(parser::const_class_template_item_t classTemplateItem,
                               const std::string& source_path,
                               const std::vector<std::string>& include_dirs,
+                              const std::vector<std::string>& definitions,
                               const std::string& compiler_abi);
     ~ClassTemplateInstantiator();
 
