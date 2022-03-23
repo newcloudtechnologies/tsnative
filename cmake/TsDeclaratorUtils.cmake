@@ -380,3 +380,63 @@ function(ts_generate_index NAME ...)
         MODULE_NAME ${MODULE_NAME}
     )
 endfunction()
+
+
+### Build TS Extension library
+### Args:
+# NAME - target name
+# IMPORT - import signature
+# TS_EXPORTED_NAME - exported name from export signature
+# TS_MODULE_NAME - module name from export signature
+# SOURCES - source files to compile
+# LINK_LIBRARIES - absolute paths to any libraries to be link extension
+# LIBRARY_DEPENDENCIES - additional libraries to be link into final executable
+# INCLUDE_DIRECTORIES - paths to search for extension headers
+# DEFINITIONS - compile definitions
+# TS_SOURCES - list of header files to generate declarations
+function (ts_build_extension NAME ...)
+# TODO: static/shared switch?
+    cmake_parse_arguments (PARSE_ARGV 1 
+        "ARG"
+        ""
+        "TS_IMPORT;TS_EXPORTED_NAME;TS_MODULE_NAME"
+        "SOURCES;INCLUDE_DIRECTORIES;LINK_LIBRARIES;DEFINITIONS;LIBRARY_DEPENDENCIES;TS_SOURCES"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${arg_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_SOURCES OR ARG_SOURCES STREQUAL "")
+        message (FATAL_ERROR "No SOURCES provided for extension library")
+    endif ()
+
+    add_library(${NAME} ${ARG_SOURCES})
+
+    target_include_directories(${NAME}
+        PUBLIC
+            ${ARG_INCLUDE_DIRECTORIES}
+    )
+
+    target_link_libraries(${NAME}
+        PUBLIC
+            ${ARG_LINK_LIBRARIES}
+    )
+
+    set(INCLUDE_DIRECTORIES )
+    get_target_includes(${NAME} INCLUDE_DIRECTORIES)
+    list(APPEND INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
+
+    set_target_properties(${NAME} PROPERTIES
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        INCLUDE_PATHS "${ARG_INCLUDE_DIRECTORIES}"
+        LIBRARY_DEPENDENCIES "${ARG_LIBRARY_DEPENDENCIES}"
+        DEFINITIONS "${ARG_DEFINITIONS}"
+        TS_SOURCES "${ARG_TS_SOURCES}"
+        TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
+        TS_IMPORT "${ARG_TS_IMPORT}"
+        TS_EXPORTED_NAME "${TS_EXPORTED_NAME}"
+        TS_MODULE_NAME "${TS_MODULE_NAME}"
+    )
+
+endfunction()
