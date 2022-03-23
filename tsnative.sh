@@ -163,6 +163,9 @@ fi
 OS=$(uname -s)
 ARCH=$(uname -m)
 
+echo "OS detected: ${OS}"
+echo "ARCH detected: ${ARCH}"
+
 # TODO: support Android and iOS
 
 if [[ $OS == Linux ]]; then
@@ -170,7 +173,7 @@ if [[ $OS == Linux ]]; then
         i?86) TARGET_ABI="i686-linux-gnu" ;;
         x86_64) TARGET_ABI="x86_64-linux-gnu" ;;
     esac
-elif [[ $OS == MINGW* ]]; then
+elif [[ $OS == MSYS* ]]; then
     case "$ARCH" in
         i?86) TARGET_ABI="i686-w64-mingw32" ;;
         x86_64) TARGET_ABI="x86_64-w64-mingw32" ;;
