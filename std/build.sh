@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (c) New Cloud Technologies, Ltd., 2014-2021
 #
@@ -23,6 +23,31 @@ mkdir -p ${INSTALL_DIR}
 
 PROJECT_BUILD_DIR="${BUILD_DIR}/std"
 
+OS=$(uname -s)
+ARCH=$(uname -m)
+
+echo "OS detected: ${OS}"
+echo "ARCH detected: ${ARCH}"
+
+# TODO: support Android and iOS
+
+if [[ $OS == Linux ]]; then
+    case "$ARCH" in
+        i?86) TARGET_ABI="i686-linux-gnu" ;;
+        x86_64) TARGET_ABI="x86_64-linux-gnu" ;;
+    esac
+elif [[ $OS == MINGW* ]]; then
+    case "$ARCH" in
+        i?86) TARGET_ABI="i686-w64-mingw32" ;;
+        x86_64) TARGET_ABI="x86_64-w64-mingw32" ;;
+    esac
+else
+    echo "Unsupported OS"
+    exit 1;
+fi
+
+echo "TARGET_ABI detected: ${TARGET_ABI}"
+
 if [ "$(uname -s)" eq "Darwin" ]; then
     JOBS_NUM=$(sysctl -n hw.ncpu)
 else
@@ -44,7 +69,7 @@ cmake -G "Unix Makefiles" \
     -S "${CURRENT_DIR}" \
     -B "${PROJECT_BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_CXX_COMPILER_TARGET="x86_64-linux-gnu" \
+    -DCMAKE_CXX_COMPILER_TARGET=$TARGET_ABI \
     -DCMAKE_INSTALL_PREFIX:STRING="$INSTALL_DIR" \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
