@@ -1,7 +1,9 @@
 #pragma once
 
-#include <std/gc.h>
-#include <std/tsboolean.h>
+#include "std/private/options.h"
+
+#include "std/gc.h"
+#include "std/tsboolean.h"
 
 #include <type_traits>
 

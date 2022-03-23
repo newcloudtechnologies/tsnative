@@ -1,8 +1,10 @@
 #pragma once
 
-#include "tsboolean.h"
-#include "tsnumber.h"
-#include "tsoptional.h"
+#include "std/private/options.h"
+
+#include "std/tsboolean.h"
+#include "std/tsnumber.h"
+#include "std/tsoptional.h"
 
 class TSClosure
 {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "std/private/options.h"
+
 #include "std/gc.h"
 #include "std/iterable.h"
 #include "std/tsarray.h"
@@ -7,7 +9,7 @@
 #include "std/tsnumber.h"
 #include "std/tstuple.h"
 
-#include "iterators/mapiterator.h"
+#include "std/iterators/mapiterator.h"
 
 #ifdef USE_MAP_STD_BACKEND
 #include "std/private/tsmap_std_p.h"

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "tsstring.h"
-#include "tsboolean.h"
+#include "std/private/options.h"
+
+#include "std/tsboolean.h"
+#include "std/tsstring.h"
 
 #include <exception>
 #include <iostream>
@@ -54,7 +56,7 @@ static String n{"\n"};
 static String rn{"\r\n"};
 
 template <typename... Ts>
-void console::logImpl(String *v, Ts... ts)
+void console::logImpl(String* v, Ts... ts)
 {
     if (v->endsWith(&n)->unboxed() || v->endsWith(&rn)->unboxed())
     {
@@ -69,8 +71,10 @@ void console::logImpl(String *v, Ts... ts)
 }
 
 template <typename... Ts>
-void console::assert(Boolean* assumption, Ts... ts) {
-    if (!assumption->unboxed()) {
+void console::assert(Boolean* assumption, Ts... ts)
+{
+    if (!assumption->unboxed())
+    {
         console::log("Assertion failed:", ts...);
         std::terminate();
     }

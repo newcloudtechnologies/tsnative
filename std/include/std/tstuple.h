@@ -1,5 +1,7 @@
 #pragma once
 
+#include "std/private/options.h"
+
 #include "std/gc.h"
 
 #ifdef USE_TUPLE_STD_BACKEND

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "std/private/options.h"
+
 #include <ostream>
 
 class Number;

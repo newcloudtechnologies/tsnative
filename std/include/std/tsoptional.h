@@ -1,11 +1,13 @@
 #pragma once
 
+#include "std/private/options.h"
+
+#include "std/gc.h"
+#include "std/tsstring.h"
+
 #include <cstdint>
 #include <ostream>
 #include <sstream>
-
-#include "gc.h"
-#include "tsstring.h"
 
 template <typename T>
 struct TSOptional

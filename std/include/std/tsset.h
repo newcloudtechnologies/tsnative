@@ -1,15 +1,17 @@
 #pragma once
 
-#include "iterable.h"
+#include "std/private/options.h"
+
+#include "std/iterable.h"
+#include "std/tsarray.h"
+#include "std/tsboolean.h"
+#include "std/tsclosure.h"
+
+#include "std/iterators/setiterator.h"
 
 #ifdef USE_SET_STD_BACKEND
 #include "std/private/tsset_std_p.h"
 #endif
-
-#include "std/iterators/setiterator.h"
-#include "std/tsarray.h"
-#include "std/tsboolean.h"
-#include "std/tsclosure.h"
 
 template <typename V>
 class Set : public Iterable<V>

@@ -1,8 +1,10 @@
 #pragma once
 
-#include <ostream>
+#include "std/private/options.h"
 
-#include <std/tsboolean.h>
+#include "std/tsboolean.h"
+
+#include <ostream>
 
 class String;
 

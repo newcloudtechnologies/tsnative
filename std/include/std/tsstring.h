@@ -1,11 +1,12 @@
 #pragma once
 
-#include "iterable.h"
+#include "std/private/options.h"
+
+#include "std/iterable.h"
+#include "std/tsboolean.h"
 
 #include <ostream>
 #include <string>
-
-#include "tsboolean.h"
 
 template <typename T>
 class Array;

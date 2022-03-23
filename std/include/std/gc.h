@@ -1,9 +1,11 @@
 #pragma once
 
+#include "std/private/options.h"
+
+#include "std/tsnumber.h"
+
 #include <cstdint>
 #include <type_traits>
-
-#include "tsnumber.h"
 
 class GC
 {

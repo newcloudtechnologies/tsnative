@@ -8,17 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/cmake)
 find_package(absl)
 
-add_compile_definitions(
-    USE_STD_ARRAY_BACKEND
-    USE_MAP_STD_BACKEND
-    USE_SET_STD_BACKEND
-    USE_TUPLE_STD_BACKEND
-    USE_BOOLEAN_CXX_BUILTIN_BACKEND
-    USE_NUMBER_CXX_BUILTIN_BACKEND
-    USE_STD_STRING_BACKEND
-)
-
-set( SOURCES
+set(SOURCES
     src/gc.cpp
     src/tsstring.cpp
     src/tsclosure.cpp

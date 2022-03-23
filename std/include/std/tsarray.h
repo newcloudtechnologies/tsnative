@@ -1,16 +1,18 @@
 #pragma once
 
-#include "gc.h"
-#include "iterable.h"
-#include "tsclosure.h"
-#include "tsnumber.h"
-#include "tsstring.h"
+#include "std/private/options.h"
+
+#include "std/gc.h"
+#include "std/iterable.h"
+#include "std/tsclosure.h"
+#include "std/tsnumber.h"
+#include "std/tsstring.h"
 
 #ifdef USE_STD_ARRAY_BACKEND
 #include "std/private/tsarray_std_p.h"
 #endif
 
-#include "iterators/arrayiterator.h"
+#include "std/iterators/arrayiterator.h"
 
 #include <sstream>
 #include <vector>
