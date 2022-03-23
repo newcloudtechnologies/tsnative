@@ -145,6 +145,7 @@ function(run_declarator NAME ...)
     get_filename_component(source_fn "${ARG_SOURCE}" NAME)
     string(REPLACE "/" "." directory_fn "${directory_fn}")
     string(REPLACE "\\" "." directory_fn "${directory_fn}")
+    string(REPLACE ":" "_" directory_fn "${directory_fn}")
     string(REPLACE ".h" ".d.ts" source_fn "${source_fn}")
     set(TARGET "${directory_fn}.${source_fn}")
 
@@ -312,6 +313,7 @@ function(ts_generate_index_ex NAME ...)
     set(directory_fn "${ARG_OUT_DIRECTORY}")
     string(REPLACE "/" "." directory_fn "${directory_fn}")
     string(REPLACE "\\" "." directory_fn "${directory_fn}")
+    string(REPLACE ":" "_" directory_fn "${directory_fn}")
     set(TARGET "${directory_fn}.index.ts")
 
     # generate filenames of declarations without full paths
