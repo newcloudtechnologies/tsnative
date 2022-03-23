@@ -173,7 +173,7 @@ if [[ $OS == Linux ]]; then
         i?86) TARGET_ABI="i686-linux-gnu" ;;
         x86_64) TARGET_ABI="x86_64-linux-gnu" ;;
     esac
-elif [[ $OS == MSYS* ]]; then
+elif [[ $OS == MSYS* ]] || [[ $OS == MINGW* ]]; then
     case "$ARCH" in
         i?86) TARGET_ABI="i686-w64-mingw32" ;;
         x86_64) TARGET_ABI="x86_64-w64-mingw32" ;;
