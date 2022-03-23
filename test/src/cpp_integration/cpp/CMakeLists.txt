@@ -13,6 +13,10 @@
 
 set (EXTS_TARGET cpp)  # cpp_integration_exts
 
+include(TsDeclaratorUtils)
+
+find_package(StdLib REQUIRED)
+
 set(INCLUDES
     aggregate.h
     rect.h
@@ -39,7 +43,7 @@ set(SOURCES
 list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 list(TRANSFORM INCLUDES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 
-ts_build_extension ( ${EXTS_TARGET}
+ts_build_extension(${EXTS_TARGET}
     SOURCES ${SOURCES} ${INCLUDES}
-    INCLUDE_PATHS ${CMAKE_CURRENT_LIST_DIR}
+    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR} ${StdLib_INCLUDE_DIR}
 )
