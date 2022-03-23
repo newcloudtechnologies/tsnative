@@ -108,6 +108,13 @@ function(run_declarator NAME ...)
 
     set(INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
 
+    # FIXME: need to research how to force declarator to find all standard headers
+    if (WIN32)
+        set (MINGW_GCC_INCLUDE_PATH "/mingw64/lib/gcc/${CMAKE_CXX_COMPILER_TARGET}/${CMAKE_CXX_COMPILER_VERSION}/include")
+        list(APPEND INCLUDE_DIRECTORIES "${MINGW_GCC_INCLUDE_PATH}")
+        message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
+    endif()
+
     list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX "^$") # remove empty strings
     list(TRANSFORM INCLUDE_DIRECTORIES PREPEND "-I")
     string(REPLACE ";" " " INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}")
