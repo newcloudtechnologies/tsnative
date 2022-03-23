@@ -68,7 +68,6 @@ function(generate_declarations lib_target dep_target headers target_compiler_abi
     populate_includes(${lib_target} include_directories)
     list(APPEND include_directories "${TS_DECLARATOR_INCLUDE_DIR}")
     list(APPEND include_directories "${StdLib_INCLUDE_DIR}")
-    list(APPEND include_directories "${MgtTs_utils_INCLUDE_DIR}")
 
     # FIXME: need to research how to force declarator to find all standard headers
     if (WIN32)
@@ -77,6 +76,7 @@ function(generate_declarations lib_target dep_target headers target_compiler_abi
         message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
     endif()
 
+    list(FILTER include_directories EXCLUDE REGEX "^$") # remove empty strings
     list(TRANSFORM include_directories PREPEND "-I ")
 
     set (output_list )
