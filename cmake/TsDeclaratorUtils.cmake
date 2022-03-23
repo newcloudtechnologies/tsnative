@@ -107,6 +107,8 @@ function(run_declarator NAME ...)
     string(REPLACE ".h" ".d.ts" OUTPUT_FN "${source_fn}")
 
     set(INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
+
+    list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX "^$") # remove empty strings
     list(TRANSFORM INCLUDE_DIRECTORIES PREPEND "-I")
     string(REPLACE ";" " " INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}")
 
@@ -123,6 +125,8 @@ function(run_declarator NAME ...)
     foreach(def ${ARG_DEFINITIONS})
         list(APPEND DEFINITIONS "-D${def}")
     endforeach()
+
+    list(FILTER DEFINITIONS EXCLUDE REGEX "^$") # remove empty strings
     string(REPLACE ";" " " DEFINITIONS "${DEFINITIONS}")
 
     set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
