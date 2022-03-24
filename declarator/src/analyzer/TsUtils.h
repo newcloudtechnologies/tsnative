@@ -40,6 +40,7 @@ public:
 private:
     Type m_type = Type::UNKNOWN;
     std::string m_name;
+    std::string m_accessor;
     std::vector<Argument> m_arguments;
     std::vector<std::string> m_templateArguments;
     std::string m_retType;
@@ -55,6 +56,7 @@ public:
 
     Type type() const;
     std::string name() const;
+    std::string accessor() const;
     std::string retType() const;
     std::vector<Argument> arguments() const;
     std::vector<std::string> templateArguments() const;

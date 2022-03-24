@@ -18,3 +18,14 @@ export class Collection {
     get capacity(): number;
     set capacity(value: number);
 }
+
+export class Rope {
+    private p0_Rope: boolean;
+
+    constructor();
+    get length(): number;
+    set length(value: number);
+
+    get values<U>(): U[];
+    set values<U>(vals: U[]);
+}

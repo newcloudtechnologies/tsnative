@@ -89,7 +89,7 @@ private:
 
         for (const auto& it : methods)
         {
-            values.insert(it->accessor());
+            values.insert(it->accessor().toString());
         }
 
         return values.find("set") != values.end() && values.find("get") != values.end();
@@ -396,6 +396,8 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
                             ? AbstractBlock::make<MethodBlock>()
                             : AbstractBlock::make<MethodBlock>(signature.name(), signature.retType(), item.isStatic());
 
+                    block->setAccessor(signature.accessor());
+
                     for (const auto& it : signature.arguments())
                     {
                         block->addArgument({it.name, it.type, it.isSpread, it.isOptional});
@@ -410,6 +412,8 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
                     auto block = (item.isConstructor()) ? AbstractBlock::make<GenericMethodBlock>()
                                                         : AbstractBlock::make<GenericMethodBlock>(
                                                               signature.name(), signature.retType(), item.isStatic());
+
+                    block->setAccessor(signature.accessor());
 
                     for (const auto& it : signature.arguments())
                     {

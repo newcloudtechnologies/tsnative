@@ -14,6 +14,7 @@
 #include "AbstractMethodBlock.h"
 #include "FunctionDetails.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -23,13 +24,39 @@ namespace generator
 namespace ts
 {
 
+class MethodAccessor
+{
+public:
+    enum Type
+    {
+        NOTHING = 0,
+        GETTER,
+        SETTER
+    };
+
+private:
+    Type m_type = Type::NOTHING;
+
+    static const std::map<Type, std::string> m_table;
+
+public:
+    MethodAccessor();
+    MethodAccessor(const char* accessor);
+    MethodAccessor(const std::string& accessor);
+    MethodAccessor(Type type);
+
+    Type type() const;
+    std::string toString() const;
+    bool operator==(const MethodAccessor& rv) const;
+};
+
 class MethodBlock : public AbstractMethodBlock
 {
     friend class AbstractBlock;
 
 protected:
     std::vector<ArgumentValue> m_arguments;
-    std::string m_accessor;
+    MethodAccessor m_accessor;
     bool m_isConstructor;
     bool m_isStatic;
 
@@ -46,8 +73,8 @@ public:
     void addArgument(const ArgumentValue& arg);
     bool isConstructor() const;
     bool isStatic() const;
-    void setAccessor(const std::string& accessor);
-    std::string accessor() const;
+    void setAccessor(const MethodAccessor& accessor);
+    MethodAccessor accessor() const;
 };
 
 using method_block_t = block_t<MethodBlock>;

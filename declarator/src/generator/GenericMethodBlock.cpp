@@ -35,16 +35,18 @@ void GenericMethodBlock::printBody(generator::print::printer_t printer) const
     std::string argumentList = formatArgumentList(m_arguments);
     std::string templateArgumentList = formatTemplateArgumentList(m_templateArguments);
     std::string returnType = formatReturnType(m_retType);
+    std::string accessor =
+        m_accessor.type() != MethodAccessor::Type::NOTHING ? (m_accessor.toString() + std::string{" "}) : "";
 
     std::string img = strprintf(
         R"(%s%s%s%s%s(%s)%s;)",
         m_accessModifier.type() != AccessModifier::Type::PUBLIC ? (m_accessModifier.typeAsString() + " ").c_str() : "",
         m_isStatic ? "static " : "",
-        !m_accessor.empty() ? (m_accessor + " ").c_str() : "",
+        accessor.c_str(),
         name().c_str(),
         !templateArgumentList.empty() ? templateArgumentList.c_str() : "",
         argumentList.c_str(),
-        returnType.c_str());
+        (m_accessor == MethodAccessor::Type::SETTER) ? "" : returnType.c_str());
 
     printer->print(img);
     printer->enter();
