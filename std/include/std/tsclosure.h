@@ -1,6 +1,6 @@
 #pragma once
 
-#include "private/options.h"
+#include <TS.h>
 
 #include "std/private/options.h"
 
@@ -8,12 +8,10 @@
 #include "std/tsnumber.h"
 #include "std/tsoptional.h"
 
-#include <TS.h>
-
 TS_CODE("// @ts-ignore\n"
         "export type TSClosure = Function;\n");
-        
-class TSClosure
+
+class TS_DECLARE TSClosure
 {
 public:
     TS_METHOD TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);

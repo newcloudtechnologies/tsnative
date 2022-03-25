@@ -2,12 +2,9 @@
 
 #include "private/options.h"
 
-#include "tsnumber.h"
-
 #include <TS.h>
 
 #include "std/private/options.h"
-
 #include "std/tsnumber.h"
 
 #include <cstdint>

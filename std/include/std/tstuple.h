@@ -1,16 +1,13 @@
 #pragma once
 
-#include "private/options.h"
+#include <TS.h>
 
 #include "std/private/options.h"
-
 #include "std/gc.h"
 
 #ifdef USE_TUPLE_STD_BACKEND
 #include "std/private/tstuple_std_p.h"
 #endif
-
-#include <TS.h>
 
 #include <iostream>
 

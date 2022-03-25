@@ -1,13 +1,11 @@
 #pragma once
 
-#include "private/options.h"
+#include <TS.h>
 
 #include "std/private/options.h"
 
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
-
-#include <TS.h>
 
 #include <exception>
 #include <iostream>
