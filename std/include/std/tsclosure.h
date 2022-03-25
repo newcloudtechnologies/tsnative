@@ -11,7 +11,7 @@
 TS_CODE("// @ts-ignore\n"
         "export type TSClosure = Function;\n");
 
-class TS_DECLARE TSClosure
+class TS_EXPORT TS_DECLARE TSClosure
 {
 public:
     TS_METHOD TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
