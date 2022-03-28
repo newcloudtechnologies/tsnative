@@ -51,9 +51,10 @@ private:
                     const std::string& actualTypeName,
                     bool instantiated = true);
 
-    std::optional<parser::const_abstract_item_t> getItem(const parser::Collection& collection, const std::string& path);
-    std::string getType(const clang::CXXBaseSpecifier& it);
-    std::vector<clang::CXXBaseSpecifier> getBases(const clang::CXXRecordDecl* decl);
+    std::optional<parser::const_abstract_item_t> getItem(const parser::Collection& collection,
+                                                         const std::string& path) const;
+    std::string getType(const clang::CXXBaseSpecifier& it) const;
+    std::vector<clang::CXXBaseSpecifier> getBases(const clang::CXXRecordDecl* decl) const;
 
     std::string getTemplateName(const std::string& actualTypeName) const;
 

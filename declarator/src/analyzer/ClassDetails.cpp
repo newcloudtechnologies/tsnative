@@ -225,18 +225,14 @@ InheritanceNode& InheritanceNode::operator=(const InheritanceNode& other)
 }
 
 std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const parser::Collection& collection,
-                                                                      const std::string& path)
+                                                                      const std::string& path) const
 {
     std::optional<parser::const_abstract_item_t> result;
     parser::const_item_list_t items;
 
-    try
+    if (collection.existItem(path))
     {
         items = collection.getItems(path);
-    }
-    catch (std::exception&)
-    {
-        // result remains empty
     }
 
     if (!items.empty())
@@ -248,7 +244,7 @@ std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const pars
     return result;
 }
 
-std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it)
+std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it) const
 {
     clang::LangOptions lo;
     clang::PrintingPolicy pp(lo);
@@ -258,7 +254,7 @@ std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it)
     return type;
 }
 
-std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(const clang::CXXRecordDecl* decl)
+std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(const clang::CXXRecordDecl* decl) const
 {
     std::vector<clang::CXXBaseSpecifier> result;
 
