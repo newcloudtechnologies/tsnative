@@ -19,24 +19,27 @@ apt install libllvm11 libllvm-11-ocaml-dev libclang1-11 libclang-11-dev
 
 **Environment variables**
 - *DECLARATOR_OUTPUT_DIR* - output dir path (directory for generated declarations)
-- *DECLARATOR_IMPORT* - specify import (dot separated list) Example: "VTable:std-typescript-llvm/decorators/decorators,TSClosure:std-typescript-llvm/definitions/lib.std.utils"
+- *DECLARATOR_IMPORT* - specify import (dot separated list), e.g: 
+`"import { mgt } from 'mgt/declarations';import { ts } from 'mgt/ts/declarations'"`
+- *DECLARATOR_TEMP_DIR* - specify temp directory where declarator creates template instantiation
 
 **Example**
-
 ```
-DECLARATOR_OUTPUT_DIR=/path/to/outputdir DECLARATOR_IMPORT=VTable:std-typescript-llvm/decorators/decorators,TSClosure:std-typescript-llvm/definitions/lib.std.utils declarator -x c++ --target=x86_64-linux-gnu -D TS /home/silart/Projects/CBE/packages/mgt/ui/include/ui/Button.h -I /home/silart/Projects/CBE/packages/mgt/common/include -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_ui -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_window -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_app -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_graphics -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_graphics/graphics -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_signals -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_bpl -I /home/silart/Projects/CBE/out/linux/x86_64/release/STAGE/include/mgt_ui/ui
+DECLARATOR_OUTPUT_DIR=\"path/to/ts_stage/extensions/declarations\" \
+DECLARATOR_IMPORT=\"import { ts } from 'mgt/declarations'\" \
+DECLARATOR_TEMP_DIR=\"path/to/build/tmp\" \
+tsnative/bin/declarator -x c++ --target=x86_64-linux-gnu  -DTS path/to/app/extensions/MyClass.h -I/path/to/include/directory -I/path/to/another/include/directory
 ```
 
 **Import format**
-
-Item of import list *VTable:std-typescript-llvm/decorators/decorators* generates folowing code in declaration:
+Import signature in similar to TypeScript:
 
 ```
-import { VTable } from "std-typescript-llvm/decorators/decorators"
+import { mgt } from 'mgt/declarations'
 ```
+It is possible to use single quotes and double quotes but in cmake double quotes don't work.
 
 **Possible issues**
-
 If declarator can't find any C++ header, make sure includes order is correct. Usually first include is "packages/mgt/common/include" which contains TS.h file.
 
 **Tests**
@@ -52,4 +55,3 @@ To add new test you should to create header file and appropriate declaration in 
 
 To update any snippet you should to run tests, review header and appropriate generated declaration,
 copy generated declaration snippets dir.
-

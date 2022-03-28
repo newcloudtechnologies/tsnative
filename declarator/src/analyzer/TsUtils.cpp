@@ -26,26 +26,27 @@ void TsSignature::parse(const std::string& sig)
     { return std::regex_search(sig.begin(), sig.end(), match, std::regex(pattern)); };
 
     // method: readResponse0(fInfos: FileInfo_t): void
-    if (regex_search(R"(^(get|set)?(([\s]+))?([\w]+)\((.*)\)(\s*\:\s*)?([\w]+((\<(.+)\>)|(\[\]))?)?)"))
+    if (regex_search(R"(^((get|set)\b)?(([\s]+))?([\w]+)\((.*)\)(\s*\:\s*)?([\w]+((\<(.+)\>)|(\[\]))?)?)"))
     {
         m_type = Type::METHOD;
         m_accessor = match[1];
-        m_name = match[4];
-        m_arguments = parseArgumentList(match[5]);
-        m_retType = match[7];
+        m_name = match[5];
+        m_arguments = parseArgumentList(match[6]);
+        m_retType = match[8];
     }
     // generic method: map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
-    else if (regex_search(R"(^(get|set)?(([\s]+))?([\w]+)(\<(.*)\>)(\((.*)\))(\s*\:\s*)?([\w]+((\<(.+)\>)|(\[\])))?)"))
+    else if (regex_search(
+                 R"(^((get|set)\b)?(([\s]+))?([\w]+)(\<(.*)\>)(\((.*)\))(\s*\:\s*)?([\w]+((\<(.+)\>)|(\[\])))?)"))
     {
         m_type = Type::GENERIC_METHOD;
         m_accessor = match[1];
-        m_name = match[4];
-        m_templateArguments = parseTemplateArguments(match[6]);
-        m_arguments = parseArgumentList(match[8]);
-        m_retType = match[10];
+        m_name = match[5];
+        m_templateArguments = parseTemplateArguments(match[7]);
+        m_arguments = parseArgumentList(match[9]);
+        m_retType = match[11];
     }
     // function: function map(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
-    else if (regex_search(R"(^(function\s*)([\w]+)(\((.*)\))(\s*\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
+    else if (regex_search(R"(^(function\b\s*)([\w]+)(\((.*)\))(\s*\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
     {
         m_type = Type::FUNCTION;
         m_name = match[2];
@@ -53,7 +54,7 @@ void TsSignature::parse(const std::string& sig)
         m_retType = match[6];
     }
     // generic function: function map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
-    else if (regex_search(R"(^(function\s*)([\w]+)(\<(.+)\>)(\((.*)\))(\s*\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
+    else if (regex_search(R"(^(function\b\s*)([\w]+)(\<(.+)\>)(\((.*)\))(\s*\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
     {
         m_type = Type::GENERIC_FUNCTION;
         m_name = match[2];
@@ -86,7 +87,7 @@ std::vector<TsSignature::Argument> TsSignature::parseArgumentList(const std::str
     std::vector<Argument> result;
 
     std::regex regexp(
-        R"(((\.\.\.)?[\w]+(\[\])?(\?)?\s*\:\s*)((\([^)]+\)\s*\=\>\s[\w\[\]\_]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
+        R"(((\.\.\.)?[\w]+(\[\])?(\?)?\s*\:\s*)((\([^)]+\)\s*\=\>\s[\w\[\]\_]+)|((readonly\b)?\s*[\w\[\]\<\>\.]+)))");
 
     auto _begin = std::sregex_iterator(args.begin(), args.end(), regexp);
     auto _end = std::sregex_iterator();
@@ -103,7 +104,7 @@ std::vector<TsSignature::Argument> TsSignature::parseArgumentList(const std::str
 TsSignature::Argument TsSignature::parseArgument(const std::string& arg)
 {
     std::regex regexp(
-        R"((\.\.\.)?([\w]+)(\?)?\s*\:\s*((\([^)]+\)\s*\=\>\s*[\w\[\]]+)|((readonly)?\s*[\w\[\]\<\>\.]+)))");
+        R"((\.\.\.)?([\w]+)(\?)?\s*\:\s*((\([^)]+\)\s*\=\>\s*[\w\[\]]+)|((readonly\b)?\s*[\w\[\]\<\>\.]+)))");
     std::smatch match;
 
     if (!std::regex_search(arg.begin(), arg.end(), match, regexp))

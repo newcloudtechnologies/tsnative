@@ -24,6 +24,7 @@ export class AnyWidget {
     readResponse0(fInfos: FileInfo_t): void;
     readResponse1(fInfos: readonly FileInfo_t[]): void;
     readResponse2(fInfos: Array<FileInfo_t>): void;
+    setChildren(val: FileInfo_t[]): void;
 
     map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[];
 }

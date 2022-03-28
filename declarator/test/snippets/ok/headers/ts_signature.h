@@ -35,6 +35,8 @@ class TS_EXPORT AnyWidget
     template <typename U>
     TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]")
         Array<U>* map(TSClosure* closure);
+
+    TS_METHOD TS_SIGNATURE("setChildren(val: FileInfo_t[]): void") void setChildren(Array<FileInfo_t*>* val);
 };
 
 template <typename U>

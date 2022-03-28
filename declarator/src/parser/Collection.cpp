@@ -259,10 +259,11 @@ private:
             AnnotationList templateAnnotations(getAnnotations(classTemplateDecl));
             AnnotationList instantiationAnnotations(getAnnotations(it));
 
-            // remove TS_EXPORT annotation from all template specifications
-            if (templateAnnotations.exist(TS_EXPORT))
+            // remove TS_EXPORT and TS_DECLARE annotations from all template specializations
+            if (templateAnnotations.exist(TS_EXPORT) || templateAnnotations.exist(TS_DECLARE))
             {
                 instantiationAnnotations.remove(TS_EXPORT);
+                instantiationAnnotations.remove(TS_DECLARE);
                 setAnnotations(it, instantiationAnnotations.toString());
             }
 
