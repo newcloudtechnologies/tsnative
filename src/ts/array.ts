@@ -15,13 +15,24 @@ import * as ts from "typescript";
 import { LLVMValue } from "../llvm/value";
 import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
-import { LLVMType } from "../llvm/type";
+import { LLVMStructType, LLVMType } from "../llvm/type";
+import { SIZEOF_ARRAY } from "../cppintegration";
 
 export class TSArray {
   private readonly generator: LLVMGenerator;
+  private readonly llvmType: LLVMType;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
+
+    const structType = LLVMStructType.create(generator, "array");
+    const syntheticBody = structType.getSyntheticBody(SIZEOF_ARRAY);
+    structType.setBody(syntheticBody);
+    this.llvmType = structType.getPointer();
+  }
+
+  getLLVMType() {
+    return this.llvmType;
   }
 
   getArgumentArrayType(expression: ts.ArrayLiteralExpression) {
@@ -123,6 +134,7 @@ export class TSArray {
 
   createPush(elementType: TSType, expression: ts.ArrayLiteralExpression) {
     const arrayType = this.getType(expression);
+
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();
     }
@@ -146,14 +158,9 @@ export class TSArray {
       throw new Error(`Array 'push' for type '${arrayType.toString()}' not found`);
     }
 
-    const parameterType =
-      elementType.isObject() || elementType.isUnionOrIntersection()
-        ? LLVMType.getInt8Type(this.generator).getPointer()
-        : elementType.getLLVMType();
-
     const { fn: push } = this.generator.llvm.function.create(
       this.generator.builtinNumber.getLLVMType(),
-      [LLVMType.getInt8Type(this.generator).getPointer(), parameterType],
+      [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
 
@@ -252,7 +259,7 @@ export class TSArray {
     }
 
     const { fn: toString } = this.generator.llvm.function.create(
-      this.generator.builtinString.getLLVMType(),
+      this.generator.ts.str.getLLVMType(),
       [LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );

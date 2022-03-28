@@ -30,6 +30,10 @@ export class TSSymbol {
     return Boolean(this.symbol.flags & ts.SymbolFlags.Property);
   }
 
+  isMethod() {
+    return this.valueDeclaration?.isMethod();
+  }
+
   isOptionalMethod() {
     return this.valueDeclaration?.isMethod() && this.valueDeclaration.isOptional();
   }

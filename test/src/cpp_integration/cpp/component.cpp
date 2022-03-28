@@ -1,6 +1,10 @@
 #include <iostream>
 
-class Component
+#include <std/tsobject.h>
+#include <std/gc.h>
+#include <std/tsnumber.h>
+
+class Component : public Object
 {
 public:
     Component();
@@ -10,9 +14,6 @@ public:
     virtual void render();
 
     void test();
-
-private:
-    double m = 999;
 };
 
 class AnotherWidget
@@ -29,9 +30,9 @@ public:
     void handle(Component *c);
 };
 
-
 Component::Component()
 {
+    set("m", GC::track(new Number(222)));
 }
 
 void Component::test()

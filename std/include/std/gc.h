@@ -15,7 +15,7 @@ public:
     template <typename Source>
     static Source track(Source value)
     {
-        static_assert(std::is_pointer<Source>::value);
+        static_assert(std::is_pointer<Source>::value, "Value must be a pointer");
         // @todo: here we start tracking existing pointer
         return value;
     }
@@ -23,7 +23,7 @@ public:
     template <typename Source>
     static Source untrack(Source value)
     {
-        static_assert(std::is_pointer<Source>::value);
+        static_assert(std::is_pointer<Source>::value, "Value must be a pointer");
         // @todo: here we stop tracking existing pointer
         return value;
     }
@@ -32,7 +32,7 @@ public:
     template <typename Destination, typename Source>
     static Destination* createHeapAllocated(Source value)
     {
-        static_assert(std::is_constructible<Destination, Source>::value);
+        static_assert(std::is_constructible<Destination, Source>::value, "DestinationT must be constructible from SourceT");
 
         return GC::track(new Destination(value));
     }

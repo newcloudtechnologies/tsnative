@@ -45,11 +45,6 @@ export class TSIterableIterator {
       throw new Error(`Iterator for type '${type.toString()}' not found`);
     }
 
-    const parentScope = valueDeclaration.getScope(type);
-    if (!parentScope.thisData) {
-      throw new Error("No 'this' data found");
-    }
-
     const { fn: iterator } = this.generator.llvm.function.create(
       LLVMType.getInt8Type(this.generator).getPointer(),
       [LLVMType.getInt8Type(this.generator).getPointer()],

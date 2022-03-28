@@ -8,6 +8,9 @@
 #include "std/tsclosure.h"
 #include "std/tsnumber.h"
 #include "std/tstuple.h"
+#include "std/tsobject.h"
+
+#include <sstream>
 
 #include "std/iterators/mapiterator.h"
 
@@ -16,13 +19,14 @@
 #endif
 
 template <typename K, typename V>
-class Map : public Iterable<Tuple<K, V>*>
+class Map : public Object, public Iterable<Tuple<K, V>*>
 {
     static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value,
                   "TS Map keys/values expected to be of pointer type");
 
 public:
     Map();
+    ~Map() override;
 
     Map<K, V>* set(K key, V value);
 
@@ -41,6 +45,13 @@ public:
 
     IterableIterator<Tuple<K, V>*>* iterator() override;
 
+    String* toString() const override;
+
+    template <typename U, typename W>
+    friend std::ostream& operator<<(std::ostream& os, const Map<U, W>* m);
+
+    friend class Object;
+
 private:
     MapPrivate<K, V>* _d;
 };
@@ -51,6 +62,12 @@ Map<K, V>::Map()
     : _d(new MapStdPrivate<K, V>())
 #endif
 {
+}
+
+template <typename K, typename V>
+Map<K, V>::~Map()
+{
+    delete _d;
 }
 
 template <typename K, typename V>
@@ -153,9 +170,22 @@ IterableIterator<Tuple<K, V>*>* Map<K, V>::iterator()
 }
 
 template <typename K, typename V>
+String* Map<K, V>::toString() const
+{
+    return GC::track(new String(_d->toString()));
+}
+
+template <typename K, typename V>
 IterableIterator<K>* Map<K, V>::keys()
 {
     auto keys = Array<K>::fromStdVector(_d->orderedKeys());
     auto it = new ArrayIterator<K>(keys);
     return GC::track(it);
+}
+
+template <typename K, typename V>
+inline std::ostream& operator<<(std::ostream& os, const Map<K, V>* m)
+{
+    os << m->_d->toString();
+    return os;
 }

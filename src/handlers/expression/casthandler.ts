@@ -13,7 +13,6 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import * as ts from "typescript";
 import { LLVMValue } from "../../llvm/value";
-import { LLVMStructType } from "../../llvm/type";
 
 export class CastHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -22,76 +21,14 @@ export class CastHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.AsExpression:
         const asExpression = expression as ts.AsExpression | ts.TypeAssertion;
 
-        if (this.generator.boxedPrimitives.includes(asExpression.type.getText())) {
-          throw new Error(`
-          Casting primitives to boxed versions is not supported.
-          Error at: '${expression.getText()}'
-          `);
+        let value = this.generator.handleExpression(asExpression.expression, env);
+
+        if (value.type.isUnion()) {
+          value = this.generator.ts.union.get(value);
         }
-
-        const value = this.generator.handleExpression(asExpression.expression, env);
-
-        const nakedValueType = value.type.unwrapPointer();
 
         const destinationTSType = this.generator.ts.checker.getTypeFromTypeNode(asExpression.type);
-        const destinationLLVMType = destinationTSType.getLLVMType();
-        const nakedDestinationType = destinationLLVMType.unwrapPointer();
-
-        if (!value.isUnion()) {
-          return this.generator.builder.createBitCast(value, destinationTSType.getLLVMType().ensurePointer());
-        }
-
-        const unionName = (nakedValueType as LLVMStructType).name;
-        if (!unionName) {
-          throw new Error("Name required for UnionStruct");
-        }
-
-        const unionMeta = this.generator.meta.getUnionMeta(unionName);
-
-        if (destinationTSType.isObject()) {
-          if (destinationTSType.isClass()) {
-            return value.extract(destinationLLVMType);
-          }
-
-          const typeProps = destinationTSType.getProperties();
-          const propNames = typeProps.map((symbol) => symbol.name);
-          const allocated = this.generator.gc.allocate(nakedDestinationType.unwrapPointer());
-
-          for (let i = 0; i < propNames.length; ++i) {
-            const valueIndex = unionMeta.propsMap.get(propNames[i]);
-            if (typeof valueIndex === "undefined") {
-              throw new Error(`Mapping not found for '${propNames[i]}'`);
-            }
-
-            const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, i]);
-            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, valueIndex]);
-            const propValue = this.generator.builder.createLoad(propValuePtr);
-            this.generator.builder.createSafeStore(propValue, destinationPtr);
-          }
-
-          return allocated;
-        } else if (destinationTSType.isUnion()) {
-          const destinationStructType = nakedDestinationType as LLVMStructType;
-          const destinationUnionMeta = this.generator.meta.getUnionMeta(destinationStructType.name!);
-
-          const allocated = this.generator.gc.allocate(destinationStructType);
-
-          destinationUnionMeta.propsMap.forEach((index, name) => {
-            const sourceIndex = unionMeta.propsMap.get(name);
-            if (!sourceIndex) {
-              throw new Error(`'${name}' not found in '${unionMeta.name}'`);
-            }
-
-            const destinationPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, index]);
-            const propValuePtr = this.generator.builder.createSafeInBoundsGEP(value, [0, sourceIndex]);
-            const propValue = this.generator.builder.createLoad(propValuePtr);
-            this.generator.builder.createSafeStore(propValue, destinationPtr);
-          });
-
-          return allocated;
-        } else {
-          return value.extract(destinationLLVMType);
-        }
+        return this.generator.builder.createBitCast(value, destinationTSType.getLLVMType().ensurePointer());
       default:
         break;
     }

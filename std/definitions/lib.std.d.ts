@@ -1,3 +1,23 @@
+declare class Object {
+  constructor(_?: any);
+
+  private get(key: string): any;
+  private set(key: string, value: any): void;
+
+  toString(): string;
+  private toBool(): boolean;
+}
+
+declare class Union {
+  constructor(_?: any);
+
+  private getValue(): Object;
+  private setValue(_: Object): void;
+
+  toString(): string;
+  private toBool(): boolean;
+}
+
 declare class Number {
   constructor(_: any);
 
@@ -40,13 +60,12 @@ declare class Number {
   private greaterThan(other: number): boolean;
   private greaterEqualsThan(other: number): boolean;
 
-  private toBool(): boolean;
-
   private unboxed(): number;
 
   private clone(): number;
 
   toString(): string;
+  private toBool(): boolean;
 }
 
 // @ts-ignore
@@ -63,6 +82,7 @@ declare class Boolean {
   private clone(): boolean;
 
   toString(): string;
+  private toBool(): boolean;
 }
 
 // @ts-ignore
@@ -92,6 +112,7 @@ declare class Array<T> {
   [index: number]: T;
 
   toString(): string;
+  private toBool(): boolean;
 
   keys(): ArrayIterator<number>;
   values(): ArrayIterator<T>;
@@ -107,6 +128,9 @@ declare class Tuple {
   [index: number]: any;
 
   get length(): number;
+
+  toString(): string;
+  private toBool(): boolean;
 }
 
 declare class Map<K, V> {
@@ -132,6 +156,9 @@ declare class Map<K, V> {
   @MapsTo("iterator")
   [Symbol.iterator](): MapIterator<[K, V]>;
 
+  toString(): string;
+  private toBool(): boolean;
+
   get size(): number;
 }
 
@@ -154,6 +181,9 @@ declare class Set<T> {
   // @ts-ignore
   @MapsTo("iterator")
   [Symbol.iterator](): SetIterator<T>;
+
+  toString(): string;
+  private toBool(): boolean;
 
   get size(): number;
 }
@@ -198,13 +228,30 @@ declare class String {
 
   get length(): number;
 
-  private equals(string): boolean;
+  toString(): string;
+  private toBool(): boolean;
+
+  private equals(_: string): boolean;
 
   private clone(): string;
 }
 
 // @ts-ignore
 declare type string = String;
+
+declare class Undefined {
+  constructor();
+
+  toString(): string;
+  private toBool(): boolean;
+}
+
+declare class Null {
+  constructor();
+
+  toString(): string;
+  private toBool(): boolean;
+}
 
 declare namespace console {
   export function log(message?: any, ...optionalParams: any[]): void;

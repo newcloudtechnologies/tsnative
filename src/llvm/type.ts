@@ -166,6 +166,11 @@ export class LLVMType {
     return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.Object));
   }
 
+  isObject() {
+    const nakedType = this.unwrapPointer().type;
+    return Boolean(nakedType.isStructTy() && nakedType.name === "object");
+  }
+
   isTSTypeLiteral() {
     const nakedType = this.unwrapPointer().type;
     return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.TypeLiteral));
@@ -187,42 +192,24 @@ export class LLVMType {
     return this.type.isPointerTy() && this.getPointerElementType().isLLVMArray();
   }
 
-  isIntersection() {
-    const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.isStructType() && nakedType.name?.endsWith(".intersection"));
-  }
-
   isUnion() {
     const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.isStructType() && nakedType.name?.endsWith(".union"));
-  }
-
-  isUnionWithUndefined(): boolean {
-    const nakedType = this.unwrapPointer();
-    return Boolean(
-      nakedType.isStructType() && nakedType.name?.startsWith("undefined.") && nakedType.name?.endsWith(".union")
-    );
-  }
-
-  isUnionWithNull(): boolean {
-    const nakedType = this.unwrapPointer();
-    return Boolean(
-      nakedType.isStructType() && nakedType.name?.startsWith("null.") && nakedType.name?.endsWith(".union")
-    );
-  }
-
-  isOptionalUnion() {
-    return this.isUnionWithUndefined() || this.isUnionWithNull();
+    return Boolean(nakedType.isStructType() && nakedType.name === "union");
   }
 
   isUndefined() {
     const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.isStructType() && nakedType.name?.startsWith("undefined"));
+    return Boolean(nakedType.isStructType() && nakedType.name === "undefined");
+  }
+
+  isNull() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.name === "null");
   }
 
   isClosure() {
     const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.isStructType() && nakedType.name?.startsWith("TSClosure__class"));
+    return Boolean(nakedType.isStructType() && nakedType.name === "closure");
   }
 
   getTypeSize() {
@@ -231,6 +218,10 @@ export class LLVMType {
       return size;
     }
     return this.generator.module.dataLayout.getTypeStoreSize(this.type);
+  }
+
+  get returnType() {
+    return LLVMType.make((this.type as llvm.FunctionType).returnType, this.generator);
   }
 
   getTypename() {

@@ -93,9 +93,9 @@ export class TSType {
     if (this.isTuple()) {
       // ts.TypeChecker.getSymbol won't return symbol for declaration placed in *.d.ts (https://github.com/Microsoft/TypeScript/issues/5218)
       // Actually 'symbol' property exists, so try hard to get it.
-      symbol = (this.checker.generator.tuple.getDeclaration().unwrapped as any).symbol;
+      symbol = (this.checker.generator.ts.tuple.getDeclaration().unwrapped as any).symbol;
     } else if (this.isString()) {
-      symbol = (this.checker.generator.builtinString.getDeclaration().unwrapped as any).symbol;
+      symbol = (this.checker.generator.ts.str.getDeclaration().unwrapped as any).symbol;
     }
 
     if (!symbol) {
@@ -110,8 +110,8 @@ export class TSType {
   }
 
   getTypename() {
-    if (this.isPrimitive()) {
-      return this.checker.getBaseTypeOfLiteralType(this.type).toString();
+    if (this.isSymbolless()) {
+      return this.toString();
     }
 
     const symbol = this.getSymbol();
@@ -160,7 +160,7 @@ export class TSType {
 
   isTuple() {
     const typeNode = this.checker.unwrap().typeToTypeNode(this.type);
-    return Boolean(typeNode && ts.isTupleTypeNode(typeNode));
+    return Boolean(typeNode && ts.isTupleTypeNode(typeNode)) || this.toString() === "Tuple";
   }
 
   isMap() {
@@ -202,6 +202,19 @@ export class TSType {
     }
 
     return declaration.isClass();
+  }
+
+  isAmbient() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    const declaration = this.getSymbol().valueDeclaration;
+    if (!declaration) {
+      return false;
+    }
+
+    return declaration.isAmbient();
   }
 
   isInterface() {
@@ -253,19 +266,25 @@ export class TSType {
       return false;
     }
 
+    const symbol = this.getSymbol();
+
     return (
-      Boolean(this.getSymbol().flags & ts.SymbolFlags.Function) ||
-      Boolean(this.getSymbol().flags & ts.SymbolFlags.Method) ||
-      Boolean(this.getSymbol().members?.get(ts.InternalSymbolName.Call))
+      Boolean(symbol.flags & ts.SymbolFlags.Function) ||
+      Boolean(symbol.flags & ts.SymbolFlags.Method) ||
+      Boolean(symbol.members?.get(ts.InternalSymbolName.Call))
     );
   }
 
+  isClosure() {
+    return this.toString() === "TSClosure";
+  }
+
   isUndefined() {
-    return this.toString() === "undefined";
+    return this.toString() === "undefined" || this.toString() === "Undefined";
   }
 
   isNull() {
-    return this.toString() === "null";
+    return this.toString() === "null" || this.toString() === "Null";
   }
 
   isString() {
@@ -445,20 +464,6 @@ export class TSType {
   }
 
   toString() {
-    if (this.isUnionOrIntersection()) {
-      const getElementTypeName = (elementType: TSType): string => {
-        if (elementType.isUnionOrIntersection()) {
-          return elementType.types.map((t) => getElementTypeName(t)).join(".");
-        }
-        return elementType.mangle();
-      };
-
-      return this.types
-        .map((t) => getElementTypeName(t))
-        .join(".")
-        .concat(this.type.isUnion() ? ".union" : ".intersection");
-    }
-
     return this.checker.unwrap().typeToString(this.type);
   }
 
@@ -481,18 +486,6 @@ export class TSType {
         .join("_");
       return "Array__" + types + "__class";
     }
-
-    // if (this.isString()) {
-    //   return "String";
-    // }
-
-    // if (this.isNumber()) {
-    //   return "Number";
-    // }
-
-    // if (this.isBoolean()) {
-    //   return "Boolean";
-    // }
 
     let suffix = "";
 
@@ -540,219 +533,6 @@ export class TSType {
     return [this.getTypename(), ...typeArguments].concat(suffix || []).join("__");
   }
 
-  getObjectPropsLLVMTypesNames(): { type: LLVMType; name: string }[] {
-    if (this.isUnionOrIntersection()) {
-      return flatten(
-        this.types.map((subtype) => {
-          return subtype.getObjectPropsLLVMTypesNames();
-        })
-      ).filter((value, index, array) => array.findIndex((v) => v.name === value.name) === index);
-    }
-
-    const getTypeAndNameFromProperty = (property: TSSymbol): { type: LLVMType; name: string } => {
-      const declaration = property.declarations[0];
-      let tsType = this.checker.getTypeAtLocation(declaration.unwrapped);
-
-      if (!tsType.isSupported()) {
-        if (!ts.isClassDeclaration(declaration.parent)) {
-          throw new Error(
-            `Generic-typed properties are allowed only for classes. Error at: '${declaration.parent.getText()}'`
-          );
-        }
-
-        const classDeclaration = Declaration.create(declaration.parent, this.checker.generator);
-        const typeMapper = this.checker.generator.meta.getClassTypeMapper(classDeclaration);
-        tsType = typeMapper.get(tsType.toString());
-      }
-
-      const llvmType = tsType.getLLVMType();
-
-      const hasValueTypeDecorator = property.valueDeclaration?.decorators?.some(
-        (decorator) => decorator.getText() === "@ValueType"
-      );
-
-      return { type: hasValueTypeDecorator ? llvmType.unwrapPointer() : llvmType, name: property.name };
-    };
-
-    const symbol = this.getSymbol();
-
-    const properties: { type: LLVMType; name: string }[] = [];
-    if (symbol.valueDeclaration && symbol.valueDeclaration.isClass() && symbol.valueDeclaration.heritageClauses) {
-      const inheritedProps = flatten(
-        symbol.valueDeclaration.heritageClauses.map((clause) => {
-          const clauseProps = clause.types
-            .map((expressionWithTypeArgs) => this.checker.getTypeAtLocation(expressionWithTypeArgs))
-            .map((t) => {
-              return t.getProperties().map(getTypeAndNameFromProperty);
-            });
-
-          return flatten(clauseProps);
-        })
-      );
-
-      properties.push(...inheritedProps);
-    }
-
-    properties.push(
-      ...this.getProperties()
-        .map(getTypeAndNameFromProperty)
-        .filter((property) => !properties.find((p) => property.name === p.name))
-    );
-
-    return properties;
-  }
-
-  // @todo: tslint will warn 'no-unused-variables' if this method is marked as private
-  protected getStructType() {
-    const elements = this.getObjectPropsLLVMTypesNames();
-
-    let structType: LLVMStructType;
-    const declarations = this.getSymbol().declarations;
-    const declaration =
-      declarations.find((decl) => decl.isClass()) ||
-      declarations.find((decl) => decl.isInterface()) ||
-      declarations.find((decl) => decl.isTypeLiteral());
-
-    if (declaration) {
-      const declarationNamespace = declaration.getNamespace();
-      const name = declarationNamespace.concat(this.mangle()).join("_");
-
-      const knownStructType = this.checker.generator.module.getTypeByName(name);
-
-      if (!knownStructType) {
-        structType = LLVMStructType.create(this.checker.generator, name);
-        const props = this.getProperties().map((symbol) => symbol.name);
-        this.checker.generator.meta.registerObjectMeta(name, structType, props);
-
-        const knownSize = this.checker.generator.sizeOf.getByName(name);
-        if (knownSize) {
-          const syntheticBody = structType.getSyntheticBody(knownSize);
-          structType.setBody(syntheticBody);
-        } else {
-          const structElements = elements.map((element) => element.type);
-
-          if (declaration.withVTable()) {
-            // vptr
-            const vptrType = LLVMType.getVPtrType(this.checker.generator);
-            structElements.unshift(vptrType);
-          }
-          structType.setBody(structElements);
-        }
-
-        this.checker.generator.meta.registerStructMeta(
-          name,
-          structType,
-          elements.map((element) => element.name)
-        );
-      } else {
-        structType = LLVMType.make(knownStructType, this.checker.generator) as LLVMStructType;
-      }
-    } else {
-      structType = LLVMStructType.get(
-        this.checker.generator,
-        elements.map((element) => element.type)
-      );
-    }
-
-    return structType;
-  }
-
-  private getIntersectionOrUnionTypeProperties(): { type: LLVMType; name: string }[] {
-    return flatten(
-      this.types.map((t) => {
-        if (t.isUnionOrIntersection()) {
-          return t.getIntersectionOrUnionTypeProperties();
-        }
-
-        if (t.isPrimitive()) {
-          return { type: t.getLLVMType(), name: "primitive" };
-        }
-
-        return t.getProperties().map((property) => {
-          const declaration = property.declarations[0];
-          const tsType = this.checker.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-          const llvmType = tsType.getLLVMType();
-          const valueType = declaration.decorators?.some((decorator) => decorator.getText() === "@ValueType");
-          return { type: valueType ? llvmType.unwrapPointer() : llvmType, name: property.name };
-        });
-      })
-    );
-  }
-
-  private getUnionElementTypes(): LLVMType[] {
-    return flatten(
-      this.types.map((subtype) => {
-        if (!subtype.isSymbolless()) {
-          const subtypeSymbol = subtype.getSymbol();
-          const subtypeValueDeclaration = subtypeSymbol.valueDeclaration || subtypeSymbol.declarations[0];
-
-          if (!subtypeValueDeclaration) {
-            throw new Error(`Unable to find value declaration for type '${subtype.toString()}'`);
-          }
-
-          if (subtypeValueDeclaration.isInterface()) {
-            return subtype.getObjectPropsLLVMTypesNames().map((value) => value.type);
-          }
-        }
-
-        if (subtype.isUnion()) {
-          return subtype.getUnionElementTypes();
-        }
-
-        return [subtype.getLLVMType()];
-      })
-    );
-  }
-
-  getIntersectionStructType() {
-    const intersectionName = this.toString();
-    const existing = this.checker.generator.module.getTypeByName(intersectionName);
-    if (existing) {
-      return LLVMType.make(existing, this.checker.generator);
-    }
-
-    const elements = this.getIntersectionOrUnionTypeProperties();
-
-    if (elements.length === 0) {
-      // So unlikely but have to be checked.
-      throw new Error(`Intersection '${intersectionName}' has no elements.`);
-    }
-
-    const intersection = LLVMStructType.create(this.checker.generator, intersectionName);
-    intersection.setBody(elements.map((element) => element.type));
-
-    this.checker.generator.meta.registerIntersectionMeta(
-      intersectionName,
-      intersection,
-      elements.map((element) => element.name.toString())
-    );
-
-    return intersection;
-  }
-
-  getUnionStructType() {
-    const unionName = this.toString();
-    const knownUnionType = this.checker.generator.module.getTypeByName(unionName);
-    if (knownUnionType) {
-      return LLVMType.make(knownUnionType, this.checker.generator) as LLVMStructType;
-    }
-
-    const elements = this.getUnionElementTypes();
-
-    const unionType = LLVMStructType.create(this.checker.generator, unionName);
-    unionType.setBody(elements);
-
-    const allProperties = this.getIntersectionOrUnionTypeProperties();
-
-    const props = allProperties.map((property) => property.name);
-    const propsMap = allProperties.reduce((acc, symbol, index) => {
-      return acc.set(symbol.name, index);
-    }, new Map<string, number>());
-
-    this.checker.generator.meta.registerUnionMeta(unionName, unionType, props, propsMap);
-    return unionType;
-  }
-
   getLLVMReturnType() {
     const llvmReturnType = this.getLLVMType();
 
@@ -765,11 +545,11 @@ export class TSType {
 
   getLLVMType(): LLVMType {
     if (this.isIntersection()) {
-      return this.getIntersectionStructType().getPointer();
+      return this.checker.generator.ts.obj.getLLVMType();
     }
 
     if (this.isUnion()) {
-      return this.getUnionStructType().getPointer();
+      return this.checker.generator.ts.union.getLLVMType();
     }
 
     if (this.isEnum()) {
@@ -785,11 +565,15 @@ export class TSType {
     }
 
     if (this.isString()) {
-      return this.checker.generator.builtinString.getLLVMType();
+      return this.checker.generator.ts.str.getLLVMType();
     }
 
     if (this.isVoid()) {
       return LLVMType.getVoidType(this.checker.generator);
+    }
+
+    if (this.isClosure()) {
+      return this.checker.generator.tsclosure.getLLVMType();
     }
 
     if (this.isFunction()) {
@@ -814,19 +598,44 @@ export class TSType {
     }
 
     if (this.isUndefined()) {
-      return this.checker.generator.builtinBoolean.getLLVMType();
+      return this.checker.generator.ts.undef.getLLVMType();
     }
 
     if (this.isNull()) {
-      return this.checker.generator.builtinBoolean.getLLVMType();
-    }
-
-    if (this.isObject()) {
-      return this.getStructType().getPointer();
+      return this.checker.generator.ts.null.getLLVMType();
     }
 
     if (this.isTuple()) {
-      return this.checker.generator.tuple.getLLVMType();
+      return this.checker.generator.ts.tuple.getLLVMType();
+    }
+
+    if (this.isArray()) {
+      return this.checker.generator.ts.array.getLLVMType();
+    }
+
+    if (this.isClass() && this.isAmbient()) {
+      const symbol = this.getSymbol();
+      const declaration = symbol.valueDeclaration;
+
+      if (!declaration) {
+        throw new Error(`No declaration found for type '${this.toString()}'`);
+      }
+
+      const knownSize = (this.checker.generator.sizeOf.getByName(this.getTypename()) || 0) / 8;
+      const sizeProperties = declaration.properties.filter((prop) => prop.isPrivate());
+
+      const propTypes: LLVMType[] = new Array(knownSize || sizeProperties.length).fill(
+        this.checker.generator.builtinNumber.getLLVMType()
+      );
+
+      // @todo create type to make ir readable?
+      const structType = LLVMStructType.get(this.checker.generator, propTypes);
+
+      return structType.getPointer();
+    }
+
+    if (this.isObject()) {
+      return this.checker.generator.ts.obj.getLLVMType();
     }
 
     throw new Error(`Unhandled type: '${this.toString()}'`);
@@ -846,10 +655,6 @@ export class TSType {
   }
 
   toCppType(): string {
-    if (this.isFunction()) {
-      return "TSClosure*";
-    }
-
     if (this.isArray()) {
       const elementType = this.getTypeGenericArguments()[0]!;
       return `Array<${elementType.toCppType()}>*`;
@@ -885,48 +690,62 @@ export class TSType {
       return `Tuple<${cppTypeParameters.join(",")}>*`;
     }
 
-    if (this.isOptionalUnion()) {
-      if (this.types.length > 2) {
-        throw new Error(
-          `CPP integration only implemented for optional unions with exactly one element. Error for type '${this.toString()}'`
-        );
-      }
-
-      return `TSOptional<${this.types[1].toCppType()}>*`;
+    if (this.isFunction() || this.isClosure()) {
+      return "TSClosure*";
     }
 
-    let typename = this.toString();
+    if (this.isUnion()) {
+      return "Union*";
+    }
+
+    if (this.isIntersection()) {
+      return "Object*";
+    }
+
+    if (this.isUndefined()) {
+      return "Undefined*";
+    }
+
+    if (this.isNull()) {
+      return "Null*";
+    }
 
     if (this.isNumber()) {
       return "Number*";
-    } else if (this.isString()) {
+    }
+
+    if (this.isString()) {
       return "String*";
-    } else if (this.isBoolean()) {
+    }
+
+    if (this.isBoolean()) {
       return "Boolean*";
-    } else if (this.isUnionOrIntersection()) {
-      return "void*";
-    } else if (!this.isSymbolless()) {
+    }
+
+    if (this.isInterface()) {
+      return "Object*";
+    }
+
+    if (this.isTypeLiteral()) {
+      return "Object*";
+    }
+
+    if (this.isEnum() && !this.isAmbient()) {
+      return this.getEnumElementCppType();
+    }
+
+    if (!this.isSymbolless()) {
       const symbol = this.getSymbol();
       const declaration = symbol.valueDeclaration || symbol.declarations[0];
 
-      if (declaration.isInterface()) {
-        return "void*";
-      }
-
       if (!declaration.isAmbient()) {
-        if (declaration.isClass()) {
-          return "void*";
-        }
-
-        if (this.isObject()) {
-          return "void*";
-        }
-
-        if (this.isEnum()) {
-          return this.getEnumElementCppType();
+        if (declaration.isClass() || this.isObject()) {
+          return "Object*";
         }
       }
     }
+
+    let typename = this.toString();
 
     if (this.isClassOrInterface()) {
       typename += "*";

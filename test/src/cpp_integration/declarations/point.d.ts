@@ -1,6 +1,4 @@
 declare module "cpp" {
-    import { ValueType } from "std/decorators/decorators"
-
     export class Point {
         constructor(x: number, y: number);
 
@@ -12,9 +10,7 @@ declare module "cpp" {
 
         clone(): Point;
 
-        @ValueType
-        private x_: number;
-        @ValueType
-        private y_: number;
+        private p0: number;
+        private p1: number;
     }
 }

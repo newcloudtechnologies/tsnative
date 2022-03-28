@@ -58,6 +58,11 @@ String* Boolean::toString() const
     return GC::track(new String(oss.str()));
 }
 
+Boolean* Boolean::toBool() const
+{
+    return clone();
+}
+
 bool Boolean::unboxed() const
 {
     return _d->value();

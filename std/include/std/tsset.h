@@ -6,6 +6,10 @@
 #include "std/tsarray.h"
 #include "std/tsboolean.h"
 #include "std/tsclosure.h"
+#include "std/tsobject.h"
+#include "std/tsstring.h"
+
+#include <sstream>
 
 #include "std/iterators/setiterator.h"
 
@@ -14,12 +18,13 @@
 #endif
 
 template <typename V>
-class Set : public Iterable<V>
+class Set : public Object, public Iterable<V>
 {
     static_assert(std::is_pointer<V>::value, "TS Set elements expected to be of pointer type");
 
 public:
     Set();
+    ~Set() override;
 
     Boolean* has(V value) const;
     Set<V>* add(V value);
@@ -35,6 +40,8 @@ public:
     IterableIterator<V>* iterator() override;
     IterableIterator<V>* keys();
 
+    String* toString() const override;
+
 private:
     SetPrivate<V>* _d = nullptr;
 };
@@ -45,6 +52,12 @@ Set<V>::Set()
     : _d(new SetStdPrivate<V>())
 #endif
 {
+}
+
+template <typename V>
+Set<V>::~Set()
+{
+    delete _d;
 }
 
 template <typename V>
@@ -126,4 +139,17 @@ template <typename V>
 IterableIterator<V>* Set<V>::keys()
 {
     return values();
+}
+
+template <typename V>
+String* Set<V>::toString() const
+{
+    return GC::track(new String(_d->toString()));
+}
+
+template <typename U>
+inline std::ostream& operator<<(std::ostream& os, const Set<U>* s)
+{
+    os << s->toString();
+    return os;
 }

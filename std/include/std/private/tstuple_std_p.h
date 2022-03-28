@@ -10,12 +10,13 @@ class TupleStdPrivate : public TuplePrivate<Ts...>
 {
 public:
     TupleStdPrivate(Ts... initializers);
+    ~TupleStdPrivate();
 
     int length() const override;
     void* operator[](int index) override;
 
     template <typename... Us>
-    friend std::ostream& operator<<(std::ostream& os, TuplePrivate<Us...>* tuple);
+    friend std::ostream& operator<<(std::ostream& os, const TuplePrivate<Us...>* tuple);
 
 private:
     std::tuple<Ts...>* _tuple = nullptr;
@@ -25,6 +26,13 @@ template <typename... Ts>
 TupleStdPrivate<Ts...>::TupleStdPrivate(Ts... initializers)
     : _tuple{new std::tuple<Ts...>{initializers...}}
 {
+}
+
+template <typename... Ts>
+TupleStdPrivate<Ts...>::~TupleStdPrivate()
+{
+    // @todo: untrack?
+    delete _tuple;
 }
 
 template <typename... Ts>
@@ -41,7 +49,7 @@ void* TupleStdPrivate<Ts...>::operator[](int index)
 }
 
 template <typename... Ts>
-inline std::ostream& operator<<(std::ostream& os, TupleStdPrivate<Ts...>* tuple)
+inline std::ostream& operator<<(std::ostream& os, const TupleStdPrivate<Ts...>* tuple)
 {
     os << std::boolalpha;
     os << "[ ";

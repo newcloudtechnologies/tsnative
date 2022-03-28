@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <ostream>
 #include <set>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -23,6 +25,11 @@ public:
 
     const std::vector<V>& ordered() const override;
 
+    std::string toString() const override;
+
+    template <typename U>
+    friend std::ostream& operator<<(std::ostream&, const SetStdPrivate<U>*);
+
 private:
     std::set<V> _set;
     std::vector<V> _ordered;
@@ -31,7 +38,7 @@ private:
 template <typename V>
 bool SetStdPrivate<V>::has(V value) const
 {
-    auto it = _set.find(value);
+    auto it = std::find_if(_set.cbegin(), _set.cend(), [&value](V v) { return std::equal_to<V>()(v, value); });
     return it != _set.end();
 }
 
@@ -50,7 +57,7 @@ void SetStdPrivate<V>::add(V value)
 template <typename V>
 bool SetStdPrivate<V>::remove(V value)
 {
-    auto setIt = _set.find(value);
+    auto setIt = std::find_if(_set.cbegin(), _set.cend(), [&value](V v) { return std::equal_to<V>()(v, value); });
     if (setIt == _set.end())
     {
         return false;
@@ -84,4 +91,27 @@ template <typename V>
 const std::vector<V>& SetStdPrivate<V>::ordered() const
 {
     return _ordered;
+}
+
+template <typename V>
+std::string SetStdPrivate<V>::toString() const
+{
+    std::ostringstream oss;
+    oss << this;
+    return oss.str();
+}
+
+template <typename V>
+inline std::ostream& operator<<(std::ostream& os, const SetStdPrivate<V>* s)
+{
+    os << "Set [\n";
+
+    for (auto value : s->_ordered)
+    {
+        os << "  " << value << "\n";
+    }
+
+    os << "]";
+
+    return os;
 }

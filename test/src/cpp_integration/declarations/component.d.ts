@@ -1,13 +1,16 @@
-import { VTable, VTableSize, VirtualDestructor, Virtual, ValueType } from "std/decorators/decorators";
+import { VTable, VTableSize, VirtualDestructor, Virtual } from "std/decorators/decorators";
 
 export declare class AnotherWidget {
     constructor();
+
+    private p0: number;
+    private p1: number;
 }
 
 @VTable
 @VirtualDestructor
 // @ts-ignore
-@VTableSize(6)
+@VTableSize(8)
 export declare class Component {
     constructor();
 
@@ -21,12 +24,17 @@ export declare class Component {
 
     test(): void;
 
-    @ValueType
     m: number;
+
+    private p0: number;
+    private p1: number;
 }
 
 export declare class Handler {
     constructor();
 
     handle(c: Component): void;
+
+    private p0: number;
+    private p1: number;
 }

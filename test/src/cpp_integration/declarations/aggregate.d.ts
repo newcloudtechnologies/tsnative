@@ -1,6 +1,4 @@
 declare module "cpp" {
-    import { ValueType } from "std/decorators/decorators";
-
     export class Aggregate {
         constructor(point: Point,
             array: string[],
@@ -12,10 +10,21 @@ declare module "cpp" {
 
         getNumber(): number;
 
-        private point: Point;
-        private array: string[];
-        private s: string;
-        @ValueType
-        private n: number;
+        private p0: number;
+        private p1: number;
+    }
+
+    export class LargerAggregate {
+        constructor(x1: number, y1: number, x2: number, y2: number);
+
+        getTopLeft(): Point;
+        getBottomRight(): Point;
+
+        getRect(): Rect;
+
+        getScaled(factor: number): this;
+
+        private p0: number;
+        private p1: number;
     }
 }

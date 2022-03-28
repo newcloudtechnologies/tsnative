@@ -48,7 +48,7 @@ export class TSIterator {
       thisType,
       [],
       this.generator,
-      [genericType]
+      [genericType.toCppType()]
     );
 
     if (!isExternalSymbol) {

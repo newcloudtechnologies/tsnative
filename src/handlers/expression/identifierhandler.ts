@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { HeapVariableDeclaration, Environment } from "../../scope";
+import { HeapVariableDeclaration, Environment, Scope } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
 
 export class IdentifierHandler extends AbstractExpressionHandler {
@@ -22,6 +22,10 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.ThisKeyword:
       case ts.SyntaxKind.SuperKeyword:
         return this.handleThis(env);
+      case ts.SyntaxKind.UndefinedKeyword:
+        return this.generator.ts.undef.get();
+      case ts.SyntaxKind.NullKeyword:
+        return this.generator.ts.null.get();
       default:
         break;
     }
@@ -34,18 +38,33 @@ export class IdentifierHandler extends AbstractExpressionHandler {
   }
 
   private handleIdentifier(expression: ts.Identifier, env?: Environment): LLVMValue {
+    if (expression.getText() === "null") {
+      return this.generator.ts.null.get();
+    } else if (expression.getText() === "undefined") {
+      return this.generator.ts.undef.get();
+    }
+
+    let identifier = expression.getText();
+
     if (env) {
-      const index = env.getVariableIndex(expression.text);
+      const index = env.getVariableIndex(identifier);
       if (index > -1) {
         const agg = this.generator.builder.createLoad(env.typed);
-        return this.generator.builder.createSafeExtractValue(agg, [index]);
+
+        const extracted = this.generator.builder.createSafeExtractValue(agg, [index]);
+
+        const maybePrototype = env.getPrototype(identifier);
+        if (maybePrototype) {
+          extracted.attachPrototype(maybePrototype);
+        }
+
+        return extracted;
       }
     }
 
     const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
     const declaration = symbol.valueDeclaration;
 
-    let identifier = expression.getText();
     if (declaration && (declaration.isClass() || declaration.isInterface())) {
       const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
       const declarationNamespace = declaration.getNamespace();
@@ -58,8 +77,8 @@ export class IdentifierHandler extends AbstractExpressionHandler {
         return value.allocated;
       }
 
-      if (!value) {
-        throw new Error(`Identifier handler: LLVMValue for '${expression.text}' not found`);
+      if (value instanceof Scope) {
+        throw new Error(`Identifier handler: LLVMValue for '${expression.text}' not found (Scope)`);
       }
 
       return value as LLVMValue;
@@ -73,7 +92,15 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       const index = env.getVariableIndex(this.generator.internalNames.This);
       if (index > -1) {
         const agg = this.generator.builder.createLoad(env.typed);
-        return this.generator.builder.createSafeExtractValue(agg, [index]);
+
+        const extracted = this.generator.builder.createSafeExtractValue(agg, [index]);
+
+        const maybePrototype = env.getPrototype(this.generator.internalNames.This);
+        if (maybePrototype) {
+          extracted.attachPrototype(maybePrototype);
+        }
+
+        return extracted;
       }
     }
 

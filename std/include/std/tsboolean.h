@@ -2,14 +2,17 @@
 
 #include "std/private/options.h"
 
+#include <iomanip>
 #include <ostream>
+
+#include "std/tsobject.h"
 
 class Number;
 class String;
 
 class BooleanPrivate;
 
-class Boolean
+class Boolean : public Object
 {
 public:
     Boolean();
@@ -17,26 +20,27 @@ public:
     Boolean(Number* value);
     Boolean(String* value);
 
-    ~Boolean();
+    ~Boolean() override;
 
     Boolean* negate() const;
     Boolean* equals(Boolean* other) const;
 
     Boolean* clone() const;
 
-    String* toString() const;
+    String* toString() const override;
+    Boolean* toBool() const override;
 
     bool unboxed() const;
 
-    friend std::ostream& operator<<(std::ostream& os, Boolean* v);
+    friend std::ostream& operator<<(std::ostream& os, const Boolean* v);
 
 private:
     BooleanPrivate* _d = nullptr;
 };
 
-inline std::ostream& operator<<(std::ostream& os, Boolean* v)
+inline std::ostream& operator<<(std::ostream& os, const Boolean* v)
 {
-    os << v->unboxed();
+    os << std::boolalpha << v->unboxed();
     return os;
 }
 

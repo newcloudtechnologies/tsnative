@@ -1,8 +1,10 @@
 #pragma once
 
+#include <std/tsobject.h>
+
 namespace test {
 
-class Base {
+class Base : public Object {
 public:
   Base();
 

@@ -49,6 +49,7 @@ class Itanium {
 
 type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
 export class ExternalSymbolsProvider {
+  private readonly declaration: Declaration;
   private readonly namespace: string;
   private readonly thisTypeName: string = "";
   private readonly classTemplateParametersPattern: string = "";
@@ -69,20 +70,26 @@ export class ExternalSymbolsProvider {
 
   constructor(
     declaration: Declaration,
-    expression: ts.NewExpression | ts.CallExpression | undefined,
+    expression: ts.NewExpression | ts.CallExpression | ts.PropertyAccessExpression | undefined,
     argumentTypes: TSType[],
     thisType: TSType | undefined,
     generator: LLVMGenerator,
     knownMethodName?: string,
-    knownGenericTypes?: TSType[],
+    knownGenericTypes?: string[],
     knownArgumentTypes?: string[]
   ) {
+    this.declaration = declaration;
     this.generator = generator;
+
     const namespace = declaration.getNamespace().join("::");
     this.namespace = namespace ? namespace + "::" : "";
 
     if (thisType) {
       this.thisTypeName = thisType.getTypename();
+
+      if (thisType.isTuple()) {
+        this.thisTypeName = this.generator.ts.tuple.getDeclaration().type.toString();
+      }
 
       if (!knownGenericTypes) {
         const thisTypeSymbol = thisType.getSymbol();
@@ -93,7 +100,15 @@ export class ExternalSymbolsProvider {
           thisTypeTypeMapper = this.generator.meta.getClassTypeMapper(thisTypeValueDeclaration);
         }
 
-        const typeArguments = thisType.getTypeGenericArguments();
+        let typeArguments = thisType.getTypeGenericArguments();
+
+        // @todo make Tuple non-template class?
+        if (thisType.isTuple()) {
+          if (expression && ts.isPropertyAccessExpression(expression)) {
+            const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+            typeArguments = tupleType.getTypeGenericArguments();
+          }
+        }
 
         this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
           typeArguments.map((type) => {
@@ -105,9 +120,7 @@ export class ExternalSymbolsProvider {
           })
         );
       } else {
-        this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
-          knownGenericTypes.map((type) => type.toCppType())
-        );
+        this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(knownGenericTypes);
       }
     }
 
@@ -136,15 +149,16 @@ export class ExternalSymbolsProvider {
 
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }
-  tryGet(declaration: Declaration): string | undefined {
-    let mangledName = this.tryGetImpl(declaration);
+
+  tryGet(): string | undefined {
+    let mangledName = this.tryGetImpl(this.declaration);
 
     if (mangledName) {
       return mangledName;
     }
 
-    if (declaration.isMethod()) {
-      const classDeclaration = Declaration.create(declaration.parent as ts.ClassDeclaration, this.generator);
+    if (this.declaration.isMethod()) {
+      const classDeclaration = Declaration.create(this.declaration.parent as ts.ClassDeclaration, this.generator);
       if (!classDeclaration.name) {
         return;
       }
@@ -201,12 +215,16 @@ export class ExternalSymbolsProvider {
 
   private extractFunctionTemplateParameters(
     declaration: Declaration,
-    expression: ts.CallExpression | ts.NewExpression | undefined,
+    expression: ts.CallExpression | ts.NewExpression | ts.PropertyAccessExpression | undefined,
     generator: LLVMGenerator
   ): string {
     let functionTemplateParametersPattern: string = "";
 
     if (!expression) {
+      return functionTemplateParametersPattern;
+    }
+
+    if (ts.isPropertyAccessExpression(expression)) {
       return functionTemplateParametersPattern;
     }
 
@@ -240,16 +258,10 @@ export class ExternalSymbolsProvider {
   }
   private tryGetImpl(declaration: Declaration): string | undefined {
     if (declaration.isConstructor()) {
-      // `Ctor::Ctor(` or `Ctor<T>::Ctor(`
-      const constructorPattern = new RegExp(
-        `(?=^${this.namespace}${this.thisTypeName}(<.*>::|::)${this.thisTypeName}\\()`,
-        "i" // @todo: potential pitfall, but handy for String-string case
-      );
-
       return this.handleDeclarationWithPredicate((cppSignature: string, mangledIndex: number) => {
         const symbol = externalMangledSymbolsTable[mangledIndex];
         return (
-          constructorPattern.test(cppSignature) &&
+          this.isConstructor(cppSignature) &&
           (symbol.includes(Itanium.completeObjectConstructor) || symbol.includes(Itanium.baseObjectConstructor))
         );
       });
@@ -272,8 +284,7 @@ export class ExternalSymbolsProvider {
       // `.*( | ns)Class<T>::method(`
       // `.*( | ns)Class<T>::method<U>(`
       const classMethodPattern = new RegExp(
-        `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`,
-        "i" // @todo: potential pitfall, but handy for String-string case
+        `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
       );
 
       const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${this.namespace}${this.thisTypeName}>(::)${this.methodName}`);
@@ -346,7 +357,7 @@ export class ExternalSymbolsProvider {
     return parameters
       .map((parameter) => {
         return parameter
-          .replace(/(const|volatile|&|(?<!\()\*)/g, "")
+          .replace(/(const|volatile|&|\s|(?<!\()\*)/g, "")
           .trim()
           .replace(/\s\)/g, ")");
       })
@@ -376,6 +387,13 @@ export class ExternalSymbolsProvider {
 
     return [classTemplateParameters, functionTemplateParameters];
   }
+
+  private isConstructor(cppSignature: string) {
+    // `Ctor::Ctor(` or `Ctor<T>::Ctor(`
+    const ctorPattern = new RegExp(`(?=^${this.namespace}${this.thisTypeName}(<.*>::|::)${this.thisTypeName}\\()`);
+    return ctorPattern.test(cppSignature);
+  }
+
   private isMatching(cppSignature: string): boolean {
     const parameters = ExternalSymbolsProvider.extractParameterTypes(cppSignature);
 
@@ -383,8 +401,10 @@ export class ExternalSymbolsProvider {
     let matching = parameters === this.parametersPattern;
 
     // check arguments pattern if not matched with parameters
-    if (!matching && parameters.length > 0) {
-      matching = parameters === this.argumentsPattern;
+    if (!matching) {
+      if (this.argumentsPattern.length > 0 || this.isConstructor(cppSignature)) {
+        matching = parameters === this.argumentsPattern;
+      }
     }
 
     if (matching) {

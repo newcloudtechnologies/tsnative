@@ -6,7 +6,9 @@
 #include "std/iterable.h"
 #include "std/tsclosure.h"
 #include "std/tsnumber.h"
+#include "std/tsobject.h"
 #include "std/tsstring.h"
+#include "std/tsboolean.h"
 
 #ifdef USE_STD_ARRAY_BACKEND
 #include "std/private/tsarray_std_p.h"
@@ -18,14 +20,14 @@
 #include <vector>
 
 template <typename T>
-class Array : public Iterable<T>
+class Array : public Object, public Iterable<T>
 {
     static_assert(std::is_pointer<T>::value, "TS Array elements expected to be of pointer type");
 
 public:
     Array();
     // mkrv @todo: at least copy ctor
-    ~Array();
+    ~Array() override;
 
     static Array<T>* fromStdVector(const std::vector<T>& initializer)
     {
@@ -65,14 +67,15 @@ public:
     Array<T>* concat(const Array<T>& other) const;
 
     std::vector<T> toStdVector() const;
-    String* toString() const;
+
+    String* toString() const override;
 
     IterableIterator<T>* iterator() override;
     IterableIterator<Number*>* keys();
     IterableIterator<T>* values();
 
     template <typename U>
-    friend std::ostream& operator<<(std::ostream& os, Array<U>* array);
+    friend std::ostream& operator<<(std::ostream& os, const Array<U>* array);
 
 private:
     ArrayPrivate<T>* _d = nullptr;
@@ -276,7 +279,7 @@ IterableIterator<T>* Array<T>::values()
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& os, Array<T>* array)
+inline std::ostream& operator<<(std::ostream& os, const Array<T>* array)
 {
     os << array->_d->toString();
     return os;

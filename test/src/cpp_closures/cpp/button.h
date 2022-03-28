@@ -1,10 +1,12 @@
 #pragma once
 
-#include <std/tsclosure.h>
+#include <std/tsobject.h>
 
 class Point;
+class TSClosure;
 
-class Button {
+class Button : public Object
+{
 public:
   Button();
 
@@ -13,8 +15,4 @@ public:
 
   void click() const;
   void clickWithPoint(Point *) const;
-
-private:
-  TSClosure *onClickedHandler = nullptr;
-  TSClosure *onClickedWithPointHandler = nullptr;
 };

@@ -12,7 +12,7 @@
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
-import { LLVMConstantFP, LLVMConstantInt, LLVMUnion, LLVMValue } from "../../llvm/value";
+import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -22,7 +22,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
           return false;
         }
 
-        if (!this.generator.ts.checker.nodeHasSymbol(expr)) {
+        if (!this.generator.ts.checker.nodeHasSymbolAndDeclaration(expr)) {
           return false;
         }
 
@@ -61,20 +61,10 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             return lhs;
           }
 
-          if (right.kind === ts.SyntaxKind.NullKeyword) {
-            if (!lhs.type.isUnionWithNull()) {
-              throw new Error(
-                `Expected left hand side operand to be union with null type, got '${lhs.type
-                  .unwrapPointer()
-                  .toString()}'. Error at: '${expression.getText()}'`
-              );
-            }
-
-            rhs = this.generator.gc.allocate(lhs.type.unwrapPointer());
-            (rhs as LLVMUnion).initializeNullOptional();
-          } else {
-            rhs = this.generator.handleExpression(right, env);
-          }
+          rhs =
+            right.kind === ts.SyntaxKind.NullKeyword
+              ? this.generator.ts.union.create(this.generator.ts.null.get())
+              : this.generator.handleExpression(right, env);
 
           return lhs.makeAssignment(rhs);
         default:

@@ -1,6 +1,10 @@
 #include "point.h"
 
-Point::Point(Number* x, Number* y) : _x(x->unboxed()), _y(y->unboxed()) {}
+Point::Point(Number *x, Number *y)
+{
+    set("x", x);
+    set("y", y);
+}
 
-const Number* Point::x() const { return &_x; }
-const Number* Point::y() const { return &_y; }
+const Number *Point::x() const { return get<const Number *>("x"); }
+const Number *Point::y() const { return get<const Number *>("y"); }

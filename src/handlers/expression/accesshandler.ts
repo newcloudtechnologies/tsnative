@@ -2,8 +2,8 @@ import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "../../s
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { LLVMUnion, LLVMValue } from "../../llvm/value";
-import { LLVMStructType } from "../../llvm/type";
+import { LLVMValue } from "../../llvm/value";
+import { LLVMType } from "../../llvm/type";
 import { Declaration } from "../../ts/declaration";
 
 export class AccessHandler extends AbstractExpressionHandler {
@@ -11,6 +11,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     switch (expression.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
         const symbol = this.generator.ts.checker.getSymbolAtLocation(expression);
+
         if (symbol.declarations.some((declaration) => declaration.isGetAccessor() || declaration.isSetAccessor())) {
           // Handle accessors in FunctionHandler.
           break;
@@ -175,6 +176,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+
     const subscription = this.generator.ts.tuple.createSubscription(tupleType);
     const tuple = this.generator.handleExpression(expression.expression, env);
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
@@ -185,9 +187,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
     // Handle case with runtime index access.
     if (isNaN(elementIndex)) {
-      const llvmUnionType = this.generator.ts.checker.getTypeAtLocation(expression).getLLVMType();
-      const nullUnion = LLVMUnion.createNullValue(llvmUnionType, this.generator);
-      return nullUnion.initialize(element, index);
+      return this.generator.ts.union.create(element);
     }
 
     let elementType = tupleType.getTypeGenericArguments()[elementIndex];
@@ -205,69 +205,34 @@ export class AccessHandler extends AbstractExpressionHandler {
       throw new Error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
-    while (llvmValue.type.getPointerElementType().isPointer()) {
-      llvmValue = this.generator.builder.createLoad(llvmValue);
+    if (!llvmValue.type.isPointerToStruct()) {
+      throw new Error(
+        `Expected '${expression.getText()}' to be a pointer to struct, got '${llvmValue.type.toString()}'. Error at '${
+          expression + "." + propertyName
+        }'`
+      );
     }
 
-    if (llvmValue.isUnion() || llvmValue.isIntersection()) {
-      if (llvmValue.isUnion()) {
-        const unionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
-        if (!unionName) {
-          throw new Error("Name required for UnionStruct");
-        }
-
-        const unionMeta = this.generator.meta.getUnionMeta(unionName);
-        const index = unionMeta.propsMap.get(propertyName);
-        if (typeof index === "undefined") {
-          throw new Error(`Mapping not found for ${propertyName}`);
-        }
-
-        llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
-      } else if (llvmValue.type.isIntersection()) {
-        const intersectionName = (llvmValue.type.unwrapPointer() as LLVMStructType).name;
-        if (!intersectionName) {
-          throw new Error("Name required for IntersectionStruct");
-        }
-
-        const intersectionMeta = this.generator.meta.getIntersectionMeta(intersectionName);
-        const index = intersectionMeta.props.indexOf(propertyName);
-        if (index === -1) {
-          throw new Error(`Mapping not found for ${propertyName}`);
-        }
-
-        llvmValue = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, index]);
-      }
-
-      llvmValue = this.generator.builder.createLoad(llvmValue);
-
-      if (
-        !llvmValue.type.isTSClass() &&
-        !llvmValue.type.isTSInterface() &&
-        !llvmValue.type.isTSObject() &&
-        !llvmValue.type.isTSTypeLiteral()
-      ) {
-        return llvmValue;
-      }
+    if (llvmValue.type.isUnion()) {
+      llvmValue = this.generator.ts.union.get(llvmValue);
     }
 
-    let propertyIndex = -1;
+    let value = this.generator.ts.obj.get(llvmValue, propertyName);
 
-    if (!llvmValue.name || llvmValue.name === this.generator.internalNames.This) {
-      const type = this.generator.ts.checker.getTypeAtLocation(expression);
-      propertyIndex = type.indexOfProperty(propertyName);
+    let type = this.generator.ts.checker.getTypeAtLocation(expression);
+    if (!type.isSymbolless()) {
+      const propertySymbol = type.getProperty(propertyName);
+      const propertyDeclaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
+      const propertyType = propertyDeclaration.type;
+
+      type = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
     } else {
-      // Object name is its properties names reduced to string, delimited with the dot ('.').
-      const propertyNames = llvmValue.getTSObjectPropsFromName();
-      propertyIndex = propertyNames.indexOf(propertyName);
+      type = this.generator.ts.checker.getTypeAtLocation(expression.parent);
     }
 
-    if (propertyIndex === -1) {
-      throw new Error(`Property '${propertyName}' not found in '${expression.getText()}'`);
-    }
+    let targetLLVMType: LLVMType;
 
-    const elementPtr = this.generator.builder.createSafeInBoundsGEP(llvmValue, [0, propertyIndex], propertyName);
-
-    const inTSClassConstructor = Boolean(this.generator.currentFunction.name?.includes("__constructor"));
+    // @todo startsWith?
     const isThisAccess = expression.getText() === this.generator.internalNames.This;
 
     // Check if statement is initialization of 'this' value, e.g.
@@ -280,8 +245,16 @@ export class AccessHandler extends AbstractExpressionHandler {
       expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       expression.parent.parent.left === expression.parent;
 
-    return isThisAccess && isInitialization && inTSClassConstructor
-      ? elementPtr
-      : this.generator.builder.createLoad(elementPtr);
+    if (isThisAccess && isInitialization) {
+      targetLLVMType = this.generator.ts.union.getLLVMType();
+    } else {
+      targetLLVMType = type.getLLVMType();
+
+      if (!type.isOptionalUnion()) {
+        value = this.generator.ts.union.get(value);
+      }
+    }
+
+    return this.generator.builder.createBitCast(value, targetLLVMType);
   }
 }

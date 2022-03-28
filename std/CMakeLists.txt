@@ -14,6 +14,10 @@ set(SOURCES
     src/tsclosure.cpp
     src/tsnumber.cpp
     src/tsboolean.cpp
+    src/tsundefined.cpp
+    src/tsnull.cpp
+    src/tsobject.cpp
+    src/tsunion.cpp
 
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp

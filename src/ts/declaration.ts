@@ -62,6 +62,12 @@ export class Declaration {
     return this.members.filter((m) => m.isProperty());
   }
 
+  isPrivate() {
+    return Boolean(
+      this.declaration.modifiers?.findIndex((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword) !== -1
+    );
+  }
+
   isOptional() {
     // @ts-ignore
     return Boolean(this.declaration.questionToken);
@@ -122,8 +128,9 @@ export class Declaration {
 
   get parameters() {
     if (!ts.isFunctionLike(this.declaration)) {
+      console.log(this.declaration.getText());
       throw new Error(
-        `Expected 'body' to be called on function-alike declaration, called on '${
+        `Expected 'parameters' to be called on function-alike declaration, called on '${
           ts.SyntaxKind[this.declaration.kind]
         }'`
       );

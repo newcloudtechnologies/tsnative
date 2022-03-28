@@ -4,6 +4,7 @@
 
 #include "std/iterable.h"
 #include "std/tsboolean.h"
+#include "std/tsobject.h"
 
 #include <ostream>
 #include <string>
@@ -14,7 +15,7 @@ class Number;
 
 class StringPrivate;
 
-class String : public Iterable<String*>
+class String : public Object, public Iterable<String*>
 {
 public:
     String();
@@ -23,6 +24,10 @@ public:
     String(const std::string& s);
     String(const char* s);
 
+protected:
+    ~String() override;
+
+public:
     Number* length() const;
     String* concat(String* other) const;
 
@@ -60,7 +65,8 @@ public:
     String* operator[](Number* index) const;
     String* operator[](size_t index) const;
 
-    Boolean* toBool() const;
+    String* toString() const override;
+    Boolean* toBool() const override;
 
     std::string cpp_str() const;
 
@@ -68,13 +74,11 @@ public:
 
     String* clone() const;
 
-    friend std::ostream& operator<<(std::ostream& os, String* s);
-
 private:
     StringPrivate* _d = nullptr;
 };
 
-inline std::ostream& operator<<(std::ostream& os, String* s)
+inline std::ostream& operator<<(std::ostream& os, const String* s)
 {
     os << s->cpp_str();
     return os;

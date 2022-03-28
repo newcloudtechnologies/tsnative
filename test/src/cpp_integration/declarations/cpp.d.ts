@@ -6,5 +6,5 @@
 /// <reference path="./printable.d.ts"/>
 /// <reference path="./with_optional_arguments.d.ts"/>
 
-export { Aggregate, Point, Mixin, DerivedFromVirtualBase, Rect, Printable, WithOptionalArgs } from "cpp";
+export { Aggregate, Point, LargerAggregate, DerivedFromVirtualBase, Rect, Printable, WithOptionalArgs, DerivedFromBaseInOtherNamespace } from "cpp";
 export { innerNS } from "NS"

@@ -23,6 +23,11 @@ Number::Number(Number* v)
 {
 }
 
+Number::~Number()
+{
+    delete _d;
+}
+
 Number* Number::add(Number* other) const
 {
     double result = _d->add(other->unboxed());
@@ -211,7 +216,7 @@ Number* Number::clone() const
     return GC::track(new Number(this->unboxed()));
 }
 
-String* Number::toString()
+String* Number::toString() const
 {
     std::ostringstream oss;
     oss << this->unboxed();

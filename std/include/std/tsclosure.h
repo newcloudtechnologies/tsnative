@@ -4,12 +4,22 @@
 
 #include "std/tsboolean.h"
 #include "std/tsnumber.h"
-#include "std/tsoptional.h"
+#include "std/tsobject.h"
+#include "std/tsunion.h"
 
-class TSClosure
+#include <ostream>
+#include <type_traits>
+
+class Number;
+class String;
+
+class TSClosure : public Object
 {
 public:
     TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
+    // this class is not an owner of passed ptrs, so use default dtor.
+    // @todo: should ptrs be untracked here?
+    ~TSClosure() override = default;
 
     void** getEnvironment() const;
 
@@ -18,7 +28,12 @@ public:
 
     Number* getNumArgs() const;
 
-    void* operator()();
+    // unsutable, legacy in fact
+    void* operator()() const;
+
+    void* call() const;
+
+    String* toString() const override;
 
 private:
     void* fn = nullptr;
@@ -34,13 +49,16 @@ void TSClosure::setEnvironmentElement(T value, int index)
 
     if ((this->optionals & (1 << index)) != 0)
     {
-        TSOptional<T>* optional = static_cast<TSOptional<T>*>(env[index]);
-
-        optional->marker = GC::createHeapAllocated<Boolean>(true);
-        optional->value = value;
-
+        Union* optional = static_cast<Union*>(env[index]);
+        optional->setValue(static_cast<Object*>(value));
         return;
     }
 
     env[index] = value;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const TSClosure* cl)
+{
+    os << cl->toString();
+    return os;
 }

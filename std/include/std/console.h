@@ -52,13 +52,19 @@ void console::logImpl(T v, Ts... ts)
     console::log(ts...);
 }
 
-static String n{"\n"};
-static String rn{"\r\n"};
+inline bool endsWith(const std::string& str, const std::string& suffix)
+{
+    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
+
+static const std::string n{"\n"};
+static const std::string rn{"\r\n"};
 
 template <typename... Ts>
 void console::logImpl(String* v, Ts... ts)
 {
-    if (v->endsWith(&n)->unboxed() || v->endsWith(&rn)->unboxed())
+    std::string cppstr = v->cpp_str();
+    if (endsWith(cppstr, n) || endsWith(cppstr, rn))
     {
         std::cout << v;
     }

@@ -12,7 +12,7 @@ import * as ts from "typescript";
 
 import { LLVMGenerator } from "../../generator";
 import { Environment } from "../../scope";
-import { LLVMGlobalVariable, LLVMUnion, LLVMValue } from "../../llvm/value";
+import { LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { Expression } from "../../ts/expression";
 import { ExternalSymbolsProvider } from "../../mangling";
@@ -138,19 +138,16 @@ export class SysVFunctionHandler {
       if (parameterAtIndex) {
         const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
 
+        if (parameterDeclaration.type.isEnum()) {
+          return arg.asLLVMInteger();
+        }
+
         if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-          const llvmType = parameterDeclaration.type.getLLVMType();
-          const value = this.generator.gc.allocate(llvmType.unwrapPointer()) as LLVMUnion;
-          return value.initialize(arg);
+          return this.generator.ts.union.create(arg);
         }
       }
 
-      const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
-      if (tsType.isObject() || tsType.isFunction() || arg.type.isClosure()) {
-        return this.generator.builder.asVoidStar(arg);
-      }
-
-      return arg;
+      return this.generator.builder.asVoidStar(arg);
     });
 
     this.populateOptionals(args, valueDeclaration);
@@ -232,10 +229,13 @@ export class SysVFunctionHandler {
         const parameterAtIndex = constructorDeclaration.parameters[index];
         if (parameterAtIndex) {
           const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+
+          if (parameterDeclaration.type.isEnum()) {
+            return arg.asLLVMInteger();
+          }
+
           if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-            const llvmType = parameterDeclaration.type.getLLVMType();
-            const value = this.generator.gc.allocate(llvmType.unwrapPointer()) as LLVMUnion;
-            return value.initialize(arg);
+            return this.generator.ts.union.create(arg);
           }
         }
 
@@ -340,10 +340,7 @@ export class SysVFunctionHandler {
         throw new Error(`Expected optional argument, got '${parameterDeclaration.getText()}'`);
       }
 
-      const llvmType = parameterDeclaration.type.getLLVMType();
-      const value = this.generator.gc.allocate(llvmType.unwrapPointer()) as LLVMUnion;
-
-      value.initializeNullOptional();
+      const value = this.generator.ts.union.create();
 
       args.push(value);
     }

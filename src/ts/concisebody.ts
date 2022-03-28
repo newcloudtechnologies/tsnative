@@ -9,8 +9,8 @@
  *
  */
 
-import { GenericTypeMapper, LLVMGenerator, MetaInfoStorage } from "../generator";
-import { Scope, Environment, HeapVariableDeclaration, Prototype } from "../scope";
+import { GenericTypeMapper, LLVMGenerator } from "../generator";
+import { Scope, Environment, HeapVariableDeclaration } from "../scope";
 import * as llvm from "llvm-node";
 import { LLVMConstantInt, LLVMValue, LLVMConstant } from "../llvm/value";
 import * as ts from "typescript";
@@ -65,7 +65,7 @@ export class ConciseBody {
         const isStaticProperty = (node: ts.Node): boolean => {
           let result = false;
 
-          if (!this.generator.ts.checker.nodeHasSymbol(node)) {
+          if (!this.generator.ts.checker.nodeHasSymbolAndDeclaration(node)) {
             return result;
           }
 
@@ -156,7 +156,7 @@ export class ConciseBody {
 
               if (
                 ts.isPropertyAccessExpression(node.expression) &&
-                this.generator.ts.checker.nodeHasSymbol(node.expression.expression)
+                this.generator.ts.checker.nodeHasSymbolAndDeclaration(node.expression.expression)
               ) {
                 let propertyAccessRoot: ts.Expression = node.expression;
                 let functionName = node.expression.name.getText();
@@ -171,14 +171,10 @@ export class ConciseBody {
 
                 if (propertyAccessRoot.kind === ts.SyntaxKind.ThisKeyword) {
                   const thisVal = extendScope.get("this");
-
-                  let prototype: Prototype | undefined;
-
-                  if (thisVal instanceof LLVMValue && thisVal.hasPrototype()) {
-                    prototype = thisVal.getPrototype();
-                  } else if (outerEnv?.thisPrototype) {
-                    prototype = outerEnv.thisPrototype;
-                  }
+                  const prototype =
+                    thisVal instanceof LLVMValue && thisVal.hasPrototype()
+                      ? thisVal.getPrototype()
+                      : outerEnv?.getPrototype("this");
 
                   if (prototype) {
                     const methodDeclaration = prototype.methods.find(
@@ -209,26 +205,27 @@ export class ConciseBody {
                   if (propertyAccessDeclaration?.isParameter()) {
                     skip = true;
 
-                    const prototype = this.generator.meta.try(
-                      MetaInfoStorage.prototype.getParameterPrototype,
-                      propertyAccessRoot.getText()
-                    );
+                    const parameterName = propertyAccessDeclaration.name?.getText();
+                    if (parameterName) {
+                      const maybePrototype = outerEnv?.getPrototype(parameterName);
 
-                    if (prototype) {
-                      const methodDeclaration = prototype.methods.find(
-                        (method) => method.name?.getText() === functionName
-                      );
-                      if (!methodDeclaration) {
-                        throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                      if (maybePrototype) {
+                        const methodDeclaration = maybePrototype.methods.find(
+                          (method) => method.name?.getText() === functionName
+                        );
+
+                        if (!methodDeclaration) {
+                          throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
+                        }
+
+                        declaration = methodDeclaration;
                       }
-
-                      declaration = methodDeclaration;
                     }
                   }
                 }
               }
 
-              if (!skip) {
+              if (!skip && !type.isSymbolless()) {
                 const symbol = type.getSymbol();
                 declaration = symbol.valueDeclaration;
 

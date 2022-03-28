@@ -45,8 +45,8 @@ const ssw1 = new SomeScopeWidget();
 const ssw2 = new AnotherSomeScopeWidget();
 
 const h = new Handler();
-// h.handle(ssw1);
-// h.handle(ssw2);
+h.handle(ssw1);
+h.handle(ssw2);
 
-// ssw1.test();
-// ssw2.test();
+ssw1.test();
+ssw2.test();

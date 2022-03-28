@@ -21,19 +21,19 @@ import { Signature } from "../ts/signature";
 import { LLVMFunction } from "../llvm/function";
 
 export class Environment {
-  private readonly pThisPrototype: Prototype | undefined;
   private readonly pVariables: string[];
   private pAllocated: LLVMValue;
   private readonly pLLVMType: LLVMStructType;
   private readonly pGenerator: LLVMGenerator;
   private pFixedArgsCount: number = 0;
+  private readonly pPrototypes: (Prototype | undefined)[];
 
   constructor(
     variables: string[],
     allocated: LLVMValue,
     llvmType: LLVMStructType,
     generator: LLVMGenerator,
-    thisPrototype?: Prototype
+    prototypes: (Prototype | undefined)[] = []
   ) {
     if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
       throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
@@ -43,7 +43,7 @@ export class Environment {
     this.pAllocated = allocated;
     this.pLLVMType = llvmType;
     this.pGenerator = generator;
-    this.pThisPrototype = thisPrototype;
+    this.pPrototypes = prototypes;
   }
 
   get untyped() {
@@ -74,6 +74,21 @@ export class Environment {
     return this.pVariables;
   }
 
+  getPrototype(variable: string) {
+    const index = this.pVariables.indexOf(variable);
+
+    return this.pPrototypes[index];
+  }
+
+  setPrototype(variable: string, prototype: Prototype) {
+    const index = this.pVariables.indexOf(variable);
+    if (index < 0) {
+      return;
+    }
+
+    this.pPrototypes[index] = prototype;
+  }
+
   getVariableIndex(variable: string) {
     return this.pVariables.indexOf(variable);
   }
@@ -86,16 +101,17 @@ export class Environment {
     this.pFixedArgsCount = count;
   }
 
-  get thisPrototype() {
-    return this.pThisPrototype;
-  }
-
   static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
     const baseValues = [];
 
     const envValue = generator.builder.createLoad(base.typed);
     for (let i = 0; i < base.type.numElements; ++i) {
       const value = generator.builder.createSafeExtractValue(envValue, [i]);
+      const maybePrototype = base.pPrototypes[i];
+      if (maybePrototype) {
+        value.attachPrototype(maybePrototype);
+      }
+
       baseValues.push(value);
     }
 
@@ -106,6 +122,11 @@ export class Environment {
         const structValue = generator.builder.createLoad(e.typed);
         for (let i = 0; i < e.type.numElements; ++i) {
           const value = generator.builder.createSafeExtractValue(structValue, [i]);
+          const maybePrototype = e.pPrototypes[i];
+          if (maybePrototype) {
+            value.attachPrototype(maybePrototype);
+          }
+
           envValues.push(value);
         }
 
@@ -139,12 +160,14 @@ export class Environment {
       generator.builder.createSafeStore(mergedValues[i], elementPtr);
     }
 
+    const prototypes = mergedValues.map((value) => (value.hasPrototype() ? value.getPrototype() : undefined));
+
     return new Environment(
       mergedVariableNames,
       generator.builder.asVoidStar(allocatedMergedEnvironment),
       mergedEnvironmentType,
       generator,
-      base.thisPrototype // @todo: is base's thisPrototype should be used?
+      prototypes
     );
   }
 
@@ -274,8 +297,7 @@ export function createEnvironment(
   generator: LLVMGenerator,
   functionData?: { args: LLVMValue[]; signature: Signature },
   outerEnv?: Environment,
-  preferLocalThis?: boolean,
-  thisPrototype?: Prototype
+  preferLocalThis?: boolean
 ) {
   const map = new Map<string, { type: LLVMType; allocated: LLVMValue }>();
 
@@ -340,6 +362,12 @@ export function createEnvironment(
     const outerValues: LLVMValue[] = [];
     for (const index of outerEnvValuesIndexes) {
       const extracted = generator.builder.createSafeExtractValue(data, [index]);
+
+      const maybePrototype = outerEnv.getPrototype(outerEnv.variables[index]);
+      if (maybePrototype) {
+        extracted.attachPrototype(maybePrototype);
+      }
+
       outerValues.push(extracted);
     }
 
@@ -351,6 +379,7 @@ export function createEnvironment(
 
   const names = Array.from(map.keys());
   const types = Array.from(map.values()).map((value) => value.type);
+
   const allocations = Array.from(map.values()).map((value) => value.allocated);
 
   const environmentDataType = Environment.getEnvironmentType(types, generator);
@@ -362,12 +391,14 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
+  const prototypes = allocations.map((value) => (value.hasPrototype() ? value.getPrototype() : undefined));
+
   const env = new Environment(
     names,
     generator.builder.asVoidStar(environmentAlloca),
     environmentDataType,
     generator,
-    thisPrototype
+    prototypes
   );
 
   return env;
@@ -648,18 +679,26 @@ export class Scope {
     }
 
     const result = action();
+    this.remove("this");
 
-    if (this.get("this")) {
-      this.remove("this");
+    if (!originalThis) {
+      return result;
     }
 
-    if (originalThis instanceof LLVMValue) {
-      if (originalPrototype) {
-        originalThis.attachPrototype(originalPrototype);
-      }
-
-      this.set("this", originalThis);
+    if (!(originalThis instanceof LLVMValue)) {
+      return result;
     }
+
+    const isFakeThis = originalThis.type.isIntegerType(1);
+    if (isFakeThis) {
+      return result;
+    }
+
+    if (originalPrototype) {
+      originalThis.attachPrototype(originalPrototype);
+    }
+
+    this.set("this", originalThis);
 
     return result;
   }

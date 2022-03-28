@@ -12,7 +12,7 @@
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "../llvm/type";
-import { LLVMIntersection, LLVMValue } from "../llvm/value";
+import { LLVMValue } from "../llvm/value";
 import { Prototype } from "../scope";
 
 export class Builder {
@@ -229,9 +229,6 @@ export class Builder {
 
   createLoad(value: LLVMValue) {
     const loaded = this.builder.createLoad(value.unwrapped);
-    if (value.type.getPointerElementType().isIntersection()) {
-      return LLVMIntersection.create(loaded, this.generator);
-    }
     return LLVMValue.create(loaded, this.generator);
   }
 
@@ -239,6 +236,10 @@ export class Builder {
     let prototype: Prototype | undefined;
     if (value.hasPrototype()) {
       prototype = value.getPrototype();
+    }
+
+    if (this.generator.tsclosure.lazyClosure.isLazyClosure(value) && destType.isClosure()) {
+      throw new Error("Cannot bitcast lazy closure to closure");
     }
 
     const casted = this.builder.createBitCast(value.unwrapped, destType.unwrapped, name);

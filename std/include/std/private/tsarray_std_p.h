@@ -1,5 +1,6 @@
 #pragma once
 
+#include "std/tsobject.h"
 #include "std/private/tsarray_p.h"
 
 #include <algorithm>
@@ -33,7 +34,7 @@ public:
     std::vector<T> splice(int start, int deleteCount) override;
 
     std::vector<T> concat(const std::vector<T>& other) const override;
-    std::vector<int> keys() const;
+    std::vector<int> keys() const override;
 
     std::vector<T> toStdVector() const override;
     std::string toString() const override;
@@ -229,8 +230,30 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
     os << "[ ";
     if (!array->storage_.empty())
     {
-        std::copy(array->storage_.cbegin(), array->storage_.cend() - 1, std::ostream_iterator<T>(os, ", "));
-        os << array->storage_.back();
+        std::for_each(array->storage_.cbegin(),
+                      array->storage_.cend() - 1,
+                      [&os](T value)
+                      {
+                          if (value)
+                          {
+                              os << static_cast<Object*>(value)->toString() << ", ";
+                          }
+                          else
+                          {
+                              os << "null"
+                                 << ", ";
+                          }
+                      });
+
+        auto last = array->storage_.back();
+        if (last)
+        {
+            os << last;
+        }
+        else
+        {
+            os << "null";
+        }
     }
     os << " ]";
     return os;

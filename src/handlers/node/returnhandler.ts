@@ -13,7 +13,6 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { LLVMType } from "../../llvm/type";
-import { LLVMUnion } from "../../llvm/value";
 import { Declaration } from "../../ts/declaration";
 
 export class ReturnHandler extends AbstractNodeHandler {
@@ -46,19 +45,23 @@ export class ReturnHandler extends AbstractNodeHandler {
           ) {
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
           } else if (currentFunctionReturnType.isUnion()) {
-            const nullUnion = LLVMUnion.createNullValue(currentFunctionReturnType, this.generator);
-            ret = nullUnion.initialize(ret);
-          } else if (ret.type.isOptionalUnion() && !currentFunctionReturnType.isUnion()) {
-            ret = (ret as LLVMUnion).extract(currentFunctionReturnType);
+            ret = this.generator.ts.union.create(ret);
           } else {
-            ret = ret.adjustToType(currentFunctionReturnType);
+            if (ret.type.isUnion()) {
+              ret = this.generator.ts.union.get(ret);
+            }
+
+            ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
           }
         }
 
         this.generator.builder.createSafeRet(ret);
       } else {
-        this.generator.builder.createRetVoid();
+        const un = this.generator.ts.undef.get();
+        const optionalUnion = this.generator.ts.union.create(un);
+        this.generator.builder.createSafeRet(optionalUnion);
       }
+
       return true;
     }
 

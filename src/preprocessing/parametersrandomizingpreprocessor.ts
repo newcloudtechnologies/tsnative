@@ -44,7 +44,7 @@ export class ParametersRandomizingPreprocessor extends AbstractPreprocessor {
           }
 
           const location = node.parent && ts.isPropertyAccessExpression(node.parent) ? node.parent.expression : node;
-          if (this.generator.ts.checker.nodeHasSymbol(location)) {
+          if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(location)) {
             const symbol = this.generator.ts.checker.getSymbolAtLocation(location);
 
             if (symbol.declarations.length > 0) {

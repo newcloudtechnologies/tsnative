@@ -1,28 +1,24 @@
 #pragma once
 
+#include <std/tsobject.h>
+
 class Number;
 class String;
-
-template <typename T>
-class TSOptional;
+class Union;
 
 namespace cpp
 {
-    class WithOptionalArgs
+    class WithOptionalArgs : public Object
     {
     public:
-        WithOptionalArgs(Number *n, TSOptional<String *> *s);
+        WithOptionalArgs(Number *n, Union *s);
 
-        void setValues(TSOptional<Number *> *n, TSOptional<String *> *s);
+        void setValues(Union *n, Union *s);
 
         Number *getNumber() const;
         String *getString() const;
 
-        Number* getDefaultNumber() const;
-        String* getDefaultString() const;
-
-    private:
-        Number *_n = nullptr;
-        String *_s = nullptr;
+        Number *getDefaultNumber() const;
+        String *getDefaultString() const;
     };
 } // namespace cpp

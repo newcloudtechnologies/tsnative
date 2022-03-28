@@ -18,4 +18,6 @@ public:
     virtual int size() const = 0;
 
     virtual const std::vector<V>& ordered() const = 0;
+
+    virtual std::string toString() const = 0;
 };

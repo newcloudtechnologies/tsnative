@@ -1,6 +1,5 @@
 interface Function { }
 interface IArguments { }
-interface Object { }
 interface RegExp { }
 interface CallableFunction {
   /**

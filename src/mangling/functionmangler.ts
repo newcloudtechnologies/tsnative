@@ -23,13 +23,13 @@ export class FunctionMangler {
     thisType: TSType | undefined,
     argumentTypes: TSType[],
     generator: LLVMGenerator,
-    knownGenericTypes?: TSType[],
+    knownGenericTypes?: string[],
     knownArgumentTypes?: string[]
   ): { isExternalSymbol: boolean; qualifiedName: string } {
     if (declaration.isAmbient()) {
       const provider: ExternalSymbolsProvider = new ExternalSymbolsProvider(
         declaration,
-        expression as ts.CallExpression | ts.NewExpression | undefined,
+        expression as ts.CallExpression | ts.NewExpression | ts.PropertyAccessExpression | undefined,
         argumentTypes,
         thisType,
         generator,
@@ -37,7 +37,7 @@ export class FunctionMangler {
         knownGenericTypes,
         knownArgumentTypes
       );
-      const maybeMangled = provider.tryGet(declaration);
+      const maybeMangled = provider.tryGet();
       if (maybeMangled) {
         return {
           isExternalSymbol: true,
@@ -58,6 +58,7 @@ export class FunctionMangler {
 
     let typeParametersNames = "";
     const typeParameters = declaration.typeParameters;
+
     if (typeParameters?.length) {
       typeParametersNames = argumentTypes.reduce((acc, curr) => {
         return acc + "__" + curr.toString();

@@ -3,22 +3,22 @@
 #include "point.h"
 
 #include <std/tsarray.h>
+#include <std/tsobject.h>
 
 class Number;
 
-namespace cpp {
+namespace cpp
+{
+  class Rect : public Object
+  {
+  public:
+    Rect(Point *topLeft, Point *bottomRight);
 
-class Rect {
-public:
-  Rect(const Point& topLeft, const Point& bottomRight);
+    Point *topLeft() const;
+    Point *bottomRight() const;
 
-  Number* getSquare();
+    Number *getSquare();
 
-  Array<Point*>* getDiagonal() const;
-
-private:
-  Point topLeft;
-  Point bottomRight;
-};
-
+    Array<Point *> *getDiagonal() const;
+  };
 } // namespace cpp

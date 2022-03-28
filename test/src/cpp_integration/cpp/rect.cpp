@@ -1,24 +1,45 @@
 #include "rect.h"
 
 #include <std/tsnumber.h>
-
+#include <iostream>
 using namespace cpp;
 
-Rect::Rect(const Point &topLeft, const Point& bottomRight)
-    : topLeft(topLeft), bottomRight(bottomRight) {}
+Rect::Rect(Point *topLeft, Point *bottomRight)
+{
+  set("tl", topLeft);
+  set("br", bottomRight);
+}
 
-Number* Rect::getSquare() {
-  auto width = bottomRight.x()->sub(topLeft.x());
-  auto height = bottomRight.y()->sub(topLeft.y());  
+Point *Rect::topLeft() const
+{
+  return get<Point *>("tl");
+}
+
+Point *Rect::bottomRight() const
+{
+  return get<Point *>("br");
+}
+
+Number *Rect::getSquare()
+{
+  auto br = bottomRight();
+  auto tl = topLeft();
+
+  auto width = br->x()->sub(tl->x());
+  auto height = br->y()->sub(tl->y());
+
   return width->mul(height);
 }
 
-Array<Point*>* Rect::getDiagonal() const
+Array<Point *> *Rect::getDiagonal() const
 {
-  auto* p1 = GC::track(new Point(topLeft.x(), topLeft.y()));
-  auto* p2 = GC::track(new Point(bottomRight.x(), bottomRight.y()));
-  
-  auto* coords = GC::track(new Array<Point*>);
+  auto br = bottomRight();
+  auto tl = topLeft();
+
+  auto *p1 = GC::track(new Point(tl->x(), tl->y()));
+  auto *p2 = GC::track(new Point(br->x(), br->y()));
+
+  auto *coords = GC::track(new Array<Point *>);
   coords->push(p1);
   coords->push(p2);
   return coords;

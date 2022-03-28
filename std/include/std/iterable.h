@@ -10,33 +10,23 @@
 template <typename T>
 class IteratorResult
 {
+    static_assert(std::is_pointer<T>::value, "Expected IteratorResult's 'T' to be of pointer type");
+
 public:
     IteratorResult(bool done, T value);
 
     Boolean* done() const;
 
-    typename std::conditional<std::is_pointer<T>::value, T, T*>::type value() const;
+    T value() const;
 
 private:
-    template <typename U = T>
-    typename std::enable_if<std::is_pointer<U>::value, U>::type getPointerToValue() const
-    {
-        return _value;
-    }
-
-    template <typename U = T>
-    typename std::enable_if<!std::is_pointer<U>::value, U>::type* getPointerToValue() const
-    {
-        return GC::createHeapAllocated<U>(_value);
-    }
-
     Boolean* _done = nullptr;
     T _value;
 };
 
 template <typename T>
 IteratorResult<T>::IteratorResult(bool done, T value)
-    : _done(GC::createHeapAllocated<Boolean>(done))
+    : _done(GC::track(new Boolean(done)))
     , _value(value)
 {
 }
@@ -48,14 +38,16 @@ Boolean* IteratorResult<T>::done() const
 }
 
 template <typename T>
-typename std::conditional<std::is_pointer<T>::value, T, T*>::type IteratorResult<T>::value() const
+T IteratorResult<T>::value() const
 {
-    return getPointerToValue();
+    return _value;
 }
 
 template <typename T>
 class Iterator
 {
+    static_assert(std::is_pointer<T>::value, "Expected Iterator's 'T' to be of pointer type");
+
 public:
     virtual IteratorResult<T>* next() = 0;
 };
@@ -63,6 +55,9 @@ public:
 template <typename T>
 class Iterable
 {
+    static_assert(std::is_pointer<T>::value, "Expected Iterable's 'T' to be of pointer type");
+
+public:
     virtual Iterator<T>* iterator() = 0;
 };
 

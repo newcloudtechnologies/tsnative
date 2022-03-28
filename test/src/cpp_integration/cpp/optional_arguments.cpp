@@ -2,31 +2,36 @@
 
 #include <std/gc.h>
 #include <std/tsnumber.h>
-#include <std/tsoptional.h>
+#include <std/tsunion.h>
 #include <std/tsstring.h>
 
 using namespace cpp;
 
-WithOptionalArgs::WithOptionalArgs(Number *n, TSOptional<String *> *s)
+WithOptionalArgs::WithOptionalArgs(Number *n, Union *s)
 {
-    _n = n;
-    _s = s->hasValue() ? s->getValue() : getDefaultString();
+    set("n", n);
+
+    auto sValue = s->hasValue() ? static_cast<String *>(s->getValue()) : getDefaultString();
+    set("s", sValue);
 }
 
-void WithOptionalArgs::setValues(TSOptional<Number *> *n, TSOptional<String *> *s)
+void WithOptionalArgs::setValues(Union *n, Union *s)
 {
-    _n = n->hasValue() ? n->getValue() : getDefaultNumber();
-    _s = s->hasValue() ? s->getValue() : getDefaultString();
+    auto nValue = n->hasValue() ? static_cast<Number *>(n->getValue()) : getDefaultNumber();
+    auto sValue = s->hasValue() ? static_cast<String *>(s->getValue()) : getDefaultString();
+
+    set("n", nValue);
+    set("s", sValue);
 }
 
 Number *WithOptionalArgs::getNumber() const
 {
-    return _n;
+    return get<Number *>("n");
 }
 
 String *WithOptionalArgs::getString() const
 {
-    return _s;
+    return get<String *>("s");
 }
 
 Number *WithOptionalArgs::getDefaultNumber() const

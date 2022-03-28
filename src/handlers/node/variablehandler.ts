@@ -11,7 +11,7 @@
 
 import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
 import { LLVMStructType } from "../../llvm/type";
-import { LLVMConstantFP, LLVMConstantInt, LLVMIntersection, LLVMUnion, LLVMValue } from "../../llvm/value";
+import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 
@@ -67,13 +67,7 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     if (type.isUnion()) {
-      const llvmUnionType = type.getLLVMType();
-      const nullUnion = LLVMUnion.createNullValue(llvmUnionType, this.generator);
-      initializer = nullUnion.initialize(initializer);
-    } else if (type.isIntersection()) {
-      const llvmIntersectionType = type.getLLVMType();
-      const nullIntersection = LLVMIntersection.createNullValue(llvmIntersectionType, this.generator);
-      initializer = nullIntersection.initialize(initializer);
+      initializer = this.generator.ts.union.create(initializer);
     } else if (type.isClassOrInterface()) {
       if (!declaration.initializer) {
         throw new Error(`Expected initializer at variable declaration '${declaration.getText()}'`);
@@ -136,13 +130,10 @@ export class VariableHandler extends AbstractNodeHandler {
       const declarationType = this.generator.ts.checker.getTypeAtLocation(declaration);
       const declarationLLVMType = declarationType.getLLVMType();
 
-      const allocated = this.generator.gc.allocate(declarationLLVMType.unwrapPointer());
+      let allocated = this.generator.gc.allocate(declarationLLVMType.unwrapPointer());
 
-      if (allocated.isOptionalUnion()) {
-        allocated.initializeNullOptional();
-      } else {
-        initializer = this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
-        this.generator.builder.createSafeStore(initializer, allocated);
+      if (declarationType.isUnion()) {
+        allocated = this.generator.ts.union.create();
       }
 
       parentScope.set(name, new HeapVariableDeclaration(allocated, allocated, name, declaration));
@@ -227,7 +218,7 @@ export class VariableHandler extends AbstractNodeHandler {
       return;
     }
 
-    const isPropertyAccessWithSymbol = this.generator.ts.checker.nodeHasSymbol(declaration.initializer);
+    const isPropertyAccessWithSymbol = this.generator.ts.checker.nodeHasSymbolAndDeclaration(declaration.initializer);
     if (!isPropertyAccessWithSymbol) {
       return;
     }

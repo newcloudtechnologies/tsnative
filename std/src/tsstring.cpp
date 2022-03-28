@@ -2,6 +2,7 @@
 
 #include "std/gc.h"
 #include "std/tsarray.h"
+#include "std/tsnumber.h"
 
 #include "std/iterators/stringiterator.h"
 
@@ -29,6 +30,7 @@ String::String(Number* d)
     this->_d = new StdStringBackend(oss.str());
 #endif
 }
+
 String::String(const int8_t* s)
 #ifdef USE_STD_STRING_BACKEND
     : _d(new StdStringBackend(reinterpret_cast<const char*>(s)))
@@ -41,11 +43,17 @@ String::String(const std::string& s)
 #endif
 {
 }
+
 String::String(const char* s)
 #ifdef USE_STD_STRING_BACKEND
     : _d(new StdStringBackend(s))
 #endif
 {
+}
+
+String::~String()
+{
+    delete _d;
 }
 
 Number* String::length() const
@@ -213,10 +221,14 @@ IterableIterator<String*>* String::iterator()
     return GC::track(it);
 }
 
+String* String::toString() const
+{
+    return clone();
+}
+
 Boolean* String::toBool() const
 {
-    bool asBool = _d->toBool();
-    return GC::track(new Boolean(asBool));
+    return GC::track(new Boolean(_d->toBool()));
 }
 
 std::string String::cpp_str() const

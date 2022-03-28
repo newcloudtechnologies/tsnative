@@ -11,6 +11,7 @@
 
 import { SIZEOF_STRING, SIZEOF_ARRAY, SIZEOF_TSCLOSURE, SIZEOF_MAP, SIZEOF_SET, SIZEOF_TUPLE } from "../cppintegration";
 import { LLVMType } from "../llvm/type";
+import { SIZEOF_BOOLEAN, SIZEOF_NULL, SIZEOF_NUMBER, SIZEOF_OBJECT, SIZEOF_UNDEFINED, SIZEOF_UNION } from "./constants";
 
 export class SizeOf {
   getByLLVMType(type: LLVMType): number | undefined {
@@ -26,24 +27,47 @@ export class SizeOf {
       return SIZEOF_SET;
     } else if (type.isTuple()) {
       return SIZEOF_TUPLE;
+    } else if (type.isUndefined()) {
+      return SIZEOF_UNDEFINED;
+    } else if (type.isNull()) {
+      return SIZEOF_NULL;
+    } else if (type.isObject()) {
+      return SIZEOF_OBJECT;
+    } else if (type.isTSNumber()) {
+      return SIZEOF_NUMBER;
     }
     return;
   }
 
   getByName(name: string): number | undefined {
-    if (name === "String") {
-      return SIZEOF_STRING;
-    } else if (name.startsWith("Array__")) {
-      return SIZEOF_ARRAY;
-    } else if (name.startsWith("TSClosure__class")) {
-      return SIZEOF_TSCLOSURE;
-    } else if (name.startsWith("Map__")) {
-      return SIZEOF_MAP;
-    } else if (name.startsWith("Set__")) {
-      return SIZEOF_SET;
-    } else if (name.startsWith("Tuple__")) {
-      return SIZEOF_TUPLE;
+    switch (name) {
+      case "String":
+        return SIZEOF_STRING;
+      case "Number":
+        return SIZEOF_NUMBER;
+      case "Array":
+        return SIZEOF_ARRAY;
+      case "Closure":
+        return SIZEOF_TSCLOSURE;
+      case "Map":
+        return SIZEOF_MAP;
+      case "Set":
+        return SIZEOF_SET;
+      case "Tuple":
+        return SIZEOF_TUPLE;
+      case "Object":
+        return SIZEOF_OBJECT;
+      case "Null":
+        return SIZEOF_NULL;
+      case "Undefined":
+        return SIZEOF_UNDEFINED;
+      case "Boolean":
+        return SIZEOF_BOOLEAN;
+      case "Union":
+        return SIZEOF_UNION;
+
+      default:
+        return;
     }
-    return;
   }
 }

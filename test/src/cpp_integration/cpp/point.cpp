@@ -1,18 +1,30 @@
 #include "point.h"
 
 #include <std/gc.h>
+#include <std/tsnumber.h>
 
 using namespace cpp;
 
-Point::Point(Number* x, Number* y) : _x(x), _y(y) {}
+Point::Point(Number *x, Number *y)
+{
+  set("x", x);
+  set("y", y);
+}
 
-Number* Point::x() const { return _x; }
-Number* Point::y() const { return _y; }
+Point::Point(const Point& other)
+{
+  setX(other.get<Number *>("x"));
+  setY(other.get<Number *>("y"));
+}
 
-void Point::setX(Number* x) { _x = x; }
-void Point::setY(Number* y) { _y = y; }
+Number *Point::x() const { return get<Number *>("x"); }
+Number *Point::y() const { return get<Number *>("y"); }
 
-Point *Point::clone() const {
+void Point::setX(Number *x) { set("x", x); }
+void Point::setY(Number *y) { set("y", y); }
+
+Point *Point::clone() const
+{
   Point *clone = new Point(*this);
   return GC::track(clone);
 }

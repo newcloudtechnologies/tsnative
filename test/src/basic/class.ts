@@ -1335,3 +1335,14 @@
 
   new MyStatum_t();
 }
+
+// mkrv @todo
+// {
+//   class C {
+//     fn: (() => void) | undefined;
+//   }
+
+//   const c = new C();
+//   c.fn = () => { }
+//   c.fn()
+// }

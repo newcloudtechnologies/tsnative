@@ -80,6 +80,12 @@ export class Expression {
     }
 
     return this.expression.arguments.map((arg) => {
+      if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(arg)) {
+        const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
+        const declaration = symbol.valueDeclaration || symbol.declarations[0];
+        return declaration.type;
+      }
+
       const type = this.generator.ts.checker.getTypeAtLocation(arg);
       if (type.isTypeParameter()) {
         const typenameAlias = type.toString();
@@ -91,11 +97,18 @@ export class Expression {
   }
 
   isMethod() {
-    return Boolean(
-      ts.isPropertyAccessExpression(this.expression) &&
-        (this.generator.ts.checker.getTypeAtLocation(this.expression).getSymbol().flags & ts.SymbolFlags.Method) !==
-          0 &&
-        !this.generator.ts.checker.getTypeAtLocation(this.expression).getSymbol().valueDeclaration!.isStaticMethod()
-    );
+    const isPropertyAccess = ts.isPropertyAccessExpression(this.expression);
+    if (!isPropertyAccess) {
+      return false;
+    }
+
+    const type = this.generator.ts.checker.getTypeAtLocation(this.expression);
+    if (type.isSymbolless()) {
+      return false;
+    }
+
+    const symbol = type.getSymbol();
+
+    return (symbol.flags & ts.SymbolFlags.Method) !== 0 && !symbol.valueDeclaration!.isStaticMethod();
   }
 }

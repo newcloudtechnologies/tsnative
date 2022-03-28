@@ -19,7 +19,6 @@ import {
   FunctionDeclarationPreprocessor,
   ParametersRandomizingPreprocessor,
   RestParametersPreprocessor,
-  TSObjectConsoleLogPreprocessor,
   DefaultPropertiesPreprocessor,
 } from "./index";
 import { LLVMGenerator } from "../generator";
@@ -34,7 +33,6 @@ export class Preprocessor {
 
     const generator = new LLVMGenerator(program);
     this.parts.push(
-      new TSObjectConsoleLogPreprocessor(generator),
       new ParametersRandomizingPreprocessor(generator),
       new FunctionDeclarationPreprocessor(generator),
       new ConstructorGeneratingPreprocessor(generator),

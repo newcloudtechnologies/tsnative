@@ -10,7 +10,7 @@ declare module "cpp" {
         getDefaultNumber(): number;
         getDefaultString(): string;
 
-        private _n: number;
-        private _s: number;
+        private p0: number;
+        private p1: number;
     }
 }

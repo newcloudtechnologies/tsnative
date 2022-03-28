@@ -2,10 +2,87 @@
 
 using namespace cpp;
 
-Aggregate::Aggregate(Point *point, Array<String *> *array, String *s, Number* n)
-    : _point(point), _array{array}, _n(n), _s(s) {}
+Aggregate::Aggregate(Point *point, Array<String *> *array, String *s, Number *n)
+{
+    set("point", point);
+    set("array", array);
+    set("s", s);
+    set("n", n);
+}
 
-Point* Aggregate::getPoint() const { return _point; }
-Array<String *>* Aggregate::getStringArray() const { return _array; }
-String* Aggregate::getString() const { return _s; }
-Number* Aggregate::getNumber() const { return _n; }
+Point *Aggregate::getPoint() const { return get<Point*>("point"); }
+Array<String *> *Aggregate::getStringArray() const { return get<Array<String *> *>("array"); }
+String *Aggregate::getString() const { return get<String*>("s"); }
+Number *Aggregate::getNumber() const { return get<Number*>("n"); }
+
+PointPair::PointPair(Number *x1, Number *y1, Number *x2, Number *y2)
+    : topLeft(new Point{x1, y1}), bottomRight(new Point{x2, y2})
+{
+}
+
+Point *PointPair::getTopLeft() const
+{
+  return topLeft;
+}
+
+Point *PointPair::getBottomRight() const
+{
+  return bottomRight;
+}
+
+RectHolder::RectHolder(Rect *rect) : rect(rect)
+{
+}
+
+Rect *RectHolder::getRect() const
+{
+  return rect;
+}
+
+LargerAggregate::LargerAggregate(Number *x1, Number *y1, Number *x2, Number *y2)
+{
+  auto pair = GC::track(new PointPair(x1, y1, x2, y2));
+  auto rect = GC::track(
+      new Rect(
+          pair->getTopLeft(),
+          pair->getBottomRight()));
+  auto holder = GC::track(new RectHolder(rect));
+
+  set("pointPair", pair);
+  set("rectHolder", holder);
+}
+
+PointPair *LargerAggregate::pointPair() const
+{
+  return get<PointPair *>("pointPair");
+}
+
+RectHolder *LargerAggregate::rectHolder() const
+{
+  return get<RectHolder *>("rectHolder");
+}
+
+Point *LargerAggregate::getTopLeft() const
+{
+  return pointPair()->getTopLeft();
+}
+
+Point *LargerAggregate::getBottomRight() const
+{
+  return pointPair()->getBottomRight();
+}
+
+Rect *LargerAggregate::getRect() const
+{
+  return rectHolder()->getRect();
+}
+
+LargerAggregate *LargerAggregate::getScaled(Number *factor) const
+{
+  auto tl = getTopLeft();
+  auto br = getBottomRight();
+
+  return GC::track(
+      new LargerAggregate{tl->x()->mul(factor), tl->y()->mul(factor),
+                br->x()->mul(factor), br->y()->mul(factor)});
+}

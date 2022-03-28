@@ -69,3 +69,35 @@
     abUnion = { s: "1" };
     console.log(abUnion);
 }
+
+{
+    const m = new Map<string, number>()
+        .set("a", 2)
+        .set("b", 4);
+
+    console.log(m);
+}
+
+{
+    const s = new Set<string>()
+        .add("a")
+        .add("b")
+        .add("a");
+
+    console.log(s);
+}
+
+{
+    const f = () => {};
+    console.log(f);
+}
+
+{
+    console.log(null);
+    console.log(undefined);
+}
+
+{
+    const a = [1, 2, 3];
+    console.log(a);
+}

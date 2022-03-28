@@ -1,14 +1,19 @@
-namespace N1 {
-namespace N2 {
+#include <std/tsobject.h>
 
-class Clazz {
-public:
-  Clazz();
-};
+namespace N1
+{
+  namespace N2
+  {
 
-void takesClazz(Clazz c) { (void)c; };
+    class Clazz : public Object
+    {
+    public:
+      Clazz();
+    };
 
-} // namespace N2
+    void takesClazz(Clazz c) { (void)c; };
+
+  } // namespace N2
 } // namespace N1
 
 N1::N2::Clazz::Clazz() {}

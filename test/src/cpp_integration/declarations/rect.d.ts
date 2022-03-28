@@ -1,6 +1,4 @@
 declare module "cpp" {
-    import { ValueType } from "std/decorators/decorators";
-
     export class Rect {
         constructor(topLeft: Point, bottomRight: Point);
 
@@ -8,9 +6,7 @@ declare module "cpp" {
 
         getDiagonal(): Point[];
 
-        @ValueType
-        private topLeft: Point;
-        @ValueType
-        private bottomRight: Point;
+        private p0: number;
+        private p1: number;
     }
 }

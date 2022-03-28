@@ -2,11 +2,12 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { ThisData, Scope } from "../scope";
 import { FunctionMangler } from "../mangling";
-import { SIZEOF_STRING } from "../cppintegration/constants";
+import { SIZEOF_BOOLEAN, SIZEOF_NUMBER, SIZEOF_TSCLOSURE } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
+import { UTILITY_DEFINITIONS } from "../../std/constants";
 
 export class GC {
   private readonly allocateFn: LLVMValue;
@@ -117,56 +118,55 @@ class LazyClosure {
   }
 }
 
-export class BuiltinTSTuple extends Builtin {
-  constructor(declaration: Declaration, generator: LLVMGenerator) {
-    super(declaration.type.mangle(), generator);
-  }
-
-  getLLVMConstructor(argTypes: TSType[]) {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
-
-    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
-
-    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
-      constructorDeclaration,
-      undefined,
-      thisType,
-      argTypes,
-      this.generator
-    );
-    if (!isExternalSymbol) {
-      throw new Error("External symbol Tuple constructor not found");
-    }
-
-    const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [this.getLLVMType(), ...argTypes.map((type) => type.getLLVMType())];
-    const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return constructor;
-  }
-}
-
 export class BuiltinTSClosure extends Builtin {
   private readonly llvmType: LLVMType;
+  private readonly tsType: TSType;
+  private readonly declaration: Declaration;
+
   readonly lazyClosure: LazyClosure;
 
-  constructor(declaration: Declaration, generator: LLVMGenerator) {
-    super(declaration.type.mangle(), generator);
-    this.llvmType = declaration.type.getLLVMType();
+  constructor(generator: LLVMGenerator) {
+    super("TSClosure", generator);
+
+    const structType = LLVMStructType.create(generator, "closure");
+    const syntheticBody = structType.getSyntheticBody(SIZEOF_TSCLOSURE);
+    structType.setBody(syntheticBody);
+    this.llvmType = structType.getPointer();
 
     this.lazyClosure = new LazyClosure(generator);
+
+    const defs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === UTILITY_DEFINITIONS);
+
+    if (!defs) {
+      throw new Error("No utility definitions source file found");
+    }
+
+    const classDeclaration = defs.statements.find((node) => {
+      return ts.isClassDeclaration(node) && node.name?.getText() === "TSClosure";
+    });
+
+    if (!classDeclaration) {
+      throw new Error("Unable to find 'TSClosure' declaration in std library utility definitions");
+    }
+
+    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
+    this.tsType = this.declaration.type;
   }
 
   getLLVMType(): LLVMType {
     return this.llvmType;
   }
 
-  getLLVMCall() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
+  getTSType() {
+    return this.tsType;
+  }
 
-    const callDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "call");
+  getLLVMCall() {
+    const thisType = this.declaration.type;
+
+    const callDeclaration = this.declaration.members.find((m) => m.isMethod() && m.name?.getText() === "call");
 
     if (!callDeclaration) {
       throw new Error("No function declaration for TSClosure.call provided");
@@ -191,10 +191,9 @@ export class BuiltinTSClosure extends Builtin {
   }
 
   getLLVMGetEnvironment() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
+    const thisType = this.declaration.type;
 
-    const getEnvironmentDeclaration = declaration.members.find(
+    const getEnvironmentDeclaration = this.declaration.members.find(
       (m) => m.isMethod() && m.name?.getText() === "getEnvironment"
     );
 
@@ -224,10 +223,12 @@ export class BuiltinTSClosure extends Builtin {
   }
 
   getLLVMConstructor() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
+    const thisType = this.declaration.type;
 
-    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
+    const constructorDeclaration = this.declaration.members.find((m) => m.isConstructor());
+    if (!constructorDeclaration) {
+      throw new Error(`Unable to find constructor declaration at '${this.declaration.getText()}'`);
+    }
 
     const argTypes = constructorDeclaration.parameters.map((p) => this.generator.ts.checker.getTypeAtLocation(p));
 
@@ -308,7 +309,8 @@ export class BuiltinNumber extends Builtin {
   constructor(generator: LLVMGenerator) {
     super("number", generator);
     const structType = LLVMStructType.create(generator, "number");
-    structType.setBody([LLVMType.getDoubleType(generator)]);
+    const syntheticBody = structType.getSyntheticBody(SIZEOF_NUMBER);
+    structType.setBody(syntheticBody);
     this.llvmType = structType.getPointer();
   }
 
@@ -443,7 +445,7 @@ export class BuiltinNumber extends Builtin {
       throw new Error(`Number method 'toString' for '${thisType.toString()}' not found`);
     }
 
-    const llvmReturnType = this.generator.builtinString.getLLVMType();
+    const llvmReturnType = this.generator.ts.str.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
 
     const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
@@ -525,7 +527,8 @@ export class BuiltinBoolean extends Builtin {
   constructor(generator: LLVMGenerator) {
     super("boolean", generator);
     const structType = LLVMStructType.create(generator, "boolean");
-    structType.setBody([LLVMType.getInt8Type(generator).getPointer()]);
+    const syntheticBody = structType.getSyntheticBody(SIZEOF_BOOLEAN);
+    structType.setBody(syntheticBody);
     this.llvmType = structType.getPointer();
   }
 
@@ -700,142 +703,12 @@ export class BuiltinBoolean extends Builtin {
       throw new Error(`Number method 'toString' for '${thisType.toString()}' not found`);
     }
 
-    const llvmReturnType = this.generator.builtinString.getLLVMType();
+    const llvmReturnType = this.generator.ts.str.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
 
     const { fn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return fn;
-  }
-}
-
-export class BuiltinString extends Builtin {
-  private readonly llvmType: LLVMType;
-
-  constructor(generator: LLVMGenerator) {
-    super("string", generator);
-    const structType = LLVMStructType.create(generator, "string");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_STRING);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
-  }
-
-  getLLVMType() {
-    return this.llvmType;
-  }
-
-  getLLVMConstructor(constructorArg?: ts.Expression) {
-    const declaration = this.getDeclaration();
-
-    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
-    const thisType = this.getTSType();
-
-    const argTypes: TSType[] = constructorArg ? [this.generator.ts.checker.getTypeAtLocation(constructorArg)] : [];
-
-    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
-      constructorDeclaration,
-      undefined,
-      thisType,
-      argTypes,
-      this.generator,
-      undefined,
-      constructorArg ? undefined : ["signed char"]
-    );
-
-    if (!isExternalSymbol) {
-      throw new Error(`String constructor for '${thisType.toString()}' not found`);
-    }
-
-    const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
-    if (argTypes.length > 0) {
-      llvmArgumentTypes.push(argTypes[0].getLLVMType());
-    } else {
-      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
-    }
-
-    const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return constructor;
-  }
-
-  getLLVMConcat() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
-    const llvmThisType = this.getLLVMType();
-
-    const concatDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "concat")!;
-    const argTypes = concatDeclaration.parameters.map((p) => this.generator.ts.checker.getTypeAtLocation(p));
-    const { qualifiedName } = FunctionMangler.mangle(concatDeclaration, undefined, thisType, argTypes, this.generator);
-
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer(), llvmThisType];
-    const { fn: concat } = this.generator.llvm.function.create(llvmThisType, llvmArgumentTypes, qualifiedName);
-
-    return concat;
-  }
-
-  getLLVMLength() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
-
-    const lengthDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "length")!;
-
-    const { qualifiedName } = FunctionMangler.mangle(lengthDeclaration, undefined, thisType, [], this.generator);
-
-    const llvmReturnType = this.generator.builtinNumber.getLLVMType();
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
-    const { fn: length } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return length;
-  }
-
-  getLLVMEquals() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
-    const llvmThisType = this.getLLVMType();
-
-    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "equals")!;
-
-    const { qualifiedName } = FunctionMangler.mangle(
-      equalsDeclaration,
-      undefined,
-      thisType,
-      [thisType],
-      this.generator
-    );
-
-    const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
-    const llvmArgumentTypes = [llvmThisType, llvmThisType];
-    const { fn: equals } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return equals;
-  }
-
-  private getCloneFn() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
-    const llvmThisType = this.getLLVMType();
-
-    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "clone")!;
-
-    const { qualifiedName } = FunctionMangler.mangle(
-      equalsDeclaration,
-      undefined,
-      thisType,
-      [thisType],
-      this.generator
-    );
-
-    const llvmReturnType = llvmThisType;
-    const llvmArgumentTypes = [llvmThisType];
-    const { fn: clone } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return clone;
-  }
-
-  clone(value: LLVMValue) {
-    const cloneFn = this.getCloneFn();
-    return this.generator.builder.createSafeCall(cloneFn, [value]);
   }
 }
 
@@ -864,7 +737,7 @@ export class BuiltinIteratorResult extends Builtin {
       thisType,
       [],
       this.generator,
-      [type]
+      [type.toCppType()]
     );
 
     if (!isExternalSymbol) {
@@ -890,7 +763,7 @@ export class BuiltinIteratorResult extends Builtin {
       thisType,
       [],
       this.generator,
-      [type]
+      [type.toCppType()]
     );
 
     if (!isExternalSymbol) {

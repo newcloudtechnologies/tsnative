@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <sstream>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -24,6 +25,11 @@ public:
 
     const std::vector<K>& orderedKeys() const override;
 
+    std::string toString() const override;
+
+    template <typename U, typename W>
+    friend std::ostream& operator<<(std::ostream& os, const MapStdPrivate<U, W>* m);
+
 private:
     std::unordered_map<K, V> _hashmap;
     std::vector<K> _orderedKeys;
@@ -32,7 +38,7 @@ private:
 template <typename K, typename V>
 void MapStdPrivate<K, V>::set(K key, V value)
 {
-    auto it = _hashmap.find(key);
+    auto it = std::find_if(_hashmap.begin(), _hashmap.end(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
     if (it != _hashmap.end())
     {
         it->second = value;
@@ -46,14 +52,14 @@ void MapStdPrivate<K, V>::set(K key, V value)
 template <typename K, typename V>
 bool MapStdPrivate<K, V>::has(K key) const
 {
-    auto it = _hashmap.find(key);
+    auto it = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
     return it != _hashmap.end();
 }
 
 template <typename K, typename V>
 V MapStdPrivate<K, V>::get(K key) const
 {
-    auto it = _hashmap.find(key);
+    auto it = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
 
     if (it == _hashmap.end())
     {
@@ -66,7 +72,8 @@ V MapStdPrivate<K, V>::get(K key) const
 template <typename K, typename V>
 bool MapStdPrivate<K, V>::remove(K key)
 {
-    auto mapIt = _hashmap.find(key);
+    auto mapIt = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
+
     if (mapIt == _hashmap.end())
     {
         return false;
@@ -100,4 +107,27 @@ template <typename K, typename V>
 const std::vector<K>& MapStdPrivate<K, V>::orderedKeys() const
 {
     return _orderedKeys;
+}
+
+template <typename K, typename V>
+std::string MapStdPrivate<K, V>::toString() const
+{
+    std::ostringstream oss;
+    oss << this;
+    return oss.str();
+}
+
+template <typename K, typename V>
+inline std::ostream& operator<<(std::ostream& os, const MapStdPrivate<K, V>* m)
+{
+    os << "Map {\n";
+
+    for (auto* key : m->_orderedKeys)
+    {
+        os << "    " << key << ": " << m->get(key) << "\n";
+    }
+
+    os << "}";
+
+    return os;
 }

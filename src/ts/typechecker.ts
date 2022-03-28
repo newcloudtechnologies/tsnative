@@ -25,8 +25,13 @@ export class TypeChecker {
     this.generator = generator;
   }
 
-  nodeHasSymbol(node: ts.Node) {
-    return Boolean(this.checker.getSymbolAtLocation(node));
+  nodeHasSymbolAndDeclaration(node: ts.Node) {
+    try {
+      const symbol = this.checker.getSymbolAtLocation(node);
+      return Boolean(symbol && (symbol.valueDeclaration || symbol.declarations[0]));
+    } catch (_) {
+      return false;
+    }
   }
 
   getSymbolAtLocation(node: ts.Node) {
@@ -43,7 +48,7 @@ export class TypeChecker {
       const type = this.generator.ts.checker.getTypeAtLocation(node.expression);
 
       if (type.isTuple()) {
-        const declaration = this.generator.tuple.getDeclaration();
+        const declaration = this.generator.ts.tuple.getDeclaration();
         const methodName = node.name.getText();
         const tupleMember = declaration.members.find((m) => m.name?.getText() === methodName)!;
 
@@ -67,7 +72,8 @@ export class TypeChecker {
   }
 
   getTypeAtLocation(node: ts.Node) {
-    return TSType.create(this.checker.getTypeAtLocation(node), this);
+    const type = TSType.create(this.checker.getTypeAtLocation(node), this);
+    return type;
   }
 
   getDeclaredTypeOfSymbol(symbol: ts.Symbol) {

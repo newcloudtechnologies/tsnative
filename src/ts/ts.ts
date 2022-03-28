@@ -15,6 +15,12 @@ import { TSArray } from "./array";
 import { TSTuple } from "./tuple";
 import { TSIterableIterator } from "./iterableiterator";
 import { TSIterator } from "./iterator";
+import { TSUndefined } from "./undefined";
+import { TSNull } from "./null";
+import { TSMap } from "./map";
+import { TSObject } from "./object";
+import { TSUnion } from "./union";
+import { TSString } from "./string";
 
 export class TS {
   readonly checker: TypeChecker;
@@ -22,6 +28,12 @@ export class TS {
   readonly tuple: TSTuple;
   readonly iterator: TSIterator;
   readonly iterableIterator: TSIterableIterator;
+  readonly undef: TSUndefined;
+  readonly null: TSNull;
+  readonly map: TSMap;
+  readonly obj: TSObject;
+  readonly union: TSUnion;
+  readonly str: TSString;
 
   constructor(generator: LLVMGenerator) {
     this.checker = new TypeChecker(generator.program.getTypeChecker(), generator);
@@ -29,5 +41,11 @@ export class TS {
     this.tuple = new TSTuple(generator);
     this.iterator = new TSIterator(generator);
     this.iterableIterator = new TSIterableIterator(generator);
+    this.undef = new TSUndefined(generator);
+    this.null = new TSNull(generator);
+    this.map = new TSMap(generator);
+    this.obj = new TSObject(generator);
+    this.union = new TSUnion(generator);
+    this.str = new TSString(generator);
   }
 }

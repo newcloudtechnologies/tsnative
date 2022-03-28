@@ -3,6 +3,7 @@
 #include "std/private/options.h"
 
 #include "std/tsboolean.h"
+#include "std/tsobject.h"
 
 #include <ostream>
 
@@ -10,13 +11,13 @@ class String;
 
 class NumberPrivate;
 
-class Number
+class Number : public Object
 {
 public:
     Number(double v);
     Number(Number* v);
 
-    String* toString();
+    ~Number() override;
 
     Number* add(Number* other) const;
     Number* sub(Number* other) const;
@@ -56,19 +57,20 @@ public:
     Boolean* greaterThan(Number* other) const;
     Boolean* greaterEqualsThan(Number* other) const;
 
-    Boolean* toBool() const;
+    String* toString() const override;
+    Boolean* toBool() const override;
 
     double unboxed() const;
 
     Number* clone() const;
 
-    friend std::ostream& operator<<(std::ostream& os, Number* v);
+    friend std::ostream& operator<<(std::ostream& os, const Number* v);
 
 private:
     NumberPrivate* _d = nullptr;
 };
 
-inline std::ostream& operator<<(std::ostream& os, Number* v)
+inline std::ostream& operator<<(std::ostream& os, const Number* v)
 {
     os << v->unboxed();
     return os;

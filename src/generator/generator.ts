@@ -14,17 +14,9 @@ import { NodeHandlerChain } from "../handlers/node";
 import { Scope, SymbolTable, Environment, addClassScope } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import {
-  BuiltinString,
-  GC,
-  BuiltinTSClosure,
-  BuiltinTSTuple,
-  BuiltinIteratorResult,
-  BuiltinNumber,
-  BuiltinBoolean,
-} from "../tsbuiltins";
+import { GC, BuiltinTSClosure, BuiltinIteratorResult, BuiltinNumber, BuiltinBoolean } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { DEFINITIONS, GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
+import { GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -41,14 +33,6 @@ enum InternalNames {
   TypeLiteral = "__tl__",
 }
 
-class BoxedPrimitives {
-  private readonly names = ["String", "Number", "Boolean"];
-
-  includes(typename: string) {
-    return this.names.includes(typename);
-  }
-}
-
 export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
@@ -63,11 +47,9 @@ export class LLVMGenerator {
   readonly expressionHandlerChain = new ExpressionHandlerChain(this);
   readonly nodeHandlerChain = new NodeHandlerChain(this);
 
-  readonly builtinString: BuiltinString;
   readonly builtinNumber: BuiltinNumber;
   readonly builtinBoolean: BuiltinBoolean;
 
-  private builtinTSTuple: BuiltinTSTuple | undefined;
   private builtinTSClosure: BuiltinTSClosure | undefined;
   private garbageCollector: GC | undefined;
 
@@ -78,7 +60,6 @@ export class LLVMGenerator {
   readonly ts: TS;
 
   readonly internalNames = InternalNames;
-  readonly boxedPrimitives = new BoxedPrimitives();
 
   constructor(program: ts.Program) {
     this.program = program;
@@ -87,13 +68,13 @@ export class LLVMGenerator {
     this.irBuilder = new Builder(this, null);
     this.symbolTable = new SymbolTable();
 
-    this.builtinString = new BuiltinString(this);
     this.builtinNumber = new BuiltinNumber(this);
     this.builtinBoolean = new BuiltinBoolean(this);
 
     this.sizeOf = new SizeOf();
 
     this.llvm = new LLVM(this);
+
     this.ts = new TS(this);
   }
 
@@ -103,35 +84,14 @@ export class LLVMGenerator {
 
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main.unwrapped as llvm.Function);
 
-    const stdSourceFiles: ts.SourceFile[] = [];
-    const sourceFiles: ts.SourceFile[] = [];
-
-    for (const sourceFile of this.program.getSourceFiles()) {
-      if (sourceFile.fileName.endsWith(".d.ts")) {
-        stdSourceFiles.push(sourceFile);
-      } else {
-        sourceFiles.push(sourceFile);
-      }
-    }
-
     this.builder.setInsertionPoint(entryBlock);
 
-    for (const sourceFile of stdSourceFiles) {
+    this.ts.null.init();
+    this.ts.undef.init();
+
+    for (const sourceFile of this.program.getSourceFiles()) {
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
-
-      sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
-    }
-
-    const undefinedValue = (() => {
-      return this.builtinBoolean.create(LLVMConstantInt.getFalse(this));
-    })();
-
-    for (const sourceFile of sourceFiles) {
-      this.currentSource = sourceFile;
-      this.symbolTable.addScope(sourceFile.fileName);
-
-      this.symbolTable.currentScope.set("undefined", undefinedValue);
 
       sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
@@ -177,32 +137,12 @@ export class LLVMGenerator {
         const clazz = Declaration.create(node as ts.ClassDeclaration, this);
         const clazzName = clazz.type.getSymbol().escapedName;
         if (clazzName === "TSClosure") {
-          this.builtinTSClosure = new BuiltinTSClosure(clazz, this);
+          this.builtinTSClosure = new BuiltinTSClosure(this);
         }
       }
     });
     if (!this.builtinTSClosure) {
       throw new Error("TSClosure declaration not found");
-    }
-  }
-
-  initTSTuple(): void {
-    const stddefs = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === DEFINITIONS);
-    if (!stddefs) {
-      throw new Error("No std definitions source file found");
-    }
-    stddefs.forEachChild((node) => {
-      if (ts.isClassDeclaration(node)) {
-        const clazz = Declaration.create(node as ts.ClassDeclaration, this);
-        const clazzName = clazz.type.getSymbol().escapedName;
-        if (clazzName === "Tuple") {
-          this.builtinTSTuple = new BuiltinTSTuple(clazz, this);
-          addClassScope(node, this.symbolTable.globalScope, this);
-        }
-      }
-    });
-    if (!this.builtinTSTuple) {
-      throw new Error("Tuple declaration not found");
     }
   }
 
@@ -289,14 +229,6 @@ export class LLVMGenerator {
       this.initGC();
     }
     return this.garbageCollector!;
-  }
-
-  get tuple() {
-    if (!this.builtinTSTuple) {
-      this.initTSTuple();
-    }
-
-    return this.builtinTSTuple!;
   }
 
   get tsclosure() {

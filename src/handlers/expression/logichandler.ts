@@ -46,8 +46,11 @@ export class LogicHandler extends AbstractExpressionHandler {
       this.generator.builder.setInsertionPoint(trueBlock);
       let thenResult = this.generator.handleExpression(expression.whenTrue, env);
 
-      if (result.isUnion()) {
-        thenResult = result.initialize(thenResult);
+      if (result.type.isUnion()) {
+        thenResult = this.generator.ts.union.create(thenResult);
+      } else if (thenResult.type.isUnion()) {
+        thenResult = this.generator.ts.union.get(thenResult);
+        thenResult = this.generator.builder.createBitCast(thenResult, result.type);
       }
 
       this.generator.builder.createSafeStore(thenResult, result);
@@ -56,8 +59,11 @@ export class LogicHandler extends AbstractExpressionHandler {
       this.generator.builder.setInsertionPoint(falseBlock);
       let elseResult = this.generator.handleExpression(expression.whenFalse, env);
 
-      if (result.isUnion()) {
-        elseResult = result.initialize(elseResult);
+      if (result.type.isUnion()) {
+        elseResult = this.generator.ts.union.create(elseResult);
+      } else if (elseResult.type.isUnion()) {
+        elseResult = this.generator.ts.union.get(elseResult);
+        elseResult = this.generator.builder.createBitCast(elseResult, result.type);
       }
 
       this.generator.builder.createSafeStore(elseResult, result);

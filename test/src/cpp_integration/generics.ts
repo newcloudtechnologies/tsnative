@@ -14,10 +14,10 @@ console.assert(classWTemplateMethod.getWithAdditionOfTwo<number>(3) === 5, "'Cla
 console.assert(classWTemplateMethod.getWithAdditionOfTwo<string>("3") === "3_2", "'ClassWTemplateMethod.getWithAdditionOfTwo<string>' test failed");
 
 const classWNumberStringMembers = new ClassWithTemplateMembers<number, string>(42);
-console.assert(classWNumberStringMembers.get() === 42, "'ClassWithTemplateMembers<number, string>.get' test failed");
+console.assert(classWNumberStringMembers.getFirst() === 42, "'ClassWithTemplateMembers<number, string>.get' test failed");
 
 const classWStringStringMembers = new ClassWithTemplateMembers<string, string>("twenty two");
-console.assert(classWStringStringMembers.get() === "twenty two", "'ClassWithTemplateMembers<string, string>.get' test failed");
+console.assert(classWStringStringMembers.getFirst() === "twenty two", "'ClassWithTemplateMembers<string, string>.get' test failed");
 
 const templateClassWithTemplateMethod = new TemplateClassWithTemplateMethod(2);
 console.assert(templateClassWithTemplateMethod.transform<number>(10) === 12, "'TemplateClassWithTemplateMethod.transform<number>' test failed");

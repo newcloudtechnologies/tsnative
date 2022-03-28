@@ -14,61 +14,9 @@ import * as ts from "typescript";
 
 import { Environment, Prototype } from "../scope";
 import { TSType } from "../ts/type";
-import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { LLVMGenerator } from "./generator";
-
-type PropsMap = Map<string, number>;
-class UnionMeta {
-  name: string;
-  type: LLVMType;
-  props: string[];
-  propsMap: PropsMap;
-
-  constructor(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
-    this.name = name;
-    this.type = type;
-    this.props = props;
-    this.propsMap = propsMap;
-  }
-}
-
-class IntersectionMeta {
-  name: string;
-  type: LLVMType;
-  props: string[];
-
-  constructor(name: string, type: LLVMType, props: string[]) {
-    this.name = name;
-    this.type = type;
-    this.props = props;
-  }
-}
-
-class StructMeta {
-  name: string;
-  type: LLVMType;
-  props: string[];
-
-  constructor(name: string, type: LLVMType, props: string[]) {
-    this.name = name;
-    this.type = type;
-    this.props = props;
-  }
-}
-
-class ObjectMeta {
-  name: string;
-  type: LLVMStructType;
-  props: string[];
-
-  constructor(name: string, type: LLVMStructType, props: string[]) {
-    this.name = name;
-    this.type = type;
-    this.props = props;
-  }
-}
 
 class ClosureParametersMetaStorage {
   readonly storage = new Map<string, Map<string, Declaration>>();
@@ -91,63 +39,11 @@ class ClassDeclarationTypeMapperStorage {
 }
 
 export class MetaInfoStorage {
-  readonly unionMetaInfoStorage: UnionMeta[] = [];
-  readonly intersectionMetaInfoStorage: IntersectionMeta[] = [];
-  readonly structMetaInfoStorage: StructMeta[] = [];
-  readonly objectMetaInfoStorage: ObjectMeta[] = [];
   readonly closureParametersMeta = new ClosureParametersMetaStorage();
   readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
   readonly closureEnvironment = new ClosureEnvironmentStorage();
   readonly parameterPrototype = new ParameterPrototypeStorage();
   readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
-
-  registerUnionMeta(name: string, type: LLVMType, props: string[], propsMap: PropsMap) {
-    this.unionMetaInfoStorage.push(new UnionMeta(name, type, props, propsMap));
-  }
-
-  getUnionMeta(name: string) {
-    const meta = this.unionMetaInfoStorage.find((value) => value.name === name);
-    if (!meta) {
-      throw new Error(`No union meta found for '${name}'`);
-    }
-    return meta;
-  }
-
-  registerIntersectionMeta(name: string, type: LLVMType, props: string[]) {
-    this.intersectionMetaInfoStorage.push(new IntersectionMeta(name, type, props));
-  }
-
-  getIntersectionMeta(name: string) {
-    const meta = this.intersectionMetaInfoStorage.find((value) => value.name === name);
-    if (!meta) {
-      throw new Error(`No intersection meta found for '${name}'`);
-    }
-    return meta;
-  }
-
-  registerStructMeta(name: string, type: LLVMType, props: string[]) {
-    this.structMetaInfoStorage.push(new StructMeta(name, type, props));
-  }
-
-  getStructMeta(name: string) {
-    const meta = this.structMetaInfoStorage.find((value) => value.name === name);
-    if (!meta) {
-      throw new Error(`No struct meta found for '${name}'`);
-    }
-    return meta;
-  }
-
-  registerObjectMeta(name: string, type: LLVMStructType, props: string[]) {
-    this.objectMetaInfoStorage.push(new ObjectMeta(name, type, props));
-  }
-
-  getObjectMeta(name: string) {
-    const meta = this.objectMetaInfoStorage.find((value) => value.name === name);
-    if (!meta) {
-      throw new Error(`No object meta found for '${name}'`);
-    }
-    return meta;
-  }
 
   registerClosureParameter(parentFunction: string, closureParameter: string, closureFunctionDeclaration: Declaration) {
     const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);

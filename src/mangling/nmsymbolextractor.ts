@@ -62,8 +62,14 @@ export class NmSymbolExtractor {
       return line.match(lambdaPattern);
     };
 
+    const nonVirtualThunkPattern = "non-virtual thunk to";
+
+    const isNonVirtualThunk = (line: string) => {
+      return line.includes(nonVirtualThunkPattern);
+    };
+
     const isServiceLine = (line: string) => {
-      return isLambda(line);
+      return isLambda(line) || isNonVirtualThunk(line);
     };
 
     const symbols: (string | null)[] = lines.map((line) => {

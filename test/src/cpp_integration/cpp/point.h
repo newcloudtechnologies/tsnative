@@ -1,12 +1,14 @@
 #pragma once
 
 #include <std/tsnumber.h>
+#include <std/tsobject.h>
 
 namespace cpp {
 
-class Point {
+class Point : public Object {
 public:
   Point(Number* x, Number* y);
+  Point(const Point& other);
 
   Number* x() const;
   Number* y() const;
@@ -15,10 +17,6 @@ public:
   void setY(Number* y);
 
   Point* clone() const;
-
-private:
-  Number* _x = nullptr;
-  Number* _y = nullptr;
 };
 
 } // namespace cpp

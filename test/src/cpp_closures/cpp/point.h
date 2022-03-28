@@ -1,15 +1,13 @@
 #pragma once
 
 #include <std/tsnumber.h>
+#include <std/tsobject.h>
 
-class Point {
+class Point : public Object
+{
 public:
-  Point(Number* x, Number* y);
+  Point(Number *x, Number *y);
 
-  const Number* x() const;
-  const Number* y() const;
-
-private:
-  Number _x{0.0};
-  Number _y{0.0};
+  const Number *x() const;
+  const Number *y() const;
 };
