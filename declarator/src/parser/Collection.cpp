@@ -641,7 +641,8 @@ void Collection::addFunction(const std::string& name,
                              bool isLocal,
                              const clang::FunctionDecl* decl)
 {
-    if (!existItem(prefix, name))
+    // get first declaration of function
+    if (decl->isFirstDecl())
     {
         auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
         auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
@@ -654,7 +655,8 @@ void Collection::addFunctionTemplate(const std::string& name,
                                      bool isLocal,
                                      const clang::FunctionTemplateDecl* decl)
 {
-    if (!existItem(prefix, name))
+    // get first declaration of function
+    if (decl->isFirstDecl())
     {
         auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
         auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);

@@ -16,6 +16,7 @@
 #include "generator/ContainerBlock.h"
 
 #include "parser/FunctionItem.h"
+#include "parser/FunctionTemplateItem.h"
 
 namespace analyzer
 {

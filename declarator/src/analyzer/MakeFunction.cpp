@@ -45,7 +45,7 @@ void makeFunction(parser::const_function_item_t item,
         if (it != children.end())
         {
             throw utils::Exception(
-                R"(function with name "%s" is already exist in scope "%s". TypeScrips doesn't support reloading functions)",
+                R"(function with name "%s" is already exist in scope "%s". TypeScrips doesn't support functions overload)",
                 name.c_str(),
                 prefix.c_str());
         }
@@ -106,6 +106,16 @@ void makeFunction(parser::const_function_item_t item,
 
             // can't detect spread and optional parameters automatically
             functionBlock->addArgument(it.name(), type, false, false);
+        }
+
+        if (item->type() == AbstractItem::Type::FUNCTION_TEMPLATE)
+        {
+            auto templateItem = std::static_pointer_cast<FunctionTemplateItem const>(item);
+
+            for (const auto& it : templateItem->templateParameters())
+            {
+                functionBlock->addTemplateArgument(it.name());
+            }
         }
     }
 
