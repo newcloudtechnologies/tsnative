@@ -358,9 +358,16 @@ void Collection::populate()
     finder.start();
 }
 
-bool Collection::existItem(const std::string& path, const std::string& name) const
+bool Collection::existItem(const std::string& path) const
 {
-    const_item_list_t items = getItems(path, name);
+    const_item_list_t items = getItems(path);
+
+    return !items.empty();
+}
+
+bool Collection::existItem(const std::string& parentPath, const std::string& name) const
+{
+    const_item_list_t items = getItems(parentPath, name);
 
     return !items.empty();
 }
@@ -382,12 +389,6 @@ item_list_t Collection::getItems(const std::string& path)
                      items.end(),
                      std::back_inserter(result),
                      [name](const auto& it) { return it->name() == name; });
-
-        if (result.empty())
-        {
-            throw utils::Exception(
-                R"(path "%s" is not correct: no any item with name "%s")", path.c_str(), name.c_str());
-        }
 
         return result;
     };
@@ -456,6 +457,12 @@ item_list_t Collection::getItems(const std::string& path)
         {
             item_list_t items = find_all(children, name);
 
+            if (items.empty())
+            {
+                throw utils::Exception(
+                    R"(path "%s" is not correct: no any item "%s" found)", path.c_str(), name.c_str());
+            }
+
             if (items.size() != 1)
             {
                 throw utils::Exception(
@@ -492,17 +499,23 @@ const_item_list_t Collection::getItems(const std::string& parentPath, const std:
 item_list_t Collection::getItems(const std::string& parentPath, const std::string& name)
 {
     item_list_t result;
+
+    if (name.empty())
+        return result;
+
     item_list_t items = getItems(parentPath);
 
-    if (items.size() != 1)
+    if (items.empty())
+    {
+        throw utils::Exception(R"(no any item found with this path: "%s")", parentPath.c_str());
+    }
+
+    if (items.size() > 1)
     {
         throw utils::Exception(R"(many items found with this path: "%s")", parentPath.c_str());
     }
 
     abstract_item_t item = items.at(0);
-
-    if (name.empty())
-        return result;
 
     if (AbstractItem::isContainer(item))
     {

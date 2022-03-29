@@ -66,7 +66,9 @@ public:
     static void init(CXTranslationUnit tu);
     static Collection& get();
 
-    bool existItem(const std::string& path, const std::string& name) const;
+    bool existItem(const std::string& path) const;
+    bool existItem(const std::string& parentPath, const std::string& name) const;
+
     const_item_list_t getItems(const std::string& path) const;
     item_list_t getItems(const std::string& path);
 
