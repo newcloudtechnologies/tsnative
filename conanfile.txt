@@ -1,4 +1,0 @@
-[requires]
-abseil/20211102.0
-[generators]
-cmake

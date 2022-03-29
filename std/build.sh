@@ -29,17 +29,6 @@ else
     JOBS_NUM=$(expr $(nproc) + 1)
 fi
 
-mkdir -p ${PROJECT_BUILD_DIR}
-cp ${CURRENT_DIR}/../conanfile.txt ${PROJECT_BUILD_DIR}/
-
-conan remote add "myoffice_conan" "https://conan.devos.club/artifactory/api/conan/antiq" --insert=0
-conan install ${PROJECT_BUILD_DIR} --install-folder ${INSTALL_DIR} -g deploy --build=missing
-
-# oooh myyy....
-# FIXME: a dirty hack helping to embed absl as a part of tsnative package for now
-mkdir -p ${INSTALL_DIR}/cmake/
-cp ${CURRENT_DIR}/../cmake/absl* ${INSTALL_DIR}/cmake/
-
 cmake -G "Unix Makefiles" \
     -S "${CURRENT_DIR}" \
     -B "${PROJECT_BUILD_DIR}" \
