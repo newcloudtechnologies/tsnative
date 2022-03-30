@@ -12,7 +12,7 @@
 #pragma once
 
 #include "TS.h"
-#include "ts_module3_include.h"
+#include "../../ok/headers/details/ts_module3_include.h"
 
 namespace TS_MODULE(global) IS_TS_NAMESPACE
 {

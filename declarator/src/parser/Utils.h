@@ -11,22 +11,12 @@
 
 #pragma once
 
-#include "TS.h"
-#include "../../ok/headers/details/ts_module3_include.h"
+#include <string>
+#include <vector>
 
-namespace global IS_TS_NAMESPACE
+namespace parser
 {
 
-namespace stuffs IS_TS_MODULE
-{
+std::vector<std::string> splitPath(std::string path);
 
-class TS_EXPORT Entity
-{
-public:
-    TS_METHOD Entity() = default;
-    TS_METHOD void entity();
-};
-
-} // namespace IS_TS_MODULE
-
-} // namespace IS_TS_NAMESPACE
+} // namespace parser

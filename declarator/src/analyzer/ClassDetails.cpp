@@ -15,6 +15,7 @@
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
 #include "parser/NamespaceItem.h"
+#include "parser/Utils.h"
 
 #include "global/Annotations.h"
 
@@ -187,7 +188,12 @@ InheritanceNode::InheritanceNode(const parser::Collection& collection,
             // MyClass<T> -> MyClass
             base_item = getItem(m_collection, getTemplateName(currentActualTypeName));
 
-            _ASSERT((*base_item)->type() == AbstractItem::CLASS_TEMPLATE);
+            if (!base_item)
+            {
+                throw utils::Exception(R"(item is not found: "%s")", currentActualTypeName.c_str());
+            }
+
+            _ASSERT(base_item && (*base_item)->type() == AbstractItem::CLASS_TEMPLATE);
 
             instantiated = false;
         }
@@ -277,17 +283,62 @@ std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(const clang::CXXR
 
 std::string InheritanceNode::getTemplateName(const std::string& actualTypeName) const
 {
-    std::string result;
-    std::regex regexp(R"((\w*)(\<(.*)\>)?)");
-
-    std::smatch match;
-
-    if (!std::regex_search(actualTypeName.begin(), actualTypeName.end(), match, regexp))
+    auto untemplatize = [](const std::string& fullName, std::string& templateName)
     {
-        throw utils::Exception(R"(invalid class template instantiation signature: "%s")", actualTypeName.c_str());
-    }
+        bool result = false;
+        std::regex regexp(R"(^([\w]+)(\<(.+)\>)?$)");
+        std::smatch match;
 
-    result = match[1];
+        result = std::regex_search(fullName.begin(), fullName.end(), match, regexp);
+
+        if (result)
+        {
+            templateName = match[1];
+        }
+
+        return result;
+    };
+
+    auto isTemplate = [untemplatize](const std::string& name)
+    {
+        std::string templateName;
+        return untemplatize(name, templateName) && templateName != name;
+    };
+
+    std::string result;
+
+    std::vector<std::string> parts = parser::splitPath(actualTypeName);
+
+    if (parts.empty())
+    {
+        return result;
+    }
+    else
+    {
+        // mgt::ts::Widget<T> -> mgt, ts + Widget<T>
+        std::string lastPart = parts.back();
+        parts.pop_back();
+
+        // check all path's parts except last: mgt, ts
+        for (const auto& it : parts)
+        {
+            if (isTemplate(it))
+            {
+                throw utils::Exception(R"(invalid class name: "%s", part: "%s")", actualTypeName.c_str(), it.c_str());
+            }
+        }
+
+        // Widget<T> -> Widget
+        if (!untemplatize(lastPart, lastPart))
+        {
+            throw utils::Exception(R"(invalid class name: "%s", part: "%s")", actualTypeName.c_str(), lastPart.c_str());
+        }
+
+        parts.push_back(lastPart);
+
+        // mgt, ts, Widget -> mgt::ts::Widget
+        result = utils::join(parts, "::");
+    }
 
     return result;
 }

@@ -32,6 +32,7 @@ set(INCLUDES
     FieldItem.h
     TemplateMethodItem.h
     CodeBlockItem.h
+    Utils.h
 )
 
 set(SOURCES
@@ -55,6 +56,7 @@ set(SOURCES
     FieldItem.cpp
     TemplateMethodItem.cpp
     CodeBlockItem.cpp
+    Utils.cpp
 )
 
 add_library(${PROJECT_NAME} OBJECT

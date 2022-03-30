@@ -11,22 +11,21 @@
 
 #pragma once
 
-#include "TS.h"
-#include "../../ok/headers/details/ts_module3_include.h"
+#include <TS.h>
 
-namespace global IS_TS_NAMESPACE
+#include "../../ok/headers/details/ts_module8_include.h"
+
+namespace mgt IS_TS_MODULE
 {
 
-namespace stuffs IS_TS_MODULE
+namespace exts IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Entity
+class TS_EXPORT MyWidget : public ts::Widget
 {
 public:
-    TS_METHOD Entity() = default;
-    TS_METHOD void entity();
+    TS_METHOD MyWidget(mgt::ts::Widget& parent);
 };
 
-} // namespace IS_TS_MODULE
-
 } // namespace IS_TS_NAMESPACE
+} // namespace IS_TS_MODULE

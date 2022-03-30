@@ -19,6 +19,7 @@
 #include "FunctionItem.h"
 #include "FunctionTemplateItem.h"
 #include "NamespaceItem.h"
+#include "Utils.h"
 
 #include "global/Annotations.h"
 
@@ -392,52 +393,6 @@ item_list_t Collection::getItems(const std::string& path)
         return result;
     };
 
-    auto split = [](std::string s)
-    {
-        std::deque<std::string> replacements;
-        int _beg = 0;
-        int _end = 0;
-
-        std::string placeholder = "<>";
-
-        // replace ns1::ns2::Template1<X::Y::Z>::Template2<A::B::C> -> ns1::ns2::Template1<>::Template2<>
-        // replacements: [<X::Y::Z>, <A::B::C>]
-        while (1)
-        {
-            _beg = s.find("<", _beg);
-            _end = s.find(">", _beg);
-
-            if (_beg > 0 && _end > 0)
-            {
-                std::string part = s.substr(_beg, _end - _beg + 1);
-                s.replace(_beg, part.size(), placeholder);
-                replacements.push_back(part);
-
-                _beg++;
-            }
-            else
-            {
-                break;
-            }
-        };
-
-        // ns1::ns2::Template1<>::Template2<> -> [ns1, ns2, Template1<>, Template2<>]
-        std::vector<std::string> parts = utils::split(s, "::");
-
-        // parts: [ns1, ns2, Template1<X::Y::Z>, Template2<A::B::C>]
-        for (auto& part : parts)
-        {
-            int index = part.find(placeholder);
-            if (index > 0)
-            {
-                part.replace(index, placeholder.size(), replacements.front());
-                replacements.pop_front();
-            }
-        }
-
-        return parts;
-    };
-
     if (path.empty())
     {
         return {m_root};
@@ -445,7 +400,7 @@ item_list_t Collection::getItems(const std::string& path)
 
     item_list_t children = m_root->children();
 
-    std::vector<std::string> names = split(path);
+    std::vector<std::string> names = splitPath(path);
 
     for (auto i = 0; i < names.size(); i++)
     {
