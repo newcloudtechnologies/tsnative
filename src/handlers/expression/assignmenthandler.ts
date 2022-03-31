@@ -94,10 +94,9 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     const tupleInitializer = this.generator.handleExpression(rhs, env);
 
     const tupleUntyped = this.generator.builder.asVoidStar(tupleInitializer);
-    const tupleType = this.generator.ts.checker.getTypeAtLocation(rhs);
     const elementTypes = rhs.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
 
-    const subscription = this.generator.ts.tuple.createSubscription(tupleType);
+    const subscription = this.generator.ts.tuple.createSubscription();
 
     identifiers.forEach((identifier, index) => {
       const llvmDoubleIndex = LLVMConstantFP.get(this.generator, index);

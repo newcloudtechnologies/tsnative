@@ -51,16 +51,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleLiteral(elements: ts.NodeArray<ts.Expression>, env?: Environment) {
-    const initializers = elements.map((e) => this.generator.handleExpression(e, env));
-    const types = elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
-
-    const constructor = this.generator.ts.tuple.getLLVMConstructor(types);
-    const type = this.generator.ts.tuple.getLLVMType();
-
-    const allocated = this.generator.gc.allocate(type.getPointerElementType());
-
-    this.generator.builder.createSafeCall(constructor, [allocated, ...initializers]);
-    return allocated;
+    return this.generator.ts.tuple.create(elements, env);
   }
 
   private handleBooleanLiteral(expression: ts.BooleanLiteral): LLVMValue {

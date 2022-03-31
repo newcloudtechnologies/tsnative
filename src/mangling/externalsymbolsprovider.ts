@@ -96,19 +96,12 @@ export class ExternalSymbolsProvider {
         const thisTypeValueDeclaration = thisTypeSymbol.valueDeclaration || thisTypeSymbol.declarations[0];
 
         let thisTypeTypeMapper: GenericTypeMapper | undefined;
+
         if (thisTypeValueDeclaration.typeParameters) {
           thisTypeTypeMapper = this.generator.meta.getClassTypeMapper(thisTypeValueDeclaration);
         }
 
-        let typeArguments = thisType.getTypeGenericArguments();
-
-        // @todo make Tuple non-template class?
-        if (thisType.isTuple()) {
-          if (expression && ts.isPropertyAccessExpression(expression)) {
-            const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
-            typeArguments = tupleType.getTypeGenericArguments();
-          }
-        }
+        const typeArguments = thisType.getTypeGenericArguments();
 
         this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
           typeArguments.map((type) => {

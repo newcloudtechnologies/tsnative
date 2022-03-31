@@ -175,9 +175,7 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
-    const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
-
-    const subscription = this.generator.ts.tuple.createSubscription(tupleType);
+    const subscription = this.generator.ts.tuple.createSubscription();
     const tuple = this.generator.handleExpression(expression.expression, env);
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
     const index = this.generator.handleExpression(expression.argumentExpression, env);
@@ -189,6 +187,8 @@ export class AccessHandler extends AbstractExpressionHandler {
     if (isNaN(elementIndex)) {
       return this.generator.ts.union.create(element);
     }
+
+    const tupleType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
 
     let elementType = tupleType.getTypeGenericArguments()[elementIndex];
     if (elementType.isFunction()) {

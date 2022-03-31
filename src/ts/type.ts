@@ -681,13 +681,7 @@ export class TSType {
     }
 
     if (this.isTuple()) {
-      const typeParameters = this.getTypeGenericArguments();
-      const cppTypeParameters = [];
-      for (const type of typeParameters) {
-        cppTypeParameters.push(type.toCppType());
-      }
-
-      return `Tuple<${cppTypeParameters.join(",")}>*`;
+      return "Tuple*";
     }
 
     if (this.isFunction() || this.isClosure()) {

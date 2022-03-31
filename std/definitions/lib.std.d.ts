@@ -120,11 +120,13 @@ declare class Array<T> {
 }
 
 declare class Tuple {
-  constructor(...initializer: any);
+  constructor();
 
   [index: number]: any;
 
   get length(): number;
+
+  private push(item: Object): void;
 
   toString(): string;
   private toBool(): boolean;

@@ -12,11 +12,11 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { TSType } from "./type";
 import * as ts from "typescript";
 import { SIZEOF_TUPLE } from "../cppintegration";
 import { Declaration } from "./declaration";
 import { DEFINITIONS } from "../../std/constants";
+import { Environment } from "../scope";
 
 export class TSTuple {
   private readonly generator: LLVMGenerator;
@@ -60,31 +60,83 @@ export class TSTuple {
     return this.declaration.type;
   }
 
-  getLLVMConstructor(argTypes: TSType[]) {
+  create(elements: ts.NodeArray<ts.Expression>, env?: Environment) {
+    const constructor = this.getLLVMConstructor();
+    const allocated = this.generator.gc.allocate(this.getLLVMType().getPointerElementType());
+    this.generator.builder.createSafeCall(constructor, [allocated]);
+
+    const push = this.getLLVMPush();
+
+    for (const element of elements) {
+      const initializer = this.generator.handleExpression(element, env);
+      this.generator.builder.createSafeCall(push, [allocated, this.generator.builder.asVoidStar(initializer)]);
+    }
+
+    return allocated;
+  }
+
+  private getLLVMPush() {
+    const pushSymbol = this.getTSType().getProperty("push");
+    const pushDeclaration = pushSymbol.valueDeclaration;
+
+    if (!pushDeclaration) {
+      throw new Error("No declaration for Tuple.push found");
+    }
+
+    if (pushDeclaration.parameters.length !== 1) {
+      throw new Error("Expected Tuple.push to have exactly one parameter Object");
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      pushDeclaration,
+      undefined,
+      this.getTSType(),
+      [this.generator.ts.obj.getTSType()],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error("Unable to find Tuple.push in external symbols");
+    }
+
+    const { fn: push } = this.generator.llvm.function.create(
+      LLVMType.getVoidType(this.generator),
+      [this.getLLVMType(), LLVMType.getInt8Type(this.generator).getPointer()],
+      qualifiedName
+    );
+
+    return push;
+  }
+
+  private getLLVMConstructor() {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
-    const constructorDeclaration = declaration.members.find((m) => m.isConstructor())!;
+    const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
+    if (!constructorDeclaration) {
+      throw new Error(`Unable to find Tuple constructor at '${declaration.getText()}'`);
+    }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       constructorDeclaration,
       undefined,
       thisType,
-      argTypes,
+      [],
       this.generator
     );
+
     if (!isExternalSymbol) {
       throw new Error("External symbol Tuple constructor not found");
     }
 
     const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [this.getLLVMType(), ...argTypes.map((type) => type.getLLVMType())];
+    const llvmArgumentTypes = [this.getLLVMType()];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;
   }
 
-  createSubscription(tupleType: TSType) {
+  createSubscription() {
     const subscriptDeclaration = this.declaration.members.find((m) => m.isIndexSignature());
 
     if (!subscriptDeclaration) {
@@ -94,7 +146,7 @@ export class TSTuple {
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       subscriptDeclaration,
       undefined,
-      tupleType,
+      this.getTSType(),
       [this.generator.builtinNumber.getTSType()],
       this.generator
     );

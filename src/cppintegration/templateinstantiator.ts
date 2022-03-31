@@ -16,7 +16,6 @@ import { flatten } from "lodash";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "../mangling";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
-import { TSTuple } from "../ts/tuple";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
@@ -548,15 +547,13 @@ export class TemplateInstantiator {
       const valueElementType = tsType.getTypeGenericArguments()[1]!;
       const valueIteratorResultInstance = `template class IteratorResult<${valueElementType.toCppType()}>;`;
 
-      const entriesIteratorResultInstance = `template class IteratorResult<Tuple<${keyElementType.toCppType()},${valueElementType.toCppType()}>*>;`;
-      const entriesTupleInstance = `template class Tuple<${keyElementType.toCppType()},${valueElementType.toCppType()}>;`;
+      const entriesIteratorResultInstance = `template class IteratorResult<Tuple*>;`;
 
       this.generatedContent.push(
         templateInstance,
         keyIteratorResultInstance,
         valueIteratorResultInstance,
-        entriesIteratorResultInstance,
-        entriesTupleInstance
+        entriesIteratorResultInstance
       );
     } else {
       ts.forEachChild(node, this.mapNodeVisitor.bind(this));
@@ -581,31 +578,6 @@ export class TemplateInstantiator {
     }
   }
 
-  tupleNodeVisitor(node: ts.Node) {
-    if (this.shouldSkipNode(node)) {
-      return;
-    }
-
-    if (TSTuple.isTupleFromVariableDeclaration(node)) {
-      const tupleType = (node.parent as ts.VariableDeclaration).type! as ts.TupleTypeNode;
-      const types = tupleType.elementTypes.map((type: ts.TypeNode) =>
-        this.generator.ts.checker.getTypeFromTypeNode(type)
-      );
-
-      const templateInstance = `template class Tuple<${types.map((type) => type.toCppType()).join(",")}>;`;
-      this.generatedContent.push(templateInstance);
-    } else if (TSTuple.isTupleFromAssignment(node)) {
-      const types = (node as ts.ArrayLiteralExpression).elements.map((e) =>
-        this.generator.ts.checker.getTypeAtLocation(e)
-      );
-
-      const templateInstance = `template class Tuple<${types.map((type) => type.toCppType()).join(",")}>;`;
-      this.generatedContent.push(templateInstance);
-    } else {
-      ts.forEachChild(node, this.tupleNodeVisitor.bind(this));
-    }
-  }
-
   private shouldSkipNode(node: ts.Node) {
     return (
       ts.isImportDeclaration(node) ||
@@ -619,7 +591,6 @@ export class TemplateInstantiator {
       sourceFile.forEachChild(this.arrayNodeVisitor.bind(this));
       sourceFile.forEachChild(this.mapNodeVisitor.bind(this));
       sourceFile.forEachChild(this.setNodeVisitor.bind(this));
-      sourceFile.forEachChild(this.tupleNodeVisitor.bind(this));
     }
 
     return this.handleInstantiated(this.INSTANTIATED_CLASSES_FILE);

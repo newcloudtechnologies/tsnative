@@ -17,6 +17,7 @@ set(SOURCES
     src/tsundefined.cpp
     src/tsnull.cpp
     src/tsobject.cpp
+    src/tstuple.cpp
     src/tsunion.cpp
 
     src/private/tsboolean_cxx_builtin_p.cpp

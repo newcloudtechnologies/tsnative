@@ -195,7 +195,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
           const elementTypes = bindingPattern.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
 
-          const subscription = this.generator.ts.tuple.createSubscription(variableType);
+          const subscription = this.generator.ts.tuple.createSubscription();
           updated = this.generator.builder.asVoidStar(updated);
 
           for (let i = 0; i < identifiers.length; ++i) {

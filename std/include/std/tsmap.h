@@ -7,8 +7,8 @@
 #include "std/tsarray.h"
 #include "std/tsclosure.h"
 #include "std/tsnumber.h"
-#include "std/tstuple.h"
 #include "std/tsobject.h"
+#include "std/tstuple.h"
 
 #include <sstream>
 
@@ -19,7 +19,7 @@
 #endif
 
 template <typename K, typename V>
-class Map : public Object, public Iterable<Tuple<K, V>*>
+class Map : public Object, public Iterable<Tuple*>
 {
     static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value,
                   "TS Map keys/values expected to be of pointer type");
@@ -43,7 +43,7 @@ public:
     IterableIterator<K>* keys();
     IterableIterator<V>* values();
 
-    IterableIterator<Tuple<K, V>*>* iterator() override;
+    IterableIterator<Tuple*>* iterator() override;
 
     String* toString() const override;
 
@@ -154,18 +154,21 @@ IterableIterator<V>* Map<K, V>::values()
 }
 
 template <typename K, typename V>
-IterableIterator<Tuple<K, V>*>* Map<K, V>::iterator()
+IterableIterator<Tuple*>* Map<K, V>::iterator()
 {
     auto keys = _d->orderedKeys();
-    auto zipped = new Array<Tuple<K, V>*>();
+    auto zipped = new Array<Tuple*>();
 
     for (const K& key : keys)
     {
-        auto tuple = new Tuple<K, V>{key, get(key)};
+        auto tuple = new Tuple();
+        tuple->push(static_cast<Object*>(key));
+        tuple->push(static_cast<Object*>(get(key)));
+
         zipped->push(GC::track(tuple));
     }
 
-    auto it = new MapIterator<Tuple<K, V>*>(zipped);
+    auto it = new MapIterator<Tuple*>(zipped);
     return GC::track(it);
 }
 
