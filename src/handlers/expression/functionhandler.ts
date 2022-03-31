@@ -1063,7 +1063,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     if (!valueDeclaration.body) {
-      throw new Error(`Function body required for '${qualifiedName}'`);
+      throw new Error(`Function body required for '${qualifiedName}'. Error at '${expression.getText()}'`);
     }
 
     const parentScope = valueDeclaration.getScope(thisType);

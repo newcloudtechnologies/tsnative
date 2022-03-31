@@ -24,7 +24,9 @@ void Union::setValue(Object* value)
 
 bool Union::hasValue()
 {
-    return toBool()->unboxed();
+    // mkrv @todo: i would prefer to introduce ID's system for every std builtin to avoid string comparison... later
+    const std::string& asString = toString()->cpp_str();
+    return asString != "null" && asString != "undefined";
 }
 
 String* Union::toString() const

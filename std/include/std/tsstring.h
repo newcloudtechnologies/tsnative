@@ -12,6 +12,7 @@
 template <typename T>
 class Array;
 class Number;
+class Union;
 
 class StringPrivate;
 
@@ -31,34 +32,24 @@ public:
     Number* length() const;
     String* concat(String* other) const;
 
-    Boolean* startsWith(String* other) const;
-    Boolean* startsWith(String* other, Number* startIndex) const;
+    Boolean* startsWith(String* other, Union* maybeStartIndex) const;
+    Boolean* endsWith(String* other, Union* maybeStartIndex) const;
 
-    Boolean* endsWith(String* other) const;
-    Boolean* endsWith(String* other, Number* startIndex) const;
+    Array<String*>* split(String* pattern, Union* maybeLimit) const;
 
-    Array<String*>* split(String* pattern) const;
-    Array<String*>* split(String* pattern, Number* limit) const;
+    String* slice(Number* startIndex, Union* maybeEndIndex) const;
 
-    String* slice(Number* startIndex) const;
-    String* slice(Number* startIndex, Number* endIndex) const;
-
-    String* substring(Number* startIndex) const;
-    String* substring(Number* startIndex, Number* endIndex) const;
+    String* substring(Number* startIndex, Union* maybeEndIndex) const;
 
     String* trim() const;
 
     String* toLowerCase() const;
     String* toUpperCase() const;
 
-    Boolean* includes(String* pattern) const;
-    Boolean* includes(String* pattern, Number* startIndex) const;
+    Boolean* includes(String* pattern, Union* maybeStartIndex) const;
 
-    Number* indexOf(String* pattern) const;
-    Number* indexOf(String* pattern, Number* startIndex) const;
-
-    Number* lastIndexOf(String* pattern) const;
-    Number* lastIndexOf(String* pattern, Number* startIndex) const;
+    Number* indexOf(String* pattern, Union* maybeStartIndex) const;
+    Number* lastIndexOf(String* pattern, Union* maybeStartIndex) const;
 
     Boolean* equals(String* other) const;
 

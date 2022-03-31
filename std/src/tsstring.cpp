@@ -3,6 +3,7 @@
 #include "std/gc.h"
 #include "std/tsarray.h"
 #include "std/tsnumber.h"
+#include "std/tsunion.h"
 
 #include "std/iterators/stringiterator.h"
 
@@ -13,7 +14,6 @@
 #include <algorithm>
 #include <iomanip>
 #include <limits>
-
 
 String::String()
 #ifdef USE_STD_STRING_BACKEND
@@ -68,33 +68,54 @@ String* String::concat(String* other) const
     return GC::track(new String(concatenated));
 }
 
-Boolean* String::startsWith(String* other) const
+Boolean* String::startsWith(String* other, Union* maybeStartIndex) const
 {
-    bool result = _d->startsWith(other->cpp_str());
+    bool result = false;
+
+    if (!maybeStartIndex->hasValue())
+    {
+        result = _d->startsWith(other->cpp_str());
+    }
+    else
+    {
+        auto startIndex = static_cast<Number*>(maybeStartIndex->getValue());
+        result = _d->startsWith(other->cpp_str(), static_cast<int>(startIndex->unboxed()));
+    }
+
     return GC::track(new Boolean(result));
 }
 
-Boolean* String::startsWith(String* other, Number* startIndex) const
+Boolean* String::endsWith(String* other, Union* maybeStartIndex) const
 {
-    bool result = _d->startsWith(other->cpp_str(), static_cast<int>(startIndex->unboxed()));
+    bool result = false;
+
+    if (!maybeStartIndex->hasValue())
+    {
+        result = _d->endsWith(other->cpp_str());
+    }
+    else
+    {
+        auto startIndex = static_cast<Number*>(maybeStartIndex->getValue());
+        result = _d->endsWith(other->cpp_str(), static_cast<int>(startIndex->unboxed()));
+    }
+
     return GC::track(new Boolean(result));
 }
 
-Boolean* String::endsWith(String* other) const
+Array<String*>* String::split(String* pattern, Union* maybeLimit) const
 {
-    bool result = _d->endsWith(other->cpp_str());
-    return GC::track(new Boolean(result));
-}
+    std::vector<std::string> result;
 
-Boolean* String::endsWith(String* other, Number* startIndex) const
-{
-    bool result = _d->endsWith(other->cpp_str(), static_cast<int>(startIndex->unboxed()));
-    return GC::track(new Boolean(result));
-}
+    if (!maybeLimit->hasValue())
+    {
+        result = _d->split(pattern->cpp_str());
+    }
+    else
+    {
+        auto limit = static_cast<Number*>(maybeLimit->getValue());
+        result = _d->split(pattern->cpp_str(), static_cast<int>(limit->unboxed()));
+    }
 
-Array<String*>* String::split(String* pattern) const
-{
-    auto result = _d->split(pattern->cpp_str());
     std::vector<String*> boxed;
     boxed.reserve(result.size());
 
@@ -106,41 +127,36 @@ Array<String*>* String::split(String* pattern) const
     return Array<String*>::fromStdVector(boxed);
 }
 
-Array<String*>* String::split(String* pattern, Number* limit) const
+String* String::slice(Number* startIndex, Union* maybeEndIndex) const
 {
-    auto result = _d->split(pattern->cpp_str(), static_cast<int>(limit->unboxed()));
-    std::vector<String*> boxed;
-    boxed.reserve(result.size());
+    std::string result;
 
-    std::transform(result.cbegin(),
-                   result.cend(),
-                   std::back_inserter(boxed),
-                   [](const std::string& value) { return GC::track(new String(value)); });
-
-    return Array<String*>::fromStdVector(boxed);
-}
-
-String* String::slice(Number* startIndex) const
-{
-    std::string result = _d->slice(static_cast<int>(startIndex->unboxed()));
+    if (!maybeEndIndex->hasValue())
+    {
+        result = _d->slice(static_cast<int>(startIndex->unboxed()));
+    }
+    else
+    {
+        auto endIndex = static_cast<Number*>(maybeEndIndex->getValue());
+        result = _d->slice(static_cast<int>(startIndex->unboxed()), static_cast<int>(endIndex->unboxed()));
+    }
     return GC::track(new String(result));
 }
 
-String* String::slice(Number* startIndex, Number* endIndex) const
+String* String::substring(Number* startIndex, Union* maybeEndIndex) const
 {
-    std::string result = _d->slice(static_cast<int>(startIndex->unboxed()), static_cast<int>(endIndex->unboxed()));
-    return GC::track(new String(result));
-}
+    std::string result;
 
-String* String::substring(Number* startIndex) const
-{
-    std::string result = _d->substring(static_cast<int>(startIndex->unboxed()));
-    return GC::track(new String(result));
-}
+    if (!maybeEndIndex->hasValue())
+    {
+        result = _d->substring(static_cast<int>(startIndex->unboxed()));
+    }
+    else
+    {
+        auto endIndex = static_cast<Number*>(maybeEndIndex->getValue());
+        result = _d->substring(static_cast<int>(startIndex->unboxed()), static_cast<int>(endIndex->unboxed()));
+    }
 
-String* String::substring(Number* startIndex, Number* endIndex) const
-{
-    std::string result = _d->substring(static_cast<int>(startIndex->unboxed()), static_cast<int>(endIndex->unboxed()));
     return GC::track(new String(result));
 }
 
@@ -162,39 +178,54 @@ String* String::toUpperCase() const
     return GC::track(new String(result));
 }
 
-Boolean* String::includes(String* pattern) const
+Boolean* String::includes(String* pattern, Union* maybeStartIndex) const
 {
-    bool result = _d->includes(pattern->cpp_str());
+    bool result = false;
+
+    if (!maybeStartIndex->hasValue())
+    {
+        result = _d->includes(pattern->cpp_str());
+    }
+    else
+    {
+        auto startIndex = static_cast<Number*>(maybeStartIndex->getValue());
+        result = _d->includes(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
+    }
+
     return GC::track(new Boolean(result));
 }
 
-Boolean* String::includes(String* pattern, Number* startIndex) const
+Number* String::indexOf(String* pattern, Union* maybeStartIndex) const
 {
-    bool result = _d->includes(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
-    return GC::track(new Boolean(result));
-}
+    int index = -1;
 
-Number* String::indexOf(String* pattern) const
-{
-    int index = _d->indexOf(pattern->cpp_str());
+    if (!maybeStartIndex->hasValue())
+    {
+        index = _d->indexOf(pattern->cpp_str());
+    }
+    else
+    {
+        auto startIndex = static_cast<Number*>(maybeStartIndex->getValue());
+        index = _d->indexOf(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
+    }
+
     return GC::track(new Number(static_cast<double>(index)));
 }
 
-Number* String::indexOf(String* pattern, Number* startIndex) const
+Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
 {
-    int index = _d->indexOf(pattern->cpp_str(), static_cast<double>(startIndex->unboxed()));
-    return GC::track(new Number(static_cast<double>(index)));
-}
+    int index = -1;
 
-Number* String::lastIndexOf(String* pattern) const
-{
-    int index = _d->lastIndexOf(pattern->cpp_str());
-    return GC::track(new Number(static_cast<double>(index)));
-}
+    if (!maybeStartIndex->hasValue())
+    {
+        index = _d->lastIndexOf(pattern->cpp_str());
+    }
+    else
+    {
+        auto startIndex = static_cast<Number*>(maybeStartIndex->getValue());
+        index = _d->lastIndexOf(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
+    }
 
-Number* String::lastIndexOf(String* pattern, Number* startIndex) const
-{
-    int index = _d->lastIndexOf(pattern->cpp_str(), static_cast<double>(startIndex->unboxed()));
     return GC::track(new Number(static_cast<double>(index)));
 }
 

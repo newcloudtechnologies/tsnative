@@ -343,7 +343,6 @@ export class TemplateInstantiator {
 
     const tsArrayType = this.generator.ts.checker.getTypeAtLocation(node.expression.expression);
     const cppArrayType = tsArrayType.toPlainCppType();
-    const methodName = node.expression.name.getText();
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(node);
     const tsReturnType = resolvedSignature.getReturnType();
@@ -356,13 +355,38 @@ export class TemplateInstantiator {
       return;
     }
 
-    const argumentTypes =
-      node.arguments.map((a) => {
-        const tsType = this.generator.ts.checker.getTypeAtLocation(a);
-        const cppType = tsType.toCppType();
+    const methodName = node.expression.name.getText();
+    const methodSymbol = tsArrayType.getProperty(methodName);
+    const methodDeclaration = methodSymbol.valueDeclaration;
 
-        return cppType;
-      }) || [];
+    if (!methodDeclaration) {
+      throw new Error(`Unable to find method '${methodName} for Array'`);
+    }
+
+    const declaredParameters = methodDeclaration.parameters;
+    const args = node.arguments;
+
+    const argumentTypes: string[] = [];
+
+    declaredParameters.forEach((p, index) => {
+      if (p.questionToken) {
+        argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
+        return;
+      }
+
+      if (p.dotDotDotToken) {
+        const restArgs = args.slice(index);
+        const types = restArgs.map((a) => this.generator.ts.checker.getTypeAtLocation(a).toCppType());
+        argumentTypes.push(...types);
+        return;
+      }
+
+      const arg = args[index];
+      const tsType = this.generator.ts.checker.getTypeAtLocation(arg || p);
+      const cppType = tsType.toCppType();
+
+      argumentTypes.push(cppType);
+    });
 
     const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
 

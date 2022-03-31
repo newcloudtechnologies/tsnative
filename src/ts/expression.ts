@@ -11,6 +11,7 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
+import { TSType } from "./type";
 
 export class Expression {
   private readonly expression: ts.Expression;
@@ -72,28 +73,59 @@ export class Expression {
     return result;
   }
 
-  getArgumentTypes() {
+  getArgumentTypes(): TSType[] {
     if (!ts.isCallExpression(this.expression)) {
       throw new Error(
         `'getArgumentTypes' expected to be called on ts.CallExpression wrapper, called on '${this.expression.getText()}'`
       );
     }
 
-    return this.expression.arguments.map((arg) => {
+    const args = this.expression.arguments;
+
+    const type = this.generator.ts.checker.getTypeAtLocation(this.expression.expression);
+    if (type.isSymbolless()) {
+      throw new Error(`No symbol for called function '${this.expression.getText()}'`);
+    }
+
+    const argumentTypes: TSType[] = [];
+
+    const handleArg = (arg: ts.Node) => {
       if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(arg)) {
         const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
         const declaration = symbol.valueDeclaration || symbol.declarations[0];
-        return declaration.type;
+        argumentTypes.push(declaration.type);
+        return;
       }
 
-      const type = this.generator.ts.checker.getTypeAtLocation(arg);
-      if (type.isTypeParameter()) {
-        const typenameAlias = type.toString();
-        return this.generator.symbolTable.currentScope.typeMapper.get(typenameAlias);
-      } else {
-        return type;
+      let argType = this.generator.ts.checker.getTypeAtLocation(arg);
+      if (argType.isTypeParameter()) {
+        const typenameAlias = argType.toString();
+        argType = this.generator.symbolTable.currentScope.typeMapper.get(typenameAlias);
       }
+
+      argumentTypes.push(argType);
+    };
+
+    const symbol = type.getSymbol();
+    const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+    declaration.parameters.forEach((p, index) => {
+      if (p.questionToken) {
+        argumentTypes.push(this.generator.ts.union.getDeclaration().type);
+        return;
+      }
+
+      if (p.dotDotDotToken) {
+        const restArgs = args.slice(index);
+        restArgs.forEach(handleArg);
+        return;
+      }
+
+      const arg = args[index];
+      handleArg(arg);
     });
+
+    return argumentTypes;
   }
 
   isMethod() {

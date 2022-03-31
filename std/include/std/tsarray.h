@@ -4,11 +4,12 @@
 
 #include "std/gc.h"
 #include "std/iterable.h"
+#include "std/tsboolean.h"
 #include "std/tsclosure.h"
 #include "std/tsnumber.h"
 #include "std/tsobject.h"
 #include "std/tsstring.h"
-#include "std/tsboolean.h"
+#include "std/tsunion.h"
 
 #ifdef USE_STD_ARRAY_BACKEND
 #include "std/private/tsarray_std_p.h"
@@ -53,18 +54,16 @@ public:
 
     void forEach(TSClosure* closure) const;
 
-    Number* indexOf(T value) const;
-    Number* indexOf(T value, Number* fromIndex) const;
+    Number* indexOf(T value, Union* maybeFromIndex) const;
 
     // @todo: `map` have to be marked as `const`,
     // but somehow meta information have to be provided for code generator on TS side
     template <typename U>
     Array<U>* map(TSClosure* closure);
 
-    Array<T>* splice(Number* start);
-    Array<T>* splice(Number* start, Number* deleteCount);
+    Array<T>* splice(Number* start, Union* maybeDeleteCount);
 
-    Array<T>* concat(const Array<T>& other) const;
+    Array<T>* concat(Array<T>* other) const;
 
     std::vector<T> toStdVector() const;
 
@@ -158,36 +157,44 @@ void Array<T>::forEach(TSClosure* closure) const
 }
 
 template <typename T>
-Number* Array<T>::indexOf(T value) const
+Number* Array<T>::indexOf(T value, Union* maybeFromIndex) const
 {
-    int result = _d->indexOf(value);
+    int result = -1;
+    if (!maybeFromIndex->hasValue())
+    {
+        result = _d->indexOf(value);
+    }
+    else
+    {
+        auto fromIndex = static_cast<Number*>(maybeFromIndex->getValue());
+        result = _d->indexOf(value, static_cast<int>(fromIndex->unboxed()));
+    }
+
     return GC::track(new Number(static_cast<double>(result)));
 }
 
 template <typename T>
-Number* Array<T>::indexOf(T value, Number* fromIndex) const
+Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
 {
-    int result = _d->indexOf(value, static_cast<int>(fromIndex->unboxed()));
-    return GC::track(new Number(static_cast<double>(result)));
+    std::vector<T> result;
+
+    if (!maybeDeleteCount->hasValue())
+    {
+        result = _d->splice(static_cast<int>(start->unboxed()));
+    }
+    else
+    {
+        auto deleteCount = static_cast<Number*>(maybeDeleteCount->getValue());
+        result = _d->splice(static_cast<int>(start->unboxed()), static_cast<int>(deleteCount->unboxed()));
+    }
+
+    return Array<T>::fromStdVector(result);
 }
 
 template <typename T>
-Array<T>* Array<T>::splice(Number* start)
+Array<T>* Array<T>::concat(Array<T>* other) const
 {
-    return Array<T>::fromStdVector(_d->splice(static_cast<int>(start->unboxed())));
-}
-
-template <typename T>
-Array<T>* Array<T>::splice(Number* start, Number* deleteCount)
-{
-    return Array<T>::fromStdVector(
-        _d->splice(static_cast<int>(start->unboxed()), static_cast<int>(deleteCount->unboxed())));
-}
-
-template <typename T>
-Array<T>* Array<T>::concat(const Array<T>& other) const
-{
-    return Array<T>::fromStdVector(_d->concat(other.toStdVector()));
+    return Array<T>::fromStdVector(_d->concat(other->toStdVector()));
 }
 
 template <typename T>

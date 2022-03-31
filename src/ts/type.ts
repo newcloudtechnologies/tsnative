@@ -738,6 +738,10 @@ export class TSType {
       const symbol = this.getSymbol();
       const declaration = symbol.valueDeclaration || symbol.declarations[0];
 
+      if (declaration.isParameter() && declaration.isOptional()) {
+        return "Union*";
+      }
+
       if (!declaration.isAmbient()) {
         if (declaration.isClass() || this.isObject()) {
           return "Object*";

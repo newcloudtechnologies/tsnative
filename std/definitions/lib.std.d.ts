@@ -98,14 +98,11 @@ declare class Array<T> {
 
   forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void;
 
-  indexOf(searchElement: T): number;
-  indexOf(searchElement: T, fromIndex: number): number;
+  indexOf(searchElement: T, fromIndex?: number): number;
 
   map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[];
 
-  splice(start: number): T[];
-  splice(start: number, deleteCount: number): T[];
-  splice(start: number, deleteCount: number, ...items: T[]): T[];
+  splice(start: number, deleteCount?: number): T[];
 
   concat(other: T[]): T[];
 
@@ -193,34 +190,24 @@ declare class String {
 
   concat(string: string): string;
 
-  startsWith(string: string): boolean;
-  startsWith(string: string, start: number): boolean;
+  startsWith(string: string, start?: number): boolean;
+  endsWith(string: string, start?: number): boolean;
 
-  endsWith(string: string): boolean;
-  endsWith(string: string, start: number): boolean;
+  split(pattern: string, limit?: number): string[];
 
-  split(pattern: string): string[];
-  split(pattern: string, limit: number): string[];
+  slice(start: number, end?: number): string;
 
-  slice(start: number): string;
-  slice(start: number, end: number): string;
-
-  substring(start: number): string;
-  substring(start: number, end: number): string;
+  substring(start: number, end?: number): string;
 
   trim(): string;
 
   toLowerCase(): string;
   toUpperCase(): string;
 
-  includes(pattern: string): boolean;
-  includes(pattern: string, start: number): boolean;
+  includes(pattern: string, start?: number): boolean;
 
-  indexOf(pattern: string): number;
-  indexOf(pattern: string, start: number): number;
-
-  lastIndexOf(pattern: string): number;
-  lastIndexOf(pattern: string, start: number): number;
+  indexOf(pattern: string, start?: number): number;
+  lastIndexOf(pattern: string, start?: number): number;
 
   // @ts-ignore
   @MapsTo("iterator")
@@ -254,7 +241,7 @@ declare class Null {
 }
 
 declare namespace console {
-  export function log(message?: any, ...optionalParams: any[]): void;
+  export function log(message: any, ...optionalParams: any[]): void;
   export function assert(assumption: boolean, ...optionalParams: any[]): void;
 }
 
