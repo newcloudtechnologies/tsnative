@@ -26,13 +26,15 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
 import { last } from "lodash";
 import { TSType } from "../../ts/type";
-import { LLVMConstant, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
+import { LLVMConstant, LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "../../llvm/type";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";
 import { Signature } from "../../ts/signature";
 import { LLVMFunction } from "../../llvm/function";
+import { ExceptionHandlingGenerator } from "llvm-ir-eh-generator";
+import { getInvocableBody, needUnwind } from "../../builder/builder";
 
 export class FunctionHandler extends AbstractExpressionHandler {
   private readonly sysVFunctionHandler: SysVFunctionHandler;
@@ -191,7 +193,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     if (knownFunction.type.unwrapPointer().isFunction()) {
-      return this.generator.builder.createSafeCall(knownFunction, args);
+      const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
+      return this.invoke(expression, body, knownFunction, args);
     }
 
     if (knownFunction.type.isPointer() && knownFunction.type.getPointerElementType().isIntegerType(8)) {
@@ -251,7 +254,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }, this.generator.symbolTable.currentScope);
 
     if (ptr.type.unwrapPointer().isFunction()) {
-      return this.generator.builder.createSafeCall(ptr, args);
+      const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
+      return this.invoke(expression, body, ptr, args);
     }
 
     if (ptr.type.isClosure()) {
@@ -349,12 +353,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
     this.storeActualArguments(adjustedArgs, environment, closureEnvironment?.fixedArgsCount);
 
     const closureCall = this.generator.tsclosure.getLLVMCall();
+
+    const valueDeclaration = this.generator.ts.checker
+      .getTypeAtLocation(expression.expression)
+      .getSymbol().valueDeclaration;
+    const body = valueDeclaration?.isFunctionLike() ? valueDeclaration.body : undefined;
     if (llvmReturnType.isVoid()) {
-      return this.generator.builder.createSafeCall(closureCall, [closure]);
+      return this.invoke(expression, body, closureCall, [closure]);
     }
 
     llvmReturnType = llvmReturnType.ensurePointer();
-    const callResult = this.generator.builder.createSafeCall(closureCall, [closure]);
+    const callResult = this.invoke(expression, body, closureCall, [closure]);
 
     return this.generator.builder.createBitCast(callResult, llvmReturnType);
   }
@@ -433,7 +442,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     this.handleConstructorBody(constructorDeclaration, constructor, env);
     setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
 
-    this.generator.builder.createSafeCall(constructor, [env.untyped]);
+    this.invoke(expression, constructorDeclaration.body, constructor, [env.untyped]);
 
     const llvmThisType = parentScope.thisData.llvmType;
 
@@ -629,8 +638,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       this.handleFunctionBody(valueDeclaration, fn, env);
       setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
-
-    return this.generator.builder.createSafeCall(fn, callArgs);
+    const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
+    return this.invoke(expression, body, fn, callArgs);
   }
 
   private handleSetAccessExpression(expression: ts.PropertyAccessExpression, outerEnv?: Environment): LLVMValue {
@@ -726,7 +735,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
 
-    return this.generator.builder.createSafeCall(fn, callArgs);
+    const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
+    return this.invoke(expression, body, fn, callArgs);
   }
 
   isBindExpression(expression: ts.Expression) {
@@ -1169,7 +1179,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
 
-    return this.generator.builder.createSafeCall(fn, callArgs);
+    const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
+    return this.invoke(expression, body, fn, callArgs);
   }
 
   private handleCallArguments(
@@ -1380,7 +1391,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
     }
 
-    this.generator.builder.createSafeCall(constructor, [env.untyped]);
+    const body = constructorDeclaration.isFunctionLike() ? constructorDeclaration.body : undefined;
+    this.invoke(expression, body, constructor, [env.untyped]);
 
     this.patchVTable(valueDeclaration, parentScope, thisValue, env);
 
@@ -1635,17 +1647,22 @@ export class FunctionHandler extends AbstractExpressionHandler {
               }
 
               if (!this.generator.isCurrentBlockTerminated) {
-                const currentReturnType = LLVMType.make(
-                  this.generator.currentFunction.type.elementType.returnType,
-                  this.generator
-                );
-                const returnsOptional = currentReturnType.isUnion();
-
-                if (returnsOptional) {
-                  const nullOptional = this.generator.ts.union.create();
-                  this.generator.builder.createSafeRet(nullOptional);
+                if (this.generator.builder.getInsertBlock()?.name.startsWith("after.try")) {
+                  const eh = new ExceptionHandlingGenerator(this.generator.module, this.generator.builder.unwrap());
+                  eh.createUnreachable();
                 } else {
-                  this.generator.builder.createRetVoid();
+                  const currentReturnType = LLVMType.make(
+                    this.generator.currentFunction.type.elementType.returnType,
+                    this.generator
+                  );
+                  const returnsOptional = currentReturnType.isUnion();
+
+                  if (returnsOptional) {
+                    const nullOptional = this.generator.ts.union.create();
+                    this.generator.builder.createSafeRet(nullOptional);
+                  } else {
+                    this.generator.builder.createRetVoid();
+                  }
                 }
               }
             },
@@ -1704,5 +1721,38 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     return Boolean(parentFunction);
+  }
+
+  invoke(
+    expression: ts.CallExpression | ts.NewExpression | ts.PropertyAccessExpression,
+    declarationBody: ts.Block | ts.Expression | undefined,
+    callee: LLVMValue,
+    args: LLVMValue[]
+  ): LLVMValue {
+    if (!declarationBody) return this.generator.builder.createSafeCall(callee, args);
+
+    const { module, builder, currentFunction, context } = this.generator;
+
+    const entry = builder.functionMetaEntry.get(declarationBody);
+    if (entry && entry.needUnwind) {
+      const eh = new ExceptionHandlingGenerator(module, builder.unwrap());
+      if (needUnwind(expression)) {
+        const lpadBB = builder.landingPadStack[builder.landingPadStack.length - 1];
+        const continueBB = llvm.BasicBlock.create(context, "continue", currentFunction);
+        eh.createInvoke(
+          callee.unwrapped,
+          continueBB,
+          lpadBB,
+          args.map((arg) => arg.unwrapped)
+        );
+        const invokeInst = builder.getInsertBlock()?.getTerminator();
+        builder.setInsertionPoint(continueBB);
+        return invokeInst ? LLVMValue.create(invokeInst, this.generator) : LLVMConstantInt.getFalse(this.generator);
+      } else {
+        const expressionBody = getInvocableBody(expression);
+        if (expressionBody) this.generator.builder.functionMetaEntry.set(expressionBody, { needUnwind: true });
+      }
+    }
+    return this.generator.builder.createSafeCall(callee, args);
   }
 }

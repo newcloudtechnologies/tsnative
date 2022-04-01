@@ -1,3 +1,3 @@
 export namespace test {
-    export const value: number = 1;
+  export const value: number = 1;
 }

@@ -25,6 +25,11 @@ export class ReturnHandler extends AbstractNodeHandler {
           this.generator
         );
 
+        if (this.generator.builder.getInsertBlock()?.name === "lpad") {
+          const cxaEndCatchFn = this.generator.module.getFunction("__cxa_end_catch");
+          this.generator.builder.unwrap().createCall(cxaEndCatchFn!, []);
+        }
+
         if (!ret.type.equals(currentFunctionReturnType)) {
           const signature = this.getSignatureOfFunctionThatReturns(node);
           const declaratedReturnType = signature.getReturnType();

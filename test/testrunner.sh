@@ -62,7 +62,17 @@ TEST_DIRS=( "${CURRENT_DIR}/src/app" \
 
 # basic filters to choose test files
 INCLUDE_FILTER="*.ts"
-EXCLUDE_FILTER="*.d.ts"
+EXCLUDE_FILTER=( "*.d.ts" )
+
+# FIXME: AN-926
+if [ "$OSTYPE" == "msys" ]; then
+    EXCLUDE_FILTER+=("exceptions.ts")
+fi
+
+EXCLUDE_EXPR=
+for filter in ${EXCLUDE_FILTER[@]}; do
+    EXCLUDE_EXPR+="! -name ${filter} "
+done
 
 # ! extensions are expected to be located in the cpp directory near the test file
 run_tests() {
@@ -72,7 +82,7 @@ run_tests() {
 
         mkdir -p ${test_out_dir}
 
-        tests=$(find ${dir} -name "${INCLUDE_FILTER}" ! -name "${EXCLUDE_FILTER}")
+        tests=$(find ${dir} -name "${INCLUDE_FILTER}" ${EXCLUDE_EXPR})
 
         # iterate over test files and build
         # TODO: run tests in parallel

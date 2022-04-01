@@ -1,0 +1,35 @@
+{
+  "name": "llvm-ir-eh-generator",
+  "version": "1.0.0",
+  "description": "LLVM ir generator for exception handling",
+  "author": "Andrey Tutyne <andrey.tutyne@myoffice.team>",
+  "main": "index.js",
+  "typings": "./llvm-ir-eh-generator.d.ts",
+  "engines": {
+    "node": ">=6.0"
+  },
+  "engineStrict": true,
+  "devDependencies": {
+    "node-gyp": "^7.1.2"
+  },
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "cmake-js": "^6.1.0",
+    "llvm-node": "git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#wip/delay_load",
+    "nan": "^2.14.2"
+  },
+  "scripts": {
+    "preinstall": "npm install --save git+ssh://git@gitea.devos.club:222/antiq-mirrors/llvm-node.git#wip/delay_load",
+    "configure": "cmake-js configure",
+    "build": "cmake-js compile",
+    "install": "cmake-js compile",
+    "clean": "cmake-js clean",
+    "rebuild": "cmake-js rebuild",
+    "postinstall": "npm cache clean --force && rm -rf node_modules"
+  },
+  "moduleFileExtensions": [
+    "ts",
+    "tsx",
+    "js"
+  ]
+}

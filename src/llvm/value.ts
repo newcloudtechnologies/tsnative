@@ -179,10 +179,19 @@ export class LLVMValue {
     if (!value.type.isPointer()) {
       throw new Error(`Assignment destination expected to be of PointerType, got '${value.type.toString()}'`);
     }
+    if (!other.type.isPointer()) {
+      throw new Error(`Source value expected to be of PointerType, got '${other.type.toString()}'`);
+    }
 
     if (value.type.isUnion()) {
       this.generator.ts.union.set(value, other);
       return value;
+    }
+    const isSame = value.type.getPointerElementType() === other.type.getPointerElementType();
+    const int8PtrTy = LLVMType.getInt8Type(this.generator).getPointer();
+
+    if (!isSame && other.type.equals(int8PtrTy)) {
+      other = this.generator.builder.createBitCast(other, value.type);
     }
 
     other = other.adjustToType(value.type.getPointerElementType());

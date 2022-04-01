@@ -11,17 +11,52 @@
 
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
+import * as ts from "typescript";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { Prototype } from "../scope";
 
+export class FunctionMeta {
+  needUnwind: boolean = false;
+}
+
+export function getParentNode(currentNode: ts.Node, expectedParentNode: (node: ts.Node) => boolean): ts.Node {
+  let searchNode = currentNode.parent;
+  while (searchNode && !expectedParentNode(searchNode)) {
+    searchNode = searchNode.parent;
+  }
+  return searchNode;
+}
+
+export function getInvocableBody(node: ts.Node): ts.Block | ts.Expression | undefined {
+  const searchNode = getParentNode(node, (currentNode) =>
+    ts.isFunctionLike(currentNode)
+  ) as ts.FunctionLikeDeclarationBase;
+  return searchNode?.body;
+}
+
+export function needUnwind(node: ts.Node): boolean {
+  const searchNode = getParentNode(
+    node,
+    (currentNode: ts.Node) => ts.isFunctionLike(currentNode) || ts.isTryStatement(currentNode)
+  );
+  return searchNode ? searchNode.kind === ts.SyntaxKind.TryStatement : false;
+}
+
 export class Builder {
   private readonly generator: LLVMGenerator;
   private readonly builder: llvm.IRBuilder;
+  landingPadStack: llvm.BasicBlock[] = [];
+  functionMetaEntry: Map<ts.Block | ts.Expression, FunctionMeta>;
 
   constructor(generator: LLVMGenerator, basicBlock: llvm.BasicBlock | null) {
     this.generator = generator;
     this.builder = basicBlock ? new llvm.IRBuilder(basicBlock) : new llvm.IRBuilder(generator.context);
+    this.functionMetaEntry = new Map<ts.Block | ts.Expression, FunctionMeta>();
+  }
+
+  unwrap() {
+    return this.builder;
   }
 
   checkInsert(aggregate: LLVMValue, value: LLVMValue, idxList: number[]) {

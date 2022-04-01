@@ -27,6 +27,7 @@ import {
   VariableHandler,
   SwitchHandler,
   EnumHandler,
+  ExceptionHandler,
 } from "../../handlers/node";
 
 import { AbstractNodeHandler } from "./nodehandler";
@@ -51,7 +52,8 @@ export class NodeHandlerChain {
       .setNext(new TypeAliasHandler(generator))
       .setNext(new VariableHandler(generator))
       .setNext(new SwitchHandler(generator))
-      .setNext(new EnumHandler(generator));
+      .setNext(new EnumHandler(generator))
+      .setNext(new ExceptionHandler(generator));
 
     this.root = imports;
   }
