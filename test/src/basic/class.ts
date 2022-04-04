@@ -1346,3 +1346,32 @@
 //   c.fn = () => { }
 //   c.fn()
 // }
+
+{
+  class AbsData {
+    verde() {
+      console.log("Going green")
+    }
+  }
+
+  class ExtData extends AbsData {
+    letter: string = "A";
+  }
+
+  class BaseColorist {
+    data: AbsData
+
+    constructor(initial: AbsData) {
+      this.data = initial;
+    }
+  }
+
+  class Controller extends BaseColorist {
+    constructor() {
+      super(new ExtData());
+    }
+  }
+
+  const d = new Controller();
+  console.assert((d.data as ExtData).letter === "A", "Class property initialization by derived type");
+}

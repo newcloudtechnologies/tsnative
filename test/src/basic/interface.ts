@@ -139,3 +139,71 @@
 
     console.assert(res.first === firstInitializer && res.second === secondInitializer, "Interface-typed variable out-of-order initialization");
 }
+
+{
+    interface VoidState { }
+
+    interface MyState extends VoidState {
+        num: number;
+        str: string;
+    }
+
+    const state1: MyState = {
+        num: 555,
+        str: "777"
+    };
+
+    const state0: VoidState = state1;
+    console.assert((state0 as MyState).num === 555, "Cast interface to base type in variable initialization");
+
+    class Base {
+        _state: VoidState;
+
+        constructor(initialState: MyState) {
+            this._state = initialState;
+        }
+    }
+
+    const b: Base = new Base(state1);
+    console.assert((b._state as MyState).num === 555 && (b._state as MyState).str === "777", "Cast interface to base type in class property initialization");
+}
+
+{
+    interface RxSize_i {
+        w?: number,
+        h: number,
+    };
+
+    const size: RxSize_i = { h: 200 };
+    console.assert(size.h === 200 && !size.w, "Optional interface property (1)");
+}
+
+{
+    interface RxSize_i {
+        w?: number,
+        h?: number,
+    };
+
+    let size: RxSize_i = { w: 200 };
+
+    size = {
+        ...size,
+        h: 500
+    };
+
+    console.assert(size.h === 500 && size.w === 200, "Optional interface property (2)");
+}
+
+{
+    interface RxSize_i {
+        w?: number,
+    }
+
+    const size: RxSize_i = {} as RxSize_i
+
+    if (size.w) {
+        console.assert(false, "Optional interface property: never");
+    } else {
+        console.assert(true, "Optional interface property: always");
+    }
+}

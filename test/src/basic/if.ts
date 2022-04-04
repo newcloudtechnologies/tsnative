@@ -35,3 +35,15 @@
   console.assert(_if_then_else(true) === "then_branch", "if: _if_then_else(true) === 'then_branch' failed");
   console.assert(_if_then_else(false) === "else_branch", "if: _if_then_else(false) === 'else_branch' failed");
 }
+
+{
+  function stringifyType(item: boolean): string {
+    if (item) {
+      return "folder";
+    } else {
+      return "file";
+    }
+  }
+
+  console.assert(stringifyType(false) === "file" && stringifyType(true) === "folder", "Implicitly terminated function");
+}

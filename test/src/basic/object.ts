@@ -118,3 +118,22 @@
     const state2 = f(state, 'bbb')
     console.assert(state2.answer === "bbb", "Spread from type-alias-typed parameter");
 }
+
+{
+    interface MyState {
+        num: number;
+        name: string;
+    }
+
+    function updateState(state: MyState): MyState {
+        return {
+            ...state,
+            num: 444,
+        }
+    }
+
+    const initialState = { num: 2, name: "updated" };
+    const state = updateState(initialState);
+
+    console.assert(state.name === "updated" && state.num === 444, "Return spreaded object from function");
+}

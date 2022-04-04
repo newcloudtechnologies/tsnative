@@ -179,3 +179,16 @@ import createStore2 from "./union_type_imports"
 
     console.assert(n as number === 5, "Optional union initialized with undefined");
 }
+
+{
+    class MyData {
+        num: number = 777
+    }
+
+    class MyObj {
+        data: MyData | null = null;
+    }
+
+    const obj = new MyObj;
+    console.assert(!obj.data, "Object property of 'T | null' type initialized by null")
+}

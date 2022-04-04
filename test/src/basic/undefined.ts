@@ -31,5 +31,25 @@ console.assert(!optionalUnion, "Active undefined test failed");
 
 {
     const f = () => { };
-    console.assert(f() === undefined, "Arrow function with empty body must return 'undefined'")
+    console.assert(f() === undefined, "Arrow function with empty body must return 'undefined'");
+}
+
+{
+    interface RxBarItem_t {
+        name: string
+        children: RxBarItem_t[] | undefined
+    };
+
+    const arr: RxBarItem_t[] = [
+        {
+            name: 'File',
+            children: undefined
+        },
+    ]
+
+    if (arr[0].children) {
+        console.assert(false, "First array element have no children: never");
+    } else {
+        console.log(true, "First array element have children: always");
+    }
 }

@@ -149,3 +149,23 @@
     c.clickTime = undefined;
     console.assert(!c.clickTime, "Type literal-typed optional property (2)");
 }
+
+{
+    type MyType = {
+        n?: number
+    };
+
+    function checkValue(arg: MyType) {
+        if (arg.n !== undefined) {
+            return true;
+        }
+
+        return;
+    }
+
+    const checkResult = checkValue({
+        n: 3
+    });
+
+    console.assert(!!checkResult, "Type with optional field value in function args");
+}
