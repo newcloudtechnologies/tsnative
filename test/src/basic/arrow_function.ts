@@ -63,3 +63,7 @@
   console.assert(f()() === 100, "arrow_function: () => { return function(): number failed");
 }
 
+{
+  const two = () => 2;
+  console.assert(two() === 2, "Arrow function without body block must return its expression");
+}

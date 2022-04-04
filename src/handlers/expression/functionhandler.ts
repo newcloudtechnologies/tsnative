@@ -359,7 +359,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       .getSymbol().valueDeclaration;
     const body = valueDeclaration?.isFunctionLike() ? valueDeclaration.body : undefined;
     if (llvmReturnType.isVoid()) {
-      return this.invoke(expression, body, closureCall, [closure]);
+      llvmReturnType = this.generator.ts.undef.getLLVMType();
     }
 
     llvmReturnType = llvmReturnType.ensurePointer();
@@ -711,7 +711,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
     }
 
-    const llvmReturnType = LLVMType.getVoidType(this.generator);
+    const llvmReturnType = this.generator.ts.undef.getLLVMType();
     const { fn, existing } = this.generator.llvm.function.create(
       llvmReturnType,
       llvmArgumentTypes,
@@ -1633,17 +1633,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
                   }
                   this.generator.handleNode(node, bodyScope, environment);
                 });
-              } else if (ts.isBlock(declaration.body!)) {
-                // Empty block
-                // @todo
-                this.generator.builder.createRetVoid();
-              } else {
-                const blocklessArrowFunctionReturn = this.generator.handleExpression(declaration.body!, environment);
-                if ((this.generator.currentFunction.type.elementType as llvm.FunctionType).returnType.isVoidTy()) {
-                  this.generator.builder.createRetVoid();
-                } else {
-                  this.generator.builder.createSafeRet(blocklessArrowFunctionReturn);
-                }
+              } else if (!ts.isBlock(declaration.body!)) {
+                const currentReturnType = LLVMType.make(
+                  this.generator.currentFunction.type.elementType.returnType,
+                  this.generator
+                );
+
+                let blocklessArrowFunctionReturn = this.generator.handleExpression(declaration.body!, environment);
+                blocklessArrowFunctionReturn = this.generator.builder.createBitCast(
+                  blocklessArrowFunctionReturn,
+                  currentReturnType
+                );
+                this.generator.builder.createSafeRet(blocklessArrowFunctionReturn);
               }
 
               if (!this.generator.isCurrentBlockTerminated) {
@@ -1661,7 +1662,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
                     const nullOptional = this.generator.ts.union.create();
                     this.generator.builder.createSafeRet(nullOptional);
                   } else {
-                    this.generator.builder.createRetVoid();
+                    let undef = this.generator.ts.undef.get();
+                    undef = this.generator.builder.createBitCast(undef, currentReturnType);
+                    this.generator.builder.createSafeRet(undef);
                   }
                 }
               }

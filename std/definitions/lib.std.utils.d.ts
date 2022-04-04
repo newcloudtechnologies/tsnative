@@ -4,15 +4,15 @@ export type TSClosure = Function;
 // @ts-ignore
 export declare class TSClosure {
     constructor(
-        fn: void,
-        env: void,
+        fn: any,
+        env: any,
         numArgs: number,
         optionals: number
     );
 
     // @ts-ignore
     @MapsTo("operator()()")
-    call(): void;
+    call(): any;
 
-    getEnvironment(): void;
+    getEnvironment(): any;
 }

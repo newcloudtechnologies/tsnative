@@ -537,7 +537,7 @@ export class TSType {
     const llvmReturnType = this.getLLVMType();
 
     if (llvmReturnType.isVoid()) {
-      return llvmReturnType;
+      return this.checker.generator.ts.undef.getLLVMType();
     }
 
     return llvmReturnType.ensurePointer();
@@ -655,6 +655,10 @@ export class TSType {
   }
 
   toCppType(): string {
+    if (this.isVoid()) {
+      return "Undefined*";
+    }
+
     if (this.isArray()) {
       const elementType = this.getTypeGenericArguments()[0]!;
       return `Array<${elementType.toCppType()}>*`;

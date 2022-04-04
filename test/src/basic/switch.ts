@@ -408,3 +408,17 @@
 
   console.assert(switch_int(0) === "from condition", "Conditional 'break'");
 }
+
+{
+  const f = (i: number) => {
+      switch (i) {
+          case 0:
+              return 1;
+          default:
+              console.log("default case triggered");
+      }
+
+      return;
+  };
+  console.assert(f(1) === undefined, "Unhadled switch-case value must return 'undefined'");
+}

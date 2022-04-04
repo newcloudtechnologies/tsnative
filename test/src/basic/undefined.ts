@@ -23,3 +23,13 @@ console.assert(optionalUnion === 1, "Union comparison failed");
 
 optionalUnion = undefined;
 console.assert(!optionalUnion, "Active undefined test failed");
+
+{
+    function f() { };
+    console.assert(f() === undefined, "Function expression with empty body must return 'undefined'");
+}
+
+{
+    const f = () => { };
+    console.assert(f() === undefined, "Arrow function with empty body must return 'undefined'")
+}

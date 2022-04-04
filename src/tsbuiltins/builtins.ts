@@ -230,14 +230,14 @@ export class BuiltinTSClosure extends Builtin {
       throw new Error(`Unable to find constructor declaration at '${this.declaration.getText()}'`);
     }
 
-    const argTypes = constructorDeclaration.parameters.map((p) => this.generator.ts.checker.getTypeAtLocation(p));
-
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       constructorDeclaration,
       undefined,
       thisType,
-      argTypes,
-      this.generator
+      [],
+      this.generator,
+      undefined,
+      ["void*", "void**", "Number*", "Number*"]
     );
     if (!isExternalSymbol) {
       throw new Error("External symbol TSClosure constructor not found");

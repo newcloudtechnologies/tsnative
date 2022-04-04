@@ -143,3 +143,14 @@
 
   createFMStore("");
 }
+
+{
+  const f = (i: number) => {
+      if (i === 10) {
+          return 0;
+      } else {
+          return 10;
+      }
+  }
+  console.assert(f(1) === 10, "Function without explicit terminator must have implicit one");
+}
