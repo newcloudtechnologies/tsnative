@@ -191,11 +191,15 @@ export class VariableHandler extends AbstractNodeHandler {
     const propertyAccessSymbol = this.generator.ts.checker.getSymbolAtLocation(declaration.initializer);
     const propertyAccessDeclaration = propertyAccessSymbol.valueDeclaration;
 
-    if (
-      propertyAccessDeclaration &&
-      propertyAccessDeclaration.isFunctionLike() &&
-      ts.isClassDeclaration(propertyAccessDeclaration.parent)
-    ) {
+    if (!propertyAccessDeclaration) {
+      return;
+    }
+
+    if (propertyAccessDeclaration.isGetAccessor()) {
+      return;
+    }
+
+    if (propertyAccessDeclaration.isMethod()) {
       throw new Error(`It seems like '${declaration.getText()}' is an assignment a method to variable.
        This code is ill-formed and will lead to runtime crash because of context 'this' loss.
        Use 'bind' with '${declaration.initializer.getText()}.bind(this, ...)' instead`);

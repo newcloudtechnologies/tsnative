@@ -446,3 +446,10 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   arr.length = 6;
   console.assert(arr.length === 6, "Array expansion using Array.length");
 }
+
+{
+  const arr = [1, 2, 3];
+  const length = arr.length;
+
+  console.assert(length === 3, "Array length");
+}
