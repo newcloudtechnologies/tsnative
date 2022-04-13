@@ -22,6 +22,7 @@ export class CustomEvent extends Event {
     private p0_CustomEvent: boolean;
     private p1_CustomEvent: boolean;
     private p2_CustomEvent: boolean;
+    private p3_CustomEvent: boolean;
 
     abc(): void;
     c(): void;

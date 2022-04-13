@@ -18,6 +18,8 @@ declare module "poc" {
 
     export namespace exts {
         export class MyWidget extends ts.Widget {
+            private p0_MyWidget: boolean;
+
             constructor(parent: ts.Widget);
         }
     }

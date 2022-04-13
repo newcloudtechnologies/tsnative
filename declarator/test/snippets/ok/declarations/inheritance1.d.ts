@@ -24,18 +24,14 @@ declare module "test" {
         }
 
         export class Base extends Entity {
-            private p0_Base: boolean;
-            private p1_Base: boolean;
-            private p2_Base: boolean;
-            private p3_Base: boolean;
-            private p4_Base: boolean;
-            private p5_Base: boolean;
-            private p6_Base: boolean;
+            private p0_Base: number;
 
             base(): void;
         }
 
         export class Derived extends Base {
+            private p0_Derived: number;
+
             derived(): void;
         }
     }

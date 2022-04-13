@@ -28,6 +28,8 @@ export class Iterable<T> {
 }
 
 export class Entity<T> extends Iterable<T> {
+    private p0_Entity: number;
+
     constructor();
 
     //@ts-ignore

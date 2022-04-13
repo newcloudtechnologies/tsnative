@@ -653,26 +653,7 @@ void ClassCollection::generateFields()
         return size / d;
     };
 
-    int basesSize = 0;
-
-    auto node = InheritanceNode::make(m_collection, m_item);
-
-    // find size of bases (annotated) classes
-    for (const auto& it : node.bases())
-    {
-#ifndef NDEBUG
-        std::string name = it.actualTypeName();
-#endif
-
-        AnnotationList annotations(getAnnotations(it.item()->decl()));
-
-        if (annotations.exist(TS_EXPORT))
-        {
-            basesSize += it.item()->size();
-        }
-    }
-
-    int size = m_item->size() - basesSize;
+    int size = m_item->size();
 
     _ASSERT(size >= 0);
 
