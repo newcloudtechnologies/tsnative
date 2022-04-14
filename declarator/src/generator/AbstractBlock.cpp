@@ -79,8 +79,8 @@ void AbstractBlock::printFooter(generator::print::printer_t printer) const
 
 void AbstractBlock::print(generator::print::printer_t printer) const
 {
-    printIgnore(printer);
     printDecorators(printer);
+    printIgnore(printer);
 
     printHeader(printer);
     printBody(printer);

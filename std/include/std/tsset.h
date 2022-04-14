@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/iterable.h"
@@ -17,64 +19,70 @@
 #include "std/private/tsset_std_p.h"
 #endif
 
-template <typename V>
-class Set : public Object, public Iterable<V>
+template <typename T>
+class SetPrivate;
+
+template <typename T>
+class TS_DECLARE Set : public Object, public Iterable<T>
 {
-    static_assert(std::is_pointer<V>::value, "TS Set elements expected to be of pointer type");
+    static_assert(std::is_pointer<T>::value, "TS Set elements expected to be of pointer type");
 
 public:
-    Set();
+    TS_METHOD Set();
     ~Set() override;
 
-    Boolean* has(V value) const;
-    Set<V>* add(V value);
+    TS_METHOD Boolean* has(T value) const;
+    TS_METHOD TS_SIGNATURE("add(value: T): this") Set<T>* add(T value);
 
-    Boolean* remove(V value);
-    void clear();
+    TS_METHOD TS_NAME("delete") TS_DECORATOR("MapsTo('remove')") Boolean* remove(T value);
+    TS_METHOD void clear();
 
-    Number* size() const;
+    TS_METHOD TS_GETTER Number* size() const;
 
-    void forEach(TSClosure* visitor) const;
+    TS_METHOD TS_SIGNATURE("forEach(callbackfn: (value: T, value2: T, set: Set<T>) => void): void") void forEach(
+        TSClosure* visitor) const;
 
-    IterableIterator<V>* values();
-    IterableIterator<V>* iterator() override;
-    IterableIterator<V>* keys();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
+    TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* keys();
 
-    String* toString() const override;
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): SetIterator<T>")
+        TS_DECORATOR("MapsTo('iterator')") IterableIterator<T>* iterator() override;
+
+    TS_METHOD String* toString() const override;
 
 private:
-    SetPrivate<V>* _d = nullptr;
+    SetPrivate<T>* _d = nullptr;
 };
 
-template <typename V>
-Set<V>::Set()
+template <typename T>
+Set<T>::Set()
 #ifdef USE_SET_STD_BACKEND
-    : _d(new SetStdPrivate<V>())
+    : _d(new SetStdPrivate<T>())
 #endif
 {
 }
 
-template <typename V>
-Set<V>::~Set()
+template <typename T>
+Set<T>::~Set()
 {
     delete _d;
 }
 
-template <typename V>
-void Set<V>::clear()
+template <typename T>
+void Set<T>::clear()
 {
     _d->clear();
 }
 
-template <typename V>
-Boolean* Set<V>::remove(V value)
+template <typename T>
+Boolean* Set<T>::remove(T value)
 {
     bool result = _d->remove(value);
     return GC::track(new Boolean(result));
 }
 
-template <typename V>
-void Set<V>::forEach(TSClosure* visitor) const
+template <typename T>
+void Set<T>::forEach(TSClosure* visitor) const
 {
     const auto& ordered = _d->ordered();
     auto numArgs = visitor->getNumArgs()->unboxed();
@@ -93,56 +101,56 @@ void Set<V>::forEach(TSClosure* visitor) const
 
         if (numArgs > 2)
         {
-            visitor->setEnvironmentElement(const_cast<Set<V>*>(this), 2);
+            visitor->setEnvironmentElement(const_cast<Set<T>*>(this), 2);
         }
 
         visitor->operator()();
     }
 }
 
-template <typename V>
-Boolean* Set<V>::has(V value) const
+template <typename T>
+Boolean* Set<T>::has(T value) const
 {
     bool result = _d->has(value);
     return GC::track(new Boolean(result));
 }
 
-template <typename V>
-Set<V>* Set<V>::add(V value)
+template <typename T>
+Set<T>* Set<T>::add(T value)
 {
     _d->add(value);
     return this;
 }
 
-template <typename V>
-Number* Set<V>::size() const
+template <typename T>
+Number* Set<T>::size() const
 {
     int size = _d->size();
     return GC::track(new Number(static_cast<double>(size)));
 }
 
-template <typename V>
-IterableIterator<V>* Set<V>::values()
+template <typename T>
+IterableIterator<T>* Set<T>::values()
 {
-    auto values = Array<V>::fromStdVector(_d->ordered());
-    auto it = new SetIterator<V>(values);
+    auto values = Array<T>::fromStdVector(_d->ordered());
+    auto it = new SetIterator<T>(values);
     return GC::track(it);
 }
 
-template <typename V>
-IterableIterator<V>* Set<V>::iterator()
+template <typename T>
+IterableIterator<T>* Set<T>::iterator()
 {
     return values();
 }
 
-template <typename V>
-IterableIterator<V>* Set<V>::keys()
+template <typename T>
+IterableIterator<T>* Set<T>::keys()
 {
     return values();
 }
 
-template <typename V>
-String* Set<V>::toString() const
+template <typename T>
+String* Set<T>::toString() const
 {
     return GC::track(new String(_d->toString()));
 }

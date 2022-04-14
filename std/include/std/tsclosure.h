@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/tsboolean.h"
@@ -13,15 +15,18 @@
 class Number;
 class String;
 
-class TSClosure : public Object
+TS_CODE("// @ts-ignore\n"
+        "export type TSClosure = Function;\n");
+
+class TS_EXPORT TS_DECLARE TS_IGNORE TSClosure : public Object
 {
 public:
-    TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
+    TS_METHOD TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
     // this class is not an owner of passed ptrs, so use default dtor.
     // @todo: should ptrs be untracked here?
     ~TSClosure() override = default;
 
-    void** getEnvironment() const;
+    TS_METHOD void** getEnvironment() const;
 
     template <typename T>
     void setEnvironmentElement(T value, int index);
@@ -29,11 +34,11 @@ public:
     Number* getNumArgs() const;
 
     // unsutable, legacy in fact
-    void* operator()() const;
+    TS_METHOD TS_SIGNATURE("call(): void") TS_DECORATOR("MapsTo('operator()()')") void* operator()() const;
 
     void* call() const;
 
-    String* toString() const override;
+    TS_METHOD String* toString() const override;
 
 private:
     void* fn = nullptr;

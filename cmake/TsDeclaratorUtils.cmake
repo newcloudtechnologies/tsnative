@@ -8,106 +8,324 @@
 # at http://ncloudtech.com/contact.html
 #
 
-function(populate_includes target dir_list)
-    set(result "")
+define_property(TARGET PROPERTY TS_SOURCES
+    BRIEF_DOCS "sources c++ (headers) to generate declarations"
+    FULL_DOCS "sources c++ (headers) to generate declarations"
+)
 
-    get_target_property(targets ${target} LINK_LIBRARIES)
-    list(FILTER targets EXCLUDE REGEX "^[$][<][$][<].*[>].*[>]")
+define_property(TARGET PROPERTY TS_INCLUDE_DIRECTORIES
+    BRIEF_DOCS "list of include directories neened to declarator"
+    FULL_DOCS "list of include directories neened to declarator"
+)
 
-    list(PREPEND targets ${target})
-    message(STATUS "[${target}] targets=${targets}")
+define_property(TARGET PROPERTY TS_IMPORT
+    BRIEF_DOCS "list of extra import signatures"
+    FULL_DOCS "list of extra import signatures"
+)
 
-    foreach(item ${targets})
-        get_target_property(includes ${item} INTERFACE_INCLUDE_DIRECTORIES)
-        list(FILTER includes EXCLUDE REGEX "^[$][<].*[>]$")
-        list(FILTER includes EXCLUDE REGEX ".*[-]NOTFOUND")
+define_property(TARGET PROPERTY TS_EXPORTED_NAME
+    BRIEF_DOCS "exported name from export signature"
+    FULL_DOCS "e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}'"
+)
 
-        set(real_path_includes )
-        foreach(item ${includes})
-            get_filename_component(real_path_item "${item}" REALPATH)
-            list(APPEND real_path_includes ${real_path_item})
-        endforeach()
+define_property(TARGET PROPERTY TS_MODULE_NAME
+    BRIEF_DOCS "module name from export signature"
+    FULL_DOCS "e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}'"
+)
 
-        list(APPEND result ${real_path_includes})
+
+### Recursively populates c++ include directories from target
+### Args:
+# TARGET - given target
+# [OUT] INCLUDE_LIST - list of include directories
+function(get_target_includes TARGET INCLUDE_LIST)
+    set(result )
+
+    get_target_property(includes ${TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+    list(FILTER includes EXCLUDE REGEX ".*[-]NOTFOUND")
+    list(APPEND result ${includes})
+
+    get_target_property(libraries ${TARGET} INTERFACE_LINK_LIBRARIES)
+
+    foreach(item ${libraries})
+        if (TARGET ${item})
+            set(out_list )
+            get_target_includes(${item} out_list)
+            list(APPEND result ${out_list})
+        endif()
     endforeach()
 
-    set(${dir_list} ${result} PARENT_SCOPE)
+    list(REMOVE_DUPLICATES result)
+
+    set(${INCLUDE_LIST} ${result} PARENT_SCOPE)
 endfunction()
 
-function(run_declarator target dep_target source includes target_compiler_abi import stage_dir output)
-    get_filename_component(source_fn "${source}" NAME)
+
+### Invokes declarator with given c++ source
+### Args:
+# NAME - target name
+# SOURCE - given c++ source
+# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
+# IMPORT - extra import string:
+#   (e.g. cmake: set(IMPORT "import { M1 } from \'path/to/M1\'; import { M2 } from \'path/to/M2\'"))
+# TEMP_DIR - absolute path to temporary directory
+# OUTPUT_DIR - absolute path to output directory
+# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
+# [OUT] OUT_DECLARATION - generated file-declarations
+function(run_declarator NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "SOURCE;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
+        "DEFINITIONS;INCLUDE_DIRECTORIES;"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_SOURCE)
+        message (FATAL_ERROR "SOURCE is not specified")
+    endif ()
+
+    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
+        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
+
+    if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")
+        message (FATAL_ERROR "OUTPUT_DIR is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DECLARATION)
+        message (FATAL_ERROR "OUT_DECLARATION is not specified")
+    endif ()
+
+    if (NOT ARG_INCLUDE_DIRECTORIES)
+        message (FATAL_ERROR "INCLUDE_DIRECTORIES is not specified")
+    endif ()
+
+    get_filename_component(source_fn "${ARG_SOURCE}" NAME)
     string(REPLACE ".h" ".d.ts" OUTPUT_FN "${source_fn}")
 
-    string(REPLACE ";" " " includes "${includes}")
+    set(INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
 
-    set(output_dir "${stage_dir}/declarations")
-    set(output_file "${output_dir}/${OUTPUT_FN}")
+    # FIXME: need to research how to force declarator to find all standard headers
+    if (WIN32)
+        set (MINGW_GCC_INCLUDE_PATH "/mingw64/lib/gcc/${CMAKE_CXX_COMPILER_TARGET}/${CMAKE_CXX_COMPILER_VERSION}/include")
+        list(APPEND INCLUDE_DIRECTORIES "${MINGW_GCC_INCLUDE_PATH}")
+        message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
+    endif()
 
-    if(NOT "$ENV{SYSROOT_DIR}" STREQUAL "")
+    list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX "^$") # remove empty strings
+    list(TRANSFORM INCLUDE_DIRECTORIES PREPEND "-I")
+    string(REPLACE ";" " " INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}")
+
+    set(OUTPUT_DIR "${ARG_OUTPUT_DIR}/declarations")
+    set(OUTPUT_FILE "${OUTPUT_DIR}/${OUTPUT_FN}")
+
+    if (NOT "$ENV{SYSROOT_DIR}" STREQUAL "")
         set(SYSROOT "--sysroot=$ENV{SYSROOT_DIR}")
         message(STATUS "SYSROOT=$ENV{SYSROOT_DIR}")
     endif()
 
+    set(DEFINITIONS )
+    list(APPEND DEFINITIONS "-DTS")
+    foreach(def ${ARG_DEFINITIONS})
+        list(APPEND DEFINITIONS "-D${def}")
+    endforeach()
+
+    list(FILTER DEFINITIONS EXCLUDE REGEX "^$") # remove empty strings
+    string(REPLACE ";" " " DEFINITIONS "${DEFINITIONS}")
+
+    set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
+    set(command "${variables} ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} ${DEFINITIONS} ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
+
     add_custom_command(
-        OUTPUT ${output_file}
-        DEPENDS ${source}
+        OUTPUT ${OUTPUT_FILE}
+        DEPENDS ${ARG_SOURCE}
         COMMAND echo "Run declarator..."
-        COMMAND mkdir -p "${output_dir}"
-        COMMAND sh -c "DECLARATOR_OUTPUT_DIR=${output_dir} DECLARATOR_IMPORT=${import} ${TS_DECLARATOR} -x c++ --target=${target_compiler_abi} ${SYSROOT} -D TS ${source} ${includes}"
+        COMMAND mkdir -p "${OUTPUT_DIR}"
+        VERBATIM COMMAND sh -c "${command}"
     )
 
-    add_custom_target(${target}
-        DEPENDS ${output_file}
+    # generate target: convert path of source file to dot-separated string
+    get_filename_component(directory_fn "${ARG_SOURCE}" DIRECTORY)
+    get_filename_component(source_fn "${ARG_SOURCE}" NAME)
+    string(REPLACE "/" "." directory_fn "${directory_fn}")
+    string(REPLACE "\\" "." directory_fn "${directory_fn}")
+    string(REPLACE ":" "_" directory_fn "${directory_fn}")
+    string(REPLACE ".h" ".d.ts" source_fn "${source_fn}")
+    set(TARGET "${directory_fn}.${source_fn}")
+
+    add_custom_target(${TARGET}
+        DEPENDS ${OUTPUT_FILE}
     )
 
-    add_dependencies(${target} ${dep_target})
-    set(${output} ${output_file} PARENT_SCOPE)
+    add_dependencies(${NAME} ${TARGET})
+    set(${ARG_OUT_DECLARATION} ${OUTPUT_FILE} PARENT_SCOPE)
 endfunction()
 
-function(generate_declarations lib_target dep_target headers target_compiler_abi import stage_dir declaration_list)
-    populate_includes(${lib_target} include_directories)
-    list(APPEND include_directories "${TS_DECLARATOR_INCLUDE_DIR}")
-    list(APPEND include_directories "${StdLib_INCLUDE_DIR}")
 
-    # FIXME: need to research how to force declarator to find all standard headers
-    if (WIN32)
-        set (MINGW_GCC_INCLUDE_PATH "/mingw64/lib/gcc/$ENV{CBE_TARGET_ABI}/${CMAKE_CXX_COMPILER_VERSION}/include")
-        list(APPEND include_directories "${MINGW_GCC_INCLUDE_PATH}")
-        message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
-    endif()
+### Generate TS declarations for given c++ sources
+### Args:
+# NAME - target name
+# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
+# IMPORT - extra import string:
+#   (e.g. cmake: set(IMPORT "import { M1 } from \'path/to/M1\'; import { M2 } from \'path/to/M2\'"))
+# TEMP_DIR - absolute path to temporary directory
+# OUTPUT_DIR - absolute path to output directory
+# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
+# SOURCES - list of c++ sources (i.e. headers) to generate declarations (with absolute paths)
+# [OUT] OUT_DECLARATIONS - generated files-declarations
+function(generate_declarations_ex NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
+        "DEFINITIONS;SOURCES;INCLUDE_DIRECTORIES;OUT_DECLARATIONS"
+    )
 
-    list(FILTER include_directories EXCLUDE REGEX "^$") # remove empty strings
-    list(TRANSFORM include_directories PREPEND "-I ")
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
+        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
+
+    if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")
+        message (FATAL_ERROR "OUTPUT_DIR is not specified")
+    endif ()
+
+    if (NOT ARG_INCLUDE_DIRECTORIES)
+        message (FATAL_ERROR "INCLUDE_DIRECTORIES is not specified")
+    endif ()
+
+    if (NOT ARG_SOURCES)
+        message (FATAL_ERROR "SOURCES is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DECLARATIONS)
+        message (FATAL_ERROR "OUT_DECLARATIONS is not specified")
+    endif ()
 
     set (output_list )
-    foreach(header ${headers})
-        get_filename_component(header_fn "${header}" NAME)
-        set(declaration_target "decl_${export_name}_${header_fn}_target")
+    foreach(source ${ARG_SOURCES})
 
         set (output )
-        run_declarator(
-            ${declaration_target} 
-            ${lib_target} 
-            ${header}
-            "${include_directories}"
-            ${target_compiler_abi}
-            "${import}" ${stage_dir}
-            output
+        run_declarator(${NAME}
+            SOURCE "${source}"
+            DEFINITIONS ${ARG_DEFINITIONS}
+            INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES}
+            TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
+            IMPORT "${ARG_IMPORT}"
+            TEMP_DIR "${ARG_TEMP_DIR}"
+            OUTPUT_DIR "${ARG_OUTPUT_DIR}"
+            OUT_DECLARATION output
         )
 
-        add_dependencies(${dep_target} ${declaration_target})
         list(APPEND output_list "${output}")
     endforeach()
 
-    set(${declaration_list} ${output_list} PARENT_SCOPE)
+    set(${ARG_OUT_DECLARATIONS} ${output_list} PARENT_SCOPE)
 endfunction()
 
-function(generate_index dep_target exported_name declaration_list output_dir)
-    set(target "${dep_target}_index_target")
-    set(output_file "${output_dir}/index.ts")
-    set(declarations )
 
-    foreach(declaration_item ${declaration_list})
+### Generate TS declarations for given c++ sources
+### Loads SOURCES, INCLUDE_DIRECTORIES, IMPORT from target's properties
+### Args:
+# NAME - target name
+# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
+# OUTPUT_DIR - absolute path to output directory
+# [OUT] OUT_DECLARATIONS - generated files-declarations
+function(ts_generate_declarations NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "TARGET_COMPILER_ABI;OUTPUT_DIR"
+        "DEFINITIONS;OUT_DECLARATIONS"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
+        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
+    endif ()
+
+    if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")
+        message (FATAL_ERROR "OUTPUT_DIR is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DECLARATIONS)
+        message (FATAL_ERROR "OUT_DECLARATIONS is not specified")
+    endif ()
+
+    get_target_property(SOURCES ${NAME} TS_SOURCES)
+    get_target_property(INCLUDE_DIRECTORIES ${NAME} TS_INCLUDE_DIRECTORIES)
+    get_target_property(IMPORT ${NAME} TS_IMPORT)
+
+    set(DECLARATIONS )
+    generate_declarations_ex(${NAME}
+        SOURCES ${SOURCES}
+        TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
+        IMPORT "${IMPORT}"
+        DEFINITIONS ${ARG_DEFINITIONS}
+        INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
+        OUTPUT_DIR "${ARG_OUTPUT_DIR}"
+        TEMP_DIR "${ARG_OUTPUT_DIR}/temp"
+        OUT_DECLARATIONS DECLARATIONS
+    )
+    
+    set(${ARG_OUT_DECLARATIONS} ${DECLARATIONS} PARENT_SCOPE)
+endfunction()
+
+
+### Generate TS module index
+### Args:
+# NAME - target name
+# EXPORTED_NAME - exported name from export signature
+# MODULE_NAME - module name from export signature
+#   (e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}')
+# DECLARATIONS - list of declaration files
+# OUT_DIRECTORY - directory with generated index.ts file
+function(ts_generate_index_ex NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "EXPORTED_NAME;MODULE_NAME;OUT_DIRECTORY;"
+        "DECLARATIONS;"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_EXPORTED_NAME OR ARG_EXPORTED_NAME STREQUAL "")
+        message (FATAL_ERROR "EXPORTED_NAME is not specified")
+    endif ()
+
+    if (NOT ARG_MODULE_NAME OR ARG_MODULE_NAME STREQUAL "")
+        message (FATAL_ERROR "MODULE_NAME is not specified")
+    endif ()
+
+    if (NOT ARG_OUT_DIRECTORY)
+        message (FATAL_ERROR "OUT_DIRECTORY is not specified")
+    endif ()
+
+    if (NOT ARG_DECLARATIONS)
+        message (FATAL_ERROR "DECLARATIONS is not specified")
+    endif ()
+
+    set(output_file "${ARG_OUT_DIRECTORY}/index.ts")
+
+    # generate target: convert path to dot-separated string
+    set(directory_fn "${ARG_OUT_DIRECTORY}")
+    string(REPLACE "/" "." directory_fn "${directory_fn}")
+    string(REPLACE "\\" "." directory_fn "${directory_fn}")
+    string(REPLACE ":" "_" directory_fn "${directory_fn}")
+    set(TARGET "${directory_fn}.index.ts")
+
+    # generate filenames of declarations without full paths
+    set(declarations )
+    foreach(declaration_item ${ARG_DECLARATIONS})
         get_filename_component(declaration "${declaration_item}" NAME)
         list(APPEND declarations "${declaration}")
     endforeach()
@@ -119,36 +337,119 @@ function(generate_index dep_target exported_name declaration_list output_dir)
         list(APPEND content_list "${s}")
     endforeach()
 
-    list(APPEND content_list "export { ${exported_name} } from 'mgt';")
+    list(APPEND content_list "export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}';")
 
     # out to file semicolon separated list and then replace all semicolons to "\n"
     # and replace "'" to """
     add_custom_command(
         OUTPUT ${output_file}
         COMMAND echo "Generate index.ts ..."
-        COMMAND mkdir -p "${output_dir}"
-        VERBATIM COMMAND sh -c "echo \"${content_list}\" > \"${output_file}\""
+        COMMAND mkdir -p "${ARG_OUT_DIRECTORY}"
+        VERBATIM COMMAND sh -c "echo \"${content_list}\" >> \"${output_file}\""
         VERBATIM COMMAND sh -c "sed -i 's/;/\\n/g' ${output_file}"
         VERBATIM COMMAND sh -c "sed -i \"s/\'/\\\"/g\" ${output_file}"
     )
 
-    add_custom_target(${target}
+    add_custom_target(${TARGET}
         DEPENDS ${output_file}
     )
-
-    add_dependencies(${dep_target} ${target})
+    
+    add_dependencies(${NAME} ${TARGET})
 endfunction()
 
-function(format_import module_path items out_list)
-    set(result )
 
-    foreach(item ${items})
-        set(template "%1:%2")
-        string(REPLACE "%1" "${item}" R1 ${template})
-        string(REPLACE "%2" "${module_path}" R2 ${R1})
-        list(APPEND result ${R2})
-    endforeach()
+### Generate TS module index
+### Loads EXPORTED_NAME, MODULE_NAME from target's property
+### Args:
+# NAME - target name
+# DECLARATIONS - list of declaration files
+# OUT_DIRECTORY - directory with generated index.ts file
+function(ts_generate_index NAME ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "OUT_DIRECTORY;"
+        "DECLARATIONS;"
+    )
 
-    list(APPEND ${out_list} ${result})
-    set(${out_list} ${${out_list}} PARENT_SCOPE)
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_OUT_DIRECTORY)
+        message (FATAL_ERROR "OUT_DIRECTORY is not specified")
+    endif ()
+
+    if (NOT ARG_DECLARATIONS)
+        message (FATAL_ERROR "DECLARATIONS is not specified")
+    endif ()
+
+    get_target_property(EXPORTED_NAME ${NAME} TS_EXPORTED_NAME)
+    get_target_property(MODULE_NAME ${NAME} TS_MODULE_NAME)
+
+    ts_generate_index_ex(${NAME}
+        DECLARATIONS ${ARG_DECLARATIONS}
+        OUT_DIRECTORY ${ARG_OUT_DIRECTORY}
+        EXPORTED_NAME ${EXPORTED_NAME}
+        MODULE_NAME ${MODULE_NAME}
+    )
+endfunction()
+
+
+### Build TS Extension library
+### Args:
+# NAME - target name
+# IMPORT - import signature
+# TS_EXPORTED_NAME - exported name from export signature
+# TS_MODULE_NAME - module name from export signature
+# SOURCES - source files to compile
+# LINK_LIBRARIES - absolute paths to any libraries to be link extension
+# LIBRARY_DEPENDENCIES - additional libraries to be link into final executable
+# INCLUDE_DIRECTORIES - paths to search for extension headers
+# DEFINITIONS - compile definitions
+# TS_SOURCES - list of header files to generate declarations
+function (ts_build_extension NAME ...)
+# TODO: static/shared switch?
+    cmake_parse_arguments (PARSE_ARGV 1 
+        "ARG"
+        ""
+        "TS_IMPORT;TS_EXPORTED_NAME;TS_MODULE_NAME"
+        "SOURCES;INCLUDE_DIRECTORIES;LINK_LIBRARIES;DEFINITIONS;LIBRARY_DEPENDENCIES;TS_SOURCES"
+    )
+
+    if (ARG_UNPARSED_ARGUMENTS)
+        message (FATAL_ERROR "Unknown arguments: ${arg_UNPARSED_ARGUMENTS}")
+    endif ()
+
+    if (NOT ARG_SOURCES OR ARG_SOURCES STREQUAL "")
+        message (FATAL_ERROR "No SOURCES provided for extension library")
+    endif ()
+
+    add_library(${NAME} ${ARG_SOURCES})
+
+    target_include_directories(${NAME}
+        PUBLIC
+            ${ARG_INCLUDE_DIRECTORIES}
+    )
+
+    target_link_libraries(${NAME}
+        PUBLIC
+            ${ARG_LINK_LIBRARIES}
+    )
+
+    set(INCLUDE_DIRECTORIES )
+    get_target_includes(${NAME} INCLUDE_DIRECTORIES)
+    list(APPEND INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
+
+    set_target_properties(${NAME} PROPERTIES
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        INCLUDE_PATHS "${ARG_INCLUDE_DIRECTORIES}"
+        LIBRARY_DEPENDENCIES "${ARG_LIBRARY_DEPENDENCIES}"
+        DEFINITIONS "${ARG_DEFINITIONS}"
+        TS_SOURCES "${ARG_TS_SOURCES}"
+        TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
+        TS_IMPORT "${ARG_TS_IMPORT}"
+        TS_EXPORTED_NAME "${TS_EXPORTED_NAME}"
+        TS_MODULE_NAME "${TS_MODULE_NAME}"
+    )
+
 endfunction()

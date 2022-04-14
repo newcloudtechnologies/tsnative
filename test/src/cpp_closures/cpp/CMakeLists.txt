@@ -8,7 +8,11 @@
 # at http://ncloudtech.com/contact.html
 #
 
-set (EXTS_TARGET cpp_exts)
+set (EXTS_TARGET cpp)
+
+include(TsDeclaratorUtils)
+
+find_package(StdLib REQUIRED)
 
 set(INCLUDES
     button.h
@@ -25,5 +29,5 @@ list(TRANSFORM INCLUDES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 
 ts_build_extension ( ${EXTS_TARGET}
     SOURCES ${SOURCES} ${INCLUDES}
-    INCLUDE_PATHS ${CMAKE_CURRENT_LIST_DIR}
+    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR} ${StdLib_INCLUDE_DIR}
 )

@@ -38,8 +38,9 @@ namespace generator
 namespace ts
 {
 
-Decorator::Decorator(const std::string& name)
+Decorator::Decorator(const std::string& name, bool ignored)
     : m_name(name)
+    , m_ignored(ignored)
 {
 }
 
@@ -66,6 +67,12 @@ void Decorator::print(generator::print::printer_t printer) const
 
     std::string img = !arguments.empty() ? strprintf(R"(@%s(%s))", m_name.c_str(), arguments.c_str())
                                          : strprintf(R"(@%s)", m_name.c_str());
+
+    if (m_ignored)
+    {
+        printer->print("//@ts-ignore");
+        printer->enter();
+    }
 
     printer->print(img);
     printer->enter();

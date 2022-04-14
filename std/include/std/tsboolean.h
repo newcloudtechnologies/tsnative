@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include <iomanip>
@@ -12,31 +14,33 @@ class String;
 
 class BooleanPrivate;
 
-class Boolean : public Object
+class TS_DECLARE Boolean : public Object
 {
 public:
-    Boolean();
+    TS_METHOD TS_SIGNATURE("constructor(_: any)") Boolean();
     Boolean(bool value);
     Boolean(Number* value);
     Boolean(String* value);
 
     ~Boolean() override;
 
-    Boolean* negate() const;
-    Boolean* equals(Boolean* other) const;
+    TS_METHOD Boolean* negate() const;
+    TS_METHOD Boolean* equals(Boolean* other) const;
+    TS_METHOD Boolean* clone() const;
 
-    Boolean* clone() const;
+    TS_METHOD String* toString() const override;
+    TS_METHOD Boolean* toBool() const override;
 
-    String* toString() const override;
-    Boolean* toBool() const override;
-
-    bool unboxed() const;
+    TS_METHOD TS_RETURN_TYPE("number") bool unboxed() const;
 
     friend std::ostream& operator<<(std::ostream& os, const Boolean* v);
 
 private:
     BooleanPrivate* _d = nullptr;
 };
+
+TS_CODE("// @ts-ignore\n"
+        "declare type boolean = Boolean;\n");
 
 inline std::ostream& operator<<(std::ostream& os, const Boolean* v)
 {

@@ -33,6 +33,6 @@ export class Entity<T> extends Iterable<T> {
     constructor();
 
     //@ts-ignore
-    @MapTo("iterator")
+    @MapsTo("iterator")
     [Symbol.iterator](): EntityIterator<T>;
 }

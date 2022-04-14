@@ -1,12 +1,42 @@
 cmake_minimum_required(VERSION 3.10)
-project(tsnative-std)
+project(tsnative-std LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)
+
+get_filename_component(INSTALL_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/install" REALPATH)
+list(APPEND CMAKE_MODULE_PATH "${INSTALL_DIR}/cmake")
+
 # temporary hack: allows us to build std using abseil deployed to install dir
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/cmake)
 find_package(absl)
+
+find_package(TsDeclarator REQUIRED)
+
+include(TsDeclaratorUtils)
+
+set(HEADERS
+    include/std/tsobject.h
+    include/std/tsundefined.h
+    include/std/tsnull.h
+    include/std/tsunion.h
+    include/std/console.h
+    include/std/iterable.h
+    include/std/tsarray.h
+    include/std/tsboolean.h
+    include/std/tsmap.h
+    include/std/tsnumber.h
+    include/std/tsset.h
+    include/std/tsstring.h
+    include/std/tstuple.h
+    include/std/tsclosure.h
+    include/std/gc.h
+    include/std/iterators/mapiterator.h
+    include/std/iterators/setiterator.h
+    include/std/iterators/stringiterator.h
+)
 
 set(SOURCES
     src/gc.cpp
@@ -19,22 +49,58 @@ set(SOURCES
     src/tsobject.cpp
     src/tstuple.cpp
     src/tsunion.cpp
-
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
 )
 
 add_library(${PROJECT_NAME}
-    ${SOURCES} ${HEADERS}
+    ${HEADERS} ${SOURCES} 
 )
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../declarator/include
+        "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/abseil/include>"
     PUBLIC
         "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>"
     )
+
+target_link_libraries(${PROJECT_NAME}
+    PUBLIC 
+        $<BUILD_INTERFACE:absl::time>
+)
+
+if (GENERATE_DECLARATIONS)
+    set(IMPORT "")
+    set(TS_SOURCES ${HEADERS})
+    set(TS_DECLARATIONS )
+    set(INCLUDE_DIRECTORIES 
+        "${CMAKE_CURRENT_LIST_DIR}/include"
+        "${INSTALL_DIR}/include"
+    )
+
+    list(TRANSFORM TS_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
+
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        TS_SOURCES "${TS_SOURCES}"
+        TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
+        TS_IMPORT "${IMPORT}"
+    )
+
+    ts_generate_declarations(${PROJECT_NAME}
+        TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
+        OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
+        OUT_DECLARATIONS TS_DECLARATIONS
+    )
+
+    install(
+        FILES ${TS_DECLARATIONS}
+        DESTINATION "std/definitions"
+    )
+
+endif()
 
 include(GNUInstallDirs)
 

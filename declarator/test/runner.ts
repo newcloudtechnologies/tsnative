@@ -9,6 +9,8 @@
  *
  */
 
+import { exit } from "process";
+
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -23,17 +25,58 @@ const expect_ok_snippets_dir = path.join(tsnative_dir, "/declarator/test/snippet
 const expect_fail_snippets_dir = path.join(tsnative_dir, "/declarator/test/snippets/fail");
 const output_dir = path.join(tsnative_dir, "/out/build/declarator/test/declarations");
 
+const platform = os.platform();
+const arch = os.arch();
+
+console.log(`Platform detected: ${platform}`);
+console.log(`Architecture detected: ${arch}`);
+
 // TODO: add additional platforms
-switch (os.platform()) {
+switch (platform) {
     case "linux":
-        // TODO: check architecture
-        compiler_abi = "x86_64-linux-gnu";
+        switch (arch) {
+            case "x64":
+                compiler_abi = "x86_64-linux-gnu";
+                break;
+            default:
+                console.log("Error: unsupported architecture");
+                exit(1);
+        }
+
         break;
 
     case "win32":
-        compiler_abi = "x86_64-w64-mingw32";
+        switch (arch) {
+            case "x64":
+                compiler_abi = "x86_64-w64-mingw32";
+                break;
+            default:
+                console.log("Error: unsupported architecture");
+                exit(1);
+        }
+
         break;
+
+    case "darwin":
+        switch (arch) {
+            case "x64":
+                compiler_abi = "x86_64-apple-darwin20.6.0";
+                break;
+            case "arm64":
+                compiler_abi = "arm64-apple-darwin20.6.0";
+                break;
+            default:
+                console.log("Error: unsupported architecture");
+                exit(1);
+        }
+        break;
+
+    default:
+        console.log("Error: unsupported platform");
+        exit(1);
 }
+
+console.log(`Compiler ABI: ${compiler_abi}`);
 
 function errorHandler(e: Error) {
     console.log(chalk.red(e.message));
@@ -158,7 +201,16 @@ class Diff extends Process {
 
         try {
             // when files are not identical, diff returns non zero code
-            const { stdout, stderr } = await exec(`bash -c 'diff -Z ${filePathOrigin} ${filePath}; exit 0'`);
+            let command = "";
+
+            if (os.platform() === "darwin") {
+                command = `bash -c 'diff -B -b ${filePathOrigin} ${filePath}; exit 0'`;
+            }
+            else {
+                command = `bash -c 'diff -Z ${filePathOrigin} ${filePath}; exit 0'`;
+            }
+
+            const { stdout, stderr } = await exec(command);
 
             diff = new Diff(stdout, stderr);
         }

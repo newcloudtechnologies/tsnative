@@ -11,7 +11,7 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { DEFINITIONS } from "../../std/constants";
+import { OBJECT_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
@@ -26,9 +26,11 @@ export class TSObject {
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
-    const stddefs = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === DEFINITIONS);
+    const stddefs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === OBJECT_DEFINITION);
     if (!stddefs) {
-      throw new Error("No std definitions source file found");
+      throw new Error("No object definition source file found");
     }
 
     const classDeclaration = stddefs.statements.find((node) => {

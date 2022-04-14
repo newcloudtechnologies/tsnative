@@ -16,7 +16,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GC, BuiltinTSClosure, BuiltinIteratorResult, BuiltinNumber, BuiltinBoolean } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { GC_DEFINITION, ITERABLE, UTILITY_DEFINITIONS } from "../../std/constants";
+import { GC_DEFINITION, ITERABLE_DEFINITION, CLOSURE_DEFINITION } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -128,7 +128,7 @@ export class LLVMGenerator {
   }
 
   initTSClosure(): void {
-    const tsclosure = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === UTILITY_DEFINITIONS);
+    const tsclosure = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === CLOSURE_DEFINITION);
     if (!tsclosure) {
       throw new Error("No std utility source file found");
     }
@@ -147,7 +147,10 @@ export class LLVMGenerator {
   }
 
   initIteratorResult() {
-    const iterabledefs = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === ITERABLE);
+    const iterabledefs = this.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === ITERABLE_DEFINITION);
+
     if (!iterabledefs) {
       throw new Error("No iterable definitions source file found");
     }

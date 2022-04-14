@@ -231,18 +231,14 @@ InheritanceNode& InheritanceNode::operator=(const InheritanceNode& other)
 }
 
 std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const parser::Collection& collection,
-                                                                      const std::string& path)
+                                                                      const std::string& path) const
 {
     std::optional<parser::const_abstract_item_t> result;
     parser::const_item_list_t items;
 
-    try
+    if (collection.existItem(path))
     {
         items = collection.getItems(path);
-    }
-    catch (std::exception&)
-    {
-        // result remains empty
     }
 
     if (!items.empty())
@@ -254,7 +250,7 @@ std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const pars
     return result;
 }
 
-std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it)
+std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it) const
 {
     clang::LangOptions lo;
     clang::PrintingPolicy pp(lo);
@@ -264,7 +260,7 @@ std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it)
     return type;
 }
 
-std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(const clang::CXXRecordDecl* decl)
+std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(const clang::CXXRecordDecl* decl) const
 {
     std::vector<clang::CXXBaseSpecifier> result;
 
@@ -393,7 +389,7 @@ std::vector<parser::const_class_item_t> ClassCollection::getBases() const
             {
                 AnnotationList annotations(getAnnotations(it.item()->decl()));
 
-                if (!annotations.exist(TS_EXPORT))
+                if (!annotations.exist(TS_EXPORT) && !annotations.exist(TS_DECLARE))
                 {
                     m_list.push_back(it.item());
 
@@ -821,6 +817,9 @@ std::string Extends::get(parser::const_class_item_t item)
     std::string result;
 
     std::vector<std::string> bases = exportedBases(item);
+
+    // TODO: the crutch: remove standard class "Object" from inheritance list
+    bases.erase(std::remove(bases.begin(), bases.end(), "Object"), bases.end());
 
     // no more than one annotated class in a hierarchy of inheritance
     if (bases.size() > 1)

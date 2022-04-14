@@ -11,14 +11,19 @@
  * Don't edit this file.
 */
 
+//@ts-ignore
 @NoFields
-@MapTo("Pi", 3.14)
+//@ts-ignore
+@MapsTo("Pi", 3.14)
 export class Entity {
     private p0_Entity: boolean;
 
     constructor();
+    //@ts-ignore
     @Function(1, 2, "str", 3.14)
+    //@ts-ignore
     @NoRet
+    //@ts-ignore
     @MapsTo("iterator")
     update(): void;
 }

@@ -1,16 +1,19 @@
 #pragma once
 
-#include "std/private/options.h"
+#include "private/options.h"
 
+#include <TS.h>
+
+#include "std/private/options.h"
 #include "std/tsnumber.h"
 
 #include <cstdint>
 #include <type_traits>
 
-class GC
+class TS_EXPORT TS_DECLARE GC
 {
 public:
-    static void* allocate(double numBytes);
+    TS_METHOD TS_SIGNATURE("allocate(numBytes: any): void") static void* allocate(double numBytes);
 
     template <typename Source>
     static Source track(Source value)

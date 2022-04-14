@@ -51,7 +51,7 @@ public:
     ~Entity();
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): EntityIterator<T>")
-        TS_DECORATOR("MapTo('iterator')") TS_IGNORE Iterator<T>* iterator() override;
+        TS_DECORATOR("MapsTo('iterator')") Iterator<T>* iterator() override;
 };
 
 /*

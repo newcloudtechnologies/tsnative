@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/gc.h"
@@ -8,16 +10,15 @@
 #include <type_traits>
 
 template <typename T>
-class IteratorResult
+class TS_DECLARE IteratorResult
 {
     static_assert(std::is_pointer<T>::value, "Expected IteratorResult's 'T' to be of pointer type");
 
 public:
     IteratorResult(bool done, T value);
 
-    Boolean* done() const;
-
-    T value() const;
+    TS_METHOD TS_GETTER Boolean* done() const;
+    TS_METHOD TS_GETTER T value() const;
 
 private:
     Boolean* _done = nullptr;
@@ -44,24 +45,24 @@ T IteratorResult<T>::value() const
 }
 
 template <typename T>
-class Iterator
+class TS_DECLARE Iterator
 {
     static_assert(std::is_pointer<T>::value, "Expected Iterator's 'T' to be of pointer type");
 
 public:
-    virtual IteratorResult<T>* next() = 0;
+    TS_METHOD virtual IteratorResult<T>* next() = 0;
 };
 
 template <typename T>
-class Iterable
+class TS_DECLARE Iterable
 {
     static_assert(std::is_pointer<T>::value, "Expected Iterable's 'T' to be of pointer type");
 
 public:
-    virtual Iterator<T>* iterator() = 0;
+    TS_METHOD virtual Iterator<T>* iterator() = 0;
 };
 
 template <typename T>
-class IterableIterator : public Iterator<T>
+class TS_DECLARE IterableIterator : public Iterator<T>
 {
 };

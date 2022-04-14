@@ -59,6 +59,7 @@ bool AbstractItem::isContainer(const_abstract_item_t item)
         case AbstractItem::Type::TRANSLATION_UNIT:
         case AbstractItem::Type::NAMESPACE:
         case AbstractItem::Type::CLASS:
+        case AbstractItem::Type::CLASS_TEMPLATE:
         {
             return true;
         }

@@ -33,9 +33,10 @@ class Decorator
 private:
     std::string m_name;
     std::vector<std::string> m_arguments;
+    bool m_ignored = false;
 
 private:
-    Decorator(const std::string& name);
+    Decorator(const std::string& name, bool ignored);
 
 public:
     void addArgument(int arg);
@@ -47,7 +48,15 @@ public:
     template <typename... Args>
     static decorator_t make(const std::string& name, Args&&... args)
     {
-        decorator_t result(new Decorator(name));
+        decorator_t result(new Decorator(name, true));
+        ((result->addArgument(std::forward<Args>(args))), ...);
+        return result;
+    }
+
+    template <typename... Args>
+    static decorator_t makeWithoutIgnore(const std::string& name, Args&&... args)
+    {
+        decorator_t result(new Decorator(name, false));
         ((result->addArgument(std::forward<Args>(args))), ...);
         return result;
     }

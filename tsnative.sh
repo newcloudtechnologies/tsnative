@@ -160,11 +160,35 @@ then
     PRINT_IR=FALSE
 fi
 
-# FIXME: make it configurable
-# if [ -z "$TARGET_ABI" ]
-# then
-#     TARGET_ABI="x86_64-linux-gnu"
-# fi
+OS=$(uname -s)
+ARCH=$(uname -m)
+
+echo "OS detected: ${OS}"
+echo "ARCH detected: ${ARCH}"
+
+# TODO: support Android
+
+if [[ $OS == Linux ]]; then
+    case "$ARCH" in
+        i?86) TARGET_ABI="i686-linux-gnu" ;;
+        x86_64) TARGET_ABI="x86_64-linux-gnu" ;;
+    esac
+elif [[ $OS == MSYS* ]] || [[ $OS == MINGW* ]]; then
+    case "$ARCH" in
+        i?86) TARGET_ABI="i686-w64-mingw32" ;;
+        x86_64) TARGET_ABI="x86_64-w64-mingw32" ;;
+    esac
+elif [[ $OS == Darwin ]]; then
+    case "$ARCH" in
+        arm64) TARGET_ABI="arm64-apple-darwin20.5.0" ;;
+        x86_64) TARGET_ABI="x86_64-apple-darwin20.5.0" ;;
+    esac
+else
+    echo "Unsupported OS"
+    exit 1;
+fi
+
+echo "TARGET_ABI detected: ${TARGET_ABI}"
 
 if [ "$(uname -s)" == "Darwin" ]; then
     JOBS_NUM=$(sysctl -n hw.ncpu)

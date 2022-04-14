@@ -6,7 +6,28 @@ import * as path from "path";
 import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
-import { NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION, STUBS, ITERABLE } from "../std/constants";
+import {
+  NUMERIC,
+  STRING_DEFINITION,
+  ARRAY_DEFINITION,
+  OBJECT_DEFINITION,
+  UNDEFINED_DEFINITION,
+  NULL_DEFINITION,
+  NUMBER_DEFINITION,
+  BOOLEAN_DEFINITION,
+  UNION_DEFINITION,
+  SET_DEFINITION,
+  MAP_DEFINITION,
+  TUPLE_DEFINITION,
+  CLOSURE_DEFINITION,
+  CONSOLE_DEFINITION,
+  GC_DEFINITION,
+  STUBS,
+  ITERABLE_DEFINITION,
+  STRING_ITERATOR_DEFINITION,
+  MAP_ITERATOR_DEFINITION,
+  SET_ITERATOR_DEFINITION,
+} from "../std/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
@@ -65,7 +86,28 @@ async function main() {
   const demangledTables: string[] = [];
   const mangledTables: string[] = [];
   const includeDirs: string[] = [];
-  options.lib = [STUBS, NUMERIC, DEFINITIONS, UTILITY_DEFINITIONS, GC_DEFINITION, ITERABLE];
+  options.lib = [
+    STUBS,
+    NUMERIC,
+    STRING_DEFINITION,
+    ARRAY_DEFINITION,
+    OBJECT_DEFINITION,
+    UNDEFINED_DEFINITION,
+    NULL_DEFINITION,
+    NUMBER_DEFINITION,
+    BOOLEAN_DEFINITION,
+    UNION_DEFINITION,
+    SET_DEFINITION,
+    MAP_DEFINITION,
+    TUPLE_DEFINITION,
+    CLOSURE_DEFINITION,
+    CONSOLE_DEFINITION,
+    GC_DEFINITION,
+    ITERABLE_DEFINITION,
+    STRING_ITERATOR_DEFINITION,
+    MAP_ITERATOR_DEFINITION,
+    SET_ITERATOR_DEFINITION,
+  ];
   options.types = [];
 
   if (!options.strict) {

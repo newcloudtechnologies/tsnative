@@ -60,7 +60,7 @@ const std::string stdImportSignatures =
 
     R"(import { pointer } from "tsnative/std/definitions/lib.std.numeric";)"
     R"(import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators";)"
-    R"(import { TSClosure } from "tsnative/std/definitions/lib.std.utils";)";
+    R"(import { TSClosure } from "tsnative/std/definitions/tsclosure";)";
 
 } //  namespace
 

@@ -12,6 +12,7 @@
             "../out/build/src/**/*",
             "../out/build/std/constants.js",
             "../out/build/std/definitions/*",
+            "../out/install/std/definitions/*",
             "../node_modules/llvm-node/build/Release/llvm-node.node",
             "../node_modules/segfault-handler/build/Release/segfault-handler.node",
             "../node_modules/llvm-ir-eh-generator/build/Release/llvm_ir_eh_generator.node"

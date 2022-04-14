@@ -1,3 +1,5 @@
+#pragma once
+
 #include "std/tsobject.h"
 #include "std/tsstring.h"
 

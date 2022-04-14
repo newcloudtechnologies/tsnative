@@ -1,7 +1,9 @@
 #pragma once
 
-#include "std/private/options.h"
+#include <TS.h>
 
+#include "std/gc.h"
+#include "std/private/options.h"
 #include "std/tsobject.h"
 
 #include <sstream>
@@ -12,19 +14,19 @@ class Array;
 class String;
 class Number;
 
-class Tuple : public Object
+class TS_DECLARE Tuple : public Object
 {
 public:
-    Tuple();
+    TS_METHOD Tuple();
     ~Tuple() override;
 
-    Number* length() const;
-    void* operator[](Number* index);
+    TS_METHOD TS_GETTER Number* length() const;
+    TS_METHOD TS_SIGNATURE("[index: number]: any") void* operator[](Number* index);
     void* operator[](int index);
 
-    void push(Object* item);
+    TS_METHOD TS_SIGNATURE("push(item: Object): void") void push(Object* item);
 
-    String* toString() const override;
+    TS_METHOD String* toString() const override;
 
     friend std::ostream& operator<<(std::ostream& os, const Tuple* tuple);
 

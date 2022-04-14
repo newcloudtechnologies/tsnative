@@ -11,7 +11,7 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { DEFINITIONS } from "../../std/constants";
+import { NULL_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
@@ -32,9 +32,11 @@ export class TSNull {
   }
 
   init() {
-    const stddefs = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === DEFINITIONS);
+    const stddefs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === NULL_DEFINITION);
     if (!stddefs) {
-      throw new Error("No std definitions source file found");
+      throw new Error("No null definition source file found");
     }
 
     const classDeclaration = stddefs.statements.find((node) => {

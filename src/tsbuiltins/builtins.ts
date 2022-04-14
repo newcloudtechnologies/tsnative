@@ -7,7 +7,7 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
-import { UTILITY_DEFINITIONS } from "../../std/constants";
+import { CLOSURE_DEFINITION } from "../../std/constants";
 
 export class GC {
   private readonly allocateFn: LLVMValue;
@@ -137,7 +137,7 @@ export class BuiltinTSClosure extends Builtin {
 
     const defs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === UTILITY_DEFINITIONS);
+      .find((sourceFile) => sourceFile.fileName === CLOSURE_DEFINITION);
 
     if (!defs) {
       throw new Error("No utility definitions source file found");
@@ -729,10 +729,13 @@ export class BuiltinIteratorResult extends Builtin {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
-    const nextDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "value")!;
+    const valueGetterDeclaration = declaration.members.find((m) => m.isGetAccessor() && m.name?.getText() === "value");
+    if (!valueGetterDeclaration) {
+      throw new Error(`Unable to find 'value' getter in declaration: '${declaration.getText()}'`);
+    }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
-      nextDeclaration,
+      valueGetterDeclaration,
       undefined,
       thisType,
       [],

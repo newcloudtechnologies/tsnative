@@ -45,6 +45,7 @@ void makeCodeBlock(parser::const_code_block_item_t item,
             break;
         }
         case AbstractBlock::Type::CLASS:
+        case AbstractBlock::Type::GENERIC_CLASS:
         {
             auto classBlock = std::static_pointer_cast<ClassBlock>(block);
             classBlock->addCodeBlock(codeBlock);

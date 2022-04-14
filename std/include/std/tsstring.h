@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/private/options.h"
 
 #include "std/iterable.h"
@@ -16,10 +18,13 @@ class Union;
 
 class StringPrivate;
 
-class String : public Object, public Iterable<String*>
+// add TS_DECLARE to template specialization
+template class TS_DECLARE Iterable<String*>;
+
+class TS_DECLARE String : public Object, public Iterable<String*>
 {
 public:
-    String();
+    TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") String();
     String(Number* d);
     String(const int8_t* s);
     String(const std::string& s);
@@ -29,45 +34,57 @@ protected:
     ~String() override;
 
 public:
-    Number* length() const;
-    String* concat(String* other) const;
+    TS_METHOD TS_GETTER Number* length() const;
+    TS_METHOD String* concat(String* other) const;
 
-    Boolean* startsWith(String* other, Union* maybeStartIndex) const;
-    Boolean* endsWith(String* other, Union* maybeStartIndex) const;
+    TS_METHOD TS_SIGNATURE("startsWith(string: string, start?: number): boolean") Boolean* startsWith(
+        String* other, Union* maybeStartIndex) const;
+    TS_METHOD TS_SIGNATURE("endsWith(string: string, start?: number): boolean") Boolean* endsWith(
+        String* other, Union* maybeStartIndex) const;
 
-    Array<String*>* split(String* pattern, Union* maybeLimit) const;
+    TS_METHOD TS_SIGNATURE("split(pattern: string, limit?: number): string[]") Array<String*>* split(
+        String* pattern, Union* maybeLimit) const;
 
-    String* slice(Number* startIndex, Union* maybeEndIndex) const;
+    TS_METHOD TS_SIGNATURE("slice(start: number, end?: number): string") String* slice(Number* startIndex,
+                                                                                       Union* maybeEndIndex) const;
 
-    String* substring(Number* startIndex, Union* maybeEndIndex) const;
+    TS_METHOD String* trim() const;
 
-    String* trim() const;
+    TS_METHOD String* toLowerCase() const;
+    TS_METHOD String* toUpperCase() const;
 
-    String* toLowerCase() const;
-    String* toUpperCase() const;
+    TS_METHOD TS_SIGNATURE("substring(start: number, end?: number): string") String* substring(
+        Number* startIndex, Union* maybeEndIndex) const;
 
-    Boolean* includes(String* pattern, Union* maybeStartIndex) const;
+    TS_METHOD TS_SIGNATURE("includes(pattern: string, start?: number): boolean") Boolean* includes(
+        String* pattern, Union* maybeStartIndex) const;
 
-    Number* indexOf(String* pattern, Union* maybeStartIndex) const;
-    Number* lastIndexOf(String* pattern, Union* maybeStartIndex) const;
+    TS_METHOD TS_SIGNATURE("indexOf(pattern: string, start?: number): number") Number* indexOf(
+        String* pattern, Union* maybeStartIndex) const;
+    TS_METHOD TS_SIGNATURE("lastIndexOf(pattern: string, start?: number): number") Number* lastIndexOf(
+        String* pattern, Union* maybeStartIndex) const;
 
-    Boolean* equals(String* other) const;
+    TS_METHOD Boolean* equals(String* other) const;
 
     String* operator[](Number* index) const;
     String* operator[](size_t index) const;
 
-    String* toString() const override;
-    Boolean* toBool() const override;
+    TS_METHOD String* toString() const override;
+    TS_METHOD Boolean* toBool() const override;
 
     std::string cpp_str() const;
 
-    IterableIterator<String*>* iterator() override;
+    TS_METHOD TS_SIGNATURE("[Symbol.iterator](): StringIterator<string>")
+        TS_DECORATOR("MapsTo('iterator')") IterableIterator<String*>* iterator() override;
 
-    String* clone() const;
+    TS_METHOD String* clone() const;
 
 private:
     StringPrivate* _d = nullptr;
 };
+
+TS_CODE("// @ts-ignore\n"
+        "declare type string = String;\n");
 
 inline std::ostream& operator<<(std::ostream& os, const String* s)
 {

@@ -337,8 +337,15 @@ pipeline {
                                     // FIXME: enable parallel build once KDM-836 (???) is fixed
                                     npmUtils.npmRun(this, 'test')
                                     npmUtils.npmRun(this, 'runtime_test')
-                                    // FIXME: declarator tests on Windows
-                                    // npmUtils.npmRun(this, 'declarator_test')
+
+                                    try {
+                                        npmUtils.npmRun(this, 'declarator_test')
+                                    }
+                                    catch (err)
+                                    {
+                                        // declarator is not adapted for Windows yet
+                                        echo err.getMessage()
+                                    }
                                 }
                             }
                         }

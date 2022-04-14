@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include "std/tsobject.h"
 #include "std/tsstring.h"
 #include "std/tsundefined.h"
@@ -8,23 +10,23 @@
 
 class Boolean;
 
-class Union : public Object
+class TS_DECLARE Union : public Object
 {
 public:
     Union();
-    Union(Object* value);
+    TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") Union(Object* value);
 
 protected:
     ~Union() override = default;
 
 public:
-    Object* getValue() const;
-    void setValue(Object* value);
+    TS_METHOD Object* getValue() const;
+    TS_METHOD void setValue(Object* value);
 
     bool hasValue();
 
-    String* toString() const override;
-    Boolean* toBool() const override;
+    TS_METHOD String* toString() const override;
+    TS_METHOD Boolean* toBool() const override;
 
 private:
     Object* _value = new Undefined();

@@ -11,7 +11,7 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { DEFINITIONS } from "../../std/constants";
+import { STRING_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
@@ -27,10 +27,12 @@ export class TSString {
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
-    const defs = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === DEFINITIONS);
+    const defs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === STRING_DEFINITION);
 
     if (!defs) {
-      throw new Error("No std definitions source file found");
+      throw new Error("No string definition source file found");
     }
 
     const classDeclaration = defs.statements.find((node) => {

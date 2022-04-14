@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TS.h>
+
 #include <ostream>
 #include <string>
 
@@ -12,18 +14,18 @@ class Map;
 template <typename K, typename V>
 class MapPrivate;
 
-class Object
+class TS_DECLARE Object
 {
 public:
-    Object();
+    TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") Object();
     Object(Map<String*, void*>* props);
 
 protected:
     virtual ~Object();
 
 public:
-    void* get(String* key) const;
-    void set(String* key, void* value);
+    TS_METHOD TS_SIGNATURE("get(key: string): any") void* get(String* key) const;
+    TS_METHOD TS_SIGNATURE("set(key: string, value: any): void") void set(String* key, void* value);
 
     void* get(const std::string& key) const;
     void set(const std::string& key, void* value);
@@ -37,8 +39,8 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const Object* o);
 
-    virtual String* toString() const;
-    virtual Boolean* toBool() const;
+    TS_METHOD virtual String* toString() const;
+    TS_METHOD virtual Boolean* toBool() const;
 
 protected:
     MapPrivate<String*, void*>* _props = nullptr;
