@@ -26,7 +26,7 @@ void TsSignature::parse(const std::string& sig)
     { return std::regex_search(sig.begin(), sig.end(), match, std::regex(pattern)); };
 
     // method: readResponse0(fInfos: FileInfo_t): void
-    if (regex_search(R"(^((get|set)\b)?(([\s]+))?([\w]+)\((.*)\)(\s*\:\s*)?([\w]+((\<(.+)\>)|(\[\]))?)?)"))
+    if (regex_search(R"(^((get|set)\b)?(([\s]+))?([\w]+)\((.*)\)(\s*\:\s*)?([\w\.]+((\<(.+)\>)|(\[\]))?)?)"))
     {
         m_type = Type::METHOD;
         m_accessor = match[1];
@@ -36,7 +36,7 @@ void TsSignature::parse(const std::string& sig)
     }
     // generic method: map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
     else if (regex_search(
-                 R"(^((get|set)\b)?(([\s]+))?([\w]+)(\<(.*)\>)(\((.*)\))(\s*\:\s*)?([\w]+((\<(.+)\>)|(\[\])))?)"))
+                 R"(^((get|set)\b)?(([\s]+))?([\w]+)(\<(.*)\>)(\((.*)\))(\s*\:\s*)?([\w\.]+((\<(.+)\>)|(\[\])))?)"))
     {
         m_type = Type::GENERIC_METHOD;
         m_accessor = match[1];
@@ -46,7 +46,7 @@ void TsSignature::parse(const std::string& sig)
         m_retType = match[11];
     }
     // function: function map(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
-    else if (regex_search(R"(^(function\b\s*)([\w]+)(\((.*)\))(\s*\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
+    else if (regex_search(R"(^(function\b\s*)([\w]+)(\((.*)\))(\s*\:\s*)([\w\.]+((\<(.+)\>)|(\[\]))?))"))
     {
         m_type = Type::FUNCTION;
         m_name = match[2];
@@ -54,7 +54,7 @@ void TsSignature::parse(const std::string& sig)
         m_retType = match[6];
     }
     // generic function: function map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]
-    else if (regex_search(R"(^(function\b\s*)([\w]+)(\<(.+)\>)(\((.*)\))(\s*\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
+    else if (regex_search(R"(^(function\b\s*)([\w]+)(\<(.+)\>)(\((.*)\))(\s*\:\s*)([\w\.]+((\<(.+)\>)|(\[\]))?))"))
     {
         m_type = Type::GENERIC_FUNCTION;
         m_name = match[2];
@@ -63,14 +63,14 @@ void TsSignature::parse(const std::string& sig)
         m_retType = match[8];
     }
     // computed property name: [Symbol.iterator](): ArrayIterator<T>
-    else if (regex_search(R"(^(\[([\w\.]+)\])(\((.*)\))(\:\s*)([\w]+((\<(.+)\>)|(\[\]))?))"))
+    else if (regex_search(R"(^(\[([\w\.]+)\])(\((.*)\))(\:\s*)([\w\.]+((\<(.+)\>)|(\[\]))?))"))
     {
         m_type = Type::COMPUTED_PROPERTY_NAME;
         m_name = match[2];
         m_retType = match[6];
     }
     // index signature: [index: number]: T
-    else if (regex_search(R"(^(\[(.+)\])(\:\s*)([\w]+))"))
+    else if (regex_search(R"(^(\[(.+)\])(\:\s*)([\w\.]+))"))
     {
         m_type = Type::INDEX_SIGNATURE;
         m_arguments = parseArgumentList(match[2]);
