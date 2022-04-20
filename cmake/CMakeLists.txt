@@ -63,10 +63,10 @@ if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     get_filename_component(TS_EXTENSION_TARGET "${PROJECT_TS_EXTENSION_DIR}" NAME)
     add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
 
-    get_target_property(TS_SOURCES ${TS_EXTENSION_TARGET} TS_SOURCES)
+    get_target_property(TS_HEADERS ${TS_EXTENSION_TARGET} TS_HEADERS)
 
     # generate TS declarations
-    if (TS_SOURCES)
+    if (TS_HEADERS)
         set(TS_DECLARATIONS )
         ts_generate_declarations(${TS_EXTENSION_TARGET}
             TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"

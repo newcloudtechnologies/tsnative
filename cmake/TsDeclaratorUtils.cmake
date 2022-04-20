@@ -8,9 +8,9 @@
 # at http://ncloudtech.com/contact.html
 #
 
-define_property(TARGET PROPERTY TS_SOURCES
-    BRIEF_DOCS "sources c++ (headers) to generate declarations"
-    FULL_DOCS "sources c++ (headers) to generate declarations"
+define_property(TARGET PROPERTY TS_HEADERS
+    BRIEF_DOCS "c++ headers to generate ts declarations"
+    FULL_DOCS "c++ headers to generate ts declarations"
 )
 
 define_property(TARGET PROPERTY TS_INCLUDE_DIRECTORIES
@@ -259,7 +259,7 @@ function(ts_generate_declarations NAME ...)
         message (FATAL_ERROR "OUT_DECLARATIONS is not specified")
     endif ()
 
-    get_target_property(SOURCES ${NAME} TS_SOURCES)
+    get_target_property(SOURCES ${NAME} TS_HEADERS)
     get_target_property(INCLUDE_DIRECTORIES ${NAME} TS_INCLUDE_DIRECTORIES)
     get_target_property(IMPORT ${NAME} TS_IMPORT)
 
@@ -406,14 +406,14 @@ endfunction()
 # LIBRARY_DEPENDENCIES - additional libraries to be link into final executable
 # INCLUDE_DIRECTORIES - paths to search for extension headers
 # DEFINITIONS - compile definitions
-# TS_SOURCES - list of header files to generate declarations
+# TS_HEADERS - list of header files to generate declarations
 function (ts_build_extension NAME ...)
 # TODO: static/shared switch?
     cmake_parse_arguments (PARSE_ARGV 1 
         "ARG"
         ""
         "TS_IMPORT;TS_EXPORTED_NAME;TS_MODULE_NAME"
-        "SOURCES;INCLUDE_DIRECTORIES;LINK_LIBRARIES;DEFINITIONS;LIBRARY_DEPENDENCIES;TS_SOURCES"
+        "SOURCES;INCLUDE_DIRECTORIES;LINK_LIBRARIES;DEFINITIONS;LIBRARY_DEPENDENCIES;TS_HEADERS"
     )
 
     if (ARG_UNPARSED_ARGUMENTS)
@@ -445,11 +445,11 @@ function (ts_build_extension NAME ...)
         INCLUDE_PATHS "${ARG_INCLUDE_DIRECTORIES}"
         LIBRARY_DEPENDENCIES "${ARG_LIBRARY_DEPENDENCIES}"
         DEFINITIONS "${ARG_DEFINITIONS}"
-        TS_SOURCES "${ARG_TS_SOURCES}"
+        TS_HEADERS "${ARG_TS_HEADERS}"
         TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         TS_IMPORT "${ARG_TS_IMPORT}"
-        TS_EXPORTED_NAME "${TS_EXPORTED_NAME}"
-        TS_MODULE_NAME "${TS_MODULE_NAME}"
+        TS_EXPORTED_NAME "${ARG_TS_EXPORTED_NAME}"
+        TS_MODULE_NAME "${ARG_TS_MODULE_NAME}"
     )
 
 endfunction()
