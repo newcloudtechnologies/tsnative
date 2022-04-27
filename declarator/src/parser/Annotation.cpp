@@ -169,11 +169,11 @@ AnnotationList::AnnotationList(const std::string& annotations)
 {
 }
 
-int AnnotationList::find(const std::string& annotation, int beginIndex, std::string& value) const
+int AnnotationList::findIndex(const std::string& annotation, int beginIndex, std::string& value) const
 {
     int nextIndex = -1;
 
-    if (beginIndex < 0 && beginIndex >= m_annotationList.size())
+    if (beginIndex < 0 || beginIndex >= m_annotationList.size())
         return nextIndex;
 
     auto it = std::find_if(std::next(m_annotationList.begin(), beginIndex),
@@ -183,17 +183,17 @@ int AnnotationList::find(const std::string& annotation, int beginIndex, std::str
     if (it != m_annotationList.end())
     {
         value = *it;
-        nextIndex = std::distance(m_annotationList.begin(), it) + 1;
+        nextIndex = std::distance(m_annotationList.begin(), it);
     }
 
     return nextIndex;
 }
 
-int AnnotationList::find(const std::string& annotation) const
+int AnnotationList::findIndex(const std::string& annotation) const
 {
     std::string value;
 
-    return find(annotation, 0, value);
+    return findIndex(annotation, 0, value);
 }
 
 std::vector<std::string> AnnotationList::split(const std::string& s) const
@@ -258,7 +258,7 @@ std::string AnnotationList::prettify(std::string raw) const
 
 bool AnnotationList::exist(const std::string& annotation) const
 {
-    return find(annotation) > -1;
+    return findIndex(annotation) > -1;
 }
 
 void AnnotationList::add(const std::string& annotation)
@@ -268,7 +268,7 @@ void AnnotationList::add(const std::string& annotation)
 
 void AnnotationList::remove(const std::string& annotation)
 {
-    int index = find(annotation);
+    int index = findIndex(annotation);
 
     if (index >= 0)
     {
@@ -280,32 +280,30 @@ std::vector<std::string> AnnotationList::values(const std::string& annotation) c
 {
     std::vector<std::string> result;
 
-    int index = 0;
+    int index = -1;
     std::string item;
 
-    while (true)
+    for (const auto& it : m_annotationList)
     {
-        index = find(annotation, index, item);
-
-        if (index < 0)
-            break;
-
-        std::vector<std::string> parts = split(item);
-
-        std::string value;
-
-        if (parts.size() == 1)
+        if (utils::starts_with(it, annotation))
         {
-            value = parts.at(0);
-        }
-        else
-        {
-            _ASSERT(parts.size() == 2);
-            _ASSERT(!parts.at(1).empty());
-            value = parts.at(1);
-        }
+            std::vector<std::string> parts = split(it);
 
-        result.push_back(prettify(value));
+            std::string value;
+
+            if (parts.size() == 1)
+            {
+                value = parts.at(0);
+            }
+            else
+            {
+                _ASSERT(parts.size() == 2);
+                _ASSERT(!parts.at(1).empty());
+                value = parts.at(1);
+            }
+
+            result.push_back(prettify(value));
+        }
     }
 
     return result;

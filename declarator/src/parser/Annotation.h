@@ -37,8 +37,8 @@ class AnnotationList
     std::vector<std::string> m_annotationList;
 
 private:
-    int find(const std::string& annotation, int beginIndex, std::string& value) const;
-    int find(const std::string& annotation) const;
+    int findIndex(const std::string& annotation, int beginIndex, std::string& value) const;
+    int findIndex(const std::string& annotation) const;
 
     std::vector<std::string> split(const std::string& s) const;
     std::string prettify(std::string raw) const;

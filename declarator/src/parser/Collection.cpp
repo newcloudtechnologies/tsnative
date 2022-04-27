@@ -521,26 +521,51 @@ void Collection::addNamespace(const std::string& name,
     // Local namespace declaration needs to handle annotations (do not forget, processed header is local)
     // Non-local namespace declarations needs to build hierarchy of entities (namespace -> classes and functions, etc)
     // Local entities refer to non-local
-
     if (existItem(prefix, name))
     {
         // Replace existed namespace declaration by "local"
         abstract_item_t item = _expectedOne(getItems(prefix, name));
         _ASSERT(item->type() == AbstractItem::Type::NAMESPACE);
+        auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
 
-        // update declaration if new is annotated because this ones more important for us
+        // check: forward declaration must not to have annotations
+        auto isDuplicateDeclaration = [A1 = annotations, namespaceItem]()
+        {
+            AnnotationList A2(getAnnotations(namespaceItem->decl()));
+
+            return (A1.exist(TS_MODULE) || A1.exist(TS_NAMESPACE)) && (A2.exist(TS_MODULE) || A2.exist(TS_NAMESPACE));
+        };
+
+        // forward declaration must be a local and without annotations
+        auto isForwardDeclaration = [namespaceItem]()
+        {
+            AnnotationList A2(getAnnotations(namespaceItem->decl()));
+
+            return namespaceItem->isLocal() && !(A2.exist(TS_MODULE) || A2.exist(TS_NAMESPACE));
+        };
+
+        // exclude annotated namespace duplication
+        // for example: we do forward declarations and namespaces were annotated first and
+        // after that we declare the same namespaces with new annotations
+        if (isDuplicateDeclaration())
+        {
+            throw utils::Exception(
+                R"(annotated namespace duplication detected: name: "%s", prefix: "%s")", name.c_str(), prefix.c_str());
+        }
+
+        // update declaration if new one is annotated (previous one wasn't annotated)
+        // because this ones more important for us
         // for example: we include headers from  mgt (no annotations) first,
         // and next include headers from mgt-ts (with annotations)
-        if (!item->isLocal() && (annotations.exist(TS_MODULE) || annotations.exist(TS_NAMESPACE)))
+        if ((!item->isLocal() || isForwardDeclaration()) &&
+            (annotations.exist(TS_MODULE) || annotations.exist(TS_NAMESPACE)))
         {
-            auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
             namespaceItem->setDecl(decl);
         }
 
-        // update declaration if new is local and old was not local
+        // update declaration if new one is local and old was not local
         if (!item->isLocal() && isLocal)
         {
-            auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
             namespaceItem->setDecl(decl);
             namespaceItem->setLocal(true);
         }
