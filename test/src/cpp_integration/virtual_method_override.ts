@@ -18,7 +18,9 @@ import { Component, AnotherWidget, Handler } from "./declarations/component"
 const i = 2;
 
 class SomeScopeWidget extends Component {
-    n = 444;
+    n: number;
+
+    constructor() { super(); this.n = 444; }
 
     @Override()
     render() {
@@ -35,6 +37,8 @@ class SomeScopeWidget extends Component {
 }
 
 class AnotherSomeScopeWidget extends Component {
+    constructor() { super(); }
+
     @Override()
     draw() {
         console.log("AnotherSomeScopeWidget overrides Component.draw");

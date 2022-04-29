@@ -31,19 +31,17 @@ export class ConciseBody {
     return new ConciseBody(body, generator);
   }
 
-  getEnvironmentVariables(signature: Signature, extendScope: Scope, outerEnv?: Environment) {
-    const environmentVariables = this.getEnvironmentVariablesFromBody(signature, extendScope, outerEnv);
+  getEnvironmentVariables(signature: Signature | undefined, extendScope: Scope, outerEnv?: Environment) {
+    const environmentVariables = this.getEnvironmentVariablesFromBody(signature, extendScope);
     if (outerEnv) {
       environmentVariables.push(...outerEnv.variables);
     }
 
-    return environmentVariables;
+    return environmentVariables.filter((variable, index) => environmentVariables.indexOf(variable) === index);
   }
 
-  private getEnvironmentVariablesFromBody(signature: Signature, extendScope: Scope, outerEnv?: Environment) {
-    const vars = extendScope.withThisKeeping(() =>
-      this.getFunctionEnvironmentVariables(signature, extendScope, [], [], outerEnv)
-    );
+  private getEnvironmentVariablesFromBody(signature: Signature | undefined, extendScope: Scope) {
+    const vars = extendScope.withThisKeeping(() => this.getFunctionEnvironmentVariables(signature, extendScope));
     const varsStatic = this.getStaticFunctionEnvironmentVariables();
     // Do not take 'undefined' since it is injected for every source file and available globally
     // as variable of 'i8' type that breaks further logic (all the variables expected to be pointers). @todo: turn 'undefined' into pointer?
@@ -51,11 +49,10 @@ export class ConciseBody {
   }
 
   private getFunctionEnvironmentVariables(
-    signature: Signature,
+    signature: Signature | undefined,
     extendScope: Scope,
     environmentVariables: string[] = [],
-    handled: ts.ConciseBody[] = [],
-    outerEnv?: Environment
+    handled: ts.ConciseBody[] = []
   ) {
     return this.generator.withInsertBlockKeeping(() => {
       return this.generator.symbolTable.withLocalScope((bodyScope) => {
@@ -83,18 +80,30 @@ export class ConciseBody {
         };
 
         const addNonLocalVariableIfNeeded = (node: ts.Node) => {
+          if (isStaticProperty(node)) {
+            return;
+          }
+
           const nodeText = node.getText();
 
-          const isNonThisPropertyAccess =
-            ts.isPropertyAccessExpression(node) && !node.getText().startsWith(this.generator.internalNames.This);
-          const isIdentifier = ts.isIdentifier(node);
           const isLocal = bodyScope.get(nodeText);
+          if (isLocal) {
+            return;
+          }
+
           const isKnown = environmentVariables.includes(nodeText);
           const isThis = nodeText === this.generator.internalNames.This;
-
-          if ((isNonThisPropertyAccess || isIdentifier) && !isLocal && !isKnown && !isThis && !isStaticProperty(node)) {
-            environmentVariables.push(nodeText);
+          if (isKnown || isThis) {
+            return;
           }
+
+          const isPropertyAccess = ts.isPropertyAccessExpression(node);
+          const isIdentifier = ts.isIdentifier(node);
+          if (!isIdentifier && !isPropertyAccess) {
+            return;
+          }
+
+          environmentVariables.push(nodeText);
         };
 
         const visitor = (node: ts.Node) => {
@@ -170,57 +179,18 @@ export class ConciseBody {
                 const propertyAccessDeclaration = propertyAccessRootSymbol.valueDeclaration;
 
                 if (propertyAccessRoot.kind === ts.SyntaxKind.ThisKeyword) {
-                  const thisVal = extendScope.get("this");
-                  const prototype =
-                    thisVal instanceof LLVMValue && thisVal.hasPrototype()
-                      ? thisVal.getPrototype()
-                      : outerEnv?.getPrototype("this");
-
-                  if (prototype) {
-                    const methodDeclaration = prototype.methods.find(
-                      (member) => member.name?.getText() === functionName
+                  if (!propertyAccessDeclaration?.isClassOrInterface()) {
+                    throw new Error(
+                      `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
                     );
-
-                    if (methodDeclaration) {
-                      declaration = methodDeclaration;
-                      skip = true;
-                    }
-                  } else {
-                    if (!propertyAccessDeclaration?.isClassOrInterface()) {
-                      throw new Error(
-                        `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
-                      );
-                    }
-
-                    const methodDeclaration = propertyAccessDeclaration.members.find(
-                      (m) => m.name?.getText() === functionName
-                    );
-                    if (methodDeclaration) {
-                      declaration = methodDeclaration;
-                      skip = true;
-                    }
                   }
-                } else {
-                  // mkrv: @todo: duplicate functionality
-                  if (propertyAccessDeclaration?.isParameter()) {
+
+                  const methodDeclaration = propertyAccessDeclaration.members.find(
+                    (m) => m.name?.getText() === functionName
+                  );
+                  if (methodDeclaration) {
+                    declaration = methodDeclaration;
                     skip = true;
-
-                    const parameterName = propertyAccessDeclaration.name?.getText();
-                    if (parameterName) {
-                      const maybePrototype = outerEnv?.getPrototype(parameterName);
-
-                      if (maybePrototype) {
-                        const methodDeclaration = maybePrototype.methods.find(
-                          (method) => method.name?.getText() === functionName
-                        );
-
-                        if (!methodDeclaration) {
-                          throw new Error(`Unable to find '${functionName}' in prototype of '${type.toString()}'`);
-                        }
-
-                        declaration = methodDeclaration;
-                      }
-                    }
                   }
                 }
               }
@@ -250,22 +220,48 @@ export class ConciseBody {
                 extendScope.set(classFileName, classRootScope);
               }
 
+              const methods = declaration.getMethods();
+              methods.forEach((m) => {
+                const declarationBody = m.isFunctionLike() && m.body;
+
+                if (declarationBody && !handled.includes(declarationBody)) {
+                  handled.push(declarationBody);
+
+                  const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(m);
+                  extendScope.withThisKeeping(() => {
+                    ConciseBody.create(declarationBody, this.generator).getFunctionEnvironmentVariables(
+                      innerFunctionSignature,
+                      extendScope,
+                      environmentVariables,
+                      handled
+                    );
+                  });
+                }
+              });
+
+              declaration.properties.forEach((property) => {
+                if (!property.initializer) {
+                  return;
+                }
+
+                addNonLocalVariableIfNeeded(property.initializer);
+              });
+
               const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
-              if (!constructorDeclaration) {
-                // unreachable if source is preprocessed correctly
-                throw new Error(`No constructor provided: ${declaration.getText()}`);
-              }
+              if (constructorDeclaration) {
+                const externalThis = extendScope.get("this");
+                if (!externalThis) {
+                  const fakeThis = LLVMConstantInt.getFalse(this.generator);
+                  extendScope.set("this", fakeThis);
+                }
 
-              const externalThis = extendScope.get("this");
-              if (externalThis && externalThis instanceof LLVMValue) {
-                externalThis.attachPrototype(declaration.getPrototype());
+                declaration = constructorDeclaration;
               } else {
-                const fakeThis = LLVMConstantInt.getFalse(this.generator);
-                fakeThis.attachPrototype(declaration.getPrototype());
-                extendScope.set("this", fakeThis);
+                if (declaration.isDerived) {
+                  const baseClassConstructor = declaration.getBases()[0].members.find((m) => m.isConstructor());
+                  declaration = baseClassConstructor;
+                }
               }
-
-              declaration = constructorDeclaration;
             }
 
             if (declaration) {
@@ -316,19 +312,22 @@ export class ConciseBody {
         ts.forEachChild(this.body, visitor);
 
         dummyBlock.eraseFromParent();
-        // @todo: check arguments usage too
-        environmentVariables.push(
-          ...signature
-            .getParameters()
-            .map((p) => p.escapedName.toString())
-            .filter((name) => !environmentVariables.includes(name))
-        );
 
-        const declaredParameters = signature.getDeclaredParameters();
-        const defaultParameters = declaredParameters
-          .filter((param) => param.initializer)
-          .map((param) => param.initializer!.getText());
-        environmentVariables.push(...defaultParameters.filter((name) => !environmentVariables.includes(name)));
+        if (signature) {
+          // @todo: check arguments usage too
+          environmentVariables.push(
+            ...signature
+              .getParameters()
+              .map((p) => p.escapedName.toString())
+              .filter((name) => !environmentVariables.includes(name))
+          );
+
+          const declaredParameters = signature.getDeclaredParameters();
+          const defaultParameters = declaredParameters
+            .filter((param) => param.initializer)
+            .map((param) => param.initializer!.getText());
+          environmentVariables.push(...defaultParameters.filter((name) => !environmentVariables.includes(name)));
+        }
 
         return environmentVariables;
       }, this.generator.symbolTable.currentScope);

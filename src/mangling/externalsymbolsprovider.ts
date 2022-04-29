@@ -11,7 +11,7 @@
 
 import { NmSymbolExtractor } from "../mangling";
 import * as ts from "typescript";
-import { GenericTypeMapper, LLVMGenerator } from "../generator";
+import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 
@@ -92,21 +92,12 @@ export class ExternalSymbolsProvider {
       }
 
       if (!knownGenericTypes) {
-        const thisTypeSymbol = thisType.getSymbol();
-        const thisTypeValueDeclaration = thisTypeSymbol.valueDeclaration || thisTypeSymbol.declarations[0];
-
-        let thisTypeTypeMapper: GenericTypeMapper | undefined;
-
-        if (thisTypeValueDeclaration.typeParameters) {
-          thisTypeTypeMapper = this.generator.meta.getClassTypeMapper(thisTypeValueDeclaration);
-        }
-
         const typeArguments = thisType.getTypeGenericArguments();
 
         this.classTemplateParametersPattern = ExternalSymbolsProvider.unqualifyParameters(
           typeArguments.map((type) => {
             if (type.isTypeParameter() && !type.isSupported()) {
-              type = thisTypeTypeMapper!.get(type.toString())!;
+              return "void*";
             }
 
             return type.toCppType();

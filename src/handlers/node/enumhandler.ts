@@ -17,22 +17,25 @@ import { LLVMConstantFP } from "../../llvm/value";
 export class EnumHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isEnumDeclaration(node)) {
-      this.generator.symbolTable.withLocalScope((localScope) => {
-        const scope = new Scope(node.name.getText(), node.name.getText());
+      const enumName = node.name.getText();
+      const scope = new Scope(enumName, enumName);
 
-        parentScope.set(scope.name!, scope);
+      // @todo:
+      // enum E {
+      //    v1 = 1,
+      //    v2,
+      //    v3...
+      // }
+      node.members.forEach((member, index) => {
+        const value = member.initializer
+          ? this.generator.handleExpression(member.initializer, env)
+          : this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, index));
 
-        node.members.forEach((member, index) => {
-          let value = member.initializer
-            ? this.generator.handleExpression(member.initializer, env)
-            : this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, index));
-          if (!value.type.isPointer()) {
-            value = value.createHeapAllocated();
-          }
-          localScope.set(member.name.getText(), value);
-          scope.set(member.name.getText(), value);
-        });
-      }, this.generator.symbolTable.currentScope);
+        scope.set(member.name.getText(), value);
+      });
+
+      parentScope.set(enumName, scope);
+
       return true;
     }
 

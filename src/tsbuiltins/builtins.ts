@@ -725,7 +725,7 @@ export class BuiltinIteratorResult extends Builtin {
     return this.llvmType;
   }
 
-  getValueGetter(type: TSType) {
+  getValueGetter() {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
@@ -740,14 +740,14 @@ export class BuiltinIteratorResult extends Builtin {
       thisType,
       [],
       this.generator,
-      [type.toCppType()]
+      ["void*"]
     );
 
     if (!isExternalSymbol) {
       throw new Error(`External symbol for 'value' is not found at '${declaration.getText()}'`);
     }
 
-    const llvmReturnType = type.getLLVMType();
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     const { fn: valueGetter } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 

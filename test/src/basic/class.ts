@@ -1336,16 +1336,15 @@
   new MyStatum_t();
 }
 
-// mkrv @todo
-// {
-//   class C {
-//     fn: (() => void) | undefined;
-//   }
+{
+  class C {
+    fn: (() => void) | undefined;
+  }
 
-//   const c = new C();
-//   c.fn = () => { }
-//   c.fn()
-// }
+  const c = new C();
+  c.fn = () => { }
+  c.fn()
+}
 
 {
   class AbsData {
@@ -1374,4 +1373,98 @@
 
   const d = new Controller();
   console.assert((d.data as ExtData).letter === "A", "Class property initialization by derived type");
+}
+
+{
+  class Base {
+    n = 0
+
+    // mkrv @todo
+    // tried to use tuple as return, got segfault
+    foo() {
+      return { s: "BASE", n: this.n };
+    }
+  }
+
+  class AnotherBase extends Base {
+    n = 1
+
+    constructor() {
+      super();
+
+      // mkrv @todo
+      // super.n have to be 'undefined'
+
+      const fooResult = super.foo();
+      console.assert(fooResult.s === "BASE" && fooResult.n === 1, "AnotherBase 'super' function call");
+    }
+
+    foo() {
+      return { s: "ANOTHER BASE", n: this.n };
+    }
+  }
+
+  class Derived extends AnotherBase {
+    n = 2
+
+    constructor() {
+      super();
+      const v = super.foo();
+      console.assert(v.s === "ANOTHER BASE" && v.n === 2, "Derived 'super' call");
+
+      new AnotherBase
+    }
+
+    foo() {
+      return { s: "DERIVED", n: this.n };
+    }
+  }
+
+  const d = new Derived();
+  const v = d.foo();
+  console.assert(v.s === "DERIVED" && v.n === 2, "Most derived class function call");
+}
+
+{
+  class BB { }
+
+  class Base<T> extends BB {
+    n = 0;
+
+    constructor() {
+      super();
+
+      console.assert(this.n === 0, "Property: 'this' is pointed to current base class in 'super' context");
+      console.assert(this.render() === 2, "Method: 'this' is pointed to derived class in 'super' context");
+    }
+
+    render() {
+      return 1;
+    }
+  }
+
+  class Derived extends Base<string> {
+    n = 1;
+
+    render() {
+      return 2;
+    }
+  }
+
+  new Derived();
+}
+
+{
+  class Root {
+    render() {
+      return this;
+    }
+  }
+
+  class Base extends Root { }
+
+  class Derived extends Base { }
+
+  const d = new Derived();
+  console.assert(d === d.render(), "Return of 'this' through heirachy chain must be most derived 'this'")
 }

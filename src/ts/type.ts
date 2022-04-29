@@ -16,7 +16,6 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
 
 import { TSSymbol } from "./symbol";
-import { FunctionMangler } from "../mangling/functionmangler";
 
 export class TSType {
   private type: ts.Type;
@@ -259,6 +258,16 @@ export class TSType {
 
   isIntersection(): this is ts.IntersectionType {
     return this.type.isIntersection();
+  }
+
+  isNamespace() {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    const symbol = this.getSymbol();
+
+    return Boolean(symbol.flags & ts.SymbolFlags.Namespace);
   }
 
   isFunction() {
@@ -577,23 +586,6 @@ export class TSType {
     }
 
     if (this.isFunction()) {
-      const symbol = this.getSymbol();
-      const declaration = symbol.declarations[0];
-      const signature = this.checker.getSignatureFromDeclaration(declaration);
-      const withFunargs = signature.getParameters().some((parameter) => {
-        const symbolType = this.checker.getTypeOfSymbolAtLocation(parameter, declaration.unwrapped);
-        return symbolType.isFunction();
-      });
-
-      if (withFunargs) {
-        if (
-          !ts.isCallExpression(declaration.parent) ||
-          !FunctionMangler.checkIfExternalSymbol(declaration.parent, this.checker.generator)
-        ) {
-          return this.checker.generator.tsclosure.lazyClosure.type;
-        }
-      }
-
       return this.checker.generator.tsclosure.getLLVMType();
     }
 
@@ -622,7 +614,7 @@ export class TSType {
       }
 
       const knownSize = (this.checker.generator.sizeOf.getByName(this.getTypename()) || 0) / 8;
-      const sizeProperties = declaration.properties.filter((prop) => prop.isPrivate());
+      const sizeProperties = declaration.ownProperties.filter((prop) => prop.isPrivate());
 
       const propTypes: LLVMType[] = new Array(knownSize || sizeProperties.length).fill(
         this.checker.generator.builtinNumber.getLLVMType()
@@ -769,11 +761,6 @@ export class TSType {
     const declaration = this.getSymbol().declarations[0];
     if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
       throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
-    }
-
-    if (declaration.isAmbient()) {
-      // c++ enums considered to be of int32_t
-      return LLVMType.getInt32Type(this.checker.generator);
     }
 
     if (declaration.isEnum()) {

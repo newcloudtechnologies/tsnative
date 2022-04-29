@@ -134,6 +134,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
     this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
 
+    if (expression.elements.length === 0) {
+      return allocated;
+    }
+
     const push = this.generator.ts.array.createPush(elementType, expression);
     for (const element of expression.elements) {
       if (ts.isSpreadElement(element)) {

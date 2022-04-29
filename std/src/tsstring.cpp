@@ -271,6 +271,3 @@ String* String::clone() const
 {
     return GC::track(new String(cpp_str()));
 }
-
-template class Array<String*>;
-template class IteratorResult<String*>;

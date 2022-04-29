@@ -14,7 +14,6 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
-import { Prototype } from "../scope";
 
 export class FunctionMeta {
   needUnwind: boolean = false;
@@ -268,21 +267,12 @@ export class Builder {
   }
 
   createBitCast(value: LLVMValue, destType: LLVMType, name?: string) {
-    let prototype: Prototype | undefined;
-    if (value.hasPrototype()) {
-      prototype = value.getPrototype();
-    }
-
     if (this.generator.tsclosure.lazyClosure.isLazyClosure(value) && destType.isClosure()) {
       throw new Error("Cannot bitcast lazy closure to closure");
     }
 
     const casted = this.builder.createBitCast(value.unwrapped, destType.unwrapped, name);
     const castedLLVMValue = LLVMValue.create(casted, this.generator);
-
-    if (prototype) {
-      castedLLVMValue.attachPrototype(prototype);
-    }
 
     return castedLLVMValue;
   }

@@ -112,11 +112,9 @@ export class RestParametersPreprocessor extends AbstractPreprocessor {
 
             if (declaration.isClass()) {
               const constructorDeclaration = declaration.members.find((member) => member.isConstructor());
-              if (!constructorDeclaration) {
-                throw new Error(`No constructor declaration found for class '${declaration.name?.getText()}'`);
+              if (constructorDeclaration) {
+                declaration = constructorDeclaration;
               }
-
-              declaration = constructorDeclaration;
             }
 
             if (

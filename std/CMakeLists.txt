@@ -49,6 +49,8 @@ set(SOURCES
     src/tsobject.cpp
     src/tstuple.cpp
     src/tsunion.cpp
+    src/template_instances.cpp
+
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp

@@ -23,6 +23,8 @@ public:
 protected:
     virtual ~Object();
 
+    bool has(String* key) const;
+
 public:
     TS_METHOD TS_SIGNATURE("get(key: string): any") void* get(String* key) const;
     TS_METHOD TS_SIGNATURE("set(key: string, value: any): void") void set(String* key, void* value);

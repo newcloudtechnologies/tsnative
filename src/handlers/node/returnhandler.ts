@@ -20,10 +20,24 @@ export class ReturnHandler extends AbstractNodeHandler {
     if (ts.isReturnStatement(node)) {
       if (node.expression) {
         let ret = this.generator.handleExpression(node.expression, env);
+
         const currentFunctionReturnType = LLVMType.make(
           this.generator.currentFunction.type.elementType.returnType,
           this.generator
         );
+
+        if (node.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
+          const currentClassDeclaration = this.generator.meta.getCurrentClassDeclaration();
+          const declarationOfReturn = this.generator.ts.checker.getSymbolAtLocation(node.expression).valueDeclaration;
+
+          if (currentClassDeclaration && declarationOfReturn?.isBaseOf(currentClassDeclaration)) {
+            ret = this.generator.ts.obj.get(ret, "parent");
+            ret = this.generator.ts.union.get(ret);
+            ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
+            this.generator.builder.createSafeRet(ret);
+            return true;
+          }
+        }
 
         if (this.generator.builder.getInsertBlock()?.name === "lpad") {
           const cxaEndCatchFn = this.generator.module.getFunction("__cxa_end_catch");

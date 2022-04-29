@@ -42,11 +42,8 @@ export class SysVFunctionHandler {
     const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
     const llvmReturnType = tsReturnType.getLLVMType();
 
-    const returnsVoidStar =
-      !tsReturnType.isSymbolless() && tsReturnType.getSymbol().valueDeclaration?.isClassOrInterface();
-
     const { fn } = this.generator.llvm.function.create(
-      returnsVoidStar ? LLVMType.getInt8Type(this.generator).getPointer() : llvmReturnType,
+      LLVMType.getInt8Type(this.generator).getPointer(),
       llvmArgumentTypes,
       qualifiedName
     );
@@ -63,9 +60,8 @@ export class SysVFunctionHandler {
     const args = [thisValueUntyped];
 
     let callResult = this.generator.builder.createSafeCall(fn, args);
-    if (returnsVoidStar) {
-      callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
-    }
+    callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+
     return callResult;
   }
 
@@ -120,9 +116,9 @@ export class SysVFunctionHandler {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
       thisValue = this.generator.handleExpression(propertyAccess.expression, env);
       if (!thisValue.type.isPointer()) {
-        const allocated = this.generator.gc.allocate(thisValue.type);
-        this.generator.builder.createSafeStore(thisValue, allocated);
-        thisValue = allocated;
+        throw new Error(
+          `Expected LLVM pointer type for 'this' at expression: '${propertyAccess.expression.getText()}', got '${thisValue.type.toString()}'. Error at '${expression.getText()}'`
+        );
       }
     }
 
@@ -160,7 +156,11 @@ export class SysVFunctionHandler {
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
     const returnType = resolvedSignature.getReturnType();
-    const llvmReturnType = returnType.getLLVMType();
+    let llvmReturnType = returnType.getLLVMType();
+
+    if (returnType.isEnum()) {
+      llvmReturnType = LLVMType.getInt32Type(this.generator);
+    }
 
     const returnsVoidStar = !returnType.isSymbolless() && returnType.getSymbol().valueDeclaration?.isClassOrInterface();
 
@@ -182,15 +182,18 @@ export class SysVFunctionHandler {
       args.unshift(thisValueUntyped);
     }
 
-    if (!llvmReturnType.isPointer() && !llvmReturnType.isVoid()) {
+    if (!returnType.isEnum() && !llvmReturnType.isPointer() && !llvmReturnType.isVoid()) {
       throw new Error(
-        `Error at '${expression.getText()}': returning values from C++ in not allowed. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
+        `Error at '${expression.getText()}': returning values from C++ only allowed for enums. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
       );
     }
 
     let callResult = this.generator.builder.createSafeCall(fn, args);
     if (returnsVoidStar) {
       callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+    } else if (returnType.isEnum()) {
+      callResult = this.generator.builder.createSIToFP(callResult, LLVMType.getDoubleType(this.generator));
+      callResult = this.generator.builtinNumber.create(callResult);
     }
 
     return callResult;

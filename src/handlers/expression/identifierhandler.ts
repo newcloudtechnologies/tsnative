@@ -53,11 +53,6 @@ export class IdentifierHandler extends AbstractExpressionHandler {
 
         const extracted = this.generator.builder.createSafeExtractValue(agg, [index]);
 
-        const maybePrototype = env.getPrototype(identifier);
-        if (maybePrototype) {
-          extracted.attachPrototype(maybePrototype);
-        }
-
         return extracted;
       }
     }
@@ -94,11 +89,6 @@ export class IdentifierHandler extends AbstractExpressionHandler {
         const agg = this.generator.builder.createLoad(env.typed);
 
         const extracted = this.generator.builder.createSafeExtractValue(agg, [index]);
-
-        const maybePrototype = env.getPrototype(this.generator.internalNames.This);
-        if (maybePrototype) {
-          extracted.attachPrototype(maybePrototype);
-        }
 
         return extracted;
       }

@@ -12,7 +12,6 @@
 import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import { LLVMStructType, LLVMType } from "./type";
-import { Prototype } from "../scope";
 import { OperationFlags } from "../tsbuiltins";
 
 export enum MathFlags {
@@ -22,7 +21,6 @@ export enum MathFlags {
 export class LLVMValue {
   protected value: llvm.Value;
   protected readonly generator: LLVMGenerator;
-  protected prototype: Prototype | undefined;
 
   protected constructor(value: llvm.Value, generator: LLVMGenerator) {
     this.value = value;
@@ -45,22 +43,6 @@ export class LLVMValue {
     this.value.name = name;
   }
 
-  attachPrototype(prototype: Prototype) {
-    this.prototype = prototype;
-  }
-
-  hasPrototype() {
-    return Boolean(this.prototype);
-  }
-
-  getPrototype() {
-    if (!this.hasPrototype()) {
-      throw new Error("LLVMValue: prototype non found. Consider call 'LLVMValue.hasPrototype' before 'getPrototype'");
-    }
-
-    return this.prototype!;
-  }
-
   getTSObjectPropsFromName() {
     const props = this.value.name.split(this.generator.internalNames.Object)[1]?.split(".");
     if (!props || props.length === 0) {
@@ -79,6 +61,11 @@ export class LLVMValue {
 
   adjustToType(type: LLVMType): LLVMValue {
     let value = this as LLVMValue;
+
+    if (value.type.isPointer() && type.isPointer() && type.getPointerElementType().isIntegerType(8)) {
+      value = this.generator.builder.createBitCast(value, type);
+    }
+
     if (value.type.equals(type)) {
       return value;
     }
@@ -403,7 +390,7 @@ export class LLVMValue {
       let extracted = this.generator.ts.union.get(this);
       extracted = this.generator.builder.createBitCast(extracted, rightType);
       return extracted.createEquals(other);
-    } else if (leftType.isPointerToStruct() && rightType.isPointerToStruct()) {
+    } else if (leftType.type.isPointerTy() && leftType.type.isPointerTy()) {
       const lhsAddress = this.generator.builder.createPtrToInt(this, LLVMType.getInt32Type(this.generator));
       const rhsAddress = this.generator.builder.createPtrToInt(other, LLVMType.getInt32Type(this.generator));
 

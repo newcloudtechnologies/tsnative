@@ -81,10 +81,11 @@ export class AccessHandler extends AbstractExpressionHandler {
             throw new Error(`Expected declaration name at '${valueDeclaration.getText()}'`);
           }
 
-          const namespace = valueDeclaration.getNamespace();
+          const namespace = valueDeclaration.getNamespace(/*ignore modules = */ true);
           const declarationName = valueDeclaration.name.getText();
 
           const fullyQualified = namespace.concat(declarationName, propertyName).join(".");
+
           const value = this.generator.symbolTable.get(fullyQualified);
 
           if (value instanceof Scope) {
@@ -165,13 +166,14 @@ export class AccessHandler extends AbstractExpressionHandler {
     const index = this.generator.handleExpression(expression.argumentExpression, env);
 
     let elementType = arrayType.getTypeGenericArguments()[0];
-    if (elementType.isFunction()) {
-      elementType = this.generator.tsclosure.getTSType();
-    }
 
     const element = this.generator.builder.createSafeCall(subscription, [arrayUntyped, index]);
+    if (!elementType.isSupported()) {
+      elementType = this.generator.symbolTable.currentScope.typeMapper.get(elementType.toString());
+    }
+    const elementLLVMType = elementType.getLLVMType();
 
-    return this.generator.builder.createBitCast(element, elementType.getLLVMType());
+    return this.generator.builder.createBitCast(element, elementLLVMType);
   }
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {

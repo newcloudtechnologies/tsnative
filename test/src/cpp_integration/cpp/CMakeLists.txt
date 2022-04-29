@@ -38,6 +38,7 @@ set(SOURCES
     inheritance.cpp
     component.cpp
     optional_arguments.cpp
+    enum.cpp
 )
 
 list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")

@@ -15,11 +15,9 @@ import * as fs from "fs";
 import { first } from "lodash";
 import {
   AbstractPreprocessor,
-  ConstructorGeneratingPreprocessor,
   FunctionDeclarationPreprocessor,
   ParametersRandomizingPreprocessor,
   RestParametersPreprocessor,
-  DefaultPropertiesPreprocessor,
 } from "./index";
 import { LLVMGenerator } from "../generator";
 
@@ -35,8 +33,6 @@ export class Preprocessor {
     this.parts.push(
       new ParametersRandomizingPreprocessor(generator),
       new FunctionDeclarationPreprocessor(generator),
-      new ConstructorGeneratingPreprocessor(generator),
-      new DefaultPropertiesPreprocessor(generator),
       new RestParametersPreprocessor(generator)
     );
 

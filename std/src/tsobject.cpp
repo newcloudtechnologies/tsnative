@@ -25,11 +25,39 @@ Object::~Object()
     delete _props;
 }
 
+bool Object::has(String* key) const
+{
+    return _props->has(key);
+}
+
+static String* superKey = new String("super");
+
 void* Object::get(String* key) const
 {
-    if (_props->has(key))
+    if (has(key))
     {
         return _props->get(key);
+    }
+
+    if (has(superKey))
+    {
+        auto superValue = static_cast<Union*>(get(superKey))->getValue();
+        while (superValue)
+        {
+            if (superValue->has(key))
+            {
+                return superValue->get(key);
+            }
+
+            if (superValue->has(superKey))
+            {
+                superValue = static_cast<Union*>(superValue->get(superKey))->getValue();
+            }
+            else
+            {
+                superValue = nullptr;
+            }
+        }
     }
 
     auto optional = GC::track(new Union());

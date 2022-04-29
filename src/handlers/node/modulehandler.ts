@@ -17,16 +17,22 @@ export class ModuleHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isModuleDeclaration(node)) {
       const declaration = node as ts.ModuleDeclaration;
-      const name = declaration.name.getText().replace(/\"/g, "");
-      const scope = new Scope(name, name);
 
       if (!declaration.body) {
         throw new Error(`Expected body for module declaration ${declaration.getText()}`);
       }
 
-      declaration.body.forEachChild((childNode) => this.generator.handleNode(childNode, scope, env));
+      const isNamespace = (node.flags & ts.NodeFlags.Namespace) !== 0;
+      if (isNamespace) {
+        const name = declaration.name.getText().replace(/\"/g, "");
+        const scope = new Scope(name, name);
 
-      parentScope.set(name, scope);
+        declaration.body.forEachChild((childNode) => this.generator.handleNode(childNode, scope, env));
+        parentScope.set(name, scope);
+      } else {
+        declaration.body.forEachChild((childNode) => this.generator.handleNode(childNode, parentScope, env));
+      }
+
       return true;
     }
 

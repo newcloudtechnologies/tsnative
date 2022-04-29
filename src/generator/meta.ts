@@ -12,7 +12,7 @@
 import * as crypto from "crypto";
 import * as ts from "typescript";
 
-import { Environment, Prototype } from "../scope";
+import { Environment } from "../scope";
 import { TSType } from "../ts/type";
 import { LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
@@ -30,20 +30,26 @@ class ClosureEnvironmentStorage {
   readonly storage = new Map<LLVMValue, Environment>();
 }
 
-class ParameterPrototypeStorage {
-  readonly storage = new Map<string, Prototype>();
-}
-
 class ClassDeclarationTypeMapperStorage {
   readonly storage = new Map<ts.Declaration, GenericTypeMapper>();
 }
 
+class FixedArgsCountStorage {
+  readonly storage = new Map<LLVMValue, number>();
+}
+
+class SuperCallTracker {
+  value = false;
+}
+
 export class MetaInfoStorage {
-  readonly closureParametersMeta = new ClosureParametersMetaStorage();
-  readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
-  readonly closureEnvironment = new ClosureEnvironmentStorage();
-  readonly parameterPrototype = new ParameterPrototypeStorage();
-  readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
+  private readonly closureParametersMeta = new ClosureParametersMetaStorage();
+  private readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
+  private readonly closureEnvironment = new ClosureEnvironmentStorage();
+  private readonly superCallTracker = new SuperCallTracker();
+  private readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
+  private readonly fixedArgs = new FixedArgsCountStorage();
+  private currentClassDeclaration: Declaration | undefined;
 
   registerClosureParameter(parentFunction: string, closureParameter: string, closureFunctionDeclaration: Declaration) {
     const knownClosureParameters = this.closureParametersMeta.storage.get(parentFunction);
@@ -100,16 +106,16 @@ export class MetaInfoStorage {
     return environment;
   }
 
-  registerParameterPrototype(parameter: string, prototype: Prototype) {
-    this.parameterPrototype.storage.set(parameter, prototype);
+  registerFixedArgsCount(closure: LLVMValue, count: number) {
+    this.fixedArgs.storage.set(closure, count);
   }
 
-  getParameterPrototype(parameter: string) {
-    const prototype = this.parameterPrototype.storage.get(parameter);
-    if (!prototype) {
-      throw new Error(`No prototype registered for '${parameter}'`);
+  getFixedArgsCount(closure: LLVMValue) {
+    const count = this.fixedArgs.storage.get(closure);
+    if (typeof count === "undefined") {
+      return 0;
     }
-    return prototype;
+    return count;
   }
 
   registerClassTypeMapper(declaration: Declaration, mapper: GenericTypeMapper) {
@@ -122,6 +128,30 @@ export class MetaInfoStorage {
       throw new Error(`No type mapper registered for '${declaration.getText()}'`);
     }
     return mapper;
+  }
+
+  enterSuperCall() {
+    this.superCallTracker.value = true;
+  }
+
+  exitSuperCall() {
+    this.superCallTracker.value = false;
+  }
+
+  inSuperCall() {
+    return this.superCallTracker.value;
+  }
+
+  setCurrentClassDeclaration(declaration: Declaration) {
+    this.currentClassDeclaration = declaration;
+  }
+
+  resetCurrentClassDeclaration() {
+    this.currentClassDeclaration = undefined;
+  }
+
+  getCurrentClassDeclaration() {
+    return this.currentClassDeclaration;
   }
 
   try<A, T>(getter: (_: A) => T, arg: A) {

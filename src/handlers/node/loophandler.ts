@@ -254,8 +254,9 @@ export class LoopHandler extends AbstractNodeHandler {
         currentFunction.addBasicBlock(incrementor);
         builder.setInsertionPoint(incrementor);
 
-        const valueFn = this.generator.iteratorResult.getValueGetter(variableType);
-        const value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
+        const valueFn = this.generator.iteratorResult.getValueGetter();
+        let value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
+        value = this.generator.builder.createBitCast(value, variableType.getLLVMType());
 
         updateScope(value);
 

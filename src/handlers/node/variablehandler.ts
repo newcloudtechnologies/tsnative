@@ -108,20 +108,6 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = this.generator.handleExpression(declaration.initializer, outerEnv);
     }
 
-    if (initializer && declaration.initializer) {
-      const initializerType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
-
-      if (initializerType.isClassOrInterface()) {
-        const initializerSymbol = initializerType.getSymbol();
-        const initializerDeclaration = initializerSymbol.valueDeclaration;
-
-        if (initializerDeclaration) {
-          const prototype = initializerDeclaration.getPrototype();
-          initializer.attachPrototype(prototype);
-        }
-      }
-    }
-
     return initializer;
   }
 

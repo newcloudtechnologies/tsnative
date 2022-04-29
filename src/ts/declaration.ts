@@ -10,12 +10,13 @@
  */
 
 import { LLVMGenerator } from "../generator";
-import { Prototype, Scope } from "../scope/scope";
+import { Environment, Scope } from "../scope/scope";
 import { TSType } from "../ts/type";
 import * as ts from "typescript";
 import * as crypto from "crypto";
 import { flatten } from "lodash";
 import { FunctionMangler } from "../mangling";
+import { ConciseBody } from "./concisebody";
 
 export class Declaration {
   private readonly declaration: ts.Declaration;
@@ -59,13 +60,37 @@ export class Declaration {
   }
 
   get properties() {
-    return this.members.filter((m) => m.isProperty());
+    return this.ownProperties.concat(this.inheritedProperties);
+  }
+
+  get ownProperties() {
+    return this.members.filter((m) => m.isProperty() && !m.isStaticProperty());
+  }
+
+  get inheritedProperties() {
+    if (!this.isDerived) {
+      return [];
+    }
+
+    const bases = [this.getBases()[0]];
+
+    const props = flatten(
+      bases.map((base) => {
+        return base.ownProperties;
+      })
+    );
+
+    return props.filter(
+      (prop, index, array) => array.findIndex((p) => prop.name?.getText() === p.name?.getText()) === index
+    );
+  }
+
+  get isDerived() {
+    return this.getBases().length > 0;
   }
 
   isPrivate() {
-    return Boolean(
-      this.declaration.modifiers?.findIndex((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword) !== -1
-    );
+    return Boolean(this.declaration.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword));
   }
 
   isOptional() {
@@ -174,12 +199,76 @@ export class Declaration {
     return Boolean(this.declaration.dotDotDotToken);
   }
 
+  environmentVariables(expression: ts.Expression, scope: Scope, env?: Environment) {
+    const variables: string[] = [];
+
+    const methods = this.getMethods();
+    methods.forEach((m) => {
+      if (!m.body) {
+        return;
+      }
+
+      const methodSignature = this.generator.ts.checker.getSignatureFromDeclaration(m);
+      variables.push(
+        ...ConciseBody.create(m.body, this.generator).getEnvironmentVariables(methodSignature, scope, env)
+      );
+    });
+
+    this.properties.forEach((prop) => {
+      if (!prop.initializer) {
+        return;
+      }
+
+      if (ts.isIdentifier(prop.initializer)) {
+        variables.push(prop.initializer.getText());
+      } else if (ts.isFunctionLike(prop.initializer)) {
+        if (!this.generator.ts.checker.nodeHasSymbolAndDeclaration(prop.initializer)) {
+          return;
+        }
+
+        const initializerSymbol = this.generator.ts.checker.getSymbolAtLocation(prop.initializer);
+        const initializerDeclaration = initializerSymbol.valueDeclaration;
+
+        if (!initializerDeclaration) {
+          throw new Error(
+            `Unable to find declaration for property's '${prop.name?.getText()}}' initializer: '${prop.initializer.getText()}'. Error at '${expression.getText()}'`
+          );
+        }
+
+        if (!initializerDeclaration.body) {
+          throw new Error(
+            `No body at property '${prop.name?.getText()}}' initializer: '${prop.initializer.getText()}'. Error at '${expression.getText()}'`
+          );
+        }
+
+        const initializerSignature = this.generator.ts.checker.getSignatureFromDeclaration(initializerDeclaration);
+        variables.push(
+          ...ConciseBody.create(initializerDeclaration.body, this.generator).getEnvironmentVariables(
+            initializerSignature,
+            scope,
+            env
+          )
+        );
+      }
+    });
+
+    return variables;
+  }
+
+  isBaseOf(other: Declaration) {
+    return other.getBases().some((base) => base.type.isSame(this.type));
+  }
+
   getText() {
     return this.declaration.getText();
   }
 
   getSourceFile() {
     return this.declaration.getSourceFile();
+  }
+
+  isNamespace() {
+    return ts.isModuleDeclaration(this.declaration);
   }
 
   isClass() {
@@ -208,6 +297,10 @@ export class Declaration {
 
   isMethod() {
     return ts.isMethodDeclaration(this.declaration);
+  }
+
+  isMethodSignature() {
+    return ts.isMethodSignature(this.declaration);
   }
 
   isConstructor() {
@@ -263,7 +356,7 @@ export class Declaration {
   }
 
   isAmbient() {
-    return this.declaration.getSourceFile().fileName.endsWith(".d.ts");
+    return Boolean(this.declaration.getSourceFile()?.fileName.endsWith(".d.ts"));
   }
 
   isExternalCallArgument() {
@@ -284,7 +377,7 @@ export class Declaration {
     return this.generator.symbolTable.currentScope;
   }
 
-  getNamespace(): string[] {
+  getNamespace(ignoreModules: boolean = false): string[] {
     let parentNode = this.declaration.parent;
     let moduleBlockSeen = false;
     let stopTraversing = false;
@@ -294,12 +387,16 @@ export class Declaration {
       // skip declarations. block itself is in the next node
       if (!ts.isModuleDeclaration(parentNode)) {
         if (ts.isModuleBlock(parentNode)) {
-          namespace.unshift(parentNode.parent.name.text);
-          moduleBlockSeen = true;
+          const isModule = (parentNode.parent.flags & ts.NodeFlags.Namespace) === 0;
+          if (!isModule || !ignoreModules) {
+            namespace.unshift(parentNode.parent.name.text);
+            moduleBlockSeen = true;
+          }
         } else if (moduleBlockSeen) {
           stopTraversing = true;
         }
       }
+
       parentNode = parentNode.parent;
     }
 
@@ -329,22 +426,38 @@ export class Declaration {
     );
   }
 
-  getPrototype() {
-    const parentType = this.generator.ts.checker.getTypeAtLocation(this.declaration);
-    const prototype = new Prototype(parentType);
+  getOwnMethods() {
+    return this.members.filter((m) => {
+      return m.isMethod() && !m.isStaticMethod() && m.name;
+    });
+  }
 
-    const prototypeSources = this.getBases();
-    prototypeSources.unshift(this);
-
-    for (const prototypeSource of prototypeSources) {
-      for (const memberDecl of prototypeSource.members) {
-        if (memberDecl.isMethod()) {
-          prototype.methods.push(memberDecl);
-        }
-      }
+  getDerivedMethods() {
+    if (!this.isDerived) {
+      return [];
     }
 
-    return prototype;
+    const bases = [this.getBases()[0]];
+
+    return flatten(
+      flatten(
+        bases.map((base, _, array) => {
+          return base.members.filter((member) => {
+            if (!member.isMethod()) {
+              return false;
+            }
+
+            if (!member.name) {
+              // @todo: Error?
+              return false;
+            }
+
+            const isUniq = array.findIndex((m) => m.name!.getText() === member.name!.getText()) === -1;
+            return isUniq;
+          });
+        })
+      )
+    );
   }
 
   getMethods() {

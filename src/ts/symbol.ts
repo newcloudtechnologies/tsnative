@@ -26,12 +26,24 @@ export class TSSymbol {
     return new TSSymbol(symbol, generator);
   }
 
+  isNamespace() {
+    return Boolean(this.valueDeclaration?.isNamespace());
+  }
+
   isProperty() {
     return Boolean(this.symbol.flags & ts.SymbolFlags.Property);
   }
 
+  isMethodSignature() {
+    return this.valueDeclaration?.isMethodSignature();
+  }
+
   isMethod() {
     return this.valueDeclaration?.isMethod();
+  }
+
+  isStaticMethod() {
+    return this.valueDeclaration?.isStaticMethod();
   }
 
   isOptionalMethod() {
