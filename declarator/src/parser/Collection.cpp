@@ -533,7 +533,8 @@ void Collection::addNamespace(const std::string& name,
         {
             AnnotationList A2(getAnnotations(namespaceItem->decl()));
 
-            return (A1.exist(TS_MODULE) || A1.exist(TS_NAMESPACE)) && (A2.exist(TS_MODULE) || A2.exist(TS_NAMESPACE));
+            return (A1.exist(TS_MODULE) || A1.exist(TS_NAMESPACE)) && namespaceItem->isLocal() &&
+                   (A2.exist(TS_MODULE) || A2.exist(TS_NAMESPACE));
         };
 
         // forward declaration must be a local and without annotations
