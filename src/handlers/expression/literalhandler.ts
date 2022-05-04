@@ -97,7 +97,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
             const propDeclaration = prop.valueDeclaration || prop.declarations[0];
             const propName = prop.escapedName.toString();
             const maybePropValUntyped = this.generator.ts.obj.get(obj, propName);
-            const propValUntyped = this.generator.ts.union.get(maybePropValUntyped);
+            const propValUntyped = maybePropValUntyped //this.generator.ts.union.get(maybePropValUntyped);
 
             let propVal = this.generator.builder.createBitCast(propValUntyped, propDeclaration.type.getLLVMType());
             if (propVal.isTSPrimitivePtr()) {

@@ -44,7 +44,7 @@ export class TSObject {
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
 
     const structType = LLVMStructType.create(generator, "object");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_OBJECT);
+    const syntheticBody = [this.generator.builtinNumber.getLLVMType(), this.generator.builtinNumber.getLLVMType()]; //structType.getSyntheticBody(SIZEOF_OBJECT);
     structType.setBody(syntheticBody);
     this.llvmType = structType.getPointer();
   }

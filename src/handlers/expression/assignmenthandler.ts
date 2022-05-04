@@ -66,6 +66,9 @@ export class AssignmentHandler extends AbstractExpressionHandler {
               ? this.generator.ts.union.create(this.generator.ts.null.get())
               : this.generator.handleExpression(right, env);
 
+
+          console.log("MAKE ASSIGNMENT", expression.getText(), lhs.type.toString(), rhs.type.toString())
+
           return lhs.makeAssignment(rhs);
         default:
           break;

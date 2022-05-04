@@ -32,7 +32,7 @@ export class ReturnHandler extends AbstractNodeHandler {
 
           if (currentClassDeclaration && declarationOfReturn?.isBaseOf(currentClassDeclaration)) {
             ret = this.generator.ts.obj.get(ret, "parent");
-            ret = this.generator.ts.union.get(ret);
+            // ret = this.generator.ts.union.get(ret);
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
             this.generator.builder.createSafeRet(ret);
             return true;

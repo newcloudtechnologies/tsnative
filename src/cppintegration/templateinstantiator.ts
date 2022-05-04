@@ -106,8 +106,7 @@ export class TemplateInstantiator {
       call = node;
     } else {
       throw new Error(
-        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${
-          ts.SyntaxKind[node.kind]
+        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]
         }`
       );
     }
@@ -124,6 +123,7 @@ export class TemplateInstantiator {
         if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(arg)) {
           const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
           const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
           tsType = declaration.type;
         } else {
           tsType = this.generator.ts.checker.getTypeAtLocation(arg);

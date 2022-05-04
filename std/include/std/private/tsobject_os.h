@@ -28,8 +28,7 @@ inline std::ostream& operator<<(std::ostream& os, const Object* o)
         os << std::string(depth * PADDING_WIDTH, ' ') << key << ":";
 
         bool isParent = key->equals(parentString)->unboxed();
-        auto maybe = static_cast<const Union*>(o->_props->get(key));
-        auto obj = maybe->getValue();
+        auto obj = static_cast<Object*>(o->_props->get(key));
 
         if (isParent)
         {

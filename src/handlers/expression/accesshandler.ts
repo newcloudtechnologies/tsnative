@@ -247,15 +247,17 @@ export class AccessHandler extends AbstractExpressionHandler {
       expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       expression.parent.parent.left === expression.parent;
 
-    if (isThisAccess && isInitialization) {
-      targetLLVMType = this.generator.ts.union.getLLVMType();
-    } else {
+    // if (isThisAccess && isInitialization) {
+      // targetLLVMType = this.generator.ts.obj.getLLVMType();
+    // } else {
       targetLLVMType = type.getLLVMType();
 
-      if (!type.isOptionalUnion()) {
-        value = this.generator.ts.union.get(value);
-      }
-    }
+      // if (!type.isOptionalUnion()) {
+      //   value = this.generator.ts.union.get(value);
+      // }
+    // }
+
+    console.log("&&&&&&&&&", expression.parent.parent.getText(), targetLLVMType.toString())
 
     return this.generator.builder.createBitCast(value, targetLLVMType);
   }

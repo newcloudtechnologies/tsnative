@@ -174,6 +174,9 @@ export class LLVMValue {
       this.generator.ts.union.set(value, other);
       return value;
     }
+
+    TODO!!
+
     const isSame = value.type.getPointerElementType() === other.type.getPointerElementType();
     const int8PtrTy = LLVMType.getInt8Type(this.generator).getPointer();
 

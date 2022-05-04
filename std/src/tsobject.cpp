@@ -32,6 +32,8 @@ bool Object::has(String* key) const
 
 static String* superKey = new String("super");
 
+#include <iostream>
+
 void* Object::get(String* key) const
 {
     if (has(key))
@@ -41,7 +43,7 @@ void* Object::get(String* key) const
 
     if (has(superKey))
     {
-        auto superValue = static_cast<Union*>(get(superKey))->getValue();
+        auto superValue = static_cast<Object*>(get(superKey));
         while (superValue)
         {
             if (superValue->has(key))
@@ -51,7 +53,7 @@ void* Object::get(String* key) const
 
             if (superValue->has(superKey))
             {
-                superValue = static_cast<Union*>(superValue->get(superKey))->getValue();
+                superValue = static_cast<Object*>(superValue->get(superKey));
             }
             else
             {
@@ -59,6 +61,10 @@ void* Object::get(String* key) const
             }
         }
     }
+
+    std::cout << "!!!!!!!! " << key << std::endl; 
+
+    assert(false);
 
     auto optional = GC::track(new Union());
     _props->set(key, optional);
@@ -68,8 +74,7 @@ void* Object::get(String* key) const
 
 void Object::set(String* key, void* value)
 {
-    auto optional = GC::track(new Union(static_cast<Object*>(value)));
-    _props->set(key, optional);
+    _props->set(key, value);
 }
 
 void* Object::get(const std::string& key) const
@@ -78,7 +83,7 @@ void* Object::get(const std::string& key) const
 
     if (_props->has(keyWrapped))
     {
-        return (static_cast<Union*>(_props->get(keyWrapped))->getValue());
+        return _props->get(keyWrapped);
     }
 
     auto optional = GC::track(new Union());
@@ -89,8 +94,7 @@ void* Object::get(const std::string& key) const
 void Object::set(const std::string& key, void* value)
 {
     auto keyWrapped = GC::track(new String(key));
-    auto optional = GC::track(new Union(static_cast<Object*>(value)));
-    _props->set(keyWrapped, optional);
+    _props->set(keyWrapped, value);
 }
 
 String* Object::toString() const
