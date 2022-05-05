@@ -11,6 +11,7 @@
 
 #include "ClassDetails.h"
 #include "TsUtils.h"
+#include "TypeUtils.h"
 
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
@@ -512,7 +513,7 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
 
             std::string retType = annotations.exist(TS_RETURN_TYPE)
                                       ? annotations.values(TS_RETURN_TYPE).at(0)
-                                      : actialType(classPrefix, mapType(m_typeMapper, item.returnType()));
+                                      : m_typeMapper.convertToTSType(classPrefix, item.returnType());
 
             auto block = (item.isConstructor()) ? AbstractBlock::make<MethodBlock>()
                                                 : AbstractBlock::make<MethodBlock>(name, retType, item.isStatic());
@@ -528,7 +529,7 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
 
             for (const auto& it : item.parameters())
             {
-                std::string type = actialType(classPrefix, mapType(m_typeMapper, it.type()));
+                std::string type = m_typeMapper.convertToTSType(classPrefix, it.type());
                 block->addArgument({it.name(), type});
             }
 
@@ -754,63 +755,7 @@ std::vector<std::string> Extends::exportedBases(parser::const_class_item_t item)
     return result;
 }
 
-std::string Extends::normalize(const std::string& expr)
-{
-    using namespace utils;
-
-    auto isTemplate = [](const std::string& expr) -> bool
-    {
-        std::regex regexp(R"(([\w]*)\<(.+)\>)");
-        return std::regex_match(expr, regexp);
-    };
-
-    auto parse = [](const std::string& expr, std::string& name, std::vector<std::string>& args)
-    {
-        using namespace utils;
-
-        std::regex regexp(R"(([\w]*)\<(.+)\>)"); // example: Tuple<K, V>
-        std::smatch match;
-
-        if (!std::regex_search(expr.begin(), expr.end(), match, regexp))
-        {
-            throw Exception(R"(invalid template signature: "%s")", expr.c_str());
-        }
-
-        name = match[1];
-        std::string sArgs = match[2];
-
-        regexp = R"((([\w]+)\<(.+)\>)|([\w]+))"; // example: K, V
-        auto _begin = std::sregex_iterator(sArgs.begin(), sArgs.end(), regexp);
-        auto _end = std::sregex_iterator();
-
-        for (auto it = _begin; it != _end; ++it)
-        {
-            std::string arg = (*it).str();
-            args.push_back(arg);
-        }
-    };
-
-    std::string result = expr;
-
-    if (isTemplate(expr))
-    {
-        std::string name;
-        std::vector<std::string> argsList;
-        parse(expr, name, argsList);
-
-        for (auto& it : argsList)
-        {
-            it = normalize(it);
-        }
-
-        std::string args = join(argsList, ", ");
-        result = strprintf(R"(%s<%s>)", name.c_str(), args.c_str());
-    }
-
-    return result;
-}
-
-std::string Extends::get(parser::const_class_item_t item)
+std::string Extends::get(parser::const_class_item_t item, const TypeMapper& typeMapper)
 {
     using namespace utils;
 
@@ -837,9 +782,7 @@ std::string Extends::get(parser::const_class_item_t item)
     {
         std::string extends = bases.at(0);
 
-        extends = normalize(extends);
-
-        result = actialType(item->prefix(), extends);
+        result = typeMapper.convertToTSType(item->prefix(), extends);
     }
 
     return result;

@@ -109,10 +109,9 @@ class Extends
 {
 private:
     static std::vector<std::string> exportedBases(parser::const_class_item_t item);
-    static std::string normalize(const std::string& expr);
 
 public:
-    static std::string get(parser::const_class_item_t item);
+    static std::string get(parser::const_class_item_t item, const TypeMapper& typeMapper);
 };
 
 } // namespace analyzer

@@ -96,13 +96,13 @@ void makeFunction(parser::const_function_item_t item,
 
         std::string retType = annotations.exist(TS_RETURN_TYPE)
                                   ? annotations.values(TS_RETURN_TYPE).at(0)
-                                  : actialType(item->prefix(), mapType(typeMapper, item->returnType()));
+                                  : typeMapper.convertToTSType(item->prefix(), item->returnType());
 
         functionBlock = AbstractBlock::make<FunctionBlock>(name, retType, true);
 
         for (const auto& it : item->parameters())
         {
-            std::string type = actialType(item->prefix(), mapType(typeMapper, it.type()));
+            std::string type = typeMapper.convertToTSType(item->prefix(), it.type());
 
             // can't detect spread and optional parameters automatically
             functionBlock->addArgument(it.name(), type, false, false);

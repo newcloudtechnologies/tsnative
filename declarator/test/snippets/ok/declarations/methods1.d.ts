@@ -23,5 +23,13 @@ declare module "test" {
             createRGB(r: number, g: number, b: number): Color;
             createARGB(a: number, r: number, g: number, b: number): Color;
         }
+
+        export class Palette {
+            private p0_Palette: boolean;
+
+            constructor();
+        }
+
+        export function makePalette(colors: Array<Color>): Palette;
     }
 }

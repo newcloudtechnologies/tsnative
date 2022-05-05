@@ -67,7 +67,7 @@ void makeGenericClass(parser::const_class_template_item_t item,
         genericClassBlock->addTemplateParameter({it.name(), it.isParameterPack()});
     }
 
-    genericClassBlock->addExtends(Extends::get(item));
+    genericClassBlock->addExtends(Extends::get(item, typeMapper));
 
     genericClassBlock->addFields(classCollection.fields);
     genericClassBlock->addMethods(classCollection.methods);

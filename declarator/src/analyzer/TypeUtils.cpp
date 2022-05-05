@@ -25,6 +25,7 @@
 #include <clang/AST/PrettyPrinter.h>
 
 #include <exception>
+#include <regex>
 
 namespace
 {
@@ -50,122 +51,6 @@ std::string collapseType(const std::string& currentPrefix, const std::string& ty
     }
 
     return join(given_parts, ".");
-}
-
-} //  namespace
-
-namespace analyzer
-{
-
-TypeMapper::TypeMapper(const std::map<std::string, std::string>& table)
-{
-    m_table.insert(STD_TABLE.begin(), STD_TABLE.end());
-    m_table.insert(table.begin(), table.end());
-}
-
-std::string TypeMapper::cleanPrefix(const std::string& type) const
-{
-    std::string result = type;
-
-    for (const auto& it : {"volatile", "const"})
-    {
-        auto found = type.find(it);
-
-        if (found != std::string::npos)
-        {
-            result = type.substr(std::string(it).length());
-            utils::trim(result);
-            break;
-        }
-    }
-
-    return result;
-}
-
-std::string TypeMapper::cleanSuffix(const std::string& type) const
-{
-    std::string result = type;
-
-    for (const auto& it : {"**", "&&", "*", "&"})
-    {
-        auto found = type.rfind(it);
-
-        if (found != std::string::npos)
-        {
-            result = type.substr(0, found);
-            utils::trim(result);
-            break;
-        }
-    }
-
-    return result;
-}
-
-std::string TypeMapper::getTSType(const std::string& cppType) const
-{
-    std::string result = cppType;
-
-    result = cleanPrefix(result);
-    result = cleanSuffix(result);
-
-    if (m_table.find(result) != m_table.end())
-        result = m_table.at(result);
-
-    if (result == "--")
-    {
-        std::string availableTypes;
-        for (const auto& it : STD_TABLE)
-        {
-            if (it.second != "--")
-            {
-                if (availableTypes.empty())
-                {
-                    availableTypes += it.first;
-                }
-                else
-                {
-                    availableTypes += (", " + it.first);
-                }
-            }
-        }
-
-        throw std::runtime_error(utils::strprintf(
-            R"(type "%s" is not supported, available types: [%s])", cppType.c_str(), availableTypes.c_str()));
-    }
-
-    return result;
-}
-
-bool TypeMapper::inTable(const std::string& cppType) const
-{
-    std::string result = cppType;
-
-    result = cleanPrefix(result);
-    result = cleanSuffix(result);
-
-    return m_table.find(result) != m_table.end();
-}
-
-std::string mapType(const TypeMapper& typeMapper, const clang::QualType& type)
-{
-    using namespace utils;
-
-    clang::LangOptions lo;
-    clang::PrintingPolicy pp(lo);
-    pp.adjustForCPlusPlus();
-
-    std::string result;
-
-    std::string cppType = type.getCanonicalType().getAsString(pp);
-
-    if (!typeMapper.inTable(cppType))
-    {
-        cppType = type.getAsString(pp);
-    }
-
-    result = typeMapper.getTSType(cppType);
-
-    return result;
 }
 
 bool getModuleName(const std::string& path, std::string& moduleName)
@@ -213,15 +98,77 @@ bool isTheSameModule(const std::string& path1, const std::string& path2)
     return getModuleName(path1, moduleName1) && getModuleName(path2, moduleName2) && moduleName1 == moduleName2;
 }
 
-std::string actialType(const std::string& currentPrefix, const std::string& type)
+} //  namespace
+
+namespace analyzer
+{
+
+TypeMapper::TypeMapper(const std::map<std::string, std::string>& table)
+{
+    m_table.insert(STD_TABLE.begin(), STD_TABLE.end());
+    m_table.insert(table.begin(), table.end());
+}
+
+bool TypeMapper::includes(const std::string& cppType) const
+{
+    std::string result = cppType;
+
+    result = cleanPrefix(result);
+    result = cleanSuffix(result);
+
+    return m_table.find(result) != m_table.end();
+}
+
+std::string TypeMapper::cleanPrefix(const std::string& type) const
+{
+    std::string result = type;
+
+    for (const auto& it : {"volatile", "const"})
+    {
+        auto found = type.find(it);
+
+        if (found != std::string::npos)
+        {
+            result = type.substr(std::string(it).length());
+            utils::trim(result);
+            break;
+        }
+    }
+
+    return result;
+}
+
+std::string TypeMapper::cleanSuffix(const std::string& type) const
+{
+    std::string result = type;
+
+    for (const auto& it : {"**", "&&", "*", "&"})
+    {
+        auto found = type.rfind(it);
+
+        if (found != std::string::npos)
+        {
+            result = type.substr(0, found);
+            utils::trim(result);
+            break;
+        }
+    }
+
+    return result;
+}
+
+//
+//  collapse type if necessary and remove module name from path
+//
+std::string TypeMapper::adaptType(const std::string& prefix, const std::string& type) const
 {
     using namespace utils;
 
     std::string result;
 
-    if (isTheSameModule(type, currentPrefix))
+    if (isTheSameModule(type, prefix))
     {
-        result = collapseType(currentPrefix, type);
+        result = collapseType(prefix, type);
     }
     else
     {
@@ -240,6 +187,139 @@ std::string actialType(const std::string& currentPrefix, const std::string& type
     }
 
     return result;
+}
+
+//
+//  recursively parse template and map type, adapt type for each argument
+//
+std::string TypeMapper::adaptTemplate(const std::string& prefix, const std::string& type) const
+{
+    using namespace utils;
+
+    auto isTemplate = [](const std::string& expr) -> bool
+    {
+        std::regex regexp(R"(([\w]*)\<(.+)\>)");
+        return std::regex_match(expr, regexp);
+    };
+
+    auto parse = [](const std::string& expr, std::string& name, std::vector<std::string>& args)
+    {
+        using namespace utils;
+
+        std::regex regexp(R"(([\w]*)\<(.+)\>)"); // example: Tuple<K, V>
+        std::smatch match;
+
+        if (!std::regex_search(expr.begin(), expr.end(), match, regexp))
+        {
+            throw Exception(R"(invalid template signature: "%s")", expr.c_str());
+        }
+
+        name = match[1];
+        std::string sArgs = match[2];
+
+        regexp = R"((([\w^:]+)\<(.+)\>)|([\w^:]+))"; // example: K, V
+        auto _begin = std::sregex_iterator(sArgs.begin(), sArgs.end(), regexp);
+        auto _end = std::sregex_iterator();
+
+        for (auto it = _begin; it != _end; ++it)
+        {
+            std::string arg = (*it).str();
+            args.push_back(arg);
+        }
+    };
+
+    std::string result = type;
+
+    if (isTemplate(type))
+    {
+        std::string name;
+        std::vector<std::string> argsList;
+        parse(type, name, argsList);
+
+        for (auto& it : argsList)
+        {
+            it = mapType(prefix, it);
+            it = adaptType(prefix, it);
+            it = adaptTemplate(prefix, it);
+        }
+
+        std::string args = join(argsList, ", ");
+        result = strprintf(R"(%s<%s>)", name.c_str(), args.c_str());
+    }
+
+    return result;
+}
+
+//
+//  get TS type from table by cpp type
+//
+std::string TypeMapper::mapType(const std::string& prefix, const std::string& type) const
+{
+    std::string result = type;
+
+    result = cleanPrefix(result);
+    result = cleanSuffix(result);
+
+    if (m_table.find(result) != m_table.end())
+        result = m_table.at(result);
+
+    if (result != "--")
+    {
+        result = adaptTemplate(prefix, result);
+    }
+    else
+    {
+        std::string availableTypes;
+        for (const auto& it : STD_TABLE)
+        {
+            if (it.second != "--")
+            {
+                if (availableTypes.empty())
+                {
+                    availableTypes += it.first;
+                }
+                else
+                {
+                    availableTypes += (", " + it.first);
+                }
+            }
+        }
+
+        throw std::runtime_error(utils::strprintf(
+            R"(type "%s" is not supported, available types: [%s])", type.c_str(), availableTypes.c_str()));
+    }
+
+    return result;
+}
+
+std::string TypeMapper::convertToTSType(const std::string& prefix, const std::string& type) const
+{
+    std::string result;
+
+    result = mapType(prefix, type);
+    result = adaptType(prefix, result);
+
+    return result;
+}
+
+std::string TypeMapper::convertToTSType(const std::string& prefix, const clang::QualType& type) const
+{
+    using namespace utils;
+
+    clang::LangOptions lo;
+    clang::PrintingPolicy pp(lo);
+    pp.adjustForCPlusPlus();
+
+    std::string result;
+
+    std::string cppType = type.getCanonicalType().getAsString(pp);
+
+    if (!includes(cppType))
+    {
+        cppType = type.getAsString(pp);
+    }
+
+    return convertToTSType(prefix, cppType);
 }
 
 } // namespace analyzer

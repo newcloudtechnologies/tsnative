@@ -46,22 +46,18 @@ class TypeMapper
     std::map<std::string, std::string> m_table;
 
 private:
+    bool includes(const std::string& cppType) const;
     std::string cleanPrefix(const std::string& type) const;
     std::string cleanSuffix(const std::string& type) const;
+    std::string adaptType(const std::string& prefix, const std::string& type) const;
+    std::string adaptTemplate(const std::string& prefix, const std::string& type) const;
+    std::string mapType(const std::string& prefix, const std::string& type) const;
 
 public:
     TypeMapper(const std::map<std::string, std::string>& table = {});
 
-    std::string getTSType(const std::string& cppType) const;
-    bool inTable(const std::string& cppType) const;
+    std::string convertToTSType(const std::string& prefix, const std::string& type) const;
+    std::string convertToTSType(const std::string& prefix, const clang::QualType& type) const;
 };
-
-std::string mapType(const TypeMapper& typeMapper, const clang::QualType& type);
-
-bool getModuleName(const std::string& path, std::string& moduleName);
-
-bool isTheSameModule(const std::string& path1, const std::string& path2);
-
-std::string actialType(const std::string& currentPrefix, const std::string& type);
 
 } // namespace analyzer

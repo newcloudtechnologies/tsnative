@@ -61,7 +61,7 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     auto classBlock = AbstractBlock::make<ClassBlock>(name, isExport, isDeclare);
 
-    classBlock->addExtends(Extends::get(item));
+    classBlock->addExtends(Extends::get(item, typeMapper));
 
     classBlock->addFields(classCollection.fields);
     classBlock->addMethods(classCollection.methods);
