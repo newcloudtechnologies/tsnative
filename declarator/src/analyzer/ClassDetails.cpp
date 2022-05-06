@@ -41,7 +41,7 @@ std::string getFullName(const std::string& prefix, const std::string& name)
 std::string getPartName(const std::string& path)
 {
     std::string result = path;
-    std::regex regexp(R"(([a-zA-Z\:\<\>]*)::([a-zA-Z\:\<\>]*))");
+    std::regex regexp(R"(([\w\:\<\>]+)::([\w\:\<\>]+))");
     std::smatch match;
 
     if (std::regex_search(path.begin(), path.end(), match, regexp))
