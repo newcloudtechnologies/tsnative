@@ -89,7 +89,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
         const agg = this.generator.builder.createLoad(env.typed);
 
         const extracted = this.generator.builder.createSafeExtractValue(agg, [index]);
-
+console.log("GET THIS FROM ENV:", extracted.type.toString(), env.type.toString())
         return extracted;
       }
     }

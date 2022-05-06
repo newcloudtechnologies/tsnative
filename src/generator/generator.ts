@@ -192,6 +192,10 @@ export class LLVMGenerator {
   handleExpression(expression: ts.Expression, env?: Environment): LLVMValue {
     const value = this.expressionHandlerChain.handle(expression, env);
     if (value) {
+      // if (value.type.isPointer() && value.type.getPointerElementType().isPointer()) {
+      //   return this.builder.createLoad(value);
+      // }
+
       return value;
     }
 

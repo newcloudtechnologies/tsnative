@@ -454,7 +454,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvmReturnType = this.generator.ts.undef.getLLVMType();
     }
 
-    llvmReturnType = llvmReturnType.ensurePointer();
+    llvmReturnType = llvmReturnType.getPointer();
     const callResult = this.invoke(expression, body, closureCall, [closure]);
 
     return this.generator.builder.createBitCast(callResult, llvmReturnType);
@@ -642,7 +642,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
         nullArg = this.generator.ts.union.create();
       }
 
-      return nullArg;
+      const alloca = this.generator.builder.createAlloca(nullArg.type);
+      this.generator.builder.createSafeStore(allocated, alloca);
+
+      return alloca;
     });
 
     const env = createEnvironment(
@@ -703,6 +706,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvmThisType = parentScope.thisData!.llvmType;
 
       const thisValue = this.generator.handleExpression(expression.expression, outerEnv);
+      console.log("!!!!!@@@@@@", expression.expression.getText(), ts.SyntaxKind[expression.expression.kind], thisValue.type.toString())
+
       if (!parentScope.get(this.generator.internalNames.This)) {
         parentScope.set(this.generator.internalNames.This, thisValue);
       } else {
@@ -723,13 +728,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const env = createEnvironment(parentScope, environmentVariables, this.generator, undefined, outerEnv);
 
+        console.log("&&&&&&&&& HANDLE GET env", env.type.toString())
+        console.log("&&&&&&&&& HANDLE GET outerEnv", outerEnv?.type.toString())
+
     const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
-    const llvmReturnType = tsReturnType.getLLVMReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType().getPointer();
 
     const llvmArgumentTypes = [env.voidStar];
-    if (llvmThisType) {
-      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
-    }
 
     const { fn, existing } = this.generator.llvm.function.create(
       llvmReturnType,
@@ -739,15 +744,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     // All the actual arguments are passing by typeless environment.
     const callArgs = [env.untyped];
-    if (llvmThisType) {
-      const thisValue = parentScope.get(this.generator.internalNames.This);
-      if (!(thisValue instanceof LLVMValue)) {
-        throw new Error("'this' is not an LLVMValue");
-      }
-
-      const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
-      callArgs.push(thisValueUntyped);
-    }
 
     if (!existing) {
       this.handleFunctionBody(valueDeclaration, fn, env);
@@ -976,7 +972,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
           return this.handleCallArguments(expression, signature, localScope, outerEnv);
         }, this.generator.symbolTable.currentScope);
-        
+
         const rootSymbol = rootType.getSymbol();
         const parent = rootSymbol.valueDeclaration || rootSymbol.declarations[0];
 
@@ -1212,7 +1208,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
     const tsReturnType = resolvedSignature.getReturnType();
-    const llvmReturnType = tsReturnType.getLLVMReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType().getPointer();
 
     const llvmArgumentTypes = [env.voidStar];
 
@@ -1277,8 +1273,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
       }
 
-      scope.set(parameterName, value);
-
       if (value.type.isClosure()) {
         const argumentType = this.generator.ts.checker.getTypeAtLocation(argument);
         const argumentSymbol = argumentType.getSymbol();
@@ -1290,6 +1284,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
           argumentDeclaration
         );
       }
+
+      // const alloca = this.generator.builder.createAlloca(value.type);
+      // this.generator.builder.createSafeStore(value, alloca);
+
+      scope.set(parameterName, value);
 
       return value;
     });
@@ -1382,7 +1381,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    const thisValue = this.generator.ts.obj.create();
+    let thisValue = this.generator.ts.obj.create();
+    const alloca = this.generator.builder.createAlloca(thisValue.type);
+    this.generator.builder.createSafeStore(thisValue, alloca);
+
+    thisValue = alloca;
 
     const oldThis = parentScope.get(this.generator.internalNames.This);
     if (oldThis) {
@@ -1623,7 +1626,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
         nullArg = this.generator.ts.union.create();
       }
 
-      return nullArg;
+      const alloca = this.generator.builder.createAlloca(nullArg.type);
+      this.generator.builder.createSafeStore(allocated, alloca);
+
+      return alloca;
     });
 
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
@@ -1789,9 +1795,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
             const originalThisValue = this.generator.builder.createLoad(thisValuePtr);
             let thisValue = originalThisValue;
+            let thisValueAlloca = this.generator.builder.createLoad(thisValue);
+
+            console.log("!!!!!!!!!!!!!! CTOR", expression.getText(), constructorDeclaration?.getText(), thisValue.type.toString())
 
             if (isSuperCall) {
               thisValue = this.generator.ts.obj.get(thisValue, "super");
+              thisValue = this.generator.builder.createBitCast(thisValue, this.generator.ts.obj.getLLVMType().getPointer());
+              // thisValue = this.generator.builder.createLoad(thisValue);
               // thisValue = this.generator.ts.union.get(thisValue);
             } else {
               this.generator.meta.setCurrentClassDeclaration(classDeclaration);
@@ -1799,20 +1810,24 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
             if (classDeclaration.isDerived) {
               const superValue = this.generator.ts.obj.create();
+              const al = this.generator.builder.createAlloca(superValue.type);
+              this.generator.builder.createSafeStore(superValue, al);
 
               const parentKey = this.generator.ts.str.create("parent");
-              this.generator.ts.obj.set(superValue, parentKey, thisValue);
+              this.generator.ts.obj.set(superValue, parentKey, originalThisValue);
 
               const superKey = this.generator.ts.str.create("super");
-              this.generator.ts.obj.set(thisValue, superKey, superValue);
+              this.generator.ts.obj.set(thisValueAlloca, superKey, al);
             }
 
             if (isSuperCall) {
               this.generator.meta.enterSuperCall();
             }
 
-            this.handleClassOwnProperties(expression, classDeclaration, thisValue, environment!);
-            this.handleClassOwnMethods(expression, classDeclaration, thisValue, bodyScope, environment!);
+            console.log("-------------- environment:::", environment?.type.toString())
+
+            this.handleClassOwnProperties(expression, classDeclaration, thisValueAlloca, environment!);
+            this.handleClassOwnMethods(expression, classDeclaration, thisValueAlloca, bodyScope, environment!);
 
             if (isSuperCall) {
               this.generator.builder.createSafeStore(thisValue, thisValuePtr);
@@ -1875,7 +1890,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
         value = this.generator.ts.union.create();
       }
 
-      this.generator.ts.obj.set(thisValue, key, value);
+      const alloca = this.generator.builder.createAlloca(value.type);
+      this.generator.builder.createSafeStore(value, alloca);
+
+      this.generator.ts.obj.set(thisValue, key, alloca);
     });
   }
 
@@ -1933,7 +1951,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
             nullArg = this.generator.ts.union.create();
           }
 
-          return nullArg;
+          const alloca = this.generator.builder.createAlloca(nullArg.type);
+          this.generator.builder.createSafeStore(allocated, alloca);
+
+          return alloca;
         });
 
         let { qualifiedName } = FunctionMangler.mangle(
@@ -1967,20 +1988,25 @@ export class FunctionHandler extends AbstractExpressionHandler {
         if (tsReturnType.isThisType()) {
           tsReturnType = thisType;
         }
-        const llvmReturnType = tsReturnType.getLLVMReturnType();
+        const llvmReturnType = tsReturnType.getLLVMReturnType().getPointer();
 
         // @todo: handle methods once
         qualifiedName += this.generator.randomString;
         const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], qualifiedName);
 
+        console.log("HANDLE FUNC BODY", method.getText())
+
         this.handleFunctionBody(method, fn, env);
+
         LLVMFunction.verify(fn, expression);
+
+
+        console.log("OK----------")
 
         let closure = this.makeClosure(fn, method.type, env);
 
         const baseMethod = derivedMethods.find((m) => m.name?.getText() === method.name?.getText());
         if (baseMethod?.isOptional()) {
-          console.log("============== BASE OF", method.name.getText(), "IS OPTIOnAL!!!!!!")
           closure = this.generator.ts.union.create(closure);
         }
 

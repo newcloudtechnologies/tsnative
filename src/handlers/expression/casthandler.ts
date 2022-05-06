@@ -23,6 +23,10 @@ export class CastHandler extends AbstractExpressionHandler {
 
         let value = this.generator.handleExpression(asExpression.expression, env);
 
+        if (value.type.isPointer() && value.type.getPointerElementType().isPointer()) {
+          value = this.generator.builder.createLoad(value);
+        }
+
         if (value.type.isUnion()) {
           value = this.generator.ts.union.get(value);
         }

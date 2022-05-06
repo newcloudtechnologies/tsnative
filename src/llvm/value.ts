@@ -13,6 +13,7 @@ import { LLVMGenerator } from "../generator";
 import * as llvm from "llvm-node";
 import { LLVMStructType, LLVMType } from "./type";
 import { OperationFlags } from "../tsbuiltins";
+import exp = require("constants");
 
 export enum MathFlags {
   Inplace = 1,
@@ -130,7 +131,10 @@ export class LLVMValue {
 
     if (this.type.isTSNumber()) {
       const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
-      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(this)]);
+      const raw = this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(this)]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     if (this.type.isString()) {
@@ -138,30 +142,45 @@ export class LLVMValue {
       const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(this)]);
 
       const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
-      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(length)]);
+      const raw = this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(length)]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     if (this.type.isUnion()) {
-      return this.generator.ts.union.toBool(this);
+      const raw = this.generator.ts.union.toBool(this);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     if (this.type.isUndefined() || this.type.isNull()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
+      const raw = this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     if (this.type.isClosure()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      const raw = this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     if (this.type.isPointer()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      const raw = this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Unable to convert operand of type ${this.type.toString()} to boolean value`);
   }
 
   makeAssignment(other: LLVMValue): LLVMValue {
-    const value = this as LLVMValue;
+    let value = this as LLVMValue;
 
     if (!value.type.isPointer()) {
       throw new Error(`Assignment destination expected to be of PointerType, got '${value.type.toString()}'`);
@@ -175,29 +194,43 @@ export class LLVMValue {
       return value;
     }
 
-    TODO!!
+    // other = other.adjustToType(value.type.getPointerElementType());
 
-    const isSame = value.type.getPointerElementType() === other.type.getPointerElementType();
-    const int8PtrTy = LLVMType.getInt8Type(this.generator).getPointer();
+    // const pointerToValue = this.generator.builder.createAlloca(value.type);
+    // const pointerToOther = this.generator.builder.createAlloca(other.type);
 
-    if (!isSame && other.type.equals(int8PtrTy)) {
-      other = this.generator.builder.createBitCast(other, value.type);
-    }
+    // this.generator.builder.createSafeStore(value, pointerToValue);
+    const ol = this.generator.builder.createLoad(other);
 
-    other = other.adjustToType(value.type.getPointerElementType());
+    console.log(".... other.type", other.type.toString())
+    console.log("+++ value.type", value.type.toString())
 
-    this.generator.builder.createSafeStore(other, value);
+    this.generator.builder.createSafeStore(ol, value);
+    // this.generator.builder.createSafeStore(other, pointerToValue);
+
+    // const pointerPointerToValue = this.generator.builder.createAlloca(value.type.getPointer());
+    // const pointerPointerToOther = this.generator.builder.createAlloca(other.type.getPointer());
+
+    // this.generator.builder.createSafeStore(pointerToValue, pointerPointerToValue);
+    // this.generator.builder.createSafeStore(pointerToOther, pointerPointerToOther);
+
+    // const lo = this.generator.builder.createLoad(pointerToOther);
+    // this.generator.builder.createSafeStore(lo, pointerToValue);
+
+    // this.generator.builder.createSafeStore(this.generator.builder.createBitCast(value, value.type.getPointer()), pointerToValue);
+    // this.generator.builder.createSafeStore(this.generator.builder.createBitCast(other, other.type.getPointer()), pointerToOther);
+
+    // const this.generator.builder.createLoad(pointerToOther);
+
+    // this.generator.builder.createSafeStore(other, value);  
+    // value = this.generator.builder.createLoad(value);
+
+
     return value;
-  }
 
-  createHeapAllocated(): LLVMValue {
-    if (this.type.isPointer()) {
-      throw new Error("Expected value to be not of PointerType");
-    }
-
-    const allocated = this.generator.gc.allocate(this.type);
-    this.generator.builder.createSafeStore(this, allocated);
-    return allocated;
+    // return this.generator.builder.createLoad(pointerToValue);
+    //   this.generator.builder.createLoad(pointerPointerToOther)
+    // );
   }
 
   // @todo: terminology mess
@@ -205,12 +238,22 @@ export class LLVMValue {
     if (this.type.isTSNumber()) {
       const fn = this.generator.builtinNumber.createMathFn("negate", OperationFlags.Unary);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     } else if (this.type.isTSBoolean()) {
       const fn = this.generator.builtinBoolean.createNegateFn();
-      return this.generator.builder.createSafeCall(fn, [this]);
+      const raw = this.generator.builder.createSafeCall(fn, [this]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     } else if (this.type.isUndefined() || this.type.isNull()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      const raw = this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
+
     }
 
     throw new Error(`Unhandled type '${this.type.toString()}' in LLVMValue.createNegate`);
@@ -220,28 +263,40 @@ export class LLVMValue {
     // @todo: check type
     const fn = this.generator.builtinNumber.createMathFn("prefixIncrement", OperationFlags.Unary);
     const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const raw = this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const alloca = this.generator.builder.createAlloca(raw.type);
+    this.generator.builder.createSafeStore(raw, alloca);
+    return alloca;
   }
 
   createPostfixIncrement(): LLVMValue {
     // @todo: check type
     const fn = this.generator.builtinNumber.createMathFn("postfixIncrement", OperationFlags.Unary);
     const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const raw = this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const alloca = this.generator.builder.createAlloca(raw.type);
+    this.generator.builder.createSafeStore(raw, alloca);
+    return alloca;
   }
 
   createPrefixDecrement(): LLVMValue {
     // @todo: check type
     const fn = this.generator.builtinNumber.createMathFn("prefixDecrement", OperationFlags.Unary);
     const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const raw = this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const alloca = this.generator.builder.createAlloca(raw.type);
+    this.generator.builder.createSafeStore(raw, alloca);
+    return alloca;
   }
 
   createPostfixDecrement(): LLVMValue {
     // @todo: check type
     const fn = this.generator.builtinNumber.createMathFn("postfixDecrement", OperationFlags.Unary);
     const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const raw = this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    const alloca = this.generator.builder.createAlloca(raw.type);
+    this.generator.builder.createSafeStore(raw, alloca);
+    return alloca;
   }
 
   createAdd(other: LLVMValue, flags?: MathFlags): LLVMValue {
@@ -253,16 +308,23 @@ export class LLVMValue {
       const untypedOther = this.generator.builder.asVoidStar(other);
 
       const result = this.generator.builder.createSafeCall(concat, [untypedThis, untypedOther]);
+      const alloca = this.generator.builder.createAlloca(result.type);
+      this.generator.builder.createSafeStore(result, alloca);
+
       if (flags === MathFlags.Inplace) {
-        return this.makeAssignment(result);
+        return this.makeAssignment(alloca);
       }
 
-      return result;
+      return alloca;
     } else if (this.type.isTSNumber()) {
       const fnName = `add${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to binary plus: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -274,7 +336,11 @@ export class LLVMValue {
       const fnName = `sub${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to binary minus: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -286,7 +352,11 @@ export class LLVMValue {
       const fnName = `mul${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to binary multiply: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -298,7 +368,11 @@ export class LLVMValue {
       const fnName = `div${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to binary division: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -310,7 +384,11 @@ export class LLVMValue {
       const fnName = `mod${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to binary modulo: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -321,7 +399,11 @@ export class LLVMValue {
       const fnName = `bitwiseAnd${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to bitwise and: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -332,7 +414,11 @@ export class LLVMValue {
       const fnName = `bitwiseOr${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to bitwise or: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -343,7 +429,11 @@ export class LLVMValue {
       const fnName = `bitwiseXor${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to bitwise xor: '${this.type.toString()}' '${other.type.toString()}'`);
@@ -354,7 +444,11 @@ export class LLVMValue {
       const fnName = `bitwiseLeftShift${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(
@@ -367,7 +461,11 @@ export class LLVMValue {
       const fnName = `bitwiseRightShift${flags === MathFlags.Inplace ? "Inplace" : ""}`;
       const fn = this.generator.builtinNumber.createMathFn(fnName);
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(
@@ -382,13 +480,25 @@ export class LLVMValue {
     if (leftType.isTSNumber() && rightType.isTSNumber()) {
       const fn = this.generator.builtinNumber.createBooleanFn("equals");
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     } else if (leftType.isString() && rightType.isString()) {
       const equals = this.generator.ts.str.getLLVMEquals();
-      return this.generator.builder.createSafeCall(equals, [this, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(equals, [this, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     } else if (leftType.isTSBoolean() && rightType.isTSBoolean()) {
       const equals = this.generator.builtinBoolean.getLLVMEquals();
-      return this.generator.builder.createSafeCall(equals, [this, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(equals, [this, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     } else if (this.type.isUnion()) {
       let extracted = this.generator.ts.union.get(this);
       extracted = this.generator.builder.createBitCast(extracted, rightType);
@@ -398,8 +508,12 @@ export class LLVMValue {
       const rhsAddress = this.generator.builder.createPtrToInt(other, LLVMType.getInt32Type(this.generator));
 
       const raw = this.generator.builder.createICmpEQ(lhsAddress, rhsAddress);
+      const val = this.generator.builtinBoolean.create(raw);
 
-      return this.generator.builtinBoolean.create(raw);
+      const alloca = this.generator.builder.createAlloca(val.type);
+      this.generator.builder.createSafeStore(val, alloca);
+
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to strict equals: 
@@ -416,7 +530,11 @@ export class LLVMValue {
     if (this.type.isTSNumber()) {
       const fn = this.generator.builtinNumber.createBooleanFn("lessThan");
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to less than: 
@@ -429,7 +547,11 @@ export class LLVMValue {
     if (this.type.isTSNumber()) {
       const fn = this.generator.builtinNumber.createBooleanFn("lessEqualsThan");
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to less equals than: 
@@ -442,7 +564,11 @@ export class LLVMValue {
     if (this.type.isTSNumber()) {
       const fn = this.generator.builtinNumber.createBooleanFn("greaterThan");
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to greater than: 
@@ -455,7 +581,11 @@ export class LLVMValue {
     if (this.type.isTSNumber()) {
       const fn = this.generator.builtinNumber.createBooleanFn("greaterEqualsThan");
       const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      // other = this.generator.builder.createLoad(other);
+      const raw = this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const alloca = this.generator.builder.createAlloca(raw.type);
+      this.generator.builder.createSafeStore(raw, alloca);
+      return alloca;
     }
 
     throw new Error(`Invalid operand types to greater equals than: 
@@ -464,15 +594,23 @@ export class LLVMValue {
   }
 
   clone(): LLVMValue {
+    const thisPtr = this.generator.builder.createLoad(this);
+    let value: LLVMValue;
+
     if (this.type.isTSNumber()) {
-      return this.generator.builtinNumber.clone(this);
+      value = this.generator.builtinNumber.clone(thisPtr);
     } else if (this.type.isString()) {
-      return this.generator.ts.str.clone(this);
+      value = this.generator.ts.str.clone(thisPtr);
     } else if (this.type.isTSBoolean()) {
-      return this.generator.builtinBoolean.clone(this);
+      value = this.generator.builtinBoolean.clone(thisPtr);
+    } else {
+      throw new Error(`Expected TS primitive at LLVMValue.clone, got '${this.type.toString()}'`);
     }
 
-    throw new Error(`Expected TS primitive at LLVMValue.clone, got '${this.type.toString()}'`);
+    const alloca = this.generator.builder.createAlloca(value.type);
+    this.generator.builder.createSafeStore(value, alloca);
+
+    return alloca;
   }
 
   asLLVMInteger(): LLVMValue {

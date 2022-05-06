@@ -19,8 +19,11 @@ export class BitwiseHandler extends AbstractExpressionHandler {
     if (ts.isBinaryExpression(expression) && this.canHandle(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
 
-      const left = this.generator.handleExpression(binaryExpression.left, env);
-      const right = this.generator.handleExpression(binaryExpression.right, env);
+      let left = this.generator.handleExpression(binaryExpression.left, env);
+      let right = this.generator.handleExpression(binaryExpression.right, env);
+
+      left = this.generator.builder.createLoad(left);
+      right = this.generator.builder.createLoad(right);
 
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandToken:

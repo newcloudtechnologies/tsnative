@@ -29,8 +29,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           }
           if (!ts.isArrayLiteralExpression(variableDeclaration.initializer)) {
             throw new Error(
-              `Unexpected tuple initializer of kind '${
-                ts.SyntaxKind[variableDeclaration.initializer.kind]
+              `Unexpected tuple initializer of kind '${ts.SyntaxKind[variableDeclaration.initializer.kind]
               }', expected array literal`
             );
           }
@@ -51,20 +50,33 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleLiteral(elements: ts.NodeArray<ts.Expression>, env?: Environment) {
-    return this.generator.ts.tuple.create(elements, env);
+    const value = this.generator.ts.tuple.create(elements, env);
+    const alloca = this.generator.builder.createAlloca(value.type);
+    this.generator.builder.createSafeStore(value, alloca);
+
+    return alloca;
   }
 
   private handleBooleanLiteral(expression: ts.BooleanLiteral): LLVMValue {
-    const value =
+    const rawValue =
       expression.kind === ts.SyntaxKind.TrueKeyword
         ? LLVMConstantInt.getTrue(this.generator)
         : LLVMConstantInt.getFalse(this.generator);
-    return this.generator.builtinBoolean.create(value);
+
+    const value = this.generator.builtinBoolean.create(rawValue);
+    const alloca = this.generator.builder.createAlloca(value.type);
+    this.generator.builder.createSafeStore(value, alloca);
+
+    return alloca;
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
-    const value = LLVMConstantFP.get(this.generator, parseFloat(expression.text));
-    return this.generator.builtinNumber.create(value);
+    const rawValue = LLVMConstantFP.get(this.generator, parseFloat(expression.text));
+    const value = this.generator.builtinNumber.create(rawValue);
+    const alloca = this.generator.builder.createAlloca(value.type);
+    this.generator.builder.createSafeStore(value, alloca);
+
+    return alloca;
   }
 
   private handleStringLiteral(expression: ts.StringLiteral): LLVMValue {
@@ -74,7 +86,11 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const allocated = this.generator.gc.allocate(llvmThisType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
     this.generator.builder.createSafeCall(constructor, [thisUntyped, ptr]);
-    return allocated;
+
+    const alloca = this.generator.builder.createAlloca(allocated.type);
+    this.generator.builder.createSafeStore(allocated, alloca);
+
+    return alloca;
   }
 
   private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression, env?: Environment): LLVMValue {
@@ -121,7 +137,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
       this.generator.ts.obj.set(obj, llvmKey, value);
     });
 
-    return obj;
+    const alloca = this.generator.builder.createAlloca(obj.type);
+    this.generator.builder.createSafeStore(obj, alloca);
+
+    return alloca;
   }
 
   private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): LLVMValue {
@@ -133,10 +152,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
     let { allocated } = constructorAndMemory;
 
     this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
-
-    if (expression.elements.length === 0) {
-      return allocated;
-    }
 
     const push = this.generator.ts.array.createPush(elementType, expression);
     for (const element of expression.elements) {
@@ -161,6 +176,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
       }
     }
 
-    return allocated;
+    const alloca = this.generator.builder.createAlloca(allocated.type);
+    this.generator.builder.createSafeStore(allocated, alloca);
+
+    return alloca;
   }
 }

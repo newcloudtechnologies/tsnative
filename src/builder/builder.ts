@@ -88,7 +88,7 @@ export class Builder {
   }
 
   createSafeStore(value: LLVMValue, ptr: LLVMValue, isVolatile?: boolean) {
-    value = value.adjustToType(ptr.type.getPointerElementType());
+    // value = value.adjustToType(ptr.type.getPointerElementType());
     this.checkStore(value, ptr);
     return this.builder.createStore(value.unwrapped, ptr.unwrapped, isVolatile);
   }
@@ -148,6 +148,11 @@ export class Builder {
     const idxValues = idxList.map((idx) => llvm.ConstantInt.get(this.generator.context, idx));
     const value = this.builder.createInBoundsGEP(ptr.unwrapped, idxValues, name);
     return LLVMValue.create(value, this.generator);
+  }
+
+  createAlloca(type: LLVMType) {
+    const stackValue = this.builder.createAlloca(type.unwrapped);
+    return LLVMValue.create(stackValue, this.generator);
   }
 
   checkCall(callee: LLVMValue, args: LLVMValue[]) {
@@ -261,8 +266,8 @@ export class Builder {
     this.builder.createRetVoid();
   }
 
-  createLoad(value: LLVMValue) {
-    const loaded = this.builder.createLoad(value.unwrapped);
+  createLoad(value: LLVMValue, name?: string) {
+    const loaded = this.builder.createLoad(value.unwrapped, name);
     return LLVMValue.create(loaded, this.generator);
   }
 

@@ -95,7 +95,8 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(condition);
         currentFunction.addBasicBlock(condition);
         builder.setInsertionPoint(condition);
-        const conditionValue = this.generator.handleExpression(statement.condition, env);
+        let conditionValue = this.generator.handleExpression(statement.condition, env);
+        conditionValue = this.generator.builder.createLoad(conditionValue);
         builder.createCondBr(conditionValue, body, exiting);
       } else {
         builder.createBr(body);

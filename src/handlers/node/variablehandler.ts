@@ -73,6 +73,9 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = this.generator.builder.createBitCast(initializer, this.generator.ts.undef.getLLVMType());
     }
 
+    // const alloca = this.generator.builder.createAlloca(initializer.type);
+    // this.generator.builder.createSafeStore(initializer, alloca);
+
     // @todo
     parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
   }

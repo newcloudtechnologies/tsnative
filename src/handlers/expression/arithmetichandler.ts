@@ -17,8 +17,11 @@ import { LLVMValue } from "../../llvm/value";
 export class ArithmeticHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isBinaryExpression(expression) && this.canHandle(expression)) {
-      const left = this.generator.handleExpression(expression.left, env);
-      const right = this.generator.handleExpression(expression.right, env);
+      let left = this.generator.handleExpression(expression.left, env);
+      let right = this.generator.handleExpression(expression.right, env);
+
+      left = this.generator.builder.createLoad(left);
+      right = this.generator.builder.createLoad(right);
 
       switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.PlusToken:

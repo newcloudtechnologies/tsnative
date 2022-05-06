@@ -80,7 +80,7 @@ main().catch((e) => {
 
 async function main() {
   const files = argv.args;
-
+Error.stackTraceLimit = 50
   const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;
   const demangledTables: string[] = [];

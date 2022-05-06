@@ -75,7 +75,8 @@ export class SysVFunctionHandler {
     const llvmThisType = LLVMType.getInt8Type(this.generator).getPointer();
 
     const parent = expression.parent as ts.BinaryExpression;
-    const arg = this.generator.handleExpression(parent.right, env);
+    let arg = this.generator.handleExpression(parent.right, env);
+    arg = this.generator.builder.createLoad(arg);
 
     const llvmArgumentTypes = [llvmThisType, arg.type];
 
@@ -127,7 +128,8 @@ export class SysVFunctionHandler {
         throw new Error("Spread element in arguments is not supported");
       }
 
-      const arg = this.generator.handleExpression(argument, env);
+      let arg = this.generator.handleExpression(argument, env);
+      arg = this.generator.builder.createLoad(arg);
 
       // there may be no parameter declared at argument's index in case of rest arguments
       const parameterAtIndex = valueDeclaration.parameters[index];
@@ -226,7 +228,8 @@ export class SysVFunctionHandler {
 
     const args =
       expression.arguments?.map((argument, index) => {
-        const arg = this.generator.handleExpression(argument, outerEnv);
+        let arg = this.generator.handleExpression(argument, outerEnv);
+        arg = this.generator.builder.createLoad(arg);
 
         // there may be no parameter declared at argument's index in case of rest arguments
         const parameterAtIndex = constructorDeclaration.parameters[index];

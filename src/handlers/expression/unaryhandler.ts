@@ -25,20 +25,25 @@ export class UnaryHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.PlusToken:
         return this.generator.handleExpression(operand, env);
       case ts.SyntaxKind.MinusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        let value = this.generator.handleExpression(operand, env);
+        value = this.generator.builder.createLoad(value);
         return value.createNegate();
       }
       case ts.SyntaxKind.PlusPlusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        let value = this.generator.handleExpression(operand, env);
+        value = this.generator.builder.createLoad(value);
         return value.createPrefixIncrement();
       }
       case ts.SyntaxKind.MinusMinusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        let value = this.generator.handleExpression(operand, env);
+        value = this.generator.builder.createLoad(value);
         return value.createPrefixDecrement();
       }
       // case ts.SyntaxKind.TildeToken: @todo
       case ts.SyntaxKind.ExclamationToken:
-        return this.generator.handleExpression(operand, env).makeBoolean().createNegate();
+        let value = this.generator.handleExpression(operand, env);
+        value = this.generator.builder.createLoad(value);
+        return value.makeBoolean().createNegate();
       default:
         throw new Error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
     }
@@ -49,11 +54,13 @@ export class UnaryHandler extends AbstractExpressionHandler {
 
     switch (expression.operator) {
       case ts.SyntaxKind.PlusPlusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        let value = this.generator.handleExpression(operand, env);
+        value = this.generator.builder.createLoad(value);
         return value.createPostfixIncrement();
       }
       case ts.SyntaxKind.MinusMinusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        let value = this.generator.handleExpression(operand, env);
+        value = this.generator.builder.createLoad(value);
         return value.createPostfixDecrement();
       }
     }

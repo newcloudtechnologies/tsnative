@@ -17,6 +17,8 @@ export class AccessHandler extends AbstractExpressionHandler {
           break;
         }
 
+        console.log("PAE", expression.getText())
+
         return this.handlePropertyAccessExpression(expression as ts.PropertyAccessExpression, env);
       case ts.SyntaxKind.ElementAccessExpression:
         return this.handleElementAccessExpression(expression as ts.ElementAccessExpression, env);
@@ -202,17 +204,23 @@ export class AccessHandler extends AbstractExpressionHandler {
 
   private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): LLVMValue {
     let llvmValue = this.generator.handleExpression(expression, env);
+    llvmValue = this.generator.builder.createLoad(llvmValue);
+
+    console.log("~~~", expression.parent.parent.getText(), llvmValue.type.toString())
 
     if (!llvmValue.type.isPointer()) {
       throw new Error(`Expected pointer, got '${llvmValue.type}'`);
     }
 
     if (!llvmValue.type.isPointerToStruct()) {
-      throw new Error(
-        `Expected '${expression.getText()}' to be a pointer to struct, got '${llvmValue.type.toString()}'. Error at '${
-          expression + "." + propertyName
-        }'`
-      );
+      llvmValue = this.generator.builder.createLoad(llvmValue);
+
+      if (!llvmValue.type.isPointerToStruct()) {
+        throw new Error(
+          `Expected '${expression.getText()}' to be a pointer to struct, got '${llvmValue.type.toString()}'. Error at '${expression.getText() + "." + propertyName
+          }'`
+        );
+      }
     }
 
     if (llvmValue.type.isUnion()) {
@@ -248,17 +256,17 @@ export class AccessHandler extends AbstractExpressionHandler {
       expression.parent.parent.left === expression.parent;
 
     // if (isThisAccess && isInitialization) {
-      // targetLLVMType = this.generator.ts.obj.getLLVMType();
+    // targetLLVMType = this.generator.ts.obj.getLLVMType();
     // } else {
-      targetLLVMType = type.getLLVMType();
+    targetLLVMType = type.getLLVMType();
 
-      // if (!type.isOptionalUnion()) {
-      //   value = this.generator.ts.union.get(value);
-      // }
+    // if (!type.isOptionalUnion()) {
+    //   value = this.generator.ts.union.get(value);
+    // }
     // }
 
     console.log("&&&&&&&&&", expression.parent.parent.getText(), targetLLVMType.toString())
 
-    return this.generator.builder.createBitCast(value, targetLLVMType);
+    return this.generator.builder.createBitCast(value, targetLLVMType.getPointer());
   }
 }

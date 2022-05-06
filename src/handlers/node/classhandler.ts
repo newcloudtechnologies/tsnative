@@ -54,8 +54,10 @@ export class ClassHandler extends AbstractNodeHandler {
 
     for (const memberDecl of declaration.members) {
       if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStaticProperty()) {
-        const initializerValue = this.generator.handleExpression(memberDecl.initializer);
+        const initializerValue = this.generator.handleExpression(memberDecl.initializer);        
         staticProperties.set(memberDecl.name!.getText(), initializerValue);
+
+        console.log("STATIC PORP", memberDecl.name!.getText(), initializerValue.type.toString())
       }
     }
 

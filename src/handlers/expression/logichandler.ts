@@ -23,6 +23,7 @@ export class LogicHandler extends AbstractExpressionHandler {
       const { left, right } = binaryExpression;
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandAmpersandToken:
+          console.log("HANDLE LOGICAL AND", expression.getText())
           return this.handleLogicalAnd(left, right, env);
         case ts.SyntaxKind.BarBarToken:
           return this.handleLogicalOr(left, right, env);
@@ -32,7 +33,9 @@ export class LogicHandler extends AbstractExpressionHandler {
     }
 
     if (ts.isConditionalExpression(expression)) {
-      const conditionValue = this.generator.handleExpression(expression.condition, env);
+      let conditionValue = this.generator.handleExpression(expression.condition, env);
+      conditionValue = this.generator.builder.createLoad(conditionValue);
+
       const condition = conditionValue.makeBoolean();
 
       const resultType = this.generator.ts.checker.getTypeAtLocation(expression);
@@ -82,8 +85,11 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    const left = this.generator.handleExpression(lhs, env);
-    const right = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
+
+    left = this.generator.builder.createLoad(left);
+    right = this.generator.builder.createLoad(right);
 
     const lhsBoolean = left.makeBoolean();
 
@@ -98,8 +104,11 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
-    const left = this.generator.handleExpression(lhs, env);
-    const right = this.generator.handleExpression(rhs, env);
+    let left = this.generator.handleExpression(lhs, env);
+    let right = this.generator.handleExpression(rhs, env);
+
+    left = this.generator.builder.createLoad(left);
+    right = this.generator.builder.createLoad(right);
 
     const lhsBoolean = left.makeBoolean();
 

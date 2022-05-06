@@ -54,6 +54,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             return this.handleTupleDestructuring(left, right, env);
           }
 
+          console.log("....", ts.SyntaxKind[left.kind])
           const lhs = this.generator.handleExpression(left, env);
           let rhs;
 
@@ -66,8 +67,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
               ? this.generator.ts.union.create(this.generator.ts.null.get())
               : this.generator.handleExpression(right, env);
 
-
-          console.log("MAKE ASSIGNMENT", expression.getText(), lhs.type.toString(), rhs.type.toString())
+              console.log("MAKE ASSIGNMENT:", expression.getText(), lhs.type.toString(), rhs.type.toString())
 
           return lhs.makeAssignment(rhs);
         default:
