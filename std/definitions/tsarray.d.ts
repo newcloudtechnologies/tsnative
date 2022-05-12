@@ -13,6 +13,9 @@
 
 declare class Array<T> extends Iterable<T> {
     private p0_Array: number;
+    private p1_Array: number;
+    private p2_Array: number;
+    private p3_Array: number;
 
     constructor();
     push(...items: T[]): number;
@@ -37,6 +40,7 @@ declare class Array<T> extends Iterable<T> {
 declare class ArrayIterator<T> extends IterableIterator<T> {
     private p0_ArrayIterator: number;
     private p1_ArrayIterator: number;
+    private p2_ArrayIterator: number;
 
     next(): IteratorResult<T>;
 }

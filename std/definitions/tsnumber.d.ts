@@ -17,6 +17,8 @@
 @VirtualDestructor
 declare class Number {
     private p0_Number: number;
+    private p1_Number: number;
+    private p2_Number: number;
 
     constructor(_: any);
     add(other: number): number;

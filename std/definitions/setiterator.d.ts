@@ -14,6 +14,7 @@
 declare class SetIterator<T> extends IterableIterator<T> {
     private p0_SetIterator: number;
     private p1_SetIterator: number;
+    private p2_SetIterator: number;
 
     next(): IteratorResult<T>;
 }

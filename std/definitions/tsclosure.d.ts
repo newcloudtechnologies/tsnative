@@ -24,6 +24,8 @@ export declare class TSClosure {
     private p1_TSClosure: number;
     private p2_TSClosure: number;
     private p3_TSClosure: number;
+    private p4_TSClosure: number;
+    private p5_TSClosure: number;
 
     constructor(fn: void, env: void, numArgs: number, optionals: number);
     getEnvironment(): void;

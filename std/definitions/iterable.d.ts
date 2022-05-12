@@ -32,4 +32,5 @@ declare class Iterable<T> {
 }
 
 declare class IterableIterator<T> extends Iterator<T> {
+    private p0_IterableIterator: number;
 }

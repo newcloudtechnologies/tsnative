@@ -11,15 +11,14 @@
  * Don't edit this file.
 */
 
-//@ts-ignore
-@VTableSize(6)
-//@ts-ignore
-@VirtualDestructor
-declare class Undefined {
-    private p0_Undefined: number;
-    private p1_Undefined: number;
+export class Entity {
+    private p0_Entity: boolean;
 
-    constructor();
-    toString(): string;
-    toBool(): boolean;
+    entity(): void;
+}
+
+export class DerivedPointer extends Iterable<Entity> {
+    private p0_DerivedPointer: number;
+
+    derived_pointer(): void;
 }

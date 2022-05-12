@@ -15,8 +15,11 @@
 @VTableSize(10)
 //@ts-ignore
 @VirtualDestructor
-declare class String extends Iterable<String> {
+declare class String extends Iterable<string> {
     private p0_String: number;
+    private p1_String: number;
+    private p2_String: number;
+    private p3_String: number;
 
     constructor(initializer?: any);
     get length(): number;

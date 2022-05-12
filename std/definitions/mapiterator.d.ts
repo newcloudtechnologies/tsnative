@@ -14,6 +14,7 @@
 declare class MapIterator<T> extends IterableIterator<T> {
     private p0_MapIterator: number;
     private p1_MapIterator: number;
+    private p2_MapIterator: number;
 
     next(): IteratorResult<T>;
 }

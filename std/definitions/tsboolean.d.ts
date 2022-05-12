@@ -17,6 +17,8 @@
 @VirtualDestructor
 declare class Boolean {
     private p0_Boolean: number;
+    private p1_Boolean: number;
+    private p2_Boolean: number;
 
     constructor(_: any);
     negate(): boolean;

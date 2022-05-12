@@ -49,6 +49,7 @@ private:
     bool includes(const std::string& cppType) const;
     std::string cleanPrefix(const std::string& type) const;
     std::string cleanSuffix(const std::string& type) const;
+    std::string trimType(const std::string& type) const;
     std::string adaptType(const std::string& prefix, const std::string& type) const;
     std::string adaptTemplate(const std::string& prefix, const std::string& type) const;
     std::string mapType(const std::string& prefix, const std::string& type) const;

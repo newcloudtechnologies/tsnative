@@ -17,6 +17,8 @@
 @VirtualDestructor
 declare class Union {
     private p0_Union: number;
+    private p1_Union: number;
+    private p2_Union: number;
 
     constructor(initializer?: any);
     getValue(): Object;

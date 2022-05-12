@@ -13,6 +13,9 @@
 
 declare class Set<T> extends Iterable<T> {
     private p0_Set: number;
+    private p1_Set: number;
+    private p2_Set: number;
+    private p3_Set: number;
 
     constructor();
     has(value: T): boolean;

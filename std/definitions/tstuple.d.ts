@@ -17,6 +17,8 @@
 @VirtualDestructor
 declare class Tuple {
     private p0_Tuple: number;
+    private p1_Tuple: number;
+    private p2_Tuple: number;
 
     constructor();
     get length(): number;

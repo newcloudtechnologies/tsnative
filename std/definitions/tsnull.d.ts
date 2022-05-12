@@ -16,6 +16,9 @@
 //@ts-ignore
 @VirtualDestructor
 declare class Null {
+    private p0_Null: number;
+    private p1_Null: number;
+
     constructor();
     toString(): string;
     toBool(): boolean;

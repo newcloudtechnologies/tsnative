@@ -114,6 +114,7 @@ bool TypeMapper::includes(const std::string& cppType) const
     std::string result = cppType;
 
     result = cleanPrefix(result);
+    result = trimType(result);
     result = cleanSuffix(result);
 
     return m_table.find(result) != m_table.end();
@@ -123,16 +124,12 @@ std::string TypeMapper::cleanPrefix(const std::string& type) const
 {
     std::string result = type;
 
-    for (const auto& it : {"volatile", "const"})
-    {
-        auto found = type.find(it);
+    std::regex regexp(R"(^((const|volatile)([\s]*))?(.*)$)");
+    std::smatch match;
 
-        if (found != std::string::npos)
-        {
-            result = type.substr(std::string(it).length());
-            utils::trim(result);
-            break;
-        }
+    if (std::regex_search(type.begin(), type.end(), match, regexp))
+    {
+        result = match[4];
     }
 
     return result;
@@ -140,19 +137,30 @@ std::string TypeMapper::cleanPrefix(const std::string& type) const
 
 std::string TypeMapper::cleanSuffix(const std::string& type) const
 {
+    using namespace utils;
+
     std::string result = type;
 
-    for (const auto& it : {"**", "&&", "*", "&"})
-    {
-        auto found = type.rfind(it);
+    std::regex regexp(R"(([^\<\>\*\&]+)(\<(.+)\>)?)");
+    std::smatch match;
 
-        if (found != std::string::npos)
-        {
-            result = type.substr(0, found);
-            utils::trim(result);
-            break;
-        }
+    if (std::regex_search(type.begin(), type.end(), match, regexp))
+    {
+        std::string name = match[1];
+        std::string templateArgs = match[3];
+
+        result = strprintf(
+            R"(%s%s)", name.c_str(), !templateArgs.empty() ? strprintf(R"(<%s>)", templateArgs.c_str()).c_str() : "");
     }
+
+    return result;
+}
+
+std::string TypeMapper::trimType(const std::string& type) const
+{
+    std::string result = type;
+
+    result.erase(std::remove_if(result.begin(), result.end(), isspace), result.end());
 
     return result;
 }
@@ -258,6 +266,7 @@ std::string TypeMapper::mapType(const std::string& prefix, const std::string& ty
     std::string result = type;
 
     result = cleanPrefix(result);
+    result = trimType(result);
     result = cleanSuffix(result);
 
     if (m_table.find(result) != m_table.end())

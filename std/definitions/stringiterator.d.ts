@@ -14,6 +14,7 @@
 declare class StringIterator<T> extends IterableIterator<T> {
     private p0_StringIterator: number;
     private p1_StringIterator: number;
+    private p2_StringIterator: number;
 
     next(): IteratorResult<T>;
 }

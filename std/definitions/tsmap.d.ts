@@ -13,6 +13,9 @@
 
 declare class Map<K, V> extends Iterable<Tuple> {
     private p0_Map: number;
+    private p1_Map: number;
+    private p2_Map: number;
+    private p3_Map: number;
 
     constructor();
     set(key: K, value: V): this;
