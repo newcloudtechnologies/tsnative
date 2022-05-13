@@ -295,12 +295,7 @@ export class Builder {
     const casted = this.builder.createFPToSI(value.unwrapped, type.unwrapped, name);
     return LLVMValue.create(casted, this.generator);
   }
-
-  createFPToUI(value: LLVMValue, type: LLVMType, name?: string) {
-    const casted = this.builder.createFPToUI(value.unwrapped, type.unwrapped, name);
-    return LLVMValue.create(casted, this.generator);
-  }
-
+  
   createSIToFP(value: LLVMValue, type: LLVMType, name?: string) {
     const casted = this.builder.createSIToFP(value.unwrapped, type.unwrapped, name);
     return LLVMValue.create(casted, this.generator);

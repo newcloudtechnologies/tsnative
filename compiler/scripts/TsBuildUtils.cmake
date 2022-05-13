@@ -156,7 +156,7 @@ function(generateSeed target dep_target output_dir seed_src)
     set(${seed_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_classes target dep_target entry sources includes output_dir classes_src)
+function(instantiate_classes target dep_target entry sources includes output_dir trace_opt classes_src)
     set(output
         "${output_dir}/instantiated_classes.cpp")
 
@@ -176,9 +176,11 @@ function(instantiate_classes target dep_target entry sources includes output_dir
         ARGS ${entry}   --tsconfig ${TS_CONFIG}
                         --baseUrl ${PROJECT_BASE_URL}
                         --processTemplateClasses
+                        # TODO: use generator expressions: --includeDirs "\'$<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>\'"
                         ${INCLUDE_DIRS}
                         --templatesOutputDir ${output_dir}
                         --build ${output_dir}
+                        ${trace_opt}
     )
 
     add_custom_target(${target}
@@ -189,7 +191,7 @@ function(instantiate_classes target dep_target entry sources includes output_dir
     set(${classes_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_functions target dep_target entry sources includes output_dir demangledList mangledList functions_src)
+function(instantiate_functions target dep_target entry sources includes output_dir demangledList mangledList trace_opt functions_src)
     set(output
         "${output_dir}/instantiated_functions.cpp")
 
@@ -210,11 +212,14 @@ function(instantiate_functions target dep_target entry sources includes output_d
         COMMAND ${TS_COMPILER}
         ARGS ${entry}   --tsconfig ${TS_CONFIG}
                         --baseUrl ${PROJECT_BASE_URL}
-                        --processTemplateFunctions ${INCLUDE_DIRS}
+                        --processTemplateFunctions 
+                        # TODO: use generator expressions: --includeDirs $<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>
+                        ${INCLUDE_DIRS}
                         --demangledTables ${DEMANGLED}
                         --mangledTables ${MANGLED}
                         --templatesOutputDir ${output_dir}
                         --build ${output_dir}
+                        ${trace_opt}
     )
 
     add_custom_target(${target}
@@ -235,7 +240,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
         ARCHIVE_OUTPUT_DIRECTORY ${output_dir}
         ARCHIVE_OUTPUT_NAME ${bin_name})
 
-    target_include_directories(${target} PUBLIC ${StdLib_INCLUDE_DIR})
+    target_link_libraries(${target} PUBLIC tsnative-std::tsnative-std tsnative-declarator)
 
     if (NOT "${TS_EXTENSION_TARGET}" STREQUAL "fake")
         target_link_libraries(${target} PRIVATE ${TS_EXTENSION_TARGET})
@@ -280,7 +285,7 @@ function(verify_ts target dep_target entry sources output_dir)
     add_dependencies(${target} ${dep_target})
 endfunction()
 
-function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr ll_bytecode)
+function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode)
     get_filename_component(entry_fn "${entry}" NAME)
 
     string(REPLACE ".ts" ".ll" OUTPUT_FN "${entry_fn}")
@@ -290,7 +295,7 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
     set(output "${output_dir}/${OUTPUT_FN}")
 
     set(PRINT_IR )
-    if (is_printIr)
+    if (${is_printIr})
         set(PRINT_IR --printIR)
     endif()
 
@@ -300,12 +305,14 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Running TS compiler: ${entry}"
         COMMAND ${TS_COMPILER}
-        ARGS ${entry} --tsconfig ${TS_CONFIG} ${PRINT_IR}
+        ARGS ${entry} --tsconfig ${TS_CONFIG}
                       --baseUrl ${PROJECT_BASE_URL}
                       --demangledTables ${DEMANGLED}
                       --mangledTables ${MANGLED}
                       --build ${output_dir}
                       --emitIR
+                      ${PRINT_IR}
+                      ${trace_opt}
     )
 
     add_custom_target(${target}
@@ -348,6 +355,7 @@ function(link target dep_target seed_src compiled_source dependencies)
         PRIVATE
             ${compiled_source}
             ${dependencies}
+            tsnative-std::tsnative-std
     )
 
     if (NOT "${TS_EXTENSION_TARGET}" STREQUAL "fake")
@@ -358,7 +366,24 @@ function(link target dep_target seed_src compiled_source dependencies)
     add_dependencies(${${target}} ${dep_target})
 endfunction()
 
-function(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr)
+function(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import)
+    message(STATUS "Build TS:")
+    message(STATUS "--target=${target}")
+    message(STATUS "--dep_target=${dep_target}")
+    message(STATUS "--entry=${entry}")
+    message(STATUS "--includes=${includes}")
+    message(STATUS "--dependencies=${dependencies}")
+    message(STATUS "--definitions=${definitions}")
+    message(STATUS "--optimization_level=${optimization_level}")
+    message(STATUS "--is_test=${is_test}")
+    message(STATUS "--is_printIr=${is_printIr}")
+    message(STATUS "--trace_import=${trace_import}")
+
+    set(TRACE_OPT)
+    if (${trace_import})
+        set(TRACE_OPT "--trace")
+    endif()
+
     # Collect all project's *.ts source files to enable incremental build
     getProjectFiles("${entry}" sources)
 
@@ -366,15 +391,16 @@ function(build target dep_target entry includes dependencies definitions optimiz
 
     makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${entry}" output_dir)
 
-    verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${output_dir}")
+    # TODO: restore verifier
+    # verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${output_dir}")
 
-    instantiate_classes(instantiate_classes_${binary_name} verify_ts_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" CLASSES_SRC)
+    instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" "${TRACE_OPT}" CLASSES_SRC)
 
     compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${definitions}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
 
     extractSymbols(extract_classes_symbols_${binary_name} compile_classes_${binary_name} "${COMPILED_CLASSES}" "${output_dir}" COMPILED_CLASSES_DEMANGLED_NAMES COMPILED_CLASSES_MANGLED_NAMES)
 
-    instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} FUNCTIONS_SRC)
+    instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} "${TRACE_OPT}" FUNCTIONS_SRC)
 
     compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${definitions}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
 
@@ -382,7 +408,7 @@ function(build target dep_target entry includes dependencies definitions optimiz
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 
-    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${entry}" "${sources}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" LL_BYTECODE)
+    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${entry}" "${sources}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" "${TRACE_OPT}" LL_BYTECODE)
 
     compile_ll(compile_ll_${binary_name} compile_ts_${binary_name} "${LL_BYTECODE}" "${optimization_level}" "${output_dir}" COMPILED_SOURCE)
 

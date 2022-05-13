@@ -12,7 +12,7 @@
 // Nothing to test here, all the tests should be placed on C++ side
 // Test buildabily, non-crashing. Use it as a reference.
 
-import { Override } from "std/decorators/decorators"
+import { Override } from "tsnative/std/decorators/decorators"
 import { Component, AnotherWidget, Handler } from "./declarations/component"
 
 const i = 2;

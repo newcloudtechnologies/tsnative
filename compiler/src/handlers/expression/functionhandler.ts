@@ -33,7 +33,6 @@ import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";
 import { Signature } from "../../ts/signature";
 import { LLVMFunction } from "../../llvm/function";
-import { ExceptionHandlingGenerator } from "llvm-ir-eh-generator";
 import { getInvocableBody, needUnwind } from "../../builder/builder";
 
 export class FunctionHandler extends AbstractExpressionHandler {
@@ -1699,7 +1698,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
               if (!this.generator.isCurrentBlockTerminated) {
                 if (this.generator.builder.getInsertBlock()?.name.startsWith("after.try")) {
-                  const eh = new ExceptionHandlingGenerator(this.generator.module, this.generator.builder.unwrap());
+                  const eh = new llvm.ExceptionHandlingGenerator(this.generator.module, this.generator.builder.unwrap());
                   eh.createUnreachable();
                 } else {
                   const currentReturnType = LLVMType.make(
@@ -1982,7 +1981,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const entry = builder.functionMetaEntry.get(declarationBody);
     if (entry && entry.needUnwind) {
-      const eh = new ExceptionHandlingGenerator(module, builder.unwrap());
+      const eh = new llvm.ExceptionHandlingGenerator(module, builder.unwrap());
       if (needUnwind(expression)) {
         const lpadBB = builder.landingPadStack[builder.landingPadStack.length - 1];
         const continueBB = llvm.BasicBlock.create(context, "continue", currentFunction);

@@ -26,6 +26,10 @@ case $key in
     CLEAN=true
     shift # past argument
     ;;
+    --ff)
+    FAST_FAIL=true
+    shift # past argument
+    ;;
     --help)
     echo "Available options:"
     echo "  --test-filter <filter> : simple grep-like expression to choose tests to run based on their names and paths"
@@ -41,9 +45,9 @@ esac
 done
 
 CURRENT_DIR=$(cd `dirname $0` && pwd)
-OUT_DIR="${CURRENT_DIR}/../out"
-BUILD_DIR="${OUT_DIR}/build/tests"
-INSTALL_DIR="${OUT_DIR}/install"
+INSTALL_DIR="${CURRENT_DIR}"
+OUT_DIR="${CURRENT_DIR}/out"
+BUILD_DIR="${OUT_DIR}"
 
 if [ ! -z "$CLEAN" ]
 then
@@ -63,6 +67,9 @@ TEST_DIRS=( "${CURRENT_DIR}/src/app" \
 # basic filters to choose test files
 INCLUDE_FILTER="*.ts"
 EXCLUDE_FILTER=( "*.d.ts" )
+
+EXCLUDE_FILTER+=("date.ts")
+EXCLUDE_FILTER+=("exceptions.ts")
 
 # FIXME: AN-926
 if [ "$OSTYPE" == "msys" ]; then
@@ -96,7 +103,11 @@ run_tests() {
                 fi
             else
                 build_test "$test" "$test_out_dir" "$dir/cpp"
-            fi            
+            fi
+            if [[ $? != 0 ]] && [[ ! -z "$FAST_FAIL" ]]
+            then
+                exit 1;
+            fi
         done
 
         # hack: concatenate CTestTestfile.cmake from each test into a single file
@@ -127,12 +138,13 @@ build_test() {
 
     echo "Build test $filename in $build_dir ($EXT_OPT)"
 
-    ${INSTALL_DIR}/tsnative.sh \
-        --tsnative_root ${INSTALL_DIR} \
+    tsnative.sh \
         --project_root ${CURRENT_DIR} \
+        --conan_install ${INSTALL_DIR} \
         ${EXT_OPT} \
         --source $1 \
         --build ${build_dir} \
+        --baseUrl ${INSTALL_DIR}/declarations \
         --test
         # --jobs "4" \
 }

@@ -6,14 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)
 
-get_filename_component(INSTALL_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/install" REALPATH)
-list(APPEND CMAKE_MODULE_PATH "${INSTALL_DIR}/cmake")
-
-# temporary hack: allows us to build std using abseil deployed to install dir
-list(APPEND CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/cmake)
 find_package(absl)
-
-find_package(TsDeclarator REQUIRED)
+find_package(tsnative-declarator)
+find_program(TS_DECLARATOR tsnative-declarator) # TODO: autodetect during find_package
 
 include(TsDeclaratorUtils)
 
@@ -63,15 +58,14 @@ add_library(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../declarator/include
-        "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/abseil/include>"
     PUBLIC
         "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>"
     )
 
 target_link_libraries(${PROJECT_NAME}
-    PUBLIC 
-        $<BUILD_INTERFACE:absl::time>
+    PUBLIC
+        tsnative-declarator # for include path only
+        absl::time # $<BUILD_INTERFACE:absl::time> ?
 )
 
 if (GENERATE_DECLARATIONS)
@@ -99,9 +93,19 @@ if (GENERATE_DECLARATIONS)
 
     install(
         FILES ${TS_DECLARATIONS}
-        DESTINATION "std/definitions"
+        DESTINATION "declarations/tsnative/std/definitions"
     )
 
+    install(
+        FILES definitions/lib.std.stubs.d.ts definitions/lib.std.numeric.d.ts
+        DESTINATION "declarations/tsnative/std/definitions"
+    )
+
+else()
+    install(
+        DIRECTORY   definitions
+        DESTINATION "declarations/tsnative/std"
+    )
 endif()
 
 include(GNUInstallDirs)
@@ -120,13 +124,8 @@ install(
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+# keep this path for now to mimic structure hardcoded into declarator
 install(
-    DIRECTORY   decorators definitions
-    DESTINATION "std"
-)
-
-# FIXME: a special hack to conform current compiler's hardcoded structure
-install(
-    DIRECTORY   definitions
-    DESTINATION "${CMAKE_CURRENT_BINARY_DIR}" 
+    DIRECTORY   decorators
+    DESTINATION "declarations/tsnative/std"
 )

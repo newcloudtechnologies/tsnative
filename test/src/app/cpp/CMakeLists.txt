@@ -12,12 +12,13 @@ set (EXTS_TARGET cpp)
 
 include(TsDeclaratorUtils)
 
-find_package(StdLib REQUIRED)
+find_package(tsnative-std REQUIRED)
+find_package(tsnative-declarator REQUIRED)
 
 set (SOURCES "${CMAKE_CURRENT_LIST_DIR}/Ext.cpp")
 set (HEADERS "${CMAKE_CURRENT_LIST_DIR}/Ext.h")
 
 ts_build_extension(${EXTS_TARGET}
     SOURCES ${SOURCES} ${HEADERS}
-    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR} ${StdLib_INCLUDE_DIR}
+    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}  ${tsnative-std_INCLUDE_DIRS} ${tsnative-declarator_INCLUDE_DIRS}
 )

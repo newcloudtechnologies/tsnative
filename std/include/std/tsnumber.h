@@ -7,6 +7,8 @@
 #include "std/tsboolean.h"
 #include "std/tsobject.h"
 
+#include <TS.h>
+
 #include <ostream>
 
 class String;

@@ -9,6 +9,8 @@
 # at http://ncloudtech.com/contact.html
 #
 
+# set -xe
+
 echo "start tsnative..."
 echo "arguments passed: $@"
 
@@ -19,6 +21,11 @@ key="$1"
 case $key in
     --tsnative_root)
     TSNATIVE_ROOT="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    --conan_install)
+    CONAN_INSTALL_DIR="$2"
     shift # past argument
     shift # past value
     ;;
@@ -57,6 +64,10 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+    --trace)
+    TRACE_IMPORT=TRUE
+    shift # past argument
+    ;;
     --target_abi)
     TARGET_ABI="$2"
     shift # past argument
@@ -82,6 +93,7 @@ case $key in
     echo "  --build : specify path to build dir (default: <project_dir>/build"
     echo "  --output : specify path to output binary (default: <build>/<source-file-name-without-ts-extension>"
     echo "  --baseUrl : specify base dir to resolve modules from"
+    echo "  --target_abi : specify ABI that should be used to generate declarations"
     echo "  --tsconfig : specify path to tsconfig.json"
     echo "  --source : specify path to entry (usually main.ts)"
     echo "  --extension : specify path to extension dir"
@@ -114,12 +126,12 @@ CURRENT_DIR=$(cd `dirname $0` && pwd)
 
 if [ -z "$TSNATIVE_ROOT" ]
 then
-    TSNATIVE_ROOT="${CURRENT_DIR}/../tsnative"
+    TSNATIVE_ROOT="${CURRENT_DIR}"
 fi
 
 if [ -z "$PROJECT_ROOT" ]
 then
-    PROJECT_ROOT="${TSNATIVE_ROOT}/../.."
+    PROJECT_ROOT="${TSNATIVE_ROOT}"
 fi
 
 if [ -z "$PROJECT_BUILD_DIR" ]
@@ -160,43 +172,13 @@ then
     PRINT_IR=FALSE
 fi
 
-OS=$(uname -s)
-ARCH=$(uname -m)
-
-echo "OS detected: ${OS}"
-echo "ARCH detected: ${ARCH}"
-
-# TODO: support Android
-
-if [[ $OS == Linux ]]; then
-    case "$ARCH" in
-        i?86) TARGET_ABI="i686-linux-gnu" ;;
-        x86_64) TARGET_ABI="x86_64-linux-gnu" ;;
-    esac
-elif [[ $OS == MSYS* ]] || [[ $OS == MINGW* ]]; then
-    case "$ARCH" in
-        i?86) TARGET_ABI="i686-w64-mingw32" ;;
-        x86_64) TARGET_ABI="x86_64-w64-mingw32" ;;
-    esac
-elif [[ $OS == Darwin ]]; then
-    case "$ARCH" in
-        arm64) TARGET_ABI="arm64-apple-darwin20.5.0" ;;
-        x86_64) TARGET_ABI="x86_64-apple-darwin20.5.0" ;;
-    esac
-else
-    echo "Unsupported OS"
-    exit 1;
-fi
-
-echo "TARGET_ABI detected: ${TARGET_ABI}"
-
 if [ "$(uname -s)" == "Darwin" ]; then
     JOBS_NUM=$(sysctl -n hw.ncpu)
 else
     JOBS_NUM=$(expr $(nproc) + 1)
 fi
 
-CMAKE_DIR="${TSNATIVE_ROOT}/cmake"
+CMAKE_DIR="${TSNATIVE_ROOT}"
 
 # TODO: make build type configurable
 # CMAKE_FIND_ROOT_PATH
@@ -213,12 +195,14 @@ cmake -G "Unix Makefiles" \
     -DPROJECT_OUTPUT_BINARY=${PROJECT_OUTPUT_BINARY} \
     -DPROJECT_ENTRY_NAME=${PROJECT_ENTRY_NAME} \
     -DPROJECT_BASE_URL=${PROJECT_BASE_URL}\
+    -DCONAN_INSTALL_DIR=${CONAN_INSTALL_DIR} \
     -DTS_CONFIG=${TS_CONFIG} \
+    -DTRACE_IMPORT=${TRACE_IMPORT} \
     -DPRINT_IR=${PRINT_IR} \
     -DIS_TEST=${IS_TEST} \
     -DCMAKE_CXX_COMPILER_TARGET=$TARGET_ABI \
-    -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
+    -DCMAKE_TOOLCHAIN_FILE=${CONAN_INSTALL_DIR}/conan_paths.cmake
+    # -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 cmake --build ${PROJECT_BUILD_DIR} --config Release -j${JOBS_NUM}
-
 

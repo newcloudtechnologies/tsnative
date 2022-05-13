@@ -1,12 +1,14 @@
 #
 # Copyright (c) New Cloud Technologies, Ltd., 2014-2021
-# 
+#
 # You can not use the contents of the file in any way without
 # New Cloud Technologies, Ltd. written permission.
-# 
+#
 # To obtain such a permit, you should contact New Cloud Technologies, Ltd.
 # at http://ncloudtech.com/contact.html
 #
+
+message(STATUS "Found TsDeclaratorUtils in ${CMAKE_CURRENT_LIST_DIR}")
 
 define_property(TARGET PROPERTY TS_HEADERS
     BRIEF_DOCS "c++ headers to generate ts declarations"
@@ -107,6 +109,7 @@ function(run_declarator NAME ...)
     string(REPLACE ".h" ".d.ts" OUTPUT_FN "${source_fn}")
 
     set(INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
+    list(APPEND INCLUDE_DIRECTORIES "${tsnative-declarator_INCLUDE_DIRS}" "${tsnative-std_INCLUDE_DIRS}")
 
     # FIXME: need to research how to force declarator to find all standard headers
     if (WIN32)
@@ -115,11 +118,14 @@ function(run_declarator NAME ...)
         message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
     endif()
 
-    list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX "^$") # remove empty strings
+    # remove empty strings
+    list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX "^$")
+    # <INSTALL_INTERFACE:...> strings will be evaluated into empty strings by cmake later so we need to filter them out too
+    list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX ".*[<]INSTALL_INTERFACE.*[>]$")
     list(TRANSFORM INCLUDE_DIRECTORIES PREPEND "-I")
     string(REPLACE ";" " " INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}")
 
-    set(OUTPUT_DIR "${ARG_OUTPUT_DIR}/declarations")
+    set(OUTPUT_DIR "${ARG_OUTPUT_DIR}")
     set(OUTPUT_FILE "${OUTPUT_DIR}/${OUTPUT_FN}")
 
     if (NOT "$ENV{SYSROOT_DIR}" STREQUAL "")
@@ -274,7 +280,7 @@ function(ts_generate_declarations NAME ...)
         TEMP_DIR "${ARG_OUTPUT_DIR}/temp"
         OUT_DECLARATIONS DECLARATIONS
     )
-    
+
     set(${ARG_OUT_DECLARATIONS} ${DECLARATIONS} PARENT_SCOPE)
 endfunction()
 
@@ -353,7 +359,7 @@ function(ts_generate_index_ex NAME ...)
     add_custom_target(${TARGET}
         DEPENDS ${output_file}
     )
-    
+
     add_dependencies(${NAME} ${TARGET})
 endfunction()
 
@@ -409,10 +415,10 @@ endfunction()
 # TS_HEADERS - list of header files to generate declarations
 function (ts_build_extension NAME ...)
 # TODO: static/shared switch?
-    cmake_parse_arguments (PARSE_ARGV 1 
+    cmake_parse_arguments (PARSE_ARGV 1
         "ARG"
         ""
-        "TS_IMPORT;TS_EXPORTED_NAME;TS_MODULE_NAME"
+        "TS_IMPORT;TS_EXPORTED_NAME;TS_MODULE_NAME;TS_DECLARATIONS_OUT_DIR"
         "SOURCES;INCLUDE_DIRECTORIES;LINK_LIBRARIES;DEFINITIONS;LIBRARY_DEPENDENCIES;TS_HEADERS"
     )
 
@@ -424,12 +430,11 @@ function (ts_build_extension NAME ...)
         message (FATAL_ERROR "No SOURCES provided for extension library")
     endif ()
 
-    add_library(${NAME} ${ARG_SOURCES})
+    if (NOT ARG_TS_DECLARATIONS_OUT_DIR OR ARG_TS_DECLARATIONS_OUT_DIR STREQUAL "")
+        set(ARG_TS_DECLARATIONS_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/declarations")
+    endif ()
 
-    target_include_directories(${NAME}
-        PUBLIC
-            ${ARG_INCLUDE_DIRECTORIES}
-    )
+    add_library(${NAME} ${ARG_SOURCES})
 
     target_link_libraries(${NAME}
         PUBLIC
@@ -439,6 +444,11 @@ function (ts_build_extension NAME ...)
     set(INCLUDE_DIRECTORIES )
     get_target_includes(${NAME} INCLUDE_DIRECTORIES)
     list(APPEND INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
+
+    target_include_directories(${NAME}
+        PUBLIC
+            ${INCLUDE_DIRECTORIES}
+    )
 
     set_target_properties(${NAME} PROPERTIES
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
@@ -450,6 +460,7 @@ function (ts_build_extension NAME ...)
         TS_IMPORT "${ARG_TS_IMPORT}"
         TS_EXPORTED_NAME "${ARG_TS_EXPORTED_NAME}"
         TS_MODULE_NAME "${ARG_TS_MODULE_NAME}"
+        TS_DECLARATIONS_OUT_DIR "${ARG_TS_DECLARATIONS_OUT_DIR}"
     )
 
 endfunction()
