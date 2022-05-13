@@ -16,7 +16,6 @@ import * as llvm from "llvm-node";
 import { LLVMConstant, LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMFunction } from "../../llvm/function";
 import { LLVMType } from "../../llvm/type";
-import { ExceptionHandlingGenerator } from "llvm-ir-eh-generator";
 import { getInvocableBody, needUnwind } from "../../builder/builder";
 
 /*
@@ -26,7 +25,7 @@ import { getInvocableBody, needUnwind } from "../../builder/builder";
 */
 
 export class ExceptionHandler extends AbstractNodeHandler {
-  private static ehIrGenerator: ExceptionHandlingGenerator; // C++ wrapper for using in here
+  private static ehIrGenerator: llvm.ExceptionHandlingGenerator; // C++ wrapper for using in here
   private static typeInfo: LLVMGlobalVariable; // Type-info uses C++ RTTI. Store type information in runtime
   private static allocateExceptionFn: LLVMValue; // __cxa_allocate_exception --- LLVM ABI Itanium intrinsic
   private static throwExceptionFn: LLVMValue; // __cxa_throw --- LLVM ABI Itanium intrinsic
@@ -172,7 +171,7 @@ export class ExceptionHandler extends AbstractNodeHandler {
       const int64Ty = LLVMType.getInt64Type(this.generator);
       const voidTy = LLVMType.getVoidType(this.generator);
 
-      ExceptionHandler.ehIrGenerator = new ExceptionHandlingGenerator(
+      ExceptionHandler.ehIrGenerator = new llvm.ExceptionHandlingGenerator(
         this.generator.module,
         this.generator.builder.unwrap()
       );

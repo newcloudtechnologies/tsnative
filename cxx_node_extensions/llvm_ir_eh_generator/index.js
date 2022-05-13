@@ -1,1 +1,0 @@
-module.exports = require("bindings")("llvm_ir_eh_generator.node");

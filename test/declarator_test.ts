@@ -19,61 +19,19 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 const chalk = require('chalk');
 
-let compiler_abi = "unknown";
-const tsnative_dir = path.resolve(path.join(__dirname, "/../.."));
-const expect_ok_snippets_dir = path.join(tsnative_dir, "/declarator/test/snippets/ok");
-const expect_fail_snippets_dir = path.join(tsnative_dir, "/declarator/test/snippets/fail");
-const output_dir = path.join(tsnative_dir, "/out/build/declarator/test/declarations");
+const current_dir = path.resolve(__dirname);
+const expect_ok_snippets_dir = path.join(current_dir, "src", "declarator", "snippets", "ok");
+const expect_fail_snippets_dir = path.join(current_dir, "src", "declarator", "snippets", "fail");
+const output_dir = path.join(current_dir, "out", "declarator", "declarations");
 
 const platform = os.platform();
-const arch = os.arch();
-
 console.log(`Platform detected: ${platform}`);
-console.log(`Architecture detected: ${arch}`);
 
-// TODO: add additional platforms
-switch (platform) {
-    case "linux":
-        switch (arch) {
-            case "x64":
-                compiler_abi = "x86_64-linux-gnu";
-                break;
-            default:
-                console.log("Error: unsupported architecture");
-                exit(1);
-        }
+const compiler_abi = process.env.COMPILER_ABI as string;
 
-        break;
-
-    case "win32":
-        switch (arch) {
-            case "x64":
-                compiler_abi = "x86_64-w64-mingw32";
-                break;
-            default:
-                console.log("Error: unsupported architecture");
-                exit(1);
-        }
-
-        break;
-
-    case "darwin":
-        switch (arch) {
-            case "x64":
-                compiler_abi = "x86_64-apple-darwin20.6.0";
-                break;
-            case "arm64":
-                compiler_abi = "arm64-apple-darwin20.6.0";
-                break;
-            default:
-                console.log("Error: unsupported architecture");
-                exit(1);
-        }
-        break;
-
-    default:
-        console.log("Error: unsupported platform");
-        exit(1);
+if (compiler_abi == undefined || compiler_abi == "") {
+    console.error("Compiler ABI cannot be empty. Please provide one with COMPILER_ABI env variable");
+    exit(1);
 }
 
 console.log(`Compiler ABI: ${compiler_abi}`);
@@ -151,11 +109,12 @@ class Declarator extends Process {
     public static async run(headerFilePath: string, compiler_abi: string): Promise<Declarator> {
         let declarator: Declarator;
 
-        const declarator_bin = path.join(tsnative_dir, "/out/install/bin/declarator");
+        const declarator_bin = process.env.DECLARATOR_BIN
 
         let include_list: string[] = [];
         // TODO: add additional include paths
-        include_list.push(path.join(tsnative_dir, "/out/install/include"));
+        include_list.push(`${process.env.INCLUDES_DECLARATOR}`)
+        include_list.push(`${process.env.INCLUDES_STD}`)
 
         if (os.platform() === "win32") {
             include_list.push(`C:/msys64/mingw64/lib/gcc/${compiler_abi}/${process.env.GCC_VERSION}/include`);

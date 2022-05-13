@@ -15,7 +15,8 @@ set (EXTS_TARGET cpp)
 
 include(TsDeclaratorUtils)
 
-find_package(StdLib REQUIRED)
+find_package(tsnative-std REQUIRED)
+find_package(tsnative-declarator REQUIRED)
 
 set(INCLUDES
     aggregate.h
@@ -46,5 +47,5 @@ list(TRANSFORM INCLUDES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 
 ts_build_extension(${EXTS_TARGET}
     SOURCES ${SOURCES} ${INCLUDES}
-    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR} ${StdLib_INCLUDE_DIR}
+    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR} ${tsnative-std_INCLUDE_DIRS} ${tsnative-declarator_INCLUDE_DIRS}
 )

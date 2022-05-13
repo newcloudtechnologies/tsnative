@@ -3,7 +3,6 @@ import * as argv from "commander";
 import * as fs from "fs";
 import * as llvm from "llvm-node";
 import * as path from "path";
-import * as SegfaultHandler from "segfault-handler";
 import * as ts from "typescript";
 
 import {
@@ -34,9 +33,13 @@ import { Build } from "./buildutils/build";
 import { TemplateInstantiator } from "./cppintegration/templateinstantiator";
 import { Preprocessor } from "./preprocessing";
 
-SegfaultHandler.registerHandler("tsnative-crash.log");
+var pjson = require('../package.json');
+var version_string = pjson.version + ' (Based on Node.js ' + process.version + ")"
 
 argv
+  .name('compiler') // TODO: get binary name from env?
+  .description('Typescript Native Compiler')
+  .version(version_string)
   .option("--printIR", "print LLVM assembly to stdout")
   .option("--emitIR", "write LLVM assembly to file")
   .option("--processTemplateClasses", "instantiate template classes")
@@ -46,6 +49,7 @@ argv
   .option("--build <absolute path>", "specify build dir")
   .option("--baseUrl <absolute path>", "specify base dir")
   .option("--tsconfig <absolute path>", "specify tsconfig")
+  .option("--trace", "enable tracing")
   .option("--demangledTables <items>", "specify demangled symbol files (comma separated list)", (value: string) => {
     return value.split(",");
   })
@@ -135,6 +139,11 @@ async function main() {
   } else {
     options.baseUrl = path.resolve(path.dirname(argv.tsconfig));
     console.warn("baseUrl argument is not provided. Using default value: " + options.baseUrl);
+  }
+
+  if (argv.trace) {
+    // TODO: other diagnostics options (diagnostics,explainFiles,extendedDiagnostics,generateCpuProfile,listEmittedFiles,listFiles)
+    options.traceResolution = true
   }
 
   const host = ts.createCompilerHost(options);

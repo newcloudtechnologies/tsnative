@@ -9,7 +9,7 @@
  *
  */
 
-import * as argv from "commander";
+import argv from "commander";
 
 const fs = require('fs');
 const path = require('path');

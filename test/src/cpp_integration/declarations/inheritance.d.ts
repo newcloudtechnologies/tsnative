@@ -1,7 +1,7 @@
 /// <reference path="dummy_base.d.ts" />
 
 declare module "cpp" {
-    import { VTable } from "std/decorators/decorators";
+    import { VTable } from "tsnative/std/decorators/decorators";
 
     import { Base } from "test";
 

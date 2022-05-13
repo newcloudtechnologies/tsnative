@@ -1,4 +1,4 @@
-import { VTable, VTableSize, VirtualDestructor, Virtual } from "std/decorators/decorators";
+import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators";
 
 export declare class AnotherWidget {
     constructor();

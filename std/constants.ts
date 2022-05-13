@@ -4,76 +4,76 @@ function toPosixStyle(file: string) {
   return file.split(path.sep).join(path.posix.sep);
 }
 
-export const NUMERIC = toPosixStyle(path.join(__dirname, "..", "std", "definitions", "lib.std.numeric.d.ts"));
+export const NUMERIC = toPosixStyle(path.join(__dirname, "definitions", "lib.std.numeric.d.ts"));
 
 export const STRING_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsstring.d.ts")
+  path.join(__dirname, "definitions", "tsstring.d.ts")
 );
 
 export const ARRAY_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsarray.d.ts")
+  path.join(__dirname, "definitions", "tsarray.d.ts")
 );
 
 export const OBJECT_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsobject.d.ts")
+  path.join(__dirname, "definitions", "tsobject.d.ts")
 );
 
 export const UNDEFINED_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsundefined.d.ts")
+  path.join(__dirname, "definitions", "tsundefined.d.ts")
 );
 
 export const NULL_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsnull.d.ts")
+  path.join(__dirname, "definitions", "tsnull.d.ts")
 );
 
 export const NUMBER_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsnumber.d.ts")
+  path.join(__dirname, "definitions", "tsnumber.d.ts")
 );
 
 export const BOOLEAN_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsboolean.d.ts")
+  path.join(__dirname, "definitions", "tsboolean.d.ts")
 );
 
 export const UNION_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsunion.d.ts")
+  path.join(__dirname, "definitions", "tsunion.d.ts")
 );
 
 export const SET_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsset.d.ts")
+  path.join(__dirname, "definitions", "tsset.d.ts")
 );
 
 export const MAP_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsmap.d.ts")
+  path.join(__dirname, "definitions", "tsmap.d.ts")
 );
 
 export const TUPLE_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tstuple.d.ts")
+  path.join(__dirname, "definitions", "tstuple.d.ts")
 );
 
 export const ITERABLE_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "iterable.d.ts")
+  path.join(__dirname, "definitions", "iterable.d.ts")
 );
 
 export const STRING_ITERATOR_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "stringiterator.d.ts")
+  path.join(__dirname, "definitions", "stringiterator.d.ts")
 );
 
 export const MAP_ITERATOR_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "mapiterator.d.ts")
+  path.join(__dirname, "definitions", "mapiterator.d.ts")
 );
 
 export const SET_ITERATOR_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "setiterator.d.ts")
+  path.join(__dirname, "definitions", "setiterator.d.ts")
 );
 
 export const CONSOLE_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "console.d.ts")
+  path.join(__dirname, "definitions", "console.d.ts")
 );
 
-export const GC_DEFINITION = toPosixStyle(path.join(__dirname, "..", "..", "install", "std", "definitions", "gc.d.ts"));
+export const GC_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "gc.d.ts"));
 
 export const CLOSURE_DEFINITION = toPosixStyle(
-  path.join(__dirname, "..", "..", "install", "std", "definitions", "tsclosure.d.ts")
+  path.join(__dirname, "definitions", "tsclosure.d.ts")
 );
 
-export const STUBS = toPosixStyle(path.join(__dirname, "..", "std", "definitions", "lib.std.stubs.d.ts"));
+export const STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));

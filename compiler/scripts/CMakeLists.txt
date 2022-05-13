@@ -40,7 +40,11 @@ printvar(PROJECT_BASE_URL)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
-find_package(tsnative REQUIRED)
+find_package(tsnative-std REQUIRED)
+find_package(tsnative-declarator CONFIG REQUIRED)
+
+set (TS_COMPILER tsnative-compiler)
+set (TS_DECLARATOR tsnative-declarator)
 
 if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 14)
@@ -51,10 +55,6 @@ include(TsDeclaratorUtils)
 
 add_custom_target(build_anyway ALL)
 
-# FIXME? StdLib_INCLUDE_DIR point to ${TSNATIVE_ROOT}/include
-# and helps to find declarator's TS.h
-set (include_paths "${StdLib_INCLUDE_DIR}")
-
 # TODO: support multiple extensions
 if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     message(STATUS "Loading extension from ${PROJECT_TS_EXTENSION_DIR}")
@@ -64,13 +64,14 @@ if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
     add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
 
     get_target_property(TS_HEADERS ${TS_EXTENSION_TARGET} TS_HEADERS)
+    get_target_property(TS_DECLARATIONS_OUT_DIR ${TS_EXTENSION_TARGET} TS_DECLARATIONS_OUT_DIR)
 
     # generate TS declarations
     if (TS_HEADERS)
         set(TS_DECLARATIONS )
         ts_generate_declarations(${TS_EXTENSION_TARGET}
             TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
-            OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${TS_EXTENSION_TARGET}"
+            OUTPUT_DIR "${TS_DECLARATIONS_OUT_DIR}"
             OUT_DECLARATIONS TS_DECLARATIONS
         )
 
@@ -81,7 +82,7 @@ if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
         if (TS_EXPORTED_NAME AND TS_MODULE_NAME)
             ts_generate_index(${TS_EXTENSION_TARGET}
                 DECLARATIONS ${TS_DECLARATIONS}
-                OUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${TS_EXTENSION_TARGET}/declarations"
+                OUT_DIRECTORY "${TS_DECLARATIONS_OUT_DIR}"
             )
         endif()
     endif()
@@ -103,10 +104,13 @@ else()
     add_custom_target(${TS_EXTENSION_TARGET})
 endif()
 
+list(APPEND include_paths "${tsnative-std_INCLUDE_DIRS}")
+
 list(APPEND DEPENDENCIES
     "${exts_LIBRARY}"
     "${exts_LIBRARY_DEPENDENCIES}"
-    "${StdLib_LIBRARY}")
+    "${tsnative-std_LIBS}"
+)
 
 build(binary_target ${TS_EXTENSION_TARGET} 
     "${PROJECT_ENTRY_NAME}"
@@ -114,7 +118,8 @@ build(binary_target ${TS_EXTENSION_TARGET}
     "${DEPENDENCIES}"
     "${exts_DEFINITIONS}"
     "-O3"
-    ${IS_TEST}
-    "${PRINT_IR}")
+    "${IS_TEST}"
+    "${PRINT_IR}"
+    "${TRACE_IMPORT}")
 
 add_dependencies(build_anyway ${binary_target})

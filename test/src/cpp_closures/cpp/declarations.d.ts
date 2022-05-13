@@ -1,4 +1,4 @@
-import { TSClosure } from "std/definitions/tsclosure"
+import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
 export declare class Point {
     constructor(x: number, y: number);
