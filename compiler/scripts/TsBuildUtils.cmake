@@ -59,39 +59,8 @@ function(getBinaryPath binaryPath)
     set(${binaryPath} ${binary_path} PARENT_SCOPE)
 endfunction()
 
-function(getProjectPath entry projectPath)
-    set(found_file )
-    set(current_path )
-    set(project_path )
-
-    get_filename_component(current_path "${entry}" DIRECTORY)
-
-    while("${found_file}" STREQUAL "")
-        file(GLOB found_file ${current_path}/package.json)
-
-        if(NOT "${found_file}" STREQUAL "")
-            set(project_path ${current_path})
-            break()
-        else()
-            get_filename_component(parent_path "${current_path}/.." ABSOLUTE)
-
-            if("${parent_path}" STREQUAL "/")
-                break()
-            endif()
-
-            set(current_path ${parent_path})
-        endif()
-    endwhile()
-
-    set(${projectPath} ${project_path} PARENT_SCOPE)
-endfunction()
-
 function(getProjectFiles entry projectFiles)
-    getProjectPath("${entry}" projectPath)
-
-    get_filename_component(entry_fn ${entry} NAME)
-
-    file(GLOB_RECURSE project_files ${projectPath}/*.ts)
+    file(GLOB_RECURSE project_files ${PROJECT_ROOT}/*.ts)
 
     # filter node_modules
     list(FILTER project_files EXCLUDE REGEX ".*/node_modules/.*")
