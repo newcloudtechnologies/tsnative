@@ -153,14 +153,8 @@ function(run_declarator NAME ...)
         VERBATIM COMMAND sh -c "${command}"
     )
 
-    # generate target: convert path of source file to dot-separated string
-    get_filename_component(directory_fn "${ARG_SOURCE}" DIRECTORY)
-    get_filename_component(source_fn "${ARG_SOURCE}" NAME)
-    string(REPLACE "/" "." directory_fn "${directory_fn}")
-    string(REPLACE "\\" "." directory_fn "${directory_fn}")
-    string(REPLACE ":" "_" directory_fn "${directory_fn}")
-    string(REPLACE ".h" ".d.ts" source_fn "${source_fn}")
-    set(TARGET "${directory_fn}.${source_fn}")
+    # generate target
+    string(MD5 TARGET "${OUTPUT_FILE}")
 
     add_custom_target(${TARGET}
         DEPENDS ${OUTPUT_FILE}
@@ -322,13 +316,6 @@ function(ts_generate_index_ex NAME ...)
 
     set(output_file "${ARG_OUT_DIRECTORY}/index.ts")
 
-    # generate target: convert path to dot-separated string
-    set(directory_fn "${ARG_OUT_DIRECTORY}")
-    string(REPLACE "/" "." directory_fn "${directory_fn}")
-    string(REPLACE "\\" "." directory_fn "${directory_fn}")
-    string(REPLACE ":" "_" directory_fn "${directory_fn}")
-    set(TARGET "${directory_fn}.index.ts")
-
     # generate filenames of declarations without full paths
     set(declarations )
     foreach(declaration_item ${ARG_DECLARATIONS})
@@ -355,6 +342,8 @@ function(ts_generate_index_ex NAME ...)
         VERBATIM COMMAND sh -c "sed -i 's/;/\\n/g' ${output_file}"
         VERBATIM COMMAND sh -c "sed -i \"s/\'/\\\"/g\" ${output_file}"
     )
+
+    string(MD5 TARGET "${output_file}")
 
     add_custom_target(${TARGET}
         DEPENDS ${output_file}
