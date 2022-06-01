@@ -105,6 +105,11 @@ public:
 
         for (const auto& it : frequencyMap<T>(container))
         {
+            if (it.first == "constructor")
+            {
+                continue;
+            }
+
             // getter and setter
             if (it.second == 2)
             {
@@ -128,6 +133,12 @@ void pushBlock(typename std::vector<T>& container, T block)
     auto pred = [block](const T& it)
     {
         bool result = false;
+
+        if (it->isConstructor())
+        {
+            return result;
+        }
+
         if (it->name() == block->name())
         {
             if (block->accessor() == it->accessor())

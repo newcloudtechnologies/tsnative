@@ -26,6 +26,7 @@ import {
   STRING_ITERATOR_DEFINITION,
   MAP_ITERATOR_DEFINITION,
   SET_ITERATOR_DEFINITION,
+  DATE_DEFINITION
 } from "../std/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
@@ -111,6 +112,7 @@ async function main() {
     STRING_ITERATOR_DEFINITION,
     MAP_ITERATOR_DEFINITION,
     SET_ITERATOR_DEFINITION,
+    DATE_DEFINITION
   ];
   options.types = [];
 
@@ -173,7 +175,10 @@ async function main() {
     list.forEach((v: string, i: number, a: string[]) => {
       a[i] = v.trim();
     });
-    includeDirs.push(...list);
+    const unique = list.filter((elem, index, self) => {
+      return index === self.indexOf(elem);
+    });
+    includeDirs.push(...unique);
   }
 
   if (diagnostics.length > 0) {

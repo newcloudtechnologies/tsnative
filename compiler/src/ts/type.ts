@@ -750,7 +750,9 @@ export class TSType {
   }
 
   isSame(type: TSType) {
-    return this.type === type.unwrap();
+    return this.type === type.unwrap() ||
+    (this.isNumber() && type.isNumber()) ||
+    (this.isString() && type.isString());
   }
 
   unwrap() {

@@ -210,7 +210,10 @@ export class SysVFunctionHandler {
     if (!valueDeclaration) {
       throw new Error(`No value declaration found at '${expression.getText()}'`);
     }
-    const constructorDeclaration = valueDeclaration.members.find((m) => m.isConstructor());
+
+    const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
+
+    const constructorDeclaration = valueDeclaration.findConstructor(argumentTypes);
 
     if (!constructorDeclaration) {
       throw new Error(`External symbol '${qualifiedName}' declaration have no constructor provided`);
