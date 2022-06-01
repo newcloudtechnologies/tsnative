@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-exports.STUBS = exports.CLOSURE_DEFINITION = exports.GC_DEFINITION = exports.CONSOLE_DEFINITION = exports.SET_ITERATOR_DEFINITION = exports.MAP_ITERATOR_DEFINITION = exports.STRING_ITERATOR_DEFINITION = exports.ITERABLE_DEFINITION = exports.TUPLE_DEFINITION = exports.MAP_DEFINITION = exports.SET_DEFINITION = exports.UNION_DEFINITION = exports.BOOLEAN_DEFINITION = exports.NUMBER_DEFINITION = exports.NULL_DEFINITION = exports.UNDEFINED_DEFINITION = exports.OBJECT_DEFINITION = exports.ARRAY_DEFINITION = exports.STRING_DEFINITION = exports.NUMERIC = void 0;
+exports.STUBS = exports.DATE_DEFINITION = exports.CLOSURE_DEFINITION = exports.GC_DEFINITION = exports.CONSOLE_DEFINITION = exports.SET_ITERATOR_DEFINITION = exports.MAP_ITERATOR_DEFINITION = exports.STRING_ITERATOR_DEFINITION = exports.ITERABLE_DEFINITION = exports.TUPLE_DEFINITION = exports.MAP_DEFINITION = exports.SET_DEFINITION = exports.UNION_DEFINITION = exports.BOOLEAN_DEFINITION = exports.NUMBER_DEFINITION = exports.NULL_DEFINITION = exports.UNDEFINED_DEFINITION = exports.OBJECT_DEFINITION = exports.ARRAY_DEFINITION = exports.STRING_DEFINITION = exports.NUMERIC = void 0;
 var path = require("path");
 function toPosixStyle(file) {
     return file.split(path.sep).join(path.posix.sep);
@@ -24,4 +24,5 @@ exports.SET_ITERATOR_DEFINITION = toPosixStyle(path.join(__dirname, "definitions
 exports.CONSOLE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "console.d.ts"));
 exports.GC_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "gc.d.ts"));
 exports.CLOSURE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tsclosure.d.ts"));
+exports.DATE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tsdate.d.ts"));
 exports.STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));

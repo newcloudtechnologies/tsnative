@@ -25,6 +25,7 @@ set(HEADERS
     include/std/tsnumber.h
     include/std/tsset.h
     include/std/tsstring.h
+    include/std/tsdate.h
     include/std/tstuple.h
     include/std/tsclosure.h
     include/std/gc.h
@@ -35,8 +36,9 @@ set(HEADERS
 
 set(SOURCES
     src/gc.cpp
-    src/tsstring.cpp
+    src/tsboolean.cpp
     src/tsclosure.cpp
+    src/tsdate.cpp
     src/tsnumber.cpp
     src/tsboolean.cpp
     src/tsundefined.cpp
@@ -45,10 +47,12 @@ set(SOURCES
     src/tstuple.cpp
     src/tsunion.cpp
     src/template_instances.cpp
+    src/tsstring.cpp
 
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
+    src/private/tsdate_absl_p.cpp
 )
 
 add_library(${PROJECT_NAME}
@@ -128,4 +132,9 @@ install(
 install(
     DIRECTORY   decorators
     DESTINATION "declarations/tsnative/std"
+)
+
+install(
+    FILES       ${PROJECT_NAME}-config.cmake
+    DESTINATION "cmake"
 )

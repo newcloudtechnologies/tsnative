@@ -89,6 +89,40 @@ export class Declaration {
     return this.getBases().length > 0;
   }
 
+  findConstructor(argumentTypes: TSType[]) {
+    if (!this.isClass()) {
+      throw new Error(`Expected Declaration.findConstructor to be called on class declaration, called on '${ts.SyntaxKind[this.declaration.kind]}: ${this.declaration.getText()}'`);
+    }
+
+    const candidates = this.members.filter((m) => m.isConstructor());
+
+    return candidates.find((decl) => {
+      if (decl.parameters.length < argumentTypes.length) {
+        return false;
+      }
+
+      return decl.parameters.every((p, index) => {
+        if (p.questionToken || p.dotDotDotToken) {
+          return true;
+        }
+
+        const argumentType = argumentTypes[index];
+
+        if (!argumentType && p.initializer) {
+          return true;
+        }
+
+        const parameterType = this.generator.ts.checker.getTypeAtLocation(p);
+
+        if (parameterType.isTypeParameter()) {
+          return true;
+        }
+
+        return argumentType.isSame(parameterType) || argumentType.isUpcastableTo(parameterType);
+      });
+    });
+  }
+
   isPrivate() {
     return Boolean(this.declaration.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword));
   }

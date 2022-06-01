@@ -68,7 +68,6 @@ TEST_DIRS=( "${CURRENT_DIR}/src/app" \
 INCLUDE_FILTER="*.ts"
 EXCLUDE_FILTER=( "*.d.ts" )
 
-EXCLUDE_FILTER+=("date.ts")
 EXCLUDE_FILTER+=("exceptions.ts")
 
 # FIXME: AN-926
@@ -93,10 +92,12 @@ run_tests() {
 
         # iterate over test files and build
         # TODO: run tests in parallel
+
         for test in $tests; do
             if [ ! -z "$TEST_FILTER" ]
             then
                 tests=$(echo $tests | grep $TEST_FILTER )
+
                 if [[ "$test" =~ "$TEST_FILTER" ]]
                 then 
                     build_test "$test" "$test_out_dir" "$dir/cpp"
@@ -126,11 +127,12 @@ run_tests() {
 # $2 - build directory
 # $3 - full path to extensions directory (optional)
 build_test() {
-    echo "Test: $1"
+    echo "Test: $1 $2 $3"
 
     filename="${1##*/}"
     build_dir="$2/${filename%.*}"
 
+    EXT_OPT=""
     if [ -d "$3" ]
     then
         EXT_OPT="--extension $3"

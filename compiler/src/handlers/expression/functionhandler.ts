@@ -1327,9 +1327,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
 
-    const parentScope = valueDeclaration.getScope(thisType);
+    let constructorDeclaration = valueDeclaration.findConstructor(argumentTypes);
 
-    let constructorDeclaration = valueDeclaration.members.find((m) => m.isConstructor());
     const classWithoutConstructor = !constructorDeclaration;
 
     if (!constructorDeclaration) {
@@ -1361,6 +1360,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const thisValue = this.generator.ts.obj.create();
+
+    const parentScope = valueDeclaration.getScope(thisType);
 
     const oldThis = parentScope.get(this.generator.internalNames.This);
     if (oldThis) {

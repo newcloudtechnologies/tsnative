@@ -76,4 +76,8 @@ export const CLOSURE_DEFINITION = toPosixStyle(
   path.join(__dirname, "definitions", "tsclosure.d.ts")
 );
 
+export const DATE_DEFINITION = toPosixStyle(
+  path.join(__dirname, "definitions", "tsdate.d.ts")
+);
+
 export const STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));
