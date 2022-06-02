@@ -18,13 +18,17 @@ export class IdentifierHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     switch (expression.kind) {
       case ts.SyntaxKind.Identifier:
+        this.generator.emitLocation(expression);
         return this.handleIdentifier(expression as ts.Identifier, env);
       case ts.SyntaxKind.ThisKeyword:
       case ts.SyntaxKind.SuperKeyword:
+        this.generator.emitLocation(expression);
         return this.handleThis(env);
       case ts.SyntaxKind.UndefinedKeyword:
+        this.generator.emitLocation(expression);
         return this.generator.ts.undef.get();
       case ts.SyntaxKind.NullKeyword:
+        this.generator.emitLocation(expression);
         return this.generator.ts.null.get();
       default:
         break;

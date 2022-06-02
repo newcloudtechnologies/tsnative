@@ -22,15 +22,19 @@ export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.WhileStatement:
+        this.generator.emitLocation(node);
         this.handleWhileStatement(node as ts.WhileStatement, env);
         return true;
       case ts.SyntaxKind.ForStatement:
+        this.generator.emitLocation(node);
         this.handleForStatement(node as ts.ForStatement, env);
         return true;
       case ts.SyntaxKind.ForOfStatement:
+        this.generator.emitLocation(node);
         this.handleForOfStatement(node as ts.ForOfStatement, env);
         return true;
       case ts.SyntaxKind.ContinueStatement:
+        this.generator.emitLocation(node);
         this.handleContinueStatement(node as ts.ContinueStatement);
         return true;
       default:

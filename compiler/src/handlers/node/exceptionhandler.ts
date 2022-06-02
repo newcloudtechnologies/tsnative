@@ -73,6 +73,7 @@ export class ExceptionHandler extends AbstractNodeHandler {
 
     if (ts.isThrowStatement(node)) {
       if (node.expression) {
+        this.generator.emitLocation(node);
         const value = this.generator.handleExpression(node.expression, env);
         this.emitThrowBlock(value, node);
       }
@@ -80,6 +81,7 @@ export class ExceptionHandler extends AbstractNodeHandler {
     }
 
     if (ts.isCatchClause(node)) {
+      this.generator.emitLocation(node);
       const lpad = builder.landingPadStack[builder.landingPadStack.length - 1];
       builder.landingPadStack.pop();
       this.generator.builder.setInsertionPoint(lpad);

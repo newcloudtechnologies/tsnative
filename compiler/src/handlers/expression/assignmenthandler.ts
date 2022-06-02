@@ -50,6 +50,8 @@ export class AssignmentHandler extends AbstractExpressionHandler {
 
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsToken:
+          this.generator.emitLocation(left);
+          this.generator.emitLocation(right);
           if (ts.isArrayLiteralExpression(left) && ts.isArrayLiteralExpression(right)) {
             return this.handleTupleDestructuring(left, right, env);
           }

@@ -9,14 +9,19 @@ export class LiteralHandler extends AbstractExpressionHandler {
     switch (expression.kind) {
       case ts.SyntaxKind.TrueKeyword:
       case ts.SyntaxKind.FalseKeyword:
+        this.generator.emitLocation(expression);
         return this.handleBooleanLiteral(expression as ts.BooleanLiteral);
       case ts.SyntaxKind.NumericLiteral:
+        this.generator.emitLocation(expression);
         return this.handleNumericLiteral(expression as ts.NumericLiteral);
       case ts.SyntaxKind.StringLiteral:
+        this.generator.emitLocation(expression);
         return this.handleStringLiteral(expression as ts.StringLiteral);
       case ts.SyntaxKind.ObjectLiteralExpression:
+        this.generator.emitLocation(expression);
         return this.handleObjectLiteralExpression(expression as ts.ObjectLiteralExpression, env);
       case ts.SyntaxKind.ArrayLiteralExpression:
+        this.generator.emitLocation(expression);
         if (TSTuple.isTupleFromAssignment(expression)) {
           const arrayLiteralExpression = expression as ts.ArrayLiteralExpression;
           return this.handleTupleLiteral(arrayLiteralExpression.elements, env);

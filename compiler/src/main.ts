@@ -64,6 +64,7 @@ argv
       return value.split(",");
     }
   )
+  .option("--debug", "Generate debug information")
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -182,7 +183,6 @@ async function main() {
   }
 
   if (diagnostics.length > 0) {
-    preprocessor.cleanup();
     process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
     process.exit(1);
   }
@@ -203,7 +203,6 @@ async function main() {
       mangledTables
     );
     templateInstantiator.instantiateClasses();
-    preprocessor.cleanup();
     return;
   }
 
@@ -217,11 +216,8 @@ async function main() {
       mangledTables
     );
     templateInstantiator.instantiateFunctions();
-    preprocessor.cleanup();
     return;
   }
-
-  preprocessor.cleanup();
 
   const { demangledSymbols, mangledSymbols } = await prepareExternalSymbols(demangledTables, mangledTables);
 
@@ -229,7 +225,7 @@ async function main() {
 
   let llvmModule;
   try {
-    llvmModule = new LLVMGenerator(program).createModule();
+    llvmModule = new LLVMGenerator(program, argv.debug).createModule();
   } catch (e) {
     console.log(files);
     console.log(e);

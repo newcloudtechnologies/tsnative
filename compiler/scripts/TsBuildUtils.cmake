@@ -254,7 +254,7 @@ function(verify_ts target dep_target entry sources output_dir)
     add_dependencies(${target} ${dep_target})
 endfunction()
 
-function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode)
+function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode is_debug)
     get_filename_component(entry_fn "${entry}" NAME)
 
     string(REPLACE ".ts" ".ll" OUTPUT_FN "${entry_fn}")
@@ -266,6 +266,11 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
     set(PRINT_IR )
     if (${is_printIr})
         set(PRINT_IR --printIR)
+    endif()
+
+    set(TS_DEBUG )
+    if (${is_debug})
+        set(TS_DEBUG --debug)
     endif()
 
     add_custom_command(
@@ -282,6 +287,7 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
                       --emitIR
                       ${PRINT_IR}
                       ${trace_opt}
+                      ${TS_DEBUG}
     )
 
     add_custom_target(${target}
@@ -335,7 +341,7 @@ function(link target dep_target seed_src compiled_source dependencies)
     add_dependencies(${${target}} ${dep_target})
 endfunction()
 
-function(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import)
+function(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import is_debug)
     message(STATUS "Build TS:")
     message(STATUS "--target=${target}")
     message(STATUS "--dep_target=${dep_target}")
@@ -347,6 +353,7 @@ function(build target dep_target entry includes dependencies definitions optimiz
     message(STATUS "--is_test=${is_test}")
     message(STATUS "--is_printIr=${is_printIr}")
     message(STATUS "--trace_import=${trace_import}")
+    message(STATUS "--debug=${is_debug}")
 
     set(TRACE_OPT)
     if (${trace_import})
@@ -377,7 +384,7 @@ function(build target dep_target entry includes dependencies definitions optimiz
 
     extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
 
-    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${entry}" "${sources}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" "${TRACE_OPT}" LL_BYTECODE)
+    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${entry}" "${sources}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" "${TRACE_OPT}" LL_BYTECODE "${is_debug}")
 
     compile_ll(compile_ll_${binary_name} compile_ts_${binary_name} "${LL_BYTECODE}" "${optimization_level}" "${output_dir}" COMPILED_SOURCE)
 

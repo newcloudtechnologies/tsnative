@@ -24,6 +24,7 @@ import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { Builder } from "../builder/builder";
 import { LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
+import { DebugInfo } from "./debug_info";
 
 enum InternalNames {
   Environment = "__environment__",
@@ -61,7 +62,9 @@ export class LLVMGenerator {
 
   readonly internalNames = InternalNames;
 
-  constructor(program: ts.Program) {
+  private readonly debugInfo: DebugInfo | undefined;
+
+  constructor(program: ts.Program, generateDebugInfo = false) {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
@@ -76,9 +79,14 @@ export class LLVMGenerator {
     this.llvm = new LLVM(this);
 
     this.ts = new TS(this);
+
+    if (generateDebugInfo) {
+      this.debugInfo = new DebugInfo(this);
+    }
   }
 
   createModule(): llvm.Module {
+    const dbg = this.debugInfo;
     const mainReturnType = LLVMType.getInt32Type(this);
     const { fn: main } = this.llvm.function.create(mainReturnType, [], "main");
 
@@ -89,6 +97,10 @@ export class LLVMGenerator {
     this.ts.null.init();
     this.ts.undef.init();
 
+    if (dbg) {
+      dbg.emitMainScope(main.unwrapped as llvm.Function);
+    }
+
     for (const sourceFile of this.program.getSourceFiles()) {
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
@@ -97,6 +109,11 @@ export class LLVMGenerator {
     }
 
     this.builder.createSafeRet(LLVMConstantInt.get(this, 0));
+
+    if (dbg) {
+      dbg.emitProcedureEnd(main.unwrapped as llvm.Function);
+      dbg.finalize();
+    }
 
     try {
       llvm.verifyModule(this.module);
@@ -255,5 +272,15 @@ export class LLVMGenerator {
       .toString(36)
       .replace(/[^a-z]+/g, "")
       .substr(0, 5);
+  }
+
+  getDebugInfo(): DebugInfo | undefined {
+    return this.debugInfo;
+  }
+
+  emitLocation(node: ts.Node | undefined) {
+    if (this.getDebugInfo()) {
+      this.getDebugInfo()?.emitLocation(node);
+    }
   }
 }

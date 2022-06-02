@@ -17,6 +17,7 @@ import { LLVMValue } from "../../llvm/value";
 export class TemplateExpressionHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isTemplateExpression(expression)) {
+      this.generator.emitLocation(expression);
       return this.handleTemplateExpression(expression, env);
     }
 

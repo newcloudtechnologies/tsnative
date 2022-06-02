@@ -20,9 +20,11 @@ export class VariableHandler extends AbstractNodeHandler {
     switch (node.kind) {
       case ts.SyntaxKind.VariableStatement:
       case ts.SyntaxKind.VariableDeclarationList:
+        this.generator.emitLocation(node);
         this.handleVariables(node as VariableLike, parentScope, outerEnv);
         return true;
       case ts.SyntaxKind.VariableDeclaration:
+        this.generator.emitLocation(node);
         const variableDeclaration = node as ts.VariableDeclaration;
 
         if (ts.isArrayBindingPattern(variableDeclaration.name)) {
