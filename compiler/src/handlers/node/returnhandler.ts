@@ -18,7 +18,9 @@ import { Declaration } from "../../ts/declaration";
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isReturnStatement(node)) {
+      this.generator.emitLocation(node);
       if (node.expression) {
+        this.generator.emitLocation(node);
         let ret = this.generator.handleExpression(node.expression, env);
 
         const currentFunctionReturnType = LLVMType.make(

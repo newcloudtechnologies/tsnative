@@ -21,6 +21,8 @@ export class CastHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.AsExpression:
         const asExpression = expression as ts.AsExpression | ts.TypeAssertion;
 
+        this.generator.emitLocation(asExpression);
+
         let value = this.generator.handleExpression(asExpression.expression, env);
 
         if (value.type.isUnion()) {

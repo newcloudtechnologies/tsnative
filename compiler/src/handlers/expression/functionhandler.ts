@@ -65,6 +65,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
       case ts.SyntaxKind.CallExpression:
+        this.generator.emitLocation(expression);
         const call = expression as ts.CallExpression;
         if (call.expression.kind === ts.SyntaxKind.SuperKeyword) {
           return this.handleSuperCall(expression as ts.SuperCall, env);
@@ -107,7 +108,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
           if (knownValue instanceof HeapVariableDeclaration) {
             knownValue = knownValue.allocated;
           }
-
           return this.generator.symbolTable.withLocalScope(
             (_) => this.handleScopeKnownFunction(call, knownValue as ScopeValue, env),
             this.generator.symbolTable.currentScope,
@@ -127,6 +127,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator.internalNames.FunctionScope
         );
       case ts.SyntaxKind.NewExpression:
+        this.generator.emitLocation(expression);
         return this.generator.symbolTable.withLocalScope(
           (_) => this.handleNewExpression(expression as ts.NewExpression, env),
           this.generator.symbolTable.currentScope,
@@ -572,7 +573,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       [env.voidStar],
       qualifiedName
     );
-
     this.handleConstructor(expression, valueDeclaration, constructor, this.generator.symbolTable.currentScope, env);
 
     setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
@@ -1662,13 +1662,24 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private handleFunctionBody(declaration: Declaration, fn: LLVMValue, env?: Environment) {
-    return this.generator.withInsertBlockKeeping(() => {
+    const dbg = this.generator.getDebugInfo();
+    this.generator.withInsertBlockKeeping(() => {
       return this.generator.symbolTable.withLocalScope(
         (bodyScope) => {
           return this.withEnvironmentPointerFromArguments(
             (environment) => {
               const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", fn.unwrapped as llvm.Function);
               this.generator.builder.setInsertionPoint(entryBlock);
+
+              if (dbg) {
+                dbg.emitProcedure(
+                  declaration.unwrapped,
+                  fn.unwrapped as llvm.Function,
+                  declaration.name ? declaration.name.getText() : fn.name,
+                  fn.name
+                );
+                dbg.emitLocation(declaration?.body);
+              }
 
               if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
                 declaration.body.forEachChild((node) => {
@@ -1731,6 +1742,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
           : this.generator.internalNames.FunctionScope
       );
     });
+    if (dbg) {
+      dbg.emitProcedureEnd(fn.unwrapped as llvm.Function);
+    }
   }
 
   private handleConstructor(
@@ -1740,6 +1754,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     parentScope: Scope,
     env: Environment
   ): void {
+    const dbg = this.generator.getDebugInfo();
     const constructorDeclaration = classDeclaration.members.find((m) => m.isConstructor());
 
     this.generator.withInsertBlockKeeping(() => {
@@ -1752,6 +1767,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
               constructor.unwrapped as llvm.Function
             );
             this.generator.builder.setInsertionPoint(entryBlock);
+
+            if (dbg) {
+              dbg.emitProcedure(
+                constructorDeclaration?.unwrapped,
+                constructor.unwrapped as llvm.Function,
+                constructor.name,
+                constructor.name
+              );
+            }
 
             const thisValueIdx = environment!.getVariableIndex("this");
             if (thisValueIdx === -1) {
@@ -1828,6 +1852,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
         );
       }, parentScope);
     });
+    if (dbg) {
+      dbg.emitProcedureEnd(constructor.unwrapped as llvm.Function);
+    }
   }
 
   private handleClassOwnProperties(
@@ -1976,6 +2003,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     callee: LLVMValue,
     args: LLVMValue[]
   ): LLVMValue {
+    // TODO REMOVE AND CHECK IT
+    this.generator.emitLocation(expression);
     if (!declarationBody) return this.generator.builder.createSafeCall(callee, args);
 
     const { module, builder, currentFunction, context } = this.generator;

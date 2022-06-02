@@ -6,8 +6,10 @@ import { LLVMValue } from "../../llvm/value";
 export class UnaryHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
     if (ts.isPrefixUnaryExpression(expression)) {
+      this.generator.emitLocation(expression);
       return this.handlePrefixUnaryExpression(expression, env);
     } else if (ts.isPostfixUnaryExpression(expression)) {
+      this.generator.emitLocation(expression);
       return this.handlePostfixUnaryExpression(expression, env);
     }
 

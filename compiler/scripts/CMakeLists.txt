@@ -120,6 +120,7 @@ build(binary_target ${TS_EXTENSION_TARGET}
     "-O3"
     "${IS_TEST}"
     "${PRINT_IR}"
-    "${TRACE_IMPORT}")
+    "${TRACE_IMPORT}"
+    "${TS_DEBUG}")
 
 add_dependencies(build_anyway ${binary_target})

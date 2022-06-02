@@ -147,7 +147,8 @@ build_test() {
         --source $1 \
         --build ${build_dir} \
         --baseUrl ${INSTALL_DIR}/declarations \
-        --test
+        --test \
+#        --debug
         # --jobs "4" \
 }
 

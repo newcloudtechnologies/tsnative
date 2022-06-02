@@ -21,10 +21,16 @@ export class LogicHandler extends AbstractExpressionHandler {
     if (ts.isBinaryExpression(expression)) {
       const binaryExpression = expression as ts.BinaryExpression;
       const { left, right } = binaryExpression;
+      const emitLocation = () => {
+        this.generator.emitLocation(expression.left);
+        this.generator.emitLocation(expression.right);
+      };
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandAmpersandToken:
+          emitLocation();
           return this.handleLogicalAnd(left, right, env);
         case ts.SyntaxKind.BarBarToken:
+          emitLocation();
           return this.handleLogicalOr(left, right, env);
         default:
           break;

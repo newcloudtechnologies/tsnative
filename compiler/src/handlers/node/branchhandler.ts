@@ -17,6 +17,7 @@ import { Scope, Environment } from "../../scope";
 export class BranchHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isIfStatement(node)) {
+      this.generator.emitLocation(node);
       const statement = node as ts.IfStatement;
       const condition = this.generator.handleExpression(statement.expression, env).makeBoolean();
 

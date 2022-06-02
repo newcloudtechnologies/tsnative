@@ -20,6 +20,7 @@ import { LoopHelper } from "./loophelper";
 export class BreakHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isBreakStatement(node)) {
+      this.generator.emitLocation(node);
       this.handleBreakStatement();
       return true;
     }
