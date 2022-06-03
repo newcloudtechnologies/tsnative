@@ -49,7 +49,7 @@ export class TSUnion {
     this.llvmType = structType.getPointer();
   }
 
-  private getCtorFn(initializer?: LLVMValue) {
+  private getCtorFn() {
     const ctorDeclaration = this.declaration.members.find((m) => m.isConstructor());
 
     if (!ctorDeclaration) {
@@ -63,7 +63,7 @@ export class TSUnion {
       [],
       this.generator,
       undefined,
-      initializer ? ["Object*"] : undefined
+      ["Object*"]
     );
 
     if (!isExternalSymbol) {
@@ -71,10 +71,10 @@ export class TSUnion {
     }
 
     const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
-    if (initializer) {
-      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
-    }
+    const llvmArgumentTypes = [
+      LLVMType.getInt8Type(this.generator).getPointer(),
+      LLVMType.getInt8Type(this.generator).getPointer(),
+    ];
 
     const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
@@ -169,16 +169,15 @@ export class TSUnion {
   }
 
   create(initializer?: LLVMValue) {
-    const ctor = this.getCtorFn(initializer);
+    const ctor = this.getCtorFn();
 
     const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
     const args = [thisUntyped];
 
-    if (initializer) {
-      const initializerUntyped = this.generator.builder.asVoidStar(initializer);
-      args.push(initializerUntyped);
-    }
+    initializer = initializer || this.generator.ts.undef.get();
+    const initializerUntyped = this.generator.builder.asVoidStar(initializer);
+    args.push(initializerUntyped);
 
     this.generator.builder.createSafeCall(ctor, args);
 

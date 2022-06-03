@@ -30,9 +30,9 @@ void logImpl(T v, Ts... ts);
 template <typename... Ts>
 void logImpl(String* v, Ts... ts);
 
-template <typename... Ts>
-TS_EXPORT TS_SIGNATURE("function assert(assumption: boolean, ...optionalParams: any[]): void") void assert(
-    Boolean* assumption, Ts... ts);
+template <typename T, typename... Ts>
+TS_EXPORT TS_SIGNATURE("function assert(assumption: any, ...optionalParams: any[]): void") void assert(T assumption,
+                                                                                                       Ts... ts);
 
 } // namespace IS_TS_DECLARED_NAMESPACE
 
@@ -82,10 +82,12 @@ void console::logImpl(String* v, Ts... ts)
     console::log(ts...);
 }
 
-template <typename... Ts>
-void console::assert(Boolean* assumption, Ts... ts)
+template <typename T, typename... Ts>
+void console::assert(T assumption, Ts... ts)
 {
-    if (!assumption->unboxed())
+    static_assert(std::is_pointer<T>::value && std::is_base_of<Object, typename std::remove_pointer<T>::type>::value);
+
+    if (!static_cast<Object*>(assumption)->toBool()->unboxed())
     {
         console::log("Assertion failed:", ts...);
         std::terminate();

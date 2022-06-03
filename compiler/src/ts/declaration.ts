@@ -118,6 +118,46 @@ export class Declaration {
           return true;
         }
 
+        if (parameterType.isEnum() && argumentType.isEnum()) {
+          const parameterEnumType = parameterType.getEnumElementTSType();
+          const argumentEnumType = argumentType.getEnumElementTSType();
+
+          return argumentEnumType.isSame(parameterEnumType);
+        }
+
+        if (argumentType.isTSObjectType()) {
+          const parameterDeclaration = parameterType.getSymbol().declarations[0];
+          const argumentDeclaration = argumentType.getSymbol().declarations[0];
+
+          if (parameterDeclaration && argumentDeclaration) {
+            const parameterProperties = parameterDeclaration.ownProperties;
+            const argumentProperties = argumentDeclaration.ownProperties;
+
+            const sorter = (lhs: Declaration, rhs: Declaration) => {
+              const lhsName = lhs.name?.getText();
+              const rhsName = rhs.name?.getText();
+
+              if (!lhsName || !rhsName) {
+                throw new Error(`Expected named property at: '${parameterDeclaration.getText()}' or '${argumentDeclaration.getText()}'`);
+              }
+
+              if (lhsName > rhsName) {
+                return 1;
+              }
+
+              return -1;
+            }
+
+            parameterProperties.sort(sorter);
+            argumentProperties.sort(sorter);
+
+            return parameterProperties.every((prop, index) => {
+              const argumentProperty = argumentProperties[index];
+              return prop.name?.getText() === argumentProperty.name?.getText() && prop.type.isSame(argumentProperty.type);
+            });
+          }
+        }
+
         return argumentType.isSame(parameterType) || argumentType.isUpcastableTo(parameterType);
       });
     });
@@ -402,7 +442,7 @@ export class Declaration {
 
   getScope(thisType: TSType | undefined): Scope {
     if (thisType) {
-      const namespace = this.getNamespace();
+      const namespace = this.getNamespace(true);
       const typename = thisType.mangle();
       const qualifiedName = namespace.concat(typename).join(".");
       return this.generator.symbolTable.get(qualifiedName) as Scope;
@@ -462,7 +502,7 @@ export class Declaration {
 
   getOwnMethods() {
     return this.members.filter((m) => {
-      return m.isMethod() && !m.isStaticMethod() && m.name;
+      return (m.isMethod() || m.isGetAccessor() || m.isSetAccessor()) && !m.isStaticMethod() && m.name;
     });
   }
 

@@ -149,6 +149,10 @@ export class TSType {
     return [];
   }
 
+  isNever() {
+    return this.toString() === "never";
+  }
+
   isArray() {
     if (this.isSymbolless()) {
       return false;
@@ -305,7 +309,7 @@ export class TSType {
   }
 
   isNumber() {
-    return Boolean(this.type.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral));
+    return Boolean(this.type.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral)) || this.toString() === "Number";
   }
 
   isEnum() {
@@ -490,9 +494,13 @@ export class TSType {
 
   mangle(): string {
     if (this.isArray()) {
-      const types = this.getTypeGenericArguments()
-        .map((typeArgument) => typeArgument.toString())
-        .join("_");
+      const genericArgs = this.getTypeGenericArguments();
+
+      if (genericArgs.length === 0) {
+        throw new Error(`Mangling: failed to get generic arguments for Array. Type: '${this.toString()}'`);
+      }
+
+      const types = genericArgs.map((typeArgument) => typeArgument.toString()).join("_");
       return "Array__" + types + "__class";
     }
 
@@ -720,6 +728,10 @@ export class TSType {
       return "Object*";
     }
 
+    if (this.isTypeParameter()) {
+      return "Object*";
+    }
+
     if (this.isEnum() && !this.isAmbient()) {
       return this.getEnumElementCppType();
     }
@@ -751,15 +763,37 @@ export class TSType {
 
   isSame(type: TSType) {
     return this.type === type.unwrap() ||
+    (this.isBoolean() && type.isBoolean()) ||
     (this.isNumber() && type.isNumber()) ||
-    (this.isString() && type.isString());
+    (this.isString() && type.isString()) ||
+    (this.isFunction() && type.isFunction());
   }
 
   unwrap() {
     return this.type;
   }
 
-  protected getEnumElementType() {
+  getEnumElementTSType() {
+    const declaration = this.getSymbol().declarations[0];
+    if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
+      throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");
+    }
+
+    if (declaration.isEnum()) {
+      // @todo: This is a case when enum is used as some class property type. Enum's homogeneous have to be checked here and first member's type should be used.
+      // Pretend it is a numeric enum for now.
+      return this.checker.generator.builtinNumber.getTSType();
+    }
+
+    if (!declaration.initializer) {
+      // initializer absence indicates that it is numeric enum
+      return this.checker.generator.builtinNumber.getTSType();
+    }
+
+    return this.checker.getTypeAtLocation(declaration.initializer);
+  }
+
+  getEnumElementType() {
     const declaration = this.getSymbol().declarations[0];
     if (!declaration || (!declaration.isEnumMember() && !declaration.isEnum())) {
       throw new Error("No declaration for enum found or declaration is not a enum member or enum declaration");

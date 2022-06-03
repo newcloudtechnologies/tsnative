@@ -34,8 +34,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           }
           if (!ts.isArrayLiteralExpression(variableDeclaration.initializer)) {
             throw new Error(
-              `Unexpected tuple initializer of kind '${
-                ts.SyntaxKind[variableDeclaration.initializer.kind]
+              `Unexpected tuple initializer of kind '${ts.SyntaxKind[variableDeclaration.initializer.kind]
               }', expected array literal`
             );
           }
@@ -130,9 +129,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): LLVMValue {
-    const arrayType = this.generator.ts.array.getType(expression);
-    const elementType = arrayType.getTypeGenericArguments()[0];
-
     const constructorAndMemory = this.generator.ts.array.createConstructor(expression);
     const { constructor } = constructorAndMemory;
     let { allocated } = constructorAndMemory;
@@ -142,6 +138,9 @@ export class LiteralHandler extends AbstractExpressionHandler {
     if (expression.elements.length === 0) {
       return allocated;
     }
+
+    const arrayType = this.generator.ts.array.getType(expression);
+    const elementType = arrayType.getTypeGenericArguments()[0];
 
     const push = this.generator.ts.array.createPush(elementType, expression);
     for (const element of expression.elements) {
@@ -153,12 +152,20 @@ export class LiteralHandler extends AbstractExpressionHandler {
           elementValue = elementValue.allocated;
         }
 
+        if (!elementType.isUnion() && elementValue.type.isUnion()) {
+          elementValue = this.generator.ts.union.get(elementValue);
+        }
+
         allocated = this.generator.builder.createSafeCall(concat, [
           this.generator.builder.asVoidStar(allocated),
           this.generator.builder.asVoidStar(elementValue),
         ]);
       } else {
-        const elementValue = this.generator.handleExpression(element, outerEnv);
+        let elementValue = this.generator.handleExpression(element, outerEnv);
+        if (!elementType.isUnion() && elementValue.type.isUnion()) {
+          elementValue = this.generator.ts.union.get(elementValue);
+        }
+
         this.generator.builder.createSafeCall(push, [
           this.generator.builder.asVoidStar(allocated),
           this.generator.builder.asVoidStar(elementValue),

@@ -38,8 +38,7 @@ export class TSArray {
   getArgumentArrayType(expression: ts.ArrayLiteralExpression) {
     if (!ts.isCallExpression(expression.parent) && !ts.isNewExpression(expression.parent)) {
       throw new Error(
-        `Expected expression parent to be of kind ts.CallExpression or ts.NewExpression, got '${
-          ts.SyntaxKind[expression.parent.kind]
+        `Expected expression parent to be of kind ts.CallExpression or ts.NewExpression, got '${ts.SyntaxKind[expression.parent.kind]
         }'`
       );
     }
@@ -72,7 +71,7 @@ export class TSArray {
   getType(expression: ts.ArrayLiteralExpression) {
     let arrayType;
     if (expression.elements.length === 0) {
-      if (ts.isVariableDeclaration(expression.parent)) {
+      if (ts.isVariableDeclaration(expression.parent) || ts.isPropertyDeclaration(expression.parent)) {
         arrayType = this.generator.ts.checker.getTypeAtLocation(expression.parent);
       } else if (ts.isCallExpression(expression.parent) || ts.isNewExpression(expression.parent)) {
         arrayType = this.getArgumentArrayType(expression);
@@ -89,6 +88,36 @@ export class TSArray {
 
     if (!arrayType) {
       arrayType = this.generator.ts.checker.getTypeAtLocation(expression);
+      const elementType = arrayType.getTypeGenericArguments()[0];
+
+      if (elementType.isNever()) {
+        let returnStatement = expression.parent;
+
+        while (returnStatement.parent && !ts.isReturnStatement(returnStatement)) {
+          returnStatement = returnStatement.parent;
+        }
+
+        if (!returnStatement || !ts.isReturnStatement(returnStatement)) {
+          throw new Error(`Type of empty array can only be deduced at return statement. Error at: '${expression.parent.getText()}'`);
+        }
+
+        let parentFunction = expression.parent.parent;
+        while (parentFunction.parent && !ts.isFunctionLike(parentFunction)) {
+          parentFunction = parentFunction.parent;
+        }
+
+        const functionType = this.generator.ts.checker.getTypeAtLocation(parentFunction);
+        const functionSymbol = functionType.getSymbol();
+        const functionDeclaration = functionSymbol.valueDeclaration;
+
+        if (!functionDeclaration) {
+          throw new Error(`Unable to find valude declaration for type: '${functionType.toString}'. Error at: '${parentFunction.getText()}'`);
+        }
+
+        const signature = this.generator.ts.checker.getSignatureFromDeclaration(functionDeclaration);
+
+        arrayType = signature.getReturnType();
+      }
     }
 
     return arrayType;

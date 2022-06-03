@@ -283,8 +283,15 @@ export function createEnvironment(
         return;
       }
 
+      let parameterName = parameters[index].escapedName.toString();
+      // Note about 'escapedText' from tsc: Text of identifier, but if the identifier begins with two underscores, this will begin with three;
+      // Cut leading underscore
+      if (parameterName.startsWith("___")) {
+        parameterName = parameterName.substring(1);
+      }
+
       const allocated = functionData.args[index];
-      map.set(parameters[index].escapedName.toString(), { type: argType, allocated });
+      map.set(parameterName, { type: argType, allocated });
     });
   }
 

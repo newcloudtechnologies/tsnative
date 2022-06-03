@@ -453,3 +453,26 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
   console.assert(length === 3, "Array length");
 }
+
+{
+  class MyType {
+    str: string = "Lol";
+  }
+
+  const wow = new Array<MyType>();
+
+  wow.push({ str: "kf" }, new MyType);
+
+  console.log(wow[0].str === "kf" && wow[1].str === "Lol", "new Array<custom type>");
+}
+
+{
+  class C {
+    s: string = "2";
+  }
+
+  let c: C | undefined = undefined;
+  const arr: C[] = [c = new C];
+
+  console.assert(arr[0].s === "2", "Optional union is casted to array element type");
+}

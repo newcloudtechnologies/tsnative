@@ -134,6 +134,10 @@ export class SysVFunctionHandler {
       if (parameterAtIndex) {
         const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
 
+        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
+          return this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+        }
+
         if (parameterDeclaration.type.isEnum()) {
           return arg.asLLVMInteger();
         }
@@ -204,7 +208,12 @@ export class SysVFunctionHandler {
     qualifiedName: string,
     outerEnv?: Environment
   ): LLVMValue {
-    const thisType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    // Getting type for 'expression.expression' of 'new Array<T>' gives 'typeof Array' and this breaks mangling scheme.
+    // Since TS constructors actually return values use return type for 'this' type determination.
+    // 'super' calls return nothing, so use type at 'super'.
+    const typeSource = ts.isNewExpression(expression) ? expression : expression.expression;
+
+    const thisType = this.generator.ts.checker.getTypeAtLocation(typeSource);
     const symbol = thisType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
     if (!valueDeclaration) {
@@ -235,6 +244,10 @@ export class SysVFunctionHandler {
         const parameterAtIndex = constructorDeclaration.parameters[index];
         if (parameterAtIndex) {
           const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+
+          if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
+            return this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+          }
 
           if (parameterDeclaration.type.isEnum()) {
             return arg.asLLVMInteger();

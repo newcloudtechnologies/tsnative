@@ -16,6 +16,7 @@ import { flatten } from "lodash";
 import { NmSymbolExtractor, ExternalSymbolsProvider } from "../mangling";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
+import { Declaration } from "../ts/declaration";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
@@ -106,8 +107,7 @@ export class TemplateInstantiator {
       call = node;
     } else {
       throw new Error(
-        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${
-          ts.SyntaxKind[node.kind]
+        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]
         }`
       );
     }
@@ -239,6 +239,10 @@ export class TemplateInstantiator {
           tsType = this.generator.ts.checker.getTypeAtLocation(node);
           const elementType = tsType.getTypeGenericArguments()[0];
 
+          if (elementType.isNever()) {
+            return;
+          }
+
           if (elementType.isTypeParameter() && !elementType.isSupported()) {
             if (ts.isPropertyDeclaration(node)) {
               return;
@@ -246,6 +250,15 @@ export class TemplateInstantiator {
 
             const visitor = this.withTypesMapFromTypesProviderForNode(node, (typesMap: Map<string, TSType>) => {
               const concreteElementType = typesMap.get(elementType.toString())!;
+
+              if (!concreteElementType) {
+                throw new Error(
+                  `Unable to find generic mapping for '${elementType.toString()}'. Error at: '${node.parent.getText()}'. Types map keys: '${Array.from(
+                    typesMap.keys()
+                  )}'`
+                );
+              }
+
               const elementTypename = concreteElementType.toCppType();
 
               const templateInstance = `template class Array<${elementTypename}>;`;
@@ -274,7 +287,8 @@ export class TemplateInstantiator {
     }
 
     const tsArrayType = this.generator.ts.checker.getTypeAtLocation(call.expression.expression);
-    let cppArrayType = tsArrayType.toCppType();
+    let cppArrayType = tsArrayType.toPlainCppType();
+
     const methodName = call.expression.name.getText();
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(call);
@@ -307,9 +321,13 @@ export class TemplateInstantiator {
 
       const resolveArrayElementType = (arrayType: TSType) => {
         const arrayTypename = arrayType.toString();
-        arrayType = typesMap.get(arrayTypename)!;
+        const maybeArrayType = typesMap.get(arrayTypename);
 
-        return arrayType.toCppType();
+        if (!maybeArrayType) {
+          throw new Error(`Unknown array type '${arrayTypename}}'`);
+        }
+
+        return maybeArrayType.toCppType();
       };
 
       const thisArrayElementType = tsArrayType.getTypeGenericArguments()[0];
@@ -467,9 +485,8 @@ export class TemplateInstantiator {
       return (_: ts.Node) => { };
     }
 
-    const typesProviderType = this.generator.ts.checker.getTypeAtLocation(genericTypesProvider);
-    const typesProviderSymbol = typesProviderType.getSymbol();
-    const typesProviderDeclaration = typesProviderSymbol.declarations[0];
+    const typesProviderDeclaration = Declaration.create(genericTypesProvider, this.generator);
+    const typesProviderSymbol = typesProviderDeclaration.type.getSymbol();
     const typesProviderSignature = this.generator.ts.checker.getSignatureFromDeclaration(typesProviderDeclaration);
 
     const visitor = (n: ts.Node) => {

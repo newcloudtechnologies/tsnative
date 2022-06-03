@@ -21,14 +21,30 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       this.generator.emitLocation(expression.left);
       this.generator.emitLocation(expression.right);
 
-      const left = this.generator.handleExpression(expression.left, env);
-      const right = this.generator.handleExpression(expression.right, env);
+      let left = this.generator.handleExpression(expression.left, env);
+      let right = this.generator.handleExpression(expression.right, env);
+
+      if (left.type.isUnion() && ts.isIdentifier(expression.left)) {
+        left = this.generator.ts.union.get(left);
+        left = this.generator.builder.createBitCast(
+          left,
+          this.generator.ts.checker.getTypeAtLocation(expression.left).getLLVMType()
+        );
+      }
+
+      if (right.type.isUnion() && ts.isIdentifier(expression.right)) {
+        right = this.generator.ts.union.get(right);
+        right = this.generator.builder.createBitCast(
+          right,
+          this.generator.ts.checker.getTypeAtLocation(expression.right).getLLVMType()
+        );
+      }
 
       switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsToken:
         case ts.SyntaxKind.ExclamationEqualsToken:
           throw new Error(
-            `Comparison with implicit conversion is not supported. Use '===' or '!==' instead of weakened operators. Error at: '${expression.getText()}'`
+            `Non-strict equality operator (==) is not supported. Use '===' or '!==' instead. Error at: '${expression.getText()}'`
           );
         case ts.SyntaxKind.EqualsEqualsEqualsToken:
           return left.createEquals(right);
