@@ -7,6 +7,9 @@
 template class Array<String*>;
 template class IteratorResult<String*>;
 
+template class Array<Object*>;
+template class IteratorResult<Object*>;
+
 template class Array<void*>;
 template class Map<void*, void*>;
 template class Set<void*>;

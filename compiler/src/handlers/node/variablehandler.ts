@@ -48,7 +48,13 @@ export class VariableHandler extends AbstractNodeHandler {
     parentScope: Scope,
     outerEnv?: Environment
   ): void {
-    const name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
+    let name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
+
+    // Note about 'escapedText' from tsc: Text of identifier, but if the identifier begins with two underscores, this will begin with three;
+    // Cut leading underscore
+    if (name.startsWith("___")) {
+      name = name.substring(1);
+    }
 
     let initializer = this.getInitializer(declaration, name, parentScope, outerEnv);
     if (!initializer) {
@@ -67,7 +73,7 @@ export class VariableHandler extends AbstractNodeHandler {
       }
     }
 
-    if (type.isUnion()) {
+    if (type.isUnion() && !initializer.type.isUnion()) {
       initializer = this.generator.ts.union.create(initializer);
     }
 
@@ -102,7 +108,31 @@ export class VariableHandler extends AbstractNodeHandler {
       declaration.initializer.kind === ts.SyntaxKind.NullKeyword ||
       declaration.initializer.kind === ts.SyntaxKind.UndefinedKeyword
     ) {
-      const allocated = this.generator.ts.union.create();
+      const type = this.generator.ts.checker.getTypeAtLocation(declaration);
+
+      let allocated: LLVMValue;
+      if (type.isUndefined() || type.isNull()) {
+        allocated = this.generator.ts.undef.get();
+      } else {
+        const allocateUnion = declaration.initializer || type.isOptionalUnion();
+        if (allocateUnion) {
+          allocated = this.generator.ts.union.create();
+        } else {
+          const variableSymbol = type.getSymbol();
+          const variableTypeDeclaration = variableSymbol.valueDeclaration;
+
+          if (!variableTypeDeclaration) {
+            throw new Error(`Unable to find value declaration for type '${type.toString()}'. Error at: '${declaration.getText()}'`);
+          }
+
+          if (!variableTypeDeclaration.isAmbient()) {
+            allocated = this.generator.ts.obj.create();
+          } else {
+            allocated = this.generator.gc.allocate(type.getLLVMType().getPointerElementType());
+          }
+        }
+      }
+
       parentScope.set(name, new HeapVariableDeclaration(allocated, allocated, name, declaration));
       initializer = undefined;
     } else {
@@ -128,8 +158,7 @@ export class VariableHandler extends AbstractNodeHandler {
 
       if (!ts.isIdentifier(element.name)) {
         throw new Error(
-          `Array destructuring is not support non-identifiers, got '${
-            ts.SyntaxKind[element.kind]
+          `Array destructuring is not support non-identifiers, got '${ts.SyntaxKind[element.kind]
           }' at '${element.getText()}'`
         );
       }

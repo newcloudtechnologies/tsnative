@@ -334,7 +334,7 @@ export class ConciseBody {
     });
   }
 
-  private getStaticFunctionEnvironmentVariables() {
+  private getStaticFunctionEnvironmentVariables(handled: ts.Node[] = []) {
     return this.generator.withInsertBlockKeeping(() => {
       return this.generator.symbolTable.withLocalScope((_) => {
         const externalVariables: string[] = [];
@@ -343,18 +343,39 @@ export class ConciseBody {
         this.generator.builder.setInsertionPoint(dummyBlock);
 
         const visitor = (node: ts.Node) => {
+          if (handled.includes(node)) {
+            return;
+          }
+
+          handled.push(node);
+
           if (ts.isPropertyAccessExpression(node)) {
             const propertyAccess = node.name;
             const symbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccess);
             const declaration = symbol.declarations[0];
-            if (declaration.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)) {
+
+            if (declaration.isStaticProperty()) {
               externalVariables.push(node.getText());
             }
           }
 
-          if (node.getChildCount()) {
-            node.forEachChild(visitor);
+          if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(node)) {
+            const symbol = this.generator.ts.checker.getSymbolAtLocation(node);
+            const declaration = symbol.valueDeclaration;
+
+            if (declaration?.isClass()) {
+              declaration.getMethods().forEach((method) => {
+                method.body?.forEachChild(visitor);
+              });
+
+              const constructorDeclaration = declaration.members.find((m) => m.isConstructor());
+              if (constructorDeclaration) {
+                constructorDeclaration.body?.forEachChild(visitor);
+              }
+            }
           }
+
+          node.forEachChild(visitor);
         };
 
         ts.forEachChild(this.body, visitor);

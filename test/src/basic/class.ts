@@ -1468,3 +1468,87 @@
   const d = new Derived();
   console.assert(d === d.render(), "Return of 'this' through heirachy chain must be most derived 'this'")
 }
+
+{
+  class RxWidget {
+    addChild(child: RxWidget): void {
+      child._setParent(this);
+    }
+
+    private _setParent(parent: RxWidget): void {
+      console.assert(true, "'this' as method argument");
+    }
+  }
+
+  const root: RxWidget = new RxWidget();
+
+  const subRoot: RxWidget = new RxWidget();
+  root.addChild(subRoot);
+}
+
+{
+  class Base {
+    value: string;
+
+    createValue(): string {
+      return "base";
+    }
+
+    constructor() {
+      const getValFn = this.createValue.bind(this);
+      this.value = getValFn();
+    }
+  }
+
+  class Derived extends Base {
+    createValue(): string {
+      return "derived";
+    }
+  }
+
+  console.assert(new Derived().value === "derived", "Bind derived class method in base ctor");
+}
+
+{
+  class Maybe<Type1000> {
+    _isInitialized: boolean = false;
+    private _value: Type1000[] = [];
+
+    get value(): Type1000 {
+      return this._value[0];
+    }
+
+    set value(val: Type1000) {
+      this._value.push(val);
+      this._isInitialized = true;
+    }
+  }
+
+  class Wow {
+    str: string = "20";
+  }
+
+  let w = new Maybe<Wow>();
+  w.value = new Wow();
+
+  console.assert(w._isInitialized && w.value.str === "20", "Empty array as property default initializer");
+}
+
+{
+  class RxIconButton_t {
+    static y: number = 10;
+
+    constructor() {
+      RxIconButton_t.y += 100
+    }
+  }
+
+  function foo() {
+    return new RxIconButton_t();
+  }
+
+  foo();
+  foo();
+
+  console.assert(RxIconButton_t.y === 210, "Static class property is captured in environment");
+}

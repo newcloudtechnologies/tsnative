@@ -14,7 +14,7 @@
 declare namespace console {
     export function log(message: any, ...optionalParams: any[]): void;
 
-    export function assert(assumption: boolean, ...optionalParams: any[]): void;
+    export function assert(assumption: any, ...optionalParams: any[]): void;
 }
 
 declare type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : never;

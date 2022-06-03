@@ -192,3 +192,9 @@ import createStore2 from "./union_type_imports"
     const obj = new MyObj;
     console.assert(!obj.data, "Object property of 'T | null' type initialized by null")
 }
+
+{
+    const a: string | undefined = 'test';
+    const b: string | undefined = a;
+    console.assert(b as string === "test", "Union-to-union assignment");
+}

@@ -19,14 +19,16 @@ export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isReturnStatement(node)) {
       this.generator.emitLocation(node);
+
+      const currentFunctionReturnType = LLVMType.make(
+        this.generator.currentFunction.type.elementType.returnType,
+        this.generator
+      );
+
       if (node.expression) {
         this.generator.emitLocation(node);
-        let ret = this.generator.handleExpression(node.expression, env);
 
-        const currentFunctionReturnType = LLVMType.make(
-          this.generator.currentFunction.type.elementType.returnType,
-          this.generator
-        );
+        let ret = this.generator.handleExpression(node.expression, env);
 
         if (node.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
           const currentClassDeclaration = this.generator.meta.getCurrentClassDeclaration();
@@ -59,14 +61,14 @@ export class ReturnHandler extends AbstractNodeHandler {
           }
 
           const retTypeUnwrapped = ret.type.unwrapPointer();
-          if (
+          if (currentFunctionReturnType.isUnion()) {
+            ret = this.generator.ts.union.create(ret);
+          } else if (
             (retTypeUnwrapped.isStructType() &&
               retTypeUnwrapped.isSameStructs(currentFunctionReturnType.unwrapPointer())) ||
             (ret.type.isPointer() && retTypeUnwrapped.isIntegerType(8))
           ) {
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
-          } else if (currentFunctionReturnType.isUnion()) {
-            ret = this.generator.ts.union.create(ret);
           } else {
             if (ret.type.isUnion()) {
               ret = this.generator.ts.union.get(ret);
@@ -78,9 +80,12 @@ export class ReturnHandler extends AbstractNodeHandler {
 
         this.generator.builder.createSafeRet(ret);
       } else {
-        const un = this.generator.ts.undef.get();
-        const optionalUnion = this.generator.ts.union.create(un);
-        this.generator.builder.createSafeRet(optionalUnion);
+        if (currentFunctionReturnType.isUndefined()) {
+          this.generator.builder.createSafeRet(this.generator.ts.undef.get());
+        } else {
+          const optionalUnion = this.generator.ts.union.create();
+          this.generator.builder.createSafeRet(optionalUnion);
+        }
       }
 
       return true;
