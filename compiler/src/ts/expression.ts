@@ -141,6 +141,6 @@ export class Expression {
 
     const symbol = type.getSymbol();
 
-    return (symbol.flags & ts.SymbolFlags.Method) !== 0 && !symbol.valueDeclaration!.isStaticMethod();
+    return (symbol.flags & ts.SymbolFlags.Method) !== 0 && !symbol.valueDeclaration!.isStatic();
   }
 }

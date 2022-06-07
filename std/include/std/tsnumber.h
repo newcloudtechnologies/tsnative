@@ -22,8 +22,7 @@ public:
     Number(Number* v);
 
     ~Number() override;
-
-
+    
     TS_METHOD Number* add(Number* other) const;
     TS_METHOD Number* sub(Number* other) const;
     TS_METHOD Number* mul(Number* other) const;

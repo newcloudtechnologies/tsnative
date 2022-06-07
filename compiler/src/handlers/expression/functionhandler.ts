@@ -677,10 +677,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    let thisType;
-    if (!valueDeclaration.isStaticMethod()) {
-      thisType = this.generator.ts.checker.getTypeAtLocation(valueDeclaration.parent);
-    }
+    const thisType = this.generator.ts.checker.getTypeAtLocation(valueDeclaration.parent);
 
     const { isExternalSymbol, qualifiedName } = FunctionMangler.mangle(
       valueDeclaration,
@@ -703,7 +700,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     let callResult: LLVMValue;
 
-    if (!valueDeclaration.isStaticMethod()) {
+    if (!valueDeclaration.isStatic()) {
       const thisValue = this.generator.handleExpression(expression.expression, outerEnv);
 
       const key = valueDeclaration.name.getText() + "__get";
@@ -765,7 +762,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     let thisType;
-    if (!valueDeclaration.isStaticMethod()) {
+    if (!valueDeclaration.isStatic()) {
       thisType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     }
 
@@ -788,7 +785,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const parent = expression.parent as ts.BinaryExpression;
     const value = this.generator.handleExpression(parent.right, outerEnv);
 
-    if (!valueDeclaration.isStaticMethod()) {
+    if (!valueDeclaration.isStatic()) {
       const thisValue = this.generator.handleExpression(expression.expression, outerEnv);
 
       const args = [value];
@@ -944,7 +941,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const rootType = this.generator.ts.checker.getTypeAtLocation(expression.expression.expression);
 
       if (
-        !propertySymbol.isStaticMethod() &&
+        !propertySymbol.isStatic() &&
         !rootType.isNamespace() &&
         propertySymbol.valueDeclaration &&
         !propertySymbol.valueDeclaration.isAmbient()
@@ -1103,7 +1100,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       });
     }
 
-    const thisTypeForMangling = valueDeclaration.isStaticMethod()
+    const thisTypeForMangling = valueDeclaration.isStatic()
       ? this.generator.ts.checker.getTypeAtLocation((expression.expression as ts.PropertyAccessExpression).expression)
       : thisType;
 
@@ -1218,7 +1215,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const llvmArgumentTypes = [env.voidStar];
 
-    if (valueDeclaration.isStaticMethod()) {
+    if (valueDeclaration.isStatic()) {
       qualifiedName += "__" + "static";
     }
 

@@ -80,4 +80,8 @@ export const DATE_DEFINITION = toPosixStyle(
   path.join(__dirname, "definitions", "tsdate.d.ts")
 );
 
+export const MATH_DEFINITION = toPosixStyle(
+  path.join(__dirname, "definitions", "tsmath.d.ts")
+);
+
 export const STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));

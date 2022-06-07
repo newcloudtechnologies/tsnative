@@ -42,8 +42,8 @@ export class TSSymbol {
     return this.valueDeclaration?.isMethod();
   }
 
-  isStaticMethod() {
-    return this.valueDeclaration?.isStaticMethod();
+  isStatic() {
+    return this.valueDeclaration?.isStatic();
   }
 
   isOptionalMethod() {

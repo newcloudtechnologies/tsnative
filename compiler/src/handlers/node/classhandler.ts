@@ -53,7 +53,7 @@ export class ClassHandler extends AbstractNodeHandler {
     }
 
     for (const memberDecl of declaration.members) {
-      if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStaticProperty()) {
+      if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStatic()) {
         const initializerValue = this.generator.handleExpression(memberDecl.initializer);
         staticProperties.set(memberDecl.name!.getText(), initializerValue);
       }

@@ -59,7 +59,7 @@ export class ConciseBody {
         const dummyBlock = llvm.BasicBlock.create(this.generator.context, "dummy", this.generator.currentFunction);
         this.generator.builder.setInsertionPoint(dummyBlock);
 
-        const isStaticProperty = (node: ts.Node): boolean => {
+        const isStatic = (node: ts.Node): boolean => {
           let result = false;
 
           if (!this.generator.ts.checker.nodeHasSymbolAndDeclaration(node)) {
@@ -71,7 +71,7 @@ export class ConciseBody {
           if (symbol.valueDeclaration?.kind === ts.SyntaxKind.PropertyDeclaration) {
             const propertyDeclaration = symbol.valueDeclaration;
 
-            result = propertyDeclaration.isStaticProperty();
+            result = propertyDeclaration.isStatic();
           } else {
             result = false;
           }
@@ -80,7 +80,7 @@ export class ConciseBody {
         };
 
         const addNonLocalVariableIfNeeded = (node: ts.Node) => {
-          if (isStaticProperty(node)) {
+          if (isStatic(node)) {
             return;
           }
 
@@ -354,7 +354,7 @@ export class ConciseBody {
             const symbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccess);
             const declaration = symbol.declarations[0];
 
-            if (declaration.isStaticProperty()) {
+            if (declaration.isStatic()) {
               externalVariables.push(node.getText());
             }
           }

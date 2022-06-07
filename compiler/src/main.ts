@@ -26,7 +26,8 @@ import {
   STRING_ITERATOR_DEFINITION,
   MAP_ITERATOR_DEFINITION,
   SET_ITERATOR_DEFINITION,
-  DATE_DEFINITION
+  DATE_DEFINITION,
+  MATH_DEFINITION
 } from "../std/constants";
 
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
@@ -113,7 +114,8 @@ async function main() {
     STRING_ITERATOR_DEFINITION,
     MAP_ITERATOR_DEFINITION,
     SET_ITERATOR_DEFINITION,
-    DATE_DEFINITION
+    DATE_DEFINITION,
+    MATH_DEFINITION
   ];
   options.types = [];
 
