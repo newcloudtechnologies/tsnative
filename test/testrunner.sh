@@ -68,8 +68,6 @@ TEST_DIRS=( "${CURRENT_DIR}/src/app" \
 INCLUDE_FILTER="*.ts"
 EXCLUDE_FILTER=( "*.d.ts" )
 
-EXCLUDE_FILTER+=("exceptions.ts")
-
 # FIXME: AN-926
 if [ "$OSTYPE" == "msys" ]; then
     EXCLUDE_FILTER+=("exceptions.ts")

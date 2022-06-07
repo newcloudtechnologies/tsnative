@@ -43,7 +43,7 @@ export class ReturnHandler extends AbstractNodeHandler {
           }
         }
 
-        if (this.generator.builder.getInsertBlock()?.name === "lpad") {
+        if (this.generator.builder.getInsertBlock()?.name.startsWith("catch.body")) {
           const cxaEndCatchFn = this.generator.module.getFunction("__cxa_end_catch");
           this.generator.builder.unwrap().createCall(cxaEndCatchFn!, []);
         }

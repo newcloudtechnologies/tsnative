@@ -1754,24 +1754,19 @@ export class FunctionHandler extends AbstractExpressionHandler {
               }
 
               if (!this.generator.isCurrentBlockTerminated) {
-                if (this.generator.builder.getInsertBlock()?.name.startsWith("after.try")) {
-                  const eh = new llvm.ExceptionHandlingGenerator(this.generator.module, this.generator.builder.unwrap());
-                  eh.createUnreachable();
-                } else {
-                  const currentReturnType = LLVMType.make(
+                const currentReturnType = LLVMType.make(
                     this.generator.currentFunction.type.elementType.returnType,
                     this.generator
-                  );
-                  const returnsOptional = currentReturnType.isUnion();
+                );
+                const returnsOptional = currentReturnType.isUnion();
 
-                  if (returnsOptional) {
-                    const nullOptional = this.generator.ts.union.create();
-                    this.generator.builder.createSafeRet(nullOptional);
-                  } else {
-                    let undef = this.generator.ts.undef.get();
-                    undef = this.generator.builder.createBitCast(undef, currentReturnType);
-                    this.generator.builder.createSafeRet(undef);
-                  }
+                if (returnsOptional) {
+                  const nullOptional = this.generator.ts.union.create();
+                  this.generator.builder.createSafeRet(nullOptional);
+                } else {
+                  let undef = this.generator.ts.undef.get();
+                  undef = this.generator.builder.createBitCast(undef, currentReturnType);
+                  this.generator.builder.createSafeRet(undef);
                 }
               }
             },
@@ -2062,17 +2057,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const entry = builder.functionMetaEntry.get(declarationBody);
     if (entry && entry.needUnwind) {
-      const eh = new llvm.ExceptionHandlingGenerator(module, builder.unwrap());
       if (needUnwind(expression)) {
         const lpadBB = builder.landingPadStack[builder.landingPadStack.length - 1];
         const continueBB = llvm.BasicBlock.create(context, "continue", currentFunction);
-        eh.createInvoke(
+        const invokeInst = builder.unwrap().CreateInvoke(
           callee.unwrapped,
           continueBB,
           lpadBB,
           args.map((arg) => arg.unwrapped)
         );
-        const invokeInst = builder.getInsertBlock()?.getTerminator();
         builder.setInsertionPoint(continueBB);
         return invokeInst ? LLVMValue.create(invokeInst, this.generator) : LLVMConstantInt.getFalse(this.generator);
       } else {
