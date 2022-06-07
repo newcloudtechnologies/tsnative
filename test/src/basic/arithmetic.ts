@@ -76,6 +76,7 @@
     return x--;
   }
 
+  // TODO Refactor: all number comparison checks should be done using tolerance Number.EPSILON
   console.assert(addition1(2, 3) === 5, "arithmetics: addition1(2, 3) failed");
   console.assert(addition1(-2, -3) === -5, "arithmetics: addition1(-2, -3) failed");
   console.assert(addition1(-2, 3) === 1, "arithmetics: addition1(-2, 3) failed");

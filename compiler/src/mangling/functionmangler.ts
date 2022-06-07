@@ -92,7 +92,7 @@ export class FunctionMangler {
     const symbol = generator.ts.checker.getTypeAtLocation(call.expression).getSymbol();
     const valueDeclaration = symbol.declarations[0];
 
-    const thisTypeForMangling = valueDeclaration.isStaticMethod()
+    const thisTypeForMangling = valueDeclaration.isStatic()
       ? generator.ts.checker.getTypeAtLocation((call.expression as ts.PropertyAccessExpression).expression)
       : thisType;
 

@@ -32,6 +32,7 @@ set(HEADERS
     include/std/iterators/mapiterator.h
     include/std/iterators/setiterator.h
     include/std/iterators/stringiterator.h
+    include/std/tsmath.h
 )
 
 set(SOURCES
@@ -39,6 +40,7 @@ set(SOURCES
     src/tsboolean.cpp
     src/tsclosure.cpp
     src/tsdate.cpp
+    src/tsmath.cpp
     src/tsnumber.cpp
     src/tsboolean.cpp
     src/tsundefined.cpp
@@ -53,6 +55,7 @@ set(SOURCES
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
     src/private/tsdate_absl_p.cpp
+    src/private/tsmath_p.cpp
 )
 
 add_library(${PROJECT_NAME}

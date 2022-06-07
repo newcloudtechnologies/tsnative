@@ -36,8 +36,13 @@ export class SysVFunctionHandler {
       throw new Error(`No value declaration found at '${expression.getText()}'`);
     }
 
-    const llvmThisType = LLVMType.getInt8Type(this.generator).getPointer();
-    const llvmArgumentTypes = [llvmThisType];
+    const isStaticGetter = valueDeclaration.isStatic();
+
+    const llvmArgumentTypes: LLVMType[] = [];
+    if (!isStaticGetter) {
+      const llvmThisType = LLVMType.getInt8Type(this.generator).getPointer();
+      llvmArgumentTypes.push(llvmThisType);
+    }
 
     const tsReturnType = this.generator.ts.checker.getTypeAtLocation(expression);
     const llvmReturnType = tsReturnType.getLLVMType();
@@ -55,9 +60,12 @@ export class SysVFunctionHandler {
        Make sure there is no class '${parentClass.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
-    const thisValue = this.generator.handleExpression(expression.expression, env);
-    const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
-    const args = [thisValueUntyped];
+    const args: LLVMValue[] = [];
+    if (!isStaticGetter) {
+      const thisValue = this.generator.handleExpression(expression.expression, env);
+      const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
+      args.push(thisValueUntyped);
+    }
 
     let callResult = this.generator.builder.createSafeCall(fn, args);
     callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);

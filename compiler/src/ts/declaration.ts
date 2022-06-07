@@ -64,7 +64,7 @@ export class Declaration {
   }
 
   get ownProperties() {
-    return this.members.filter((m) => m.isProperty() && !m.isStaticProperty());
+    return this.members.filter((m) => m.isProperty() && !m.isStatic());
   }
 
   get inheritedProperties() {
@@ -502,7 +502,7 @@ export class Declaration {
 
   getOwnMethods() {
     return this.members.filter((m) => {
-      return (m.isMethod() || m.isGetAccessor() || m.isSetAccessor()) && !m.isStaticMethod() && m.name;
+      return (m.isMethod() || m.isGetAccessor() || m.isSetAccessor()) && !m.isStatic() && m.name;
     });
   }
 
@@ -689,21 +689,8 @@ export class Declaration {
     return Boolean(declaredAsOverride);
   }
 
-  isStaticMethod(): boolean {
-    return this.declaration.getText().startsWith(ts.ScriptElementKindModifier.staticModifier);
-  }
-
-  isStaticProperty(): boolean {
-    let result = false;
-    if (this.declaration.modifiers) {
-      const found = this.declaration.modifiers.find((it: ts.Modifier): boolean => {
-        return it.kind === ts.SyntaxKind.StaticKeyword;
-      });
-
-      result = Boolean(found);
-    }
-
-    return result;
+  isStatic(): boolean {
+    return Boolean(this.declaration.modifiers?.find((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword));
   }
 
   get unwrapped() {
