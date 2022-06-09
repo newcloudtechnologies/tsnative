@@ -19,8 +19,14 @@ export class LoopHelper {
   static isForLoopBlock(block: BasicBlock): boolean {
     return block.name.startsWith("for.");
   }
-
+  
+  static isDoWhileLoopBlock(block: BasicBlock): boolean { 
+    return block.name.startsWith("do.");
+  }
+  
   static isLoopBlock(block: BasicBlock): boolean {
-    return this.isForLoopBlock(block) || this.isWhileLoopBlock(block);
+    return this.isForLoopBlock(block) 
+          || this.isWhileLoopBlock(block) 
+          || this.isDoWhileLoopBlock(block);
   }
 }
