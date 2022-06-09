@@ -37,6 +37,10 @@ export class LoopHandler extends AbstractNodeHandler {
         this.generator.emitLocation(node);
         this.handleContinueStatement(node as ts.ContinueStatement);
         return true;
+      case ts.SyntaxKind.DoStatement:
+        this.generator.emitLocation(node);
+        this.handleDoWhileStatement(node as ts.DoStatement);
+        return true;
       default:
         break;
     }
@@ -81,6 +85,43 @@ export class LoopHandler extends AbstractNodeHandler {
     }
 
     currentFunction.addBasicBlock(end);
+    builder.setInsertionPoint(end);
+  }
+
+  private handleDoWhileStatement(statement: ts.DoStatement, env?: Environment): void {
+    const { builder, context, symbolTable, currentFunction } = this.generator;
+
+    const body = BasicBlock.create(context, "do.body");
+    const condition = BasicBlock.create(context, "do.cond", currentFunction);
+    const bodyLatch = BasicBlock.create(context, "do.body.latch");
+    const exiting = BasicBlock.create(context, "do.exiting");
+    const end = BasicBlock.create(context, "do.end");
+
+    currentFunction.addBasicBlock(body);
+    currentFunction.addBasicBlock(bodyLatch);
+    currentFunction.addBasicBlock(exiting);
+    currentFunction.addBasicBlock(end);
+    
+    builder.createBr(body);
+    builder.setInsertionPoint(body);
+    symbolTable.withLocalScope((scope) => {
+      this.generator.handleNode(statement.statement, scope, env);
+    }, this.generator.symbolTable.currentScope);
+
+    if (!this.generator.isCurrentBlockTerminated) {
+      builder.createBr(bodyLatch);
+    }
+
+    builder.setInsertionPoint(bodyLatch);
+    builder.createBr(condition);
+
+    builder.setInsertionPoint(condition);
+    const conditionValue = this.generator.handleExpression(statement.expression, env);
+    builder.createCondBr(conditionValue, body, exiting);
+
+    builder.setInsertionPoint(exiting);
+    builder.createBr(end);
+
     builder.setInsertionPoint(end);
   }
 
