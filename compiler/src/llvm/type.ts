@@ -293,8 +293,13 @@ export class LLVMStructType extends LLVMType {
     super(type, generator);
   }
 
-  static create(generator: LLVMGenerator, name?: string) {
+  static create(generator: LLVMGenerator, name?: string, types?: LLVMType[]) {
     const type = llvm.StructType.create(generator.context, name);
+
+    if (types) {
+      type.setBody(types.map((t) => t.unwrapped))
+    }
+
     return LLVMType.make(type, generator) as LLVMStructType;
   }
 
