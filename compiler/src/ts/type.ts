@@ -621,6 +621,10 @@ export class TSType {
         throw new Error(`No declaration found for type '${this.toString()}'`);
       }
 
+      if (!declaration.name) {
+        throw new Error(`No declaration name found at '${declaration.getText()}'`);
+      }
+
       const knownSize = (this.checker.generator.sizeOf.getByName(this.getTypename()) || 0) / 8;
       const sizeProperties = declaration.ownProperties.filter((prop) => prop.isPrivate());
 
@@ -628,8 +632,7 @@ export class TSType {
         this.checker.generator.builtinNumber.getLLVMType()
       );
 
-      // @todo create type to make ir readable?
-      const structType = LLVMStructType.get(this.checker.generator, propTypes);
+      const structType = LLVMStructType.create(this.checker.generator, declaration.name.getText(), propTypes);
 
       return structType.getPointer();
     }
