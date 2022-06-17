@@ -43,6 +43,10 @@ export class LLVMValue {
     this.value.name = name;
   }
 
+  get address() {
+    return this.value.address();
+  }
+
   getTSObjectPropsFromName() {
     const props = this.value.name.split(this.generator.internalNames.Object)[1]?.split(".");
     if (!props || props.length === 0) {

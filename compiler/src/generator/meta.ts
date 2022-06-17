@@ -26,16 +26,12 @@ class FunctionExpressionEnvStorage {
   readonly storage = new Map<string, Environment>();
 }
 
-class ClosureEnvironmentStorage {
-  readonly storage = new Map<LLVMValue, Environment>();
-}
-
 class ClassDeclarationTypeMapperStorage {
   readonly storage = new Map<ts.Declaration, GenericTypeMapper>();
 }
 
 class FixedArgsCountStorage {
-  readonly storage = new Map<LLVMValue, number>();
+  readonly storage = new Map<number, number>();
 }
 
 class SuperCallTracker {
@@ -45,7 +41,6 @@ class SuperCallTracker {
 export class MetaInfoStorage {
   private readonly closureParametersMeta = new ClosureParametersMetaStorage();
   private readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
-  private readonly closureEnvironment = new ClosureEnvironmentStorage();
   private readonly superCallTracker = new SuperCallTracker();
   private readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
   private readonly fixedArgs = new FixedArgsCountStorage();
@@ -94,24 +89,12 @@ export class MetaInfoStorage {
     return stored;
   }
 
-  registerClosureEnvironment(closure: LLVMValue, environment: Environment) {
-    this.closureEnvironment.storage.set(closure, environment);
-  }
-
-  getClosureEnvironment(closure: LLVMValue) {
-    const environment = this.closureEnvironment.storage.get(closure);
-    if (!environment) {
-      throw new Error("No environment registered");
-    }
-    return environment;
-  }
-
   registerFixedArgsCount(closure: LLVMValue, count: number) {
-    this.fixedArgs.storage.set(closure, count);
+    this.fixedArgs.storage.set(closure.address, count);
   }
 
   getFixedArgsCount(closure: LLVMValue) {
-    const count = this.fixedArgs.storage.get(closure);
+    const count = this.fixedArgs.storage.get(closure.address);
     if (typeof count === "undefined") {
       return 0;
     }

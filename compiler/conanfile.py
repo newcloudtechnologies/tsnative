@@ -11,7 +11,7 @@ class TSNativeCompilerConan(ConanFile):
     description = "Typescript compiler"
 
     def requirements(self):
-        self.requires("llvm-node/3.0.2")
+        self.requires("llvm-node/3.0.3")
 
     def imports(self):
         self.keep_imports = True # keep copied files in build folder

@@ -61,58 +61,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
             );
           default:
             // other property access kinds must be handled in AccessHandler
-            throw new Error("Unreachable");
+            throw new Error(`Unhandled property access '${expression.getText()}'`);
         }
 
       case ts.SyntaxKind.CallExpression:
         this.generator.emitLocation(expression);
+
         const call = expression as ts.CallExpression;
+
         if (call.expression.kind === ts.SyntaxKind.SuperKeyword) {
           return this.handleSuperCall(expression as ts.SuperCall, env);
         }
 
         if (this.isBindExpression(call)) {
           return this.handleFunctionBind(call, env);
-        }
-
-        if (!ts.isIdentifier(call.expression) && !ts.isPropertyAccessExpression(call.expression)) {
-          const functionToCall = this.generator.handleExpression(call.expression, env);
-
-          const signature = this.generator.ts.checker.getResolvedSignature(call);
-
-          const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-            return this.handleCallArguments(call, signature, localScope, env);
-          }, this.generator.symbolTable.currentScope);
-
-          const declaredLLVMFunctionType = this.generator.tsclosure.getLLVMType();
-          return this.handleTSClosureCall(
-            call,
-            signature,
-            args,
-            this.generator.builder.createBitCast(functionToCall, declaredLLVMFunctionType)
-          );
-        }
-
-        const functionName = call.expression.getText();
-
-        if (env) {
-          const knownIndex = env.getVariableIndex(functionName);
-          if (knownIndex > -1) {
-            // Function or closure is defined in current environment. Likely it is a funarg.
-            return this.handleEnvironmentKnownFunction(call, knownIndex, env);
-          }
-        }
-
-        let knownValue = this.generator.symbolTable.currentScope.tryGetThroughParentChain(functionName);
-        if (knownValue) {
-          if (knownValue instanceof HeapVariableDeclaration) {
-            knownValue = knownValue.allocated;
-          }
-          return this.generator.symbolTable.withLocalScope(
-            (_) => this.handleScopeKnownFunction(call, knownValue as ScopeValue, env),
-            this.generator.symbolTable.currentScope,
-            this.generator.internalNames.FunctionScope
-          );
         }
 
         return this.generator.symbolTable.withLocalScope(
@@ -150,213 +112,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return;
   }
 
-  private handleScopeKnownFunction(
-    expression: ts.CallExpression,
-    knownFunction: ScopeValue,
-    outerEnv?: Environment
-  ): LLVMValue {
-    if (!(knownFunction instanceof LLVMValue)) {
-      throw new Error(`Expected known function '${expression.getText()}' to be LLVMValue`);
-    }
-
-    const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
-    const symbol = type.getSymbol();
-
-    const valueDeclaration = symbol.declarations[0];
-    const signature = this.generator.ts.checker.getResolvedSignature(expression);
-
-    if (this.generator.tsclosure.lazyClosure.isLazyClosure(knownFunction)) {
-      if (valueDeclaration.typeParameters) {
-        const declaredSignature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
-        const typenameTypeMap = declaredSignature.getGenericsToActualMap(expression);
-
-        typenameTypeMap.forEach((value, key) => {
-          this.generator.symbolTable.currentScope.typeMapper.register(key, value);
-        });
-      }
-
-      const parameters = signature.getDeclaredParameters();
-
-      this.visitFunctionParameters(parameters);
-
-      const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-        return this.handleCallArguments(expression, signature, localScope, outerEnv);
-      }, this.generator.symbolTable.currentScope);
-
-      const environmentVariables = ConciseBody.create(valueDeclaration.body!, this.generator).getEnvironmentVariables(
-        signature,
-        this.generator.symbolTable.currentScope,
-        outerEnv
-      );
-
-      const env = createEnvironment(
-        this.generator.symbolTable.currentScope,
-        environmentVariables,
-        this.generator,
-        {
-          signature,
-          args,
-        },
-        outerEnv
-      );
-
-      const tsReturnType = signature.getReturnType();
-      const llvmReturnType = tsReturnType.getLLVMReturnType();
-
-      const functionName = this.generator.randomString;
-      const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
-
-      this.handleFunctionBody(valueDeclaration, fn, env);
-      LLVMFunction.verify(fn, expression);
-
-      const closure = this.makeClosure(fn, valueDeclaration, env);
-      const closureCall = this.generator.tsclosure.getLLVMCall();
-      const callResult = this.invoke(expression, valueDeclaration.body, closureCall, [closure]);
-
-      return this.generator.builder.createBitCast(callResult, llvmReturnType);
-    }
-
-    const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-      return this.handleCallArguments(expression, signature, localScope, outerEnv);
-    }, this.generator.symbolTable.currentScope);
-
-    if (knownFunction.type.isClosure()) {
-      const fixedArgsCount = this.generator.meta.getFixedArgsCount(knownFunction);
-
-      const getEnvironment = this.generator.tsclosure.getLLVMGetEnvironment();
-      const environment = this.generator.builder.createSafeCall(getEnvironment, [knownFunction]);
-      const environmentAsArray = this.generator.builder.createBitCast(
-        environment,
-        LLVMArrayType.get(
-          this.generator,
-          LLVMType.getInt8Type(this.generator).getPointer(),
-          fixedArgsCount + args.length
-        ).getPointer()
-      );
-
-      this.storeActualArguments(args, environmentAsArray, fixedArgsCount);
-
-      const closureCall = this.generator.tsclosure.getLLVMCall();
-
-      const closureValueDeclaration = this.generator.ts.checker
-        .getTypeAtLocation(expression.expression)
-        .getSymbol().valueDeclaration;
-
-      const body = closureValueDeclaration?.isFunctionLike() ? closureValueDeclaration.body : undefined;
-      const callResult = this.invoke(expression, body, closureCall, [knownFunction]);
-
-      const tsReturnType = signature.getReturnType();
-      const llvmReturnType = tsReturnType.getLLVMReturnType();
-
-      return this.generator.builder.createBitCast(callResult, llvmReturnType);
-    }
-
-    if (knownFunction.type.unwrapPointer().isFunction()) {
-      const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
-      return this.invoke(expression, body, knownFunction, args);
-    }
-
-    if (knownFunction.type.isPointer() && knownFunction.type.getPointerElementType().isIntegerType(8)) {
-      const declaredLLVMFunctionType = this.generator.tsclosure.getLLVMType();
-      return this.handleTSClosureCall(
-        expression,
-        signature,
-        args,
-        this.generator.builder.createBitCast(knownFunction, declaredLLVMFunctionType)
-      );
-    }
-
-    throw new Error(`Failed to call '${expression.getText()}'`);
-  }
-
-  private handleEnvironmentKnownFunction(expression: ts.CallExpression, knownIndex: number, outerEnv: Environment) {
-    const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
-
-    const symbol = !type.isSymbolless()
-      ? type.getSymbol()
-      : this.generator.ts.checker.getSymbolAtLocation(expression.expression);
-
-    const valueDeclaration = symbol.declarations[0];
-    const signature = this.generator.ts.checker.getResolvedSignature(expression);
-
-    let ptr = this.generator.builder.createSafeExtractValue(outerEnv.typed.getValue(), [knownIndex]);
-
-    if (ptr.type.isUnion()) {
-      ptr = this.generator.ts.union.get(ptr);
-      // @todo
-      // 'expression' is a call of argument of type FuncT1 | FuncT2 | .. | FuncTN (| null/undefined)
-      // to perform correct cast it is necessary to figure out if FuncT accepts funargs (have to bitcast to 'lazy closure' then)
-      // there is no no-hackish ways to do so at this point. pretends that optional 'lazy closures' are not pass as arguments at all.
-      ptr = this.generator.builder.createBitCast(ptr, this.generator.tsclosure.getLLVMType());
-    }
-
-    if (this.generator.tsclosure.lazyClosure.isLazyClosure(ptr)) {
-      if (valueDeclaration.typeParameters) {
-        const declaredSignature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
-        const typenameTypeMap = declaredSignature.getGenericsToActualMap(expression);
-
-        typenameTypeMap.forEach((value, key) => {
-          this.generator.symbolTable.currentScope.typeMapper.register(key, value);
-        });
-      }
-
-      const parameters = signature.getDeclaredParameters();
-
-      this.visitFunctionParameters(parameters);
-
-      const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-        return this.handleCallArguments(expression, signature, localScope, outerEnv);
-      }, this.generator.symbolTable.currentScope);
-
-      const environmentVariables = ConciseBody.create(valueDeclaration.body!, this.generator).getEnvironmentVariables(
-        signature,
-        this.generator.symbolTable.currentScope,
-        outerEnv
-      );
-
-      const env = createEnvironment(
-        this.generator.symbolTable.currentScope,
-        environmentVariables,
-        this.generator,
-        {
-          signature,
-          args,
-        },
-        outerEnv
-      );
-
-      const tsReturnType = signature.getReturnType();
-      const llvmReturnType = tsReturnType.getLLVMReturnType();
-
-      const functionName = this.generator.randomString;
-      const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
-
-      this.handleFunctionBody(valueDeclaration, fn, env);
-      LLVMFunction.verify(fn, expression);
-
-      const closure = this.makeClosure(fn, valueDeclaration, env);
-      const closureCall = this.generator.tsclosure.getLLVMCall();
-      const callResult = this.invoke(expression, valueDeclaration.body, closureCall, [closure]);
-
-      return this.generator.builder.createBitCast(callResult, llvmReturnType);
-    }
-
-    const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-      return this.handleCallArguments(expression, signature!, localScope, outerEnv);
-    }, this.generator.symbolTable.currentScope);
-
-    if (ptr.type.unwrapPointer().isFunction()) {
-      const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
-      return this.invoke(expression, body, ptr, args);
-    }
-
-    if (ptr.type.isClosure()) {
-      return this.handleTSClosureCall(expression, signature, args, ptr);
-    }
-
-    throw new Error(`Function ${expression.expression.getText()} not found in environment`);
-  }
-
   private storeActualArguments(args: LLVMValue[], closureFunctionData: LLVMValue, fixedArgsCount?: number) {
     // Closure data consists of null-valued arguments. Replace dummy arguments with actual ones.
     for (let i = 0; i < args.length; ++i) {
@@ -374,6 +129,43 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       this.generator.builder.createSafeStore(argument, elementPtrPtr);
     }
+  }
+
+  private handleLazyClosureCall(expression: ts.CallExpression, valueDeclaration: Declaration, signature: Signature, args: LLVMValue[], outerEnv?: Environment) {
+    const parameters = signature.getDeclaredParameters();
+    this.visitFunctionParameters(parameters);
+
+    const environmentVariables = ConciseBody.create(valueDeclaration.body!, this.generator).getEnvironmentVariables(
+      signature,
+      this.generator.symbolTable.currentScope,
+      outerEnv
+    );
+
+    const env = createEnvironment(
+      this.generator.symbolTable.currentScope,
+      environmentVariables,
+      this.generator,
+      {
+        signature,
+        args,
+      },
+      outerEnv
+    );
+
+    const tsReturnType = signature.getReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType();
+
+    const functionName = this.generator.randomString;
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
+
+    this.handleFunctionBody(valueDeclaration, fn, env);
+    LLVMFunction.verify(fn, expression);
+
+    const closure = this.makeClosure(fn, valueDeclaration, env);
+    const closureCall = this.generator.tsclosure.getLLVMCall();
+    const callResult = this.invoke(expression, valueDeclaration.body, closureCall, [closure]);
+
+    return this.generator.builder.createBitCast(callResult, llvmReturnType);
   }
 
   private handleTSClosureCall(
@@ -425,24 +217,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return arg;
     });
 
-    const closureEnvironment = this.generator.meta.try(MetaInfoStorage.prototype.getClosureEnvironment, closure);
-    let environmentStructType: LLVMStructType;
-    if (closureEnvironment) {
-      environmentStructType = closureEnvironment.type;
-    } else {
-      environmentStructType = LLVMStructType.get(
-        this.generator,
-        adjustedArgs.map((a) => a.type)
-      );
-    }
+    const fixedArgsCount = this.generator.meta.getFixedArgsCount(closure);
 
     const getEnvironment = this.generator.tsclosure.getLLVMGetEnvironment();
-    const environment = this.generator.builder.createBitCast(
-      this.generator.builder.createSafeCall(getEnvironment, [closure]),
-      environmentStructType.getPointer()
+    const environment = this.generator.builder.createSafeCall(getEnvironment, [closure]);
+    const environmentAsArray = this.generator.builder.createBitCast(
+      environment,
+      LLVMArrayType.get(
+        this.generator,
+        LLVMType.getInt8Type(this.generator).getPointer(),
+        fixedArgsCount + args.length
+      ).getPointer()
     );
 
-    this.storeActualArguments(adjustedArgs, environment, closureEnvironment?.fixedArgsCount);
+    this.storeActualArguments(adjustedArgs, environmentAsArray, fixedArgsCount);
 
     const closureCall = this.generator.tsclosure.getLLVMCall();
 
@@ -761,7 +549,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    let thisType;
+    let thisType: TSType | undefined;
     if (!valueDeclaration.isStatic()) {
       thisType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     }
@@ -934,147 +722,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private handleCallExpression(expression: ts.CallExpression, outerEnv?: Environment): LLVMValue {
-    const argumentTypes = Expression.create(expression, this.generator).getArgumentTypes();
-
-    if (ts.isPropertyAccessExpression(expression.expression)) {
-      const propertySymbol = this.generator.ts.checker.getSymbolAtLocation(expression.expression.name);
-      const rootType = this.generator.ts.checker.getTypeAtLocation(expression.expression.expression);
-
-      if (
-        !propertySymbol.isStatic() &&
-        !rootType.isNamespace() &&
-        propertySymbol.valueDeclaration &&
-        !propertySymbol.valueDeclaration.isAmbient()
-      ) {
-        let object: LLVMValue;
-        if (expression.expression.expression.kind === ts.SyntaxKind.SuperKeyword) {
-          if (!outerEnv) {
-            throw new Error(
-              `Expected environment to be provided at 'super' access point. Error at '${expression.getText()}'`
-            );
-          }
-
-          const thisValueIdx = outerEnv.getVariableIndex("this");
-          if (thisValueIdx === -1) {
-            throw new Error(
-              `Expected 'this' to be provided at 'super' access point. Error at '${expression.getText()}'`
-            );
-          }
-
-          const thisValuePtr = this.generator.builder.createInBoundsGEP(outerEnv.typed, [
-            LLVMConstantInt.get(this.generator, 0),
-            LLVMConstantInt.get(this.generator, thisValueIdx!),
-          ]);
-
-          const thisValue = this.generator.builder.createLoad(thisValuePtr);
-
-          const superObjectUnion = this.generator.ts.obj.get(thisValue, "super");
-
-          object = this.generator.ts.union.get(superObjectUnion);
-        } else {
-          object = this.generator.handleExpression(expression.expression.expression, outerEnv);
-
-          if (expression.expression.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
-            object = this.generator.ts.obj.get(object, "parent");
-            object = this.generator.ts.union.get(object);
-          }
-        }
-
-        const closureUnion = this.generator.ts.obj.get(object, expression.expression.name.getText());
-        let closure = this.generator.ts.union.get(closureUnion);
-
-        const type = this.generator.ts.checker.getTypeAtLocation(expression.expression.name);
-
-        let declaration: Declaration;
-        if (!type.isSymbolless()) {
-          const symbol = type.getSymbol();
-          declaration = symbol.valueDeclaration || symbol.declarations[0];
-        } else {
-          declaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
-        }
-
-        const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
-        const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-          return this.handleCallArguments(expression, signature, localScope, outerEnv);
-        }, this.generator.symbolTable.currentScope);
-
-        closure = declaration.type.isOptionalUnion()
-          ? this.generator.builder.createBitCast(closure, this.generator.tsclosure.getLLVMType())
-          : this.generator.builder.createBitCast(closure, declaration.type.getLLVMType());
-
-        return this.handleTSClosureCall(expression, signature, args, closure);
-      } else {
-        if (propertySymbol.isMethodSignature() || propertySymbol.isProperty() || propertySymbol.isOptionalMethod()) {
-          let callable = this.generator.handleExpression(expression.expression, outerEnv);
-
-          if (propertySymbol.isOptionalMethod()) {
-            callable = this.generator.ts.union.get(callable);
-          }
-
-          const type = this.generator.ts.checker.getTypeAtLocation(expression.expression.name);
-          let declaration: Declaration;
-          if (!type.isSymbolless()) {
-            const symbol = type.getSymbol();
-            declaration = symbol.valueDeclaration || symbol.declarations[0];
-          } else {
-            declaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
-          }
-
-          callable = declaration.type.isOptionalUnion()
-            ? this.generator.builder.createBitCast(callable, this.generator.tsclosure.getLLVMType())
-            : this.generator.builder.createBitCast(callable, declaration.type.getLLVMType());
-
-          const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
-
-          if (callable.type.isClosure()) {
-            const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-              return this.handleCallArguments(expression, signature, localScope, outerEnv);
-            }, this.generator.symbolTable.currentScope);
-
-            return this.handleTSClosureCall(expression, signature, args, callable);
-          } else if (this.generator.tsclosure.lazyClosure.isLazyClosure(callable)) {
-            const initializerDeclaration = declaration;
-            if (!initializerDeclaration) {
-              throw new Error(`Initializer declaration not found for '${expression.expression.getText()}'`);
-            }
-
-            const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-              return this.handleCallArguments(expression, signature, localScope, outerEnv);
-            }, this.generator.symbolTable.currentScope);
-
-            const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
-            const tsReturnType = resolvedSignature.getReturnType();
-            const llvmReturnType = tsReturnType.getLLVMReturnType();
-            const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
-
-            const { fn } = this.generator.llvm.function.create(
-              llvmReturnType,
-              llvmArgumentTypes,
-              this.generator.randomString
-            );
-
-            let e = this.generator.meta.getFunctionEnvironment(initializerDeclaration);
-            const lazyClosureEnvironment = this.generator.builder.createLoad(
-              this.generator.builder.createSafeInBoundsGEP(callable, [0, 0])
-            );
-            e.untyped = lazyClosureEnvironment;
-
-            if (outerEnv) {
-              e = Environment.merge(e, [outerEnv], this.generator);
-            }
-
-            this.handleFunctionBody(initializerDeclaration, fn, e);
-
-            const closure = this.makeClosure(fn, initializerDeclaration, e);
-
-            return this.handleTSClosureCall(expression, signature, args, closure);
-          }
-
-          throw new Error(`Unhandled call '${expression.getText()}'`);
-        }
-      }
-    }
-
     const isMethod = Expression.create(expression.expression, this.generator).isMethod();
     let thisType: TSType | undefined;
 
@@ -1085,6 +732,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const symbol = this.generator.ts.checker.getTypeAtLocation(expression.expression).getSymbol();
 
+    const argumentTypes = Expression.create(expression, this.generator).getArgumentTypes();
     const valueDeclaration =
       symbol.declarations.find((value: Declaration) => {
         return value.parameters.length === argumentTypes.length;
@@ -1123,40 +771,112 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return this.sysVFunctionHandler.handleCallExpression(expression, qualifiedName, outerEnv);
     }
 
+    if (valueDeclaration.isStatic()) {
+      return this.handleStaticMethodCall(expression, signature, valueDeclaration, qualifiedName, outerEnv);
+    }
+
+    if (ts.isPropertyAccessExpression(expression.expression)) {
+      const rootType = this.generator.ts.checker.getTypeAtLocation(expression.expression.expression);
+
+      if (!rootType.isNamespace()) {
+        return this.handleMethodCall(expression.expression, outerEnv);
+      }
+    }
+
+    let functionToCall = this.generator.handleExpression(expression.expression, outerEnv);
+    if (functionToCall.type.isUnion()) {
+      functionToCall = this.generator.ts.union.get(functionToCall);
+    }
+
     const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
       return this.handleCallArguments(expression, signature, localScope, outerEnv);
     }, this.generator.symbolTable.currentScope);
 
-    let thisVal;
-    if (isMethod) {
-      const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-      thisVal = this.generator.handleExpression(propertyAccess.expression, outerEnv);
+    if (this.generator.tsclosure.lazyClosure.isLazyClosure(functionToCall)) {
+      return this.handleLazyClosureCall(expression, valueDeclaration, signature, args, outerEnv);
     }
+
+    const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
+    const declaredLLVMFunctionType = this.generator.tsclosure.getLLVMType();
+    return this.handleTSClosureCall(
+      expression,
+      resolvedSignature,
+      args,
+      this.generator.builder.createBitCast(functionToCall, declaredLLVMFunctionType)
+    );
+  }
+
+  private handleMethodCall(expression: ts.PropertyAccessExpression, outerEnv?: Environment) {
+    const propertyAccessExpression = expression;
+    const callExpression = expression.parent as ts.CallExpression;
+
+    let object: LLVMValue;
+    if (propertyAccessExpression.expression.kind === ts.SyntaxKind.SuperKeyword) {
+      if (!outerEnv) {
+        throw new Error(
+          `Expected environment to be provided at 'super' access point. Error at '${callExpression.getText()}'`
+        );
+      }
+
+      const thisValueIdx = outerEnv.getVariableIndex("this");
+      if (thisValueIdx === -1) {
+        throw new Error(
+          `Expected 'this' to be provided at 'super' access point. Error at '${callExpression.getText()}'`
+        );
+      }
+
+      const thisValuePtr = this.generator.builder.createInBoundsGEP(outerEnv.typed, [
+        LLVMConstantInt.get(this.generator, 0),
+        LLVMConstantInt.get(this.generator, thisValueIdx!),
+      ]);
+
+      const thisValue = this.generator.builder.createLoad(thisValuePtr);
+
+      const superObjectUnion = this.generator.ts.obj.get(thisValue, "super");
+
+      object = this.generator.ts.union.get(superObjectUnion);
+    } else {
+      object = this.generator.handleExpression(propertyAccessExpression.expression, outerEnv);
+
+      if (propertyAccessExpression.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
+        object = this.generator.ts.obj.get(object, "parent");
+        object = this.generator.ts.union.get(object);
+      }
+    }
+
+    const type = this.generator.ts.checker.getTypeAtLocation(propertyAccessExpression.name);
+
+    const symbol = type.getSymbol();
+    const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
+    const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
+      return this.handleCallArguments(callExpression, signature, localScope, outerEnv);
+    }, this.generator.symbolTable.currentScope);
+
+
+    const closureUnion = this.generator.ts.obj.get(object, propertyAccessExpression.name.getText());
+    let closure = this.generator.ts.union.get(closureUnion);
+
+    closure = declaration.type.isOptionalUnion()
+      ? this.generator.builder.createBitCast(closure, this.generator.tsclosure.getLLVMType())
+      : this.generator.builder.createBitCast(closure, declaration.type.getLLVMType());
+
+    return this.handleTSClosureCall(callExpression, signature, args, closure);
+  }
+
+  private handleStaticMethodCall(expression: ts.CallExpression, signature: Signature, valueDeclaration: Declaration, qualifiedName: string, outerEnv?: Environment) {
+    const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
+      return this.handleCallArguments(expression, signature, localScope, outerEnv);
+    }, this.generator.symbolTable.currentScope);
 
     if (!valueDeclaration.body) {
       throw new Error(`Function body required for '${qualifiedName}'. Error at '${expression.getText()}'`);
     }
 
-    const parentScope = valueDeclaration.getScope(thisType);
-
-    const llvmThisType = parentScope.thisData?.llvmType;
+    const parentScope = valueDeclaration.getScope(undefined);
 
     const environmentVariables: string[] = [];
-
-    if (thisVal) {
-      const bothPtrsToStruct = thisVal.type.isPointerToStruct() && llvmThisType!.isPointerToStruct();
-      thisVal = bothPtrsToStruct
-        ? this.generator.builder.createBitCast(thisVal, llvmThisType!)
-        : thisVal.adjustToType(llvmThisType!);
-
-      if (!parentScope.get(this.generator.internalNames.This)) {
-        parentScope.set(this.generator.internalNames.This, thisVal);
-      } else {
-        parentScope.overwrite(this.generator.internalNames.This, thisVal);
-      }
-
-      environmentVariables.push(this.generator.internalNames.This);
-    }
 
     environmentVariables.push(
       ...ConciseBody.create(valueDeclaration.body, this.generator).getEnvironmentVariables(
@@ -1166,48 +886,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
       )
     );
 
-    let env: Environment;
-    if (thisVal && outerEnv) {
-      env = outerEnv;
-    } else {
-      env = createEnvironment(
-        parentScope,
-        environmentVariables,
-        this.generator,
-        { args, signature },
-        outerEnv,
-        isMethod
-      );
-    }
-
-    if (!this.isInFunction(expression) && args.some((arg) => arg.type.isClosure())) {
-      const indexesOfClosureArguments = args.reduce((indexes, arg, index) => {
-        if (arg.type.isClosure()) {
-          indexes.push(index);
-        }
-        return indexes;
-      }, new Array<number>());
-
-      const closureArgumentsEnvironments = indexesOfClosureArguments.reduce((envs, index) => {
-        const argumentDeclaration = this.generator.meta.getClosureParameterDeclaration(
-          expression.expression.getText(),
-          signature.getParameters()[index].escapedName.toString()
-        );
-
-        // Happily ignore failures here, argument is likely a closure returned from other function, it has no any declarations
-        const closureEnv = this.generator.meta.try(
-          MetaInfoStorage.prototype.getFunctionEnvironment,
-          argumentDeclaration
-        );
-        if (closureEnv) {
-          envs.push(closureEnv);
-        }
-
-        return envs;
-      }, new Array<Environment>());
-
-      env = Environment.merge(env, closureArgumentsEnvironments, this.generator);
-    }
+    const env = createEnvironment(
+      parentScope,
+      environmentVariables,
+      this.generator,
+      { args, signature },
+      outerEnv
+    );
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
     const tsReturnType = resolvedSignature.getReturnType();
@@ -1215,9 +900,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const llvmArgumentTypes = [env.voidStar];
 
-    if (valueDeclaration.isStatic()) {
-      qualifiedName += "__" + "static";
-    }
+    qualifiedName += "__static";
 
     const creationResult = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
     const { fn } = creationResult;
@@ -1231,8 +914,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       setLLVMFunctionScope(fn, parentScope, this.generator, expression);
     }
 
-    const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
-    return this.invoke(expression, body, fn, callArgs);
+    return this.invoke(expression, valueDeclaration.body, fn, callArgs);
   }
 
   private handleCallArguments(
@@ -1328,9 +1010,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private makeClosure(fn: LLVMValue, functionDeclaration: Declaration, env: Environment) {
-    const closure = this.generator.tsclosure.createClosure(fn, env.untyped, functionDeclaration);
-    this.generator.meta.registerClosureEnvironment(closure, env);
-    return closure;
+    return this.generator.tsclosure.createClosure(fn, env.untyped, functionDeclaration);
   }
 
   private handleNewExpression(expression: ts.NewExpression, outerEnv?: Environment): LLVMValue {
