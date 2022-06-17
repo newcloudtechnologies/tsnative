@@ -18,6 +18,15 @@ export class ImportsHandler extends AbstractNodeHandler {
     switch (node.kind) {
       case ts.SyntaxKind.ImportDeclaration: {
         const importDeclaration = node as ts.ImportDeclaration;
+
+        const name = importDeclaration.importClause?.name?.getText();
+        if (name) {
+          const value = this.generator.symbolTable.get(name);
+          parentScope.set(name, value);
+
+          return true;
+        }
+
         const namedBindings = importDeclaration.importClause?.namedBindings;
         if (namedBindings && ts.isNamedImports(namedBindings)) {
           namedBindings.elements.forEach((e) => {
