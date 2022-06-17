@@ -95,7 +95,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
           llvmType = type.getLLVMType();
         }
 
-        const scope: Scope = new Scope(name, name, parentScope, {
+        const scope: Scope = new Scope(name, name, false, parentScope, {
           declaration,
           llvmType: llvmType.ensurePointer(),
           tsType: type,
