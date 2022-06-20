@@ -23,6 +23,18 @@ public:
         return value;
     }
 
+    template <typename TsTypePtrT, typename SourceT>
+    static TsTypePtrT track_as(SourceT value)
+    {
+        static_assert(std::is_pointer<TsTypePtrT>::value, "Return type must be a pointer");
+        using TsTypeT = std::remove_pointer_t<TsTypePtrT>;
+        static_assert(std::is_base_of<Object, TsTypeT>::value, "Return type must be Object derived");
+
+        auto* ret = new TsTypeT(value);
+        // @todo here we start tracking ret pointer
+        return ret;
+    }
+
     template <typename Source>
     static Source untrack(Source value)
     {
