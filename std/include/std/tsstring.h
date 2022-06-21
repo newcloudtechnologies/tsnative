@@ -72,12 +72,14 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
-    std::string cpp_str() const;
+    const std::string& cpp_str() const;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): StringIterator<string>")
         TS_DECORATOR("MapsTo('iterator')") IterableIterator<String*>* iterator() override;
 
     TS_METHOD String* clone() const;
+
+    Array<String*>* getKeysArray() const override;
 
 private:
     StringPrivate* _d = nullptr;

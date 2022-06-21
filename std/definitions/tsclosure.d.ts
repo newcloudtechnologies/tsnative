@@ -15,7 +15,7 @@
 export type TSClosure = Function;
 
 //@ts-ignore
-@VTableSize(6)
+@VTableSize(7)
 //@ts-ignore
 @VirtualDestructor
 //@ts-ignore

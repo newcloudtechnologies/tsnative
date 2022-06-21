@@ -12,7 +12,7 @@
 */
 
 //@ts-ignore
-@VTableSize(10)
+@VTableSize(11)
 //@ts-ignore
 @VirtualDestructor
 declare class String extends Iterable<string> {

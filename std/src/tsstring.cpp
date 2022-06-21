@@ -262,7 +262,7 @@ Boolean* String::toBool() const
     return GC::track(new Boolean(_d->toBool()));
 }
 
-std::string String::cpp_str() const
+const std::string& String::cpp_str() const
 {
     return _d->cpp_str();
 }
@@ -270,4 +270,16 @@ std::string String::cpp_str() const
 String* String::clone() const
 {
     return GC::track(new String(cpp_str()));
+}
+
+Array<String*>* String::getKeysArray() const
+{
+    auto result = GC::track(new Array<String*>());
+    for (std::size_t i = 0 ; i < length()->unboxed() ; ++i)
+    {
+        auto n = GC::track(new Number(i));
+        result->push(n->toString());
+    }
+
+    return result;
 }

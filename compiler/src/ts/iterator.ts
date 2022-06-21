@@ -12,8 +12,8 @@
 import { LLVMGenerator } from "../generator";
 import { LLVMType } from "../llvm/type";
 import { FunctionMangler } from "../mangling";
-import * as ts from "typescript";
 import { TSType } from "./type";
+import { Declaration } from "./declaration";
 
 export class TSIterator {
   private readonly generator: LLVMGenerator;
@@ -22,16 +22,7 @@ export class TSIterator {
     this.generator = generator;
   }
 
-  getNext(expression: ts.Expression, genericType: TSType) {
-    const type = this.generator.ts.checker.getTypeAtLocation(expression);
-
-    const symbol = type.getSymbol();
-    const valueDeclaration = symbol.valueDeclaration;
-
-    if (!valueDeclaration) {
-      throw new Error(`No value declaration found at '${expression.getText()}'`);
-    }
-
+  getNext(valueDeclaration: Declaration, genericType: TSType) {
     const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]")!;
     const signature = this.generator.ts.checker.getSignatureFromDeclaration(iteratorDeclaration);
 

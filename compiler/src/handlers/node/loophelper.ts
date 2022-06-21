@@ -20,12 +20,22 @@ export class LoopHelper {
     return block.name.startsWith("for.");
   }
   
+  static isForOfLoopBlock(block: BasicBlock): boolean {
+    return block.name.startsWith("for_of.");
+  }
+
+  static isForInLoopBlock(block: BasicBlock): boolean {
+    return block.name.startsWith("for_in.");
+  }
+
   static isDoWhileLoopBlock(block: BasicBlock): boolean { 
     return block.name.startsWith("do.");
   }
   
   static isLoopBlock(block: BasicBlock): boolean {
     return this.isForLoopBlock(block) 
+          || this.isForOfLoopBlock(block)
+          || this.isForInLoopBlock(block)
           || this.isWhileLoopBlock(block) 
           || this.isDoWhileLoopBlock(block);
   }

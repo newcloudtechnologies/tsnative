@@ -142,6 +142,36 @@ export class TSObject {
     return get;
   }
 
+  private getKeysFn() {
+    const keysDeclaration = this.declaration.members.find((m) => m.name?.getText() === "keys");
+
+    if (!keysDeclaration) {
+      throw new Error(`Unable to find 'keys' at '${this.declaration.getText()}'`);
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      keysDeclaration,
+      undefined,
+      undefined,
+      [this.generator.ts.obj.getTSType()],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Unable to find cxx 'keys' for 'Object'`);
+    }
+
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(keysDeclaration);
+    const tsReturnType = signature.getReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType();
+
+    const llvmArgumentTypes = [this.generator.ts.obj.getLLVMType()];
+
+    const { fn: keys } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return keys;
+  }
+
   create(props?: LLVMValue) {
     const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
 
@@ -158,6 +188,15 @@ export class TSObject {
     this.generator.builder.createSafeCall(ctor, args);
 
     return allocated;
+  }
+
+  getKeys(obj: LLVMValue): LLVMValue {
+    const fn = this.getKeysFn();
+    const castedObject = this.generator.builder.createBitCast(
+      obj,
+      this.generator.ts.obj.getLLVMType()
+    );
+    return this.generator.builder.createSafeCall(fn, [castedObject]);
   }
 
   get(thisValue: LLVMValue, key: string) {

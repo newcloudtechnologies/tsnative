@@ -319,7 +319,7 @@ bool StdStringBackend::toBool() const
     return _string.length() > 0;
 }
 
-std::string StdStringBackend::cpp_str() const
+const std::string& StdStringBackend::cpp_str() const
 {
     return _string;
 }

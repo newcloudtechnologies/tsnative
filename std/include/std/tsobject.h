@@ -4,9 +4,13 @@
 
 #include <ostream>
 #include <string>
+#include <unordered_set>
 
 class Boolean;
 class String;
+
+template<typename T>
+class Array;
 
 template <typename K, typename V>
 class Map;
@@ -24,6 +28,8 @@ protected:
     virtual ~Object();
 
     bool has(String* key) const;
+
+    virtual Array<String*>* getKeysArray() const;
 
 public:
     TS_METHOD TS_SIGNATURE("get(key: string): any") void* get(String* key) const;
@@ -44,6 +50,11 @@ public:
     TS_METHOD virtual String* toString() const;
     TS_METHOD virtual Boolean* toBool() const;
 
+    TS_METHOD static Array<String*>* keys(Object* entity);
+
 protected:
     MapPrivate<String*, void*>* _props = nullptr;
+
+private:
+    std::unordered_set<String*> getUniqueKeys(const Object* o) const;
 };

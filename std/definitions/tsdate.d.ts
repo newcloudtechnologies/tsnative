@@ -12,7 +12,7 @@
 */
 
 //@ts-ignore
-@VTableSize(6)
+@VTableSize(7)
 //@ts-ignore
 @VirtualDestructor
 declare class Date {

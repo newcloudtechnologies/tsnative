@@ -22,8 +22,8 @@ public:
 
     TS_METHOD static Number* now();
 
-    TS_METHOD TS_SIGNATURE("UTC(year: number, month: number, day?: number, hours?: number, minutes?: number, seconds?: "
-                           "number, milliseconds?: number): number") static Number* UTC(Number* year,
+    TS_METHOD TS_SIGNATURE("UTC(year: number, month: number, day?: number, hours?: number, minutes?: number, "
+                           "seconds?: number, milliseconds?: number): number") static Number* UTC(Number* year,
                                                                                         Number* month_index,
                                                                                         MaybeNumber* day,
                                                                                         MaybeNumber* hours,

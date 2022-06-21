@@ -33,6 +33,10 @@ export class LoopHandler extends AbstractNodeHandler {
         this.generator.emitLocation(node);
         this.handleForOfStatement(node as ts.ForOfStatement, env);
         return true;
+      case ts.SyntaxKind.ForInStatement:
+        this.generator.emitLocation(node);
+        this.handleForInStatement(node as ts.ForInStatement, env);
+        return true;
       case ts.SyntaxKind.ContinueStatement:
         this.generator.emitLocation(node);
         this.handleContinueStatement(node as ts.ContinueStatement);
@@ -275,17 +279,35 @@ export class LoopHandler extends AbstractNodeHandler {
         const condition = BasicBlock.create(context, "for_of.condition");
         const incrementor = BasicBlock.create(context, "for_of.incrementor");
         const body = BasicBlock.create(context, "for_of.body");
+        const bodyLatch = BasicBlock.create(context, "for_of.body.latch");
         const exiting = BasicBlock.create(context, "for_of.exiting");
         const end = BasicBlock.create(context, "for_of.end");
 
-        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(statement.expression);
+        currentFunction.addBasicBlock(condition);
+        currentFunction.addBasicBlock(incrementor);
+        currentFunction.addBasicBlock(body);
+        currentFunction.addBasicBlock(bodyLatch);
+        currentFunction.addBasicBlock(exiting);
+        currentFunction.addBasicBlock(end);
+
+        const type = this.generator.ts.checker.getTypeAtLocation(statement.expression);
+        const symbol = type.getSymbol();
+        const declaration = symbol.valueDeclaration;
+
+        if (!declaration) {
+          throw new Error(`Unable to find value declaration for type: '${type.toString()}'. Error at: '${statement.getText()}'`);
+        }
+
+        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(declaration);
         const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [iterableTypeless]);
         const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
 
-        const iteratorNextMethod = this.generator.ts.iterator.getNext(statement.expression, variableType);
+        const iteratorNextMethod = this.generator.ts.iterator.getNext(declaration, variableType);
+
+        builder.createBr(bodyLatch);
+        builder.setInsertionPoint(bodyLatch);
 
         builder.createBr(condition);
-        currentFunction.addBasicBlock(condition);
         builder.setInsertionPoint(condition);
 
         const next = this.generator.builder.createSafeCall(iteratorNextMethod, [iteratorTypeless]);
@@ -295,8 +317,6 @@ export class LoopHandler extends AbstractNodeHandler {
         const isDone = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
 
         builder.createCondBr(isDone, exiting, incrementor);
-
-        currentFunction.addBasicBlock(incrementor);
         builder.setInsertionPoint(incrementor);
 
         const valueFn = this.generator.iteratorResult.getValueGetter();
@@ -307,22 +327,112 @@ export class LoopHandler extends AbstractNodeHandler {
 
         builder.createBr(body);
 
-        currentFunction.addBasicBlock(body);
         builder.setInsertionPoint(body);
         this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
-        builder.createBr(condition);
+        builder.createBr(bodyLatch);
 
-        currentFunction.addBasicBlock(exiting);
         builder.setInsertionPoint(exiting);
         builder.createBr(end);
 
-        currentFunction.addBasicBlock(end);
         builder.setInsertionPoint(end);
       };
 
       this.generator.symbolTable.withLocalScope(forOfHandlerImpl, this.generator.symbolTable.currentScope);
     } else {
       throw new Error(`Unsupported for..of initializer: '${statement.initializer.getText()}'`);
+    }
+  }
+
+  private handleForInStatement(statement: ts.ForInStatement, env?: Environment): void {
+    const { builder, context, symbolTable, currentFunction } = this.generator;
+
+    if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
+      if (statement.initializer.declarations.length > 1) {
+        throw new Error(`Expected only variable declaration in for..in at '${statement.getText()}'`);
+      }
+      
+      const initializer = statement.initializer.declarations[0];
+
+      if (!ts.isIdentifier(initializer.name)) {
+        throw new Error(`Allowed initializer in for..in are identifiers (at '${initializer.getText()}')`);
+      }
+
+      const updateScope = (updated: LLVMValue) => {
+        if (ts.isIdentifier(initializer.name)) {
+          const name = initializer.name.getText();
+          this.generator.symbolTable.currentScope.set(name, updated);
+        } 
+        else {
+          // Unreachable
+          throw new Error(`Unexpected initializer in for..in: '${initializer.getText()}'`);
+        }
+      };
+      
+      const variableType = this.generator.ts.str.getDeclaration().type;
+      const iterable = this.generator.handleExpression(statement.expression, env);
+      const indices = this.generator.ts.obj.getKeys(iterable);
+      const indicesTypeLess = this.generator.builder.asVoidStar(indices);
+
+      const forInHandlerImpl = () => {
+        const condition = BasicBlock.create(context, "for_in.condition");
+        const incrementor = BasicBlock.create(context, "for_in.incrementor");
+        const body = BasicBlock.create(context, "for_in.body");
+        const bodyLatch = BasicBlock.create(context, "for_in.body.latch");
+        const exiting = BasicBlock.create(context, "for_in.exiting");
+        const end = BasicBlock.create(context, "for_in.end");
+
+        currentFunction.addBasicBlock(condition);
+        currentFunction.addBasicBlock(incrementor);
+        currentFunction.addBasicBlock(body);
+        currentFunction.addBasicBlock(bodyLatch);
+        currentFunction.addBasicBlock(exiting);
+        currentFunction.addBasicBlock(end);
+
+        const arrayDeclaration = this.generator.ts.array.getDeclaration();
+
+        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(
+                                                                          arrayDeclaration,
+                                                                          ["String*"]);
+        const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [indicesTypeLess])
+        const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
+        const iteratorNextMethod = this.generator.ts.iterator.getNext(arrayDeclaration, variableType);
+
+        builder.createBr(bodyLatch);
+        builder.setInsertionPoint(bodyLatch);
+
+        builder.createBr(condition);
+        builder.setInsertionPoint(condition);
+
+        const next = this.generator.builder.createSafeCall(iteratorNextMethod, [iteratorTypeless]);
+        const nextTypeless = this.generator.builder.asVoidStar(next);
+
+        const doneFn = this.generator.iteratorResult.getDoneGetter(variableType);
+        const isDone = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
+
+        builder.createCondBr(isDone, exiting, incrementor);
+        builder.setInsertionPoint(incrementor);
+
+        const valueFn = this.generator.iteratorResult.getValueGetter();
+        let value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
+        value = this.generator.builder.createBitCast(value, variableType.getLLVMType());
+
+        updateScope(value);
+
+        builder.createBr(body);
+
+        builder.setInsertionPoint(body);
+        this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
+        builder.createBr(bodyLatch);
+
+        builder.setInsertionPoint(exiting);
+        builder.createBr(end);
+
+        builder.setInsertionPoint(end);
+      };
+
+      this.generator.symbolTable.withLocalScope(forInHandlerImpl, this.generator.symbolTable.currentScope);
+    } else {
+      throw new Error(`Unsupported for..in initializer: '${statement.initializer.getText()}'`);
     }
   }
 

@@ -12,7 +12,7 @@
 */
 
 //@ts-ignore
-@VTableSize(6)
+@VTableSize(7)
 //@ts-ignore
 @VirtualDestructor
 declare class Object {
@@ -24,4 +24,5 @@ declare class Object {
     set(key: string, value: any): void;
     toString(): string;
     toBool(): boolean;
+    static keys(entity: Object): Array<string>;
 }
