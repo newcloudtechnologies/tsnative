@@ -45,5 +45,5 @@ public:
 
     virtual bool toBool() const = 0;
 
-    virtual std::string cpp_str() const = 0;
+    virtual const std::string& cpp_str() const = 0;
 };

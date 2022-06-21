@@ -47,7 +47,7 @@ public:
 
     bool toBool() const override;
 
-    std::string cpp_str() const override;
+    const std::string& cpp_str() const override;
 
 private:
     std::string _string;

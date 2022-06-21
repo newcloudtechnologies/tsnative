@@ -32,16 +32,18 @@ public:
     TS_METHOD Array();
     // mkrv @todo: at least copy ctor
     ~Array() override;
+    Array<String*>* getKeysArray() const override;
 
     static Array<T>* fromStdVector(const std::vector<T>& initializer)
     {
-        auto array = new Array<T>;
+        auto array = GC::track(new Array<T>{});
+
         for (const auto& value : initializer)
         {
             array->push(value);
         }
 
-        return GC::track(array);
+        return array;
     }
 
     TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(T v);
@@ -257,7 +259,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
     static_assert(std::is_pointer<U>::value, "TS Array elements expected to be of pointer type");
 
-    auto transformedArray = new Array<U>();
+    auto transformedArray = GC::track(new Array<U>());
     auto numArgs = closure->getNumArgs()->unboxed();
 
     size_t length = static_cast<size_t>(_d->length());
@@ -283,7 +285,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
         transformedArray->push(transformed);
     }
 
-    return GC::track(transformedArray);
+    return transformedArray;
 }
 
 template <typename T>
@@ -307,7 +309,7 @@ template <typename T>
 IterableIterator<Number*>* Array<T>::keys()
 {
     auto keys = _d->keys();
-    auto keysArray = new Array<Number*>();
+    auto keysArray = GC::track(new Array<Number*>());
 
     for (auto key : keys)
     {
@@ -323,6 +325,21 @@ IterableIterator<T>* Array<T>::values()
 {
     auto it = new ArrayIterator<T>(this);
     return GC::track(it);
+}
+
+template <typename T>
+Array<String*>* Array<T>::getKeysArray() const
+{
+    auto result = GC::track(new Array<String*>{});
+    const auto keys =_d->keys();
+
+    for (const auto k : keys)
+    {
+        auto n = GC::track(new Number(k));
+        result->push(n->toString());
+    }
+
+    return result;
 }
 
 template <typename T>

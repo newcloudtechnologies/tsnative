@@ -301,7 +301,7 @@ export class TSType {
   }
 
   isString() {
-    return Boolean(this.type.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral));
+    return Boolean(this.type.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral)) || this.toString() === "String";
   }
 
   isBoolean() {

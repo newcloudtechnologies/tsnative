@@ -17,13 +17,33 @@ import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { SIZEOF_ARRAY } from "../cppintegration";
+import { Declaration } from "./declaration";
+import { ARRAY_DEFINITION } from "../../std/constants";
 
 export class TSArray {
   private readonly generator: LLVMGenerator;
   private readonly llvmType: LLVMType;
-
+  private readonly declaration: Declaration;
+  
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
+    
+    const stddefs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === ARRAY_DEFINITION);
+    if (!stddefs) {
+      throw new Error("No array definition source file found");
+    }
+
+    const classDeclaration = stddefs.statements.find((node) => {
+      return ts.isClassDeclaration(node) && node.name?.getText() === "Array";
+    });
+
+    if (!classDeclaration) {
+      throw new Error("Unable to find 'Array' declaration in std library definitions");
+    }
+
+    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
 
     const structType = LLVMStructType.create(generator, "array");
     const syntheticBody = structType.getSyntheticBody(SIZEOF_ARRAY);
@@ -31,6 +51,10 @@ export class TSArray {
     this.llvmType = structType.getPointer();
   }
 
+  getDeclaration() {
+    return this.declaration;
+  }
+  
   getLLVMType() {
     return this.llvmType;
   }
@@ -320,12 +344,12 @@ export class TSArray {
 
     const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer(); // void*; caller have to perform cast
 
-    const { fn: concat } = this.generator.llvm.function.create(
+    const { fn: result } = this.generator.llvm.function.create(
       llvmReturnType,
       [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
 
-    return concat;
+    return result;
   }
 }

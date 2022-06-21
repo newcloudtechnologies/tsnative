@@ -10,9 +10,9 @@
  */
 
 import { LLVMGenerator } from "../generator";
-import * as ts from "typescript";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMType } from "../llvm/type";
+import { Declaration } from "./declaration";
 
 export class TSIterableIterator {
   private readonly generator: LLVMGenerator;
@@ -21,28 +21,20 @@ export class TSIterableIterator {
     this.generator = generator;
   }
 
-  createIterator(expression: ts.Expression) {
-    const type = this.generator.ts.checker.getTypeAtLocation(expression);
-
-    const symbol = type.getSymbol();
-    const valueDeclaration = symbol.valueDeclaration;
-
-    if (!valueDeclaration) {
-      throw new Error(`No value declaration found at '${expression.getText()}'`);
-    }
-
+  createIterator(valueDeclaration: Declaration, knownGenericTypes?: string[]) {
     const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]")!;
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       iteratorDeclaration,
-      expression,
-      type,
+      undefined,
+      valueDeclaration.type,
       [],
-      this.generator
+      this.generator,
+      knownGenericTypes
     );
 
     if (!isExternalSymbol) {
-      throw new Error(`Iterator for type '${type.toString()}' not found`);
+      throw new Error(`Iterator for declaration '${valueDeclaration.getText()}' not found`);
     }
 
     const { fn: iterator } = this.generator.llvm.function.create(
