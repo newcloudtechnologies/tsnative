@@ -68,6 +68,7 @@ export class SysVFunctionHandler {
     }
 
     let callResult = this.generator.builder.createSafeCall(fn, args);
+    this.generator.applyLocation(callResult.unwrapped as llvm.CallInst, expression);
     callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
 
     return callResult;
@@ -104,7 +105,8 @@ export class SysVFunctionHandler {
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
     const args = [thisValueUntyped, arg];
 
-    this.generator.builder.createSafeCall(fn, args);
+    const callResult = this.generator.builder.createSafeCall(fn, args);
+    this.generator.applyLocation(callResult.unwrapped as llvm.CallInst, expression);
 
     return arg;
   }
@@ -201,6 +203,7 @@ export class SysVFunctionHandler {
     }
 
     let callResult = this.generator.builder.createSafeCall(fn, args);
+    this.generator.applyLocation(callResult.unwrapped as llvm.CallInst, expression);
     if (returnsVoidStar) {
       callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
     } else if (returnType.isEnum()) {
@@ -306,7 +309,8 @@ export class SysVFunctionHandler {
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
     args.unshift(thisValueUntyped);
 
-    this.generator.builder.createSafeCall(constructor, args);
+    const callResult = this.generator.builder.createSafeCall(constructor, args);
+    this.generator.applyLocation(callResult.unwrapped as llvm.CallInst, expression);
 
     this.initVTable(valueDeclaration, thisValue);
 

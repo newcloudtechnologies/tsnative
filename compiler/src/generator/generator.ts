@@ -279,8 +279,10 @@ export class LLVMGenerator {
   }
 
   emitLocation(node: ts.Node | undefined) {
-    if (this.getDebugInfo()) {
-      this.getDebugInfo()?.emitLocation(node);
-    }
+    this.getDebugInfo()?.emitLocation(node);
+  }
+
+  applyLocation(callInst: llvm.CallInst, decl: ts.Node) {
+    this.getDebugInfo()?.applyLocation(callInst, decl);
   }
 }

@@ -13,6 +13,7 @@ import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../.
 import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
+import {LLVMType} from "../../llvm/type";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -83,6 +84,10 @@ export class VariableHandler extends AbstractNodeHandler {
 
     // @todo
     parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
+    const dbg = this.generator.getDebugInfo();
+    if (dbg) {
+      dbg.emitDeclare(name, initializer, declaration, type);
+    }
   }
 
   private handleVariables(statement: VariableLike, parentScope: Scope, env?: Environment): void {

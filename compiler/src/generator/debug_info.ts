@@ -2,19 +2,25 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import * as path from "path";
 import { LLVMGenerator } from "./generator";
+import { TSType } from "../ts/type";
+import { LLVMValue } from "../llvm/value";
+
 export class SourceLocation {
   lineNo: number = 0;
   column: number = 0;
 }
+
 export class FileLocation {
   filename: string = "";
   dir: string = ".";
 }
+
 export class DebugInfo {
   private readonly generator: LLVMGenerator;
   private readonly diBuilder: llvm.DIBuilder;
   private readonly compileUnit: llvm.DICompileUnit;
   private readonly scopeStack: llvm.DIScope[];
+  private readonly typeCache: Map<TSType, llvm.DIType>;
 
   static getFileNameAndDir(p: string): FileLocation {
     const parsedPath = path.parse(p);
@@ -69,6 +75,7 @@ export class DebugInfo {
       "",
       0
     );
+    this.typeCache = new Map<TSType, llvm.DIType>();
   }
 
   getScope(): llvm.DIScope {
@@ -167,5 +174,77 @@ export class DebugInfo {
 
   finalize(): void {
     this.diBuilder.finalize();
+  }
+
+  getOrCreateType(tsType: TSType, size: number): llvm.DIType | undefined {
+    if (!this.typeCache.has(tsType)) {
+      this.typeCache.set(
+        tsType,
+        this.diBuilder.createPointerType(undefined, size)
+      );
+    }
+    return this.typeCache.get(tsType);
+  }
+
+  emitDeclare(
+    varName: string,
+    storage: LLVMValue,
+    decl: ts.Node,
+    tsType: TSType
+  ): llvm.Instruction | undefined {
+    const dbgType = this.getOrCreateType(
+      tsType,
+      this.generator.module.dataLayout.getPointerSizeInBits(0)
+    );
+    if (!dbgType) {
+      return undefined;
+    }
+    const { lineNo, column } = DebugInfo.getSourceLocation(decl);
+    const scope = this.getScope();
+    const location = llvm.DILocation.get(
+      this.generator.context,
+      lineNo,
+      column,
+      scope
+    );
+
+    const currentBB = this.generator.builder.getInsertBlock();
+    if (!currentBB) {
+      throw new Error("Cannot get current LLVM function: no insert block");
+    }
+
+    const dbgVarInfo = this.diBuilder.createAutoVariable(
+      scope,
+      varName,
+      scope.getFile(),
+      lineNo,
+      dbgType
+    );
+    const alloca = this.generator.builder
+      .unwrap()
+      .createAlloca(storage.unwrapped.type);
+    const inst = this.diBuilder.insertDeclare(
+      alloca,
+      dbgVarInfo,
+      this.diBuilder.createExpression(),
+      location,
+      currentBB
+    );
+    this.generator.builder.createSafeStore(
+      storage,
+      LLVMValue.create(alloca, this.generator)
+    );
+    return inst;
+  }
+
+  applyLocation(callInst: llvm.CallInst, decl: ts.Node): void {
+    const { lineNo, column } = DebugInfo.getSourceLocation(decl);
+    const location = llvm.DILocation.get(
+      this.generator.context,
+      lineNo,
+      column,
+      this.getScope()
+    );
+    callInst.setDebugLoc(new llvm.DebugLoc(location));
   }
 }
