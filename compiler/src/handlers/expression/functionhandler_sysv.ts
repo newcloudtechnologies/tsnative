@@ -130,35 +130,50 @@ export class SysVFunctionHandler {
       }
     }
 
+    const print = expression.getText().includes("AlignItems");
+
+    if (print) {
+      console.log("~~~ HANDLE SYSV", expression.getText())
+    }
+
     const args = expression.arguments.map((argument, index) => {
       if (ts.isSpreadElement(argument)) {
         throw new Error("Spread element in arguments is not supported");
       }
 
-      const arg = this.generator.handleExpression(argument, env);
+      let arg = this.generator.handleExpression(argument, env);
+
+      if (arg.isTSPrimitivePtr()) {
+        // mimics 'value' semantic for primitives
+        arg = arg.clone();
+      }
+
+      if (print) {
+        console.log("---", argument.getText(), arg.type.toString())
+      }
 
       // there may be no parameter declared at argument's index in case of rest arguments
       const parameterAtIndex = valueDeclaration.parameters[index];
       if (parameterAtIndex) {
-        const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+      const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
 
-        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
-          return this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
-        }
+      if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
+        return this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+      }
 
-        if (parameterDeclaration.type.isEnum()) {
-          return arg.asLLVMInteger();
-        }
+      if (parameterDeclaration.type.isEnum()) {
+        return arg.asLLVMInteger();
+      }
 
-        if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-          return this.generator.ts.union.create(arg);
-        }
+      if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
+      return this.generator.ts.union.create(arg);
+      }
       }
 
       return this.generator.builder.asVoidStar(arg);
     });
 
-    this.populateOptionals(args, valueDeclaration);
+    // this.populateOptionals(args, valueDeclaration);
 
     const llvmArgumentTypes = args.map((arg) => arg.type);
 
@@ -198,6 +213,10 @@ export class SysVFunctionHandler {
       throw new Error(
         `Error at '${expression.getText()}': returning values from C++ only allowed for enums. Use GC interface to return trackable pointers or use raw pointers if memory is managed on C++ side.`
       );
+    }
+
+    if (print) {
+      console.log("..-args", args.length)
     }
 
     let callResult = this.generator.builder.createSafeCall(fn, args);
