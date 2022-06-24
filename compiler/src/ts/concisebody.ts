@@ -84,6 +84,10 @@ export class ConciseBody {
             return;
           }
 
+          if (ts.isPropertyAccessExpression(node.parent)) {
+            return;
+          }
+
           const nodeText = node.getText();
 
           const isLocal = bodyScope.get(nodeText);

@@ -195,17 +195,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const types = withRestParameters
       ? args.map((arg) => arg.type)
       : resolvedSignature.getParameters().map((p) => {
-          const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
-          if (tsType.isSupported()) {
-            return tsType.getLLVMType();
-          }
+        const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
+        if (tsType.isSupported()) {
+          return tsType.getLLVMType();
+        }
 
-          if (!typeMapper) {
-            throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);
-          }
+        if (!typeMapper) {
+          throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);
+        }
 
-          return typeMapper.get(tsType.toString()).getLLVMType();
-        });
+        return typeMapper.get(tsType.toString()).getLLVMType();
+      });
 
     const adjustedArgs = args.map((arg, index) => {
       const llvmArgType = types[index];
@@ -229,6 +229,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
         fixedArgsCount + args.length
       ).getPointer()
     );
+
+    if (expression.getText().startsWith("t.margins")) {
+      console.log(">>>", expression.getText())
+      console.log("---- fixedArgsCount", fixedArgsCount)
+      console.log("... args.length", args.length)
+    }
 
     this.storeActualArguments(adjustedArgs, environmentAsArray, fixedArgsCount);
 
@@ -392,8 +398,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const tsArgumentTypes = !declaration.typeParameters
       ? parameters.map((parameter) => {
-          return this.generator.ts.checker.getTypeAtLocation(parameter);
-        })
+        return this.generator.ts.checker.getTypeAtLocation(parameter);
+      })
       : [];
 
     const llvmArgumentTypes = tsArgumentTypes.map((argType) => {
@@ -439,6 +445,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
       { args: dummyArguments, signature },
       outerEnv
     );
+
+    console.log("----------------------")
+    console.log(environmentVariables)
+    console.log(env.variables)
+    console.log(env.type.toString())
+
     this.generator.meta.registerFunctionEnvironment(expressionDeclaration, env);
 
     const tsReturnType = signature.getReturnType();
@@ -854,13 +866,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return this.handleCallArguments(callExpression, signature, localScope, outerEnv);
     }, this.generator.symbolTable.currentScope);
 
-
+    // ????
     const closureUnion = this.generator.ts.obj.get(object, propertyAccessExpression.name.getText());
     let closure = this.generator.ts.union.get(closureUnion);
 
     closure = declaration.type.isOptionalUnion()
       ? this.generator.builder.createBitCast(closure, this.generator.tsclosure.getLLVMType())
       : this.generator.builder.createBitCast(closure, declaration.type.getLLVMType());
+
+    console.log("~~~~~ HANDLE CALL METHOD", callExpression.getText())
 
     return this.handleTSClosureCall(callExpression, signature, args, closure);
   }
@@ -1127,26 +1141,26 @@ export class FunctionHandler extends AbstractExpressionHandler {
       qualifiedName
     );
 
-    if (!existing) {
-      this.populateGenericTypes(valueDeclaration, parentScope);
+    // if (!existing) {
+    this.populateGenericTypes(valueDeclaration, parentScope);
 
-      if (expression.typeArguments) {
-        const declaredTypeParameters = valueDeclaration.typeParameters;
-        if (!declaredTypeParameters) {
-          throw new Error(
-            `Expected type parameters in value declaration: '${valueDeclaration.getText()}'. Error at: '${expression.getText()}'`
-          );
-        }
-
-        expression.typeArguments.forEach((typeArg, index) => {
-          const type = this.generator.ts.checker.getTypeFromTypeNode(typeArg);
-          parentScope.typeMapper.register(declaredTypeParameters[index].getText(), type);
-        });
+    if (expression.typeArguments) {
+      const declaredTypeParameters = valueDeclaration.typeParameters;
+      if (!declaredTypeParameters) {
+        throw new Error(
+          `Expected type parameters in value declaration: '${valueDeclaration.getText()}'. Error at: '${expression.getText()}'`
+        );
       }
 
-      this.handleConstructor(expression, valueDeclaration, constructor, parentScope, env);
-      setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
+      expression.typeArguments.forEach((typeArg, index) => {
+        const type = this.generator.ts.checker.getTypeFromTypeNode(typeArg);
+        parentScope.typeMapper.register(declaredTypeParameters[index].getText(), type);
+      });
     }
+
+    this.handleConstructor(expression, valueDeclaration, constructor, parentScope, env);
+    setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
+    // }
 
     const body = constructorDeclaration.isFunctionLike() ? constructorDeclaration.body : undefined;
     this.invoke(expression, body, constructor, [env.untyped]);
@@ -1432,8 +1446,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
               if (!this.generator.isCurrentBlockTerminated) {
                 const currentReturnType = LLVMType.make(
-                    this.generator.currentFunction.type.elementType.returnType,
-                    this.generator
+                  this.generator.currentFunction.type.elementType.returnType,
+                  this.generator
                 );
                 const returnsOptional = currentReturnType.isUnion();
 
@@ -1596,6 +1610,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     });
   }
 
+  counter = 0;
+
   private handleClassOwnMethods(
     expression: ts.Expression,
     classDeclaration: Declaration,
@@ -1675,6 +1691,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
           },
           environment
         );
+
+        if (method.name.getText() === "margins") {
+          console.log("-- HANDLE OWN METHOD MARGINS", method.body.getText());
+          console.log(env.variables)
+          console.log("1...", environment.variables, signature.toString())
+        }
 
         let tsReturnType = signature.getReturnType();
         if (tsReturnType.isThisType()) {
