@@ -11,12 +11,13 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { OBJECT_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { SIZEOF_OBJECT } from "../cppintegration";
+
+const stdlib = require("std/constants");
 
 export class TSObject {
   private readonly generator: LLVMGenerator;
@@ -28,7 +29,7 @@ export class TSObject {
 
     const stddefs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === OBJECT_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.OBJECT_DEFINITION);
     if (!stddefs) {
       throw new Error("No object definition source file found");
     }

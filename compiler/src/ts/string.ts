@@ -11,13 +11,14 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { STRING_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { SIZEOF_STRING } from "../cppintegration";
 import { TSType } from "./type";
+
+const stdlib = require("std/constants");
 
 export class TSString {
   private readonly generator: LLVMGenerator;
@@ -29,7 +30,7 @@ export class TSString {
 
     const defs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === STRING_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.STRING_DEFINITION);
 
     if (!defs) {
       throw new Error("No string definition source file found");

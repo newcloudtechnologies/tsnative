@@ -52,6 +52,8 @@ class TSNativeTestsConan(ConanFile):
         else:
             self.output.info("Target ABI is %s" % self.settings.target_abi)
 
+        os.environ["NODE_PATH"] = self.deps_user_info["tsnative-std"].NODE_PATH
+
         if self.options.run_mode == "runtime" or self.options.run_mode == "all":
             self.setup_npm()
             self.output.info("======== RUNTIME TESTS ========")

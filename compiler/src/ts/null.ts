@@ -11,12 +11,13 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { NULL_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMGlobalVariable, LLVMValue } from "../llvm/value";
 import { SIZEOF_NULL } from "../cppintegration";
+
+const stdlib = require("std/constants");
 
 export class TSNull {
   private readonly generator: LLVMGenerator;
@@ -34,7 +35,7 @@ export class TSNull {
   init() {
     const stddefs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === NULL_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.NULL_DEFINITION);
     if (!stddefs) {
       throw new Error("No null definition source file found");
     }

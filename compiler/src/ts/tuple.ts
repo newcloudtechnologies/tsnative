@@ -15,8 +15,9 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import * as ts from "typescript";
 import { SIZEOF_TUPLE } from "../cppintegration";
 import { Declaration } from "./declaration";
-import { TUPLE_DEFINITION } from "../../std/constants";
 import { Environment } from "../scope";
+
+const stdlib = require("std/constants");
 
 export class TSTuple {
   private readonly generator: LLVMGenerator;
@@ -26,7 +27,7 @@ export class TSTuple {
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
-    const defs = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === TUPLE_DEFINITION);
+    const defs = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.TUPLE_DEFINITION);
 
     if (!defs) {
       throw new Error("No tuple definition source file found");

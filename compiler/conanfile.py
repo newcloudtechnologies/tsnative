@@ -23,11 +23,6 @@ class TSNativeCompilerConan(ConanFile):
         self.copy("src*")
         self.copy("scripts*")
         self.copy(".npm*")
-        # TODO: for now compiler embeds std definitions making it imposible to be used
-        # as a target-agnostic build context tool. We need to break this dependency 
-        # and pass paths to std definitions at runtime and avoid embedding.
-        self.copy("constants*", src="../std", dst="std")
-        self.copy("*", src="../std/definitions", dst="std/definitions")
 
     def build(self):
         # prepare env
@@ -46,10 +41,9 @@ class TSNativeCompilerConan(ConanFile):
         # copy conan dependencies to node_modules
         self.copytree("deps/*", "node_modules")
         # transpile
-        self.run('npx tsc --outDir compiler/')
+        self.run('npx tsc --outDir compiler')
         # prepare and pack compiler binary
         shutil.copy2("package.json", "compiler/")
-        self.copytree("std/*", os.path.join("compiler","std"))
         # TODO: add more control: explicit targets, no prebuilt node.js
         self.run("npx pkg compiler/ -t host -o bin/tsnative-compiler")
 

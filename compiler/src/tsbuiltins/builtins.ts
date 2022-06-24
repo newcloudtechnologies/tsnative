@@ -7,7 +7,8 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
-import { CLOSURE_DEFINITION } from "../../std/constants";
+
+const stdlib = require("std/constants");
 
 export class GC {
   private readonly allocateFn: LLVMValue;
@@ -137,7 +138,7 @@ export class BuiltinTSClosure extends Builtin {
 
     const defs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === CLOSURE_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.CLOSURE_DEFINITION);
 
     if (!defs) {
       throw new Error("No utility definitions source file found");

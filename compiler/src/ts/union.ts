@@ -11,12 +11,13 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { UNION_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { SIZEOF_UNION } from "../cppintegration";
+
+const stdlib = require("std/constants");
 
 export class TSUnion {
   private readonly generator: LLVMGenerator;
@@ -28,7 +29,7 @@ export class TSUnion {
 
     const stddefs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === UNION_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.UNION_DEFINITION);
     if (!stddefs) {
       throw new Error("No union definition source file found");
     }

@@ -1,14 +1,12 @@
 {
     "name": "tsnative-compiler",
     "bin": {
-        "compiler": "src/main.js"
+        "compiler": "main.js"
     },
     "pkg": {
         "assets": [
             "src/*",
             "src/**/*",
-            "std/constants.js",
-            "std/definitions/*",
             "../node_modules/llvm-node/build/Release/llvm-node.node"
         ]
     },

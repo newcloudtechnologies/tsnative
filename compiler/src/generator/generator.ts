@@ -16,7 +16,6 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GC, BuiltinTSClosure, BuiltinIteratorResult, BuiltinNumber, BuiltinBoolean } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { GC_DEFINITION, ITERABLE_DEFINITION, CLOSURE_DEFINITION } from "../../std/constants";
 import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -25,6 +24,8 @@ import { Builder } from "../builder/builder";
 import { LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
 import { DebugInfo } from "./debug_info";
+
+const stdlib = require("std/constants");
 
 enum InternalNames {
   Environment = "__environment__",
@@ -126,7 +127,7 @@ export class LLVMGenerator {
   }
 
   initGC(): void {
-    const gc = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === GC_DEFINITION);
+    const gc = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.GC_DEFINITION);
     if (!gc) {
       throw new Error("No std GC file found");
     }
@@ -145,7 +146,7 @@ export class LLVMGenerator {
   }
 
   initTSClosure(): void {
-    const tsclosure = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === CLOSURE_DEFINITION);
+    const tsclosure = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.CLOSURE_DEFINITION);
     if (!tsclosure) {
       throw new Error("No std utility source file found");
     }
@@ -166,7 +167,7 @@ export class LLVMGenerator {
   initIteratorResult() {
     const iterabledefs = this.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === ITERABLE_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.ITERABLE_DEFINITION);
 
     if (!iterabledefs) {
       throw new Error("No iterable definitions source file found");
