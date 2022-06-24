@@ -11,12 +11,13 @@
 
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { MAP_DEFINITION } from "../../std/constants";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
 import { SIZEOF_MAP } from "../cppintegration";
+
+const stdlib = require("std/constants");
 
 export class TSMap {
   private readonly generator: LLVMGenerator;
@@ -28,7 +29,7 @@ export class TSMap {
 
     const stddefs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === MAP_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.MAP_DEFINITION);
     if (!stddefs) {
       throw new Error("No map definition source file found");
     }

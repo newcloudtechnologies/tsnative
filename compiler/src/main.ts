@@ -4,32 +4,6 @@ import * as fs from "fs";
 import * as llvm from "llvm-node";
 import * as path from "path";
 import * as ts from "typescript";
-
-import {
-  NUMERIC,
-  STRING_DEFINITION,
-  ARRAY_DEFINITION,
-  OBJECT_DEFINITION,
-  UNDEFINED_DEFINITION,
-  NULL_DEFINITION,
-  NUMBER_DEFINITION,
-  BOOLEAN_DEFINITION,
-  UNION_DEFINITION,
-  SET_DEFINITION,
-  MAP_DEFINITION,
-  TUPLE_DEFINITION,
-  CLOSURE_DEFINITION,
-  CONSOLE_DEFINITION,
-  GC_DEFINITION,
-  STUBS,
-  ITERABLE_DEFINITION,
-  STRING_ITERATOR_DEFINITION,
-  MAP_ITERATOR_DEFINITION,
-  SET_ITERATOR_DEFINITION,
-  DATE_DEFINITION,
-  MATH_DEFINITION
-} from "../std/constants";
-
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
 import { TemplateInstantiator } from "./cppintegration/templateinstantiator";
@@ -37,6 +11,8 @@ import { Preprocessor } from "./preprocessing";
 
 var pjson = require('../package.json');
 var version_string = pjson.version + ' (Based on Node.js ' + process.version + ")"
+
+const stdlib = require("std/constants");
 
 argv
   .name('compiler') // TODO: get binary name from env?
@@ -86,6 +62,9 @@ main().catch((e) => {
 });
 
 async function main() {
+  // print command line
+  console.log(process.argv.join(" "))
+
   const files = argv.args;
 
   const tsconfig = parseTSConfig();
@@ -94,28 +73,28 @@ async function main() {
   const mangledTables: string[] = [];
   const includeDirs: string[] = [];
   options.lib = [
-    STUBS,
-    NUMERIC,
-    STRING_DEFINITION,
-    ARRAY_DEFINITION,
-    OBJECT_DEFINITION,
-    UNDEFINED_DEFINITION,
-    NULL_DEFINITION,
-    NUMBER_DEFINITION,
-    BOOLEAN_DEFINITION,
-    UNION_DEFINITION,
-    SET_DEFINITION,
-    MAP_DEFINITION,
-    TUPLE_DEFINITION,
-    CLOSURE_DEFINITION,
-    CONSOLE_DEFINITION,
-    GC_DEFINITION,
-    ITERABLE_DEFINITION,
-    STRING_ITERATOR_DEFINITION,
-    MAP_ITERATOR_DEFINITION,
-    SET_ITERATOR_DEFINITION,
-    DATE_DEFINITION,
-    MATH_DEFINITION
+    stdlib.STUBS,
+    stdlib.NUMERIC,
+    stdlib.STRING_DEFINITION,
+    stdlib.ARRAY_DEFINITION,
+    stdlib.OBJECT_DEFINITION,
+    stdlib.UNDEFINED_DEFINITION,
+    stdlib.NULL_DEFINITION,
+    stdlib.NUMBER_DEFINITION,
+    stdlib.BOOLEAN_DEFINITION,
+    stdlib.UNION_DEFINITION,
+    stdlib.SET_DEFINITION,
+    stdlib.MAP_DEFINITION,
+    stdlib.TUPLE_DEFINITION,
+    stdlib.CLOSURE_DEFINITION,
+    stdlib.CONSOLE_DEFINITION,
+    stdlib.GC_DEFINITION,
+    stdlib.ITERABLE_DEFINITION,
+    stdlib.STRING_ITERATOR_DEFINITION,
+    stdlib.MAP_ITERATOR_DEFINITION,
+    stdlib.SET_ITERATOR_DEFINITION,
+    stdlib.DATE_DEFINITION,
+    stdlib.MATH_DEFINITION
   ];
   options.types = [];
 

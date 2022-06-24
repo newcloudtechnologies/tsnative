@@ -18,7 +18,8 @@ import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { SIZEOF_ARRAY } from "../cppintegration";
 import { Declaration } from "./declaration";
-import { ARRAY_DEFINITION } from "../../std/constants";
+
+const stdlib = require("std/constants");
 
 export class TSArray {
   private readonly generator: LLVMGenerator;
@@ -30,7 +31,7 @@ export class TSArray {
     
     const stddefs = this.generator.program
       .getSourceFiles()
-      .find((sourceFile) => sourceFile.fileName === ARRAY_DEFINITION);
+      .find((sourceFile) => sourceFile.fileName === stdlib.ARRAY_DEFINITION);
     if (!stddefs) {
       throw new Error("No array definition source file found");
     }
