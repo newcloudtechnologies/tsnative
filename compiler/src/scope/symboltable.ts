@@ -64,7 +64,7 @@ export class SymbolTable {
   }
 
   withLocalScope<R>(body: (scope: Scope) => R, parentScope?: Scope, name?: string): R {
-    const scope = new Scope(name, name, parentScope);
+    const scope = new Scope(name, name, false, parentScope);
     this.scopes.push(scope);
     const result = body(scope);
     this.scopes.pop();

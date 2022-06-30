@@ -236,7 +236,7 @@ export function addClassScope(
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-  const scope = new Scope(name, mangledTypename, parentScope, { declaration, llvmType, tsType });
+  const scope = new Scope(name, mangledTypename, false, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
 }
@@ -419,7 +419,7 @@ export function populateContext(
       return;
     }
 
-    if (value instanceof Scope && !seenScopes.includes(value)) {
+    if (value instanceof Scope && !seenScopes.includes(value) && !value.isNamespace) {
       seenScopes.push(value);
       value.map.forEach((v, k) => {
         addToContextRecursively(v, k, variables);
@@ -476,6 +476,10 @@ export function populateContext(
           }
           const maybeFound = findPropertyAccess(value, values, seen);
           if (maybeFound) {
+            if ((maybeFound instanceof HeapVariableDeclaration) && value.isNamespace) {
+              maybeFound.name = value.name + "." + maybeFound.name;
+            }
+
             return maybeFound;
           }
         }
@@ -523,7 +527,9 @@ export class Scope {
   readonly parent: Scope | undefined;
   typeMapper: GenericTypeMapper;
 
-  constructor(name: string | undefined, mangledName: string | undefined, parent?: Scope, data?: ThisData) {
+  readonly isNamespace: boolean;
+
+  constructor(name: string | undefined, mangledName: string | undefined, isNamespace: boolean = false, parent?: Scope, data?: ThisData) {
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.mangledName = mangledName;
@@ -534,6 +540,8 @@ export class Scope {
     if (parent && parent.typeMapper) {
       this.typeMapper.setParent(parent.typeMapper);
     }
+
+    this.isNamespace = isNamespace;
   }
 
   get(identifier: string): ScopeValue | undefined {
