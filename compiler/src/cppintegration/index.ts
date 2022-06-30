@@ -9,6 +9,4 @@
  *
  */
 
-export * from "./constants";
 export * from "./templateinstantiator";
-export * from "./types";

@@ -17,6 +17,7 @@ import * as crypto from "crypto";
 import { flatten } from "lodash";
 import { FunctionMangler } from "../mangling";
 import { ConciseBody } from "./concisebody";
+import { LLVMStructType, LLVMType } from "../llvm/type";
 
 export class Declaration {
   private readonly declaration: ts.Declaration;
@@ -229,8 +230,7 @@ export class Declaration {
     if (!ts.isFunctionLike(this.declaration)) {
       console.log(this.declaration.getText());
       throw new Error(
-        `Expected 'parameters' to be called on function-alike declaration, called on '${
-          ts.SyntaxKind[this.declaration.kind]
+        `Expected 'parameters' to be called on function-alike declaration, called on '${ts.SyntaxKind[this.declaration.kind]
         }'`
       );
     }
@@ -271,6 +271,19 @@ export class Declaration {
       return false;
     }
     return Boolean(this.declaration.dotDotDotToken);
+  }
+
+  getLLVMStructType(name?: string) {
+    const sizeProperties = this.ownProperties.filter((prop) => prop.isPrivate());
+
+    const propTypes: LLVMType[] = new Array(sizeProperties.length).fill(
+      LLVMType.getInt8Type(this.generator).getPointer()
+    );
+
+    const structType = LLVMStructType.create(this.generator, name);
+    structType.setBody(propTypes);
+
+    return structType.getPointer();
   }
 
   environmentVariables(expression: ts.Expression, scope: Scope, env?: Environment) {

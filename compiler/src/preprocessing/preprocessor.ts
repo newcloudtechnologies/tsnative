@@ -28,7 +28,7 @@ export class Preprocessor {
   constructor(files: string[], options: ts.CompilerOptions, host: ts.CompilerHost, outputDir: string = "") {
     const program = ts.createProgram(files, options, host);
 
-    const generator = new LLVMGenerator(program);
+    const generator = new LLVMGenerator(program).init();
     this.parts.push(
       new ParametersRandomizingPreprocessor(generator),
       new FunctionDeclarationPreprocessor(generator),

@@ -213,10 +213,6 @@ export class LLVMType {
   }
 
   getTypeSize() {
-    const size = this.generator.sizeOf.getByLLVMType(this);
-    if (size) {
-      return size;
-    }
     return this.generator.module.dataLayout.getTypeStoreSize(this.type);
   }
 
@@ -294,7 +290,8 @@ export class LLVMStructType extends LLVMType {
   }
 
   static create(generator: LLVMGenerator, name?: string, types?: LLVMType[]) {
-    const type = llvm.StructType.create(generator.context, name);
+    // mkrv: seems like optional arguments are not forwardable
+    const type = llvm.StructType.create(generator.context, name || "");
 
     if (types) {
       type.setBody(types.map((t) => t.unwrapped))

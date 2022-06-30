@@ -13,9 +13,8 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
-import { SIZEOF_MAP } from "../cppintegration";
 
 const stdlib = require("std/constants");
 
@@ -35,7 +34,7 @@ export class TSMap {
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
-      return ts.isClassDeclaration(node) && node.name?.getText() === "Map";
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Map";
     });
 
     if (!classDeclaration) {
@@ -43,11 +42,7 @@ export class TSMap {
     }
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-
-    const structType = LLVMStructType.create(generator, "map");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_MAP);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+    this.llvmType = this.declaration.getLLVMStructType("map");
   }
 
   private getCtorFn(templateTypes: string[]) {

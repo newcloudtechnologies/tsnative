@@ -16,7 +16,6 @@ import { LLVMValue } from "../llvm/value";
 import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { SIZEOF_ARRAY } from "../cppintegration";
 import { Declaration } from "./declaration";
 
 const stdlib = require("std/constants");
@@ -37,7 +36,7 @@ export class TSArray {
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
-      return ts.isClassDeclaration(node) && node.name?.getText() === "Array";
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Array";
     });
 
     if (!classDeclaration) {
@@ -45,11 +44,7 @@ export class TSArray {
     }
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-
-    const structType = LLVMStructType.create(generator, "array");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_ARRAY);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+    this.llvmType = this.declaration.getLLVMStructType("array");
   }
 
   getDeclaration() {

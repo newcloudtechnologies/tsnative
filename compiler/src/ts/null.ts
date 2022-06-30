@@ -13,26 +13,19 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMGlobalVariable, LLVMValue } from "../llvm/value";
-import { SIZEOF_NULL } from "../cppintegration";
 
 const stdlib = require("std/constants");
 
 export class TSNull {
   private readonly generator: LLVMGenerator;
   private readonly llvmType: LLVMType;
+  private readonly declaration: Declaration;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
-    const structType = LLVMStructType.create(generator, "null");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_NULL);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
-  }
-
-  init() {
     const stddefs = this.generator.program
       .getSourceFiles()
       .find((sourceFile) => sourceFile.fileName === stdlib.NULL_DEFINITION);
@@ -41,24 +34,29 @@ export class TSNull {
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
-      return ts.isClassDeclaration(node) && node.name?.getText() === "Null";
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Null";
     });
 
     if (!classDeclaration) {
       throw new Error("Unable to find 'Null' declaration in std library definitions");
     }
 
-    const wrappedDeclaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-    const undefinedCtorDeclaration = wrappedDeclaration.members.find((m) => m.isConstructor());
+    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
+
+    this.llvmType = this.declaration.getLLVMStructType("null");
+  }
+
+  init() {
+    const undefinedCtorDeclaration = this.declaration.members.find((m) => m.isConstructor());
 
     if (!undefinedCtorDeclaration) {
-      throw new Error(`Unable to find constructor at '${wrappedDeclaration.getText()}'`);
+      throw new Error(`Unable to find constructor at '${this.declaration.getText()}'`);
     }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       undefinedCtorDeclaration,
       undefined,
-      wrappedDeclaration.type,
+      this.declaration.type,
       [],
       this.generator
     );
@@ -79,6 +77,7 @@ export class TSNull {
 
     const nullValue = LLVMConstant.createNullValue(this.llvmType, this.generator);
     const globalNull = LLVMGlobalVariable.make(this.generator, this.llvmType, false, nullValue, "null_constant");
+
     this.generator.builder.createSafeStore(this.generator.builder.createLoad(allocated), globalNull);
 
     this.generator.symbolTable.globalScope.set("null", globalNull);

@@ -622,19 +622,10 @@ export class TSType {
       }
 
       if (!declaration.name) {
-        throw new Error(`No declaration name found at '${declaration.getText()}'`);
+        throw new Error(`No name found at declaration '${declaration.getText()}'`);
       }
 
-      const knownSize = (this.checker.generator.sizeOf.getByName(this.getTypename()) || 0) / 8;
-      const sizeProperties = declaration.ownProperties.filter((prop) => prop.isPrivate());
-
-      const propTypes: LLVMType[] = new Array(knownSize || sizeProperties.length).fill(
-        this.checker.generator.builtinNumber.getLLVMType()
-      );
-
-      const structType = LLVMStructType.create(this.checker.generator, declaration.name.getText(), propTypes);
-
-      return structType.getPointer();
+      return declaration.getLLVMStructType(declaration.name.getText());
     }
 
     if (this.isObject()) {

@@ -11,9 +11,8 @@
 
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling/functionmangler";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import * as ts from "typescript";
-import { SIZEOF_TUPLE } from "../cppintegration";
 import { Declaration } from "./declaration";
 import { Environment } from "../scope";
 
@@ -42,11 +41,7 @@ export class TSTuple {
     }
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-
-    const structType = LLVMStructType.create(generator, "tuple");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_TUPLE);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+    this.llvmType = this.declaration.getLLVMStructType("tuple");
   }
 
   getLLVMType() {

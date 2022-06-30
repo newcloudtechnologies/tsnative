@@ -38,7 +38,7 @@ export class TemplateInstantiator {
   ) {
     // filter declarations
     this.sources = program.getSourceFiles().filter((source) => !source.isDeclarationFile);
-    this.generator = new LLVMGenerator(program);
+    this.generator = new LLVMGenerator(program).init();
     this.includeDirs = includeDirs;
 
     const extractor: NmSymbolExtractor = new NmSymbolExtractor();

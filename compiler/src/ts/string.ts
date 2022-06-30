@@ -13,9 +13,8 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
-import { SIZEOF_STRING } from "../cppintegration";
 import { TSType } from "./type";
 
 const stdlib = require("std/constants");
@@ -45,11 +44,7 @@ export class TSString {
     }
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-
-    const structType = LLVMStructType.create(generator, "string");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_STRING);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+    this.llvmType = this.declaration.getLLVMStructType("string");
   }
 
   getLLVMType() {

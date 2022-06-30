@@ -13,9 +13,8 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
-import { SIZEOF_OBJECT } from "../cppintegration";
 
 const stdlib = require("std/constants");
 
@@ -35,7 +34,7 @@ export class TSObject {
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
-      return ts.isClassDeclaration(node) && node.name?.getText() === "Object";
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Object";
     });
 
     if (!classDeclaration) {
@@ -43,11 +42,7 @@ export class TSObject {
     }
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-
-    const structType = LLVMStructType.create(generator, "object");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_OBJECT);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+    this.llvmType = this.declaration.getLLVMStructType("object");
   }
 
   private getCtorFn(isDefault: boolean) {
