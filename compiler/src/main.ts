@@ -66,6 +66,7 @@ async function main() {
   console.log(process.argv.join(" "))
 
   const files = argv.args;
+  console.log(process.argv.join(" "))
 
   const tsconfig = parseTSConfig();
   const options: ts.CompilerOptions = tsconfig.compilerOptions;

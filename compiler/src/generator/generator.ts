@@ -119,8 +119,9 @@ export class LLVMGenerator {
     try {
       llvm.verifyModule(this.module);
     } catch (error) {
-      error.message += "\n" + this.module.print();
-      throw error;
+      let e = error as Error;
+      e.message += "\n" + this.module.print();
+      throw e;
     }
 
     return this.module;

@@ -209,6 +209,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
         ARCHIVE_OUTPUT_DIRECTORY ${output_dir}
         ARCHIVE_OUTPUT_NAME ${bin_name})
 
+    target_include_directories(${target} PUBLIC ${tsnative-declarator_INCLUDE_DIRS})
     target_link_libraries(${target} PUBLIC tsnative-std::tsnative-std tsnative-declarator)
 
     if (NOT "${TS_EXTENSION_TARGET}" STREQUAL "fake")
