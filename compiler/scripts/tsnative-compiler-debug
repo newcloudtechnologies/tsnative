@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# 0 to run the code without breaking on debug
+# 1 for instantaing template classes
+# 2 for instantaing template functions
+# 3 for generating LLVM IR
+launchNumberToDebug=3;
+useVSCodeDebug=1; # Set one for VSCod debugging and 0 for Chrome debugging
+
+echo "[DEBUG MODE] Running in the debug mode with desired launch number: ${launchNumberToDebug}"
+
+function getLaunchNumber() {
+    local arguments=$@
+
+    local firstLaunchMarker="--processTemplateClasses"
+    local secondLaunchMarker="--processTemplateFunctions"
+    if [[ "$arguments" == *"$firstLaunchMarker"* ]]; then
+        return 1
+    fi
+
+    if [[ "$arguments" == *"$secondLaunchMarker"* ]]; then
+        return 2
+    fi
+
+    return 3
+}
+
+getLaunchNumber $@
+
+current_launch_number=$?
+
+script_path_plus_name=$(realpath "$0")
+script_dir=$(dirname "$script_path_plus_name")
+main_ts_path=$script_dir
+main_ts_path+="/src/main.ts"
+
+echo "[DEBUG MODE] Current script path: ${script_dir}"
+echo "[DEBUG MODE] main.ts path: ${main_ts_path}"
+
+current_dir=$(cd `dirname $0` && pwd)
+
+cd $script_dir
+
+if [ "$current_launch_number" -eq "$launchNumberToDebug" ]; then
+    echo "[DEBUG MODE] Launching nodemon:"
+    if [ "$useVSCodeDebug" -eq 1 ]; then
+        nodemon -e ts -w src -x "node --inspect -r ts-node/register $main_ts_path $@"
+    else
+        nodemon -e ts -w src -x "node --inspect-brk -r ts-node/register $main_ts_path $@"
+    fi
+else
+    echo "[DEBUG MODE] Launching ts-node without stopping on debug:"
+    ts-node $main_ts_path $@
+fi
+
+cd $current_dir
+
+echo "[DEBUG MODE] Finished debug execution, exiting"

@@ -10,6 +10,8 @@ class TSNativeCompilerConan(ConanFile):
 
     description = "Typescript compiler"
 
+    debug_build_type = "Debug"
+
     def requirements(self):
         self.requires("llvm-node/3.0.4")
 
@@ -27,6 +29,7 @@ class TSNativeCompilerConan(ConanFile):
     def build(self):
         # prepare env
         self.init_npm_env()
+
         # basic configuration steps
         self.run('node -v')
         self.run('npm -v')
@@ -40,6 +43,14 @@ class TSNativeCompilerConan(ConanFile):
         self.run('npm install')
         # copy conan dependencies to node_modules
         self.copytree("deps/*", "node_modules")
+
+        if (self.settings.build_type == self.debug_build_type):
+            # Generate source maps for the code. Paths are relative to build directory.
+            self.run("tsc -p ./tsconfig.json --sourceMap --outDir ./sourceMaps")
+            # Rename tsnative-compiler-debug to tsnative-compiler
+            self.run("mv scripts/tsnative-compiler-debug scripts/tsnative-compiler")
+            return
+
         # transpile
         self.run('npx tsc --outDir compiler')
         # prepare and pack compiler binary
@@ -49,8 +60,26 @@ class TSNativeCompilerConan(ConanFile):
 
     def package(self):
         self.copy("*", src="bin")
-        self.copy("*", src="scripts")
+        self.copy("*", src="scripts", excludes="tsnative-compiler*")
         self.copy("tsconfig.json")
+        
+        if (self.settings.build_type == self.debug_build_type):
+            self.copy("package.json")
+            
+            self.copy("*", src="src", dst="src")
+
+            # Copy ready-to-use node_modules
+            # Avoid calling npm install call and problems with llvm.node
+            self.copy("*", src="node_modules", dst="node_modules")
+
+            # Copy tsnative-compiler script which is used by tsnative.sh
+            self.copy("tsnative-compiler", src="scripts")
+
+            # Copy source maps for the code. 
+            # It is important to give a name of folder exactly equal to a name in the tsconfig.json.
+            self.copy("*", src="sourceMaps", dst="sourceMaps")
+
+
 
     def package_info(self):
         self.env_info.path.append(self.package_folder)
@@ -59,7 +88,6 @@ class TSNativeCompilerConan(ConanFile):
         # Ignore compiler and build_type settings when generatings package id
         # because we dont really care what compiler was used to build the binary
         del self.info.settings.compiler
-        del self.info.settings.build_type
 
     # TODO: common python lib required - use python_requires?
     # keep in sync with test/conanfile.py

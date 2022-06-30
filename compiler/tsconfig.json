@@ -10,7 +10,9 @@
     "forceConsistentCasingInFileNames": true,
     "pretty": true,
     "downlevelIteration": true,
-    "allowUnreachableCode": false
+    "allowUnreachableCode": false,
+    "sourceMap": true,
+    "mapRoot": "sourceMaps"
   },
   "include": [
     "src/*",

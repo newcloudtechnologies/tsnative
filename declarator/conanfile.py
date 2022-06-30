@@ -24,7 +24,6 @@ class TSNativeDeclaratorConan(ConanFile):
         # Ignore compiler and build_type settings when generatings package id
         # because we dont really care what compiler was used to build the binary
         del self.info.settings.compiler
-        del self.info.settings.build_type
 
     def package_info(self):
         self.cpp_info.name = self.name
