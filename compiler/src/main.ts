@@ -207,7 +207,7 @@ async function main() {
 
   let llvmModule;
   try {
-    llvmModule = new LLVMGenerator(program, argv.debug).createModule();
+    llvmModule = new LLVMGenerator(program, argv.debug).init().createModule();
   } catch (e) {
     console.log(files);
     console.log(e);

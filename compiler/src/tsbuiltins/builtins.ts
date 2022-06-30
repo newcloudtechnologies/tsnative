@@ -2,7 +2,6 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { ThisData, Scope } from "../scope";
 import { FunctionMangler } from "../mangling";
-import { SIZEOF_BOOLEAN, SIZEOF_NUMBER, SIZEOF_TSCLOSURE } from "../cppintegration/constants";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
@@ -129,11 +128,6 @@ export class BuiltinTSClosure extends Builtin {
   constructor(generator: LLVMGenerator) {
     super("TSClosure", generator);
 
-    const structType = LLVMStructType.create(generator, "closure");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_TSCLOSURE);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
-
     this.lazyClosure = new LazyClosure(generator);
 
     const defs = this.generator.program
@@ -154,6 +148,7 @@ export class BuiltinTSClosure extends Builtin {
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
     this.tsType = this.declaration.type;
+    this.llvmType = this.declaration.getLLVMStructType("closure");
   }
 
   getLLVMType(): LLVMType {
@@ -309,10 +304,24 @@ export class BuiltinNumber extends Builtin {
 
   constructor(generator: LLVMGenerator) {
     super("number", generator);
-    const structType = LLVMStructType.create(generator, "number");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_NUMBER);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+
+    const stddefs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === stdlib.NUMBER_DEFINITION);
+    if (!stddefs) {
+      throw new Error("No number definition source file found");
+    }
+
+    const classDeclaration = stddefs.statements.find((node) => {
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Number";
+    });
+
+    if (!classDeclaration) {
+      throw new Error("Unable to find 'Number' declaration in std library definitions");
+    }
+
+    const declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
+    this.llvmType = declaration.getLLVMStructType("number");
   }
 
   private createCtorFn() {
@@ -527,10 +536,24 @@ export class BuiltinBoolean extends Builtin {
 
   constructor(generator: LLVMGenerator) {
     super("boolean", generator);
-    const structType = LLVMStructType.create(generator, "boolean");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_BOOLEAN);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+
+    const stddefs = this.generator.program
+      .getSourceFiles()
+      .find((sourceFile) => sourceFile.fileName === stdlib.BOOLEAN_DEFINITION);
+    if (!stddefs) {
+      throw new Error("No boolean definition source file found");
+    }
+
+    const classDeclaration = stddefs.statements.find((node) => {
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Boolean";
+    });
+
+    if (!classDeclaration) {
+      throw new Error("Unable to find 'Boolean' declaration in std library definitions");
+    }
+
+    const declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
+    this.llvmType = declaration.getLLVMStructType("boolean");
   }
 
   getLLVMType() {
@@ -719,7 +742,7 @@ export class BuiltinIteratorResult extends Builtin {
   constructor(declaration: Declaration, generator: LLVMGenerator) {
     super(declaration.type.mangle(), generator);
 
-    this.llvmType = declaration.type.getLLVMType();
+    this.llvmType = declaration.getLLVMStructType();
   }
 
   getLLVMType() {

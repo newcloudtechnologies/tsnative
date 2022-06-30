@@ -13,52 +13,51 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMGlobalVariable, LLVMValue } from "../llvm/value";
-import { SIZEOF_UNDEFINED } from "../cppintegration";
 
 const stdlib = require("std/constants");
 
 export class TSUndefined {
   private readonly generator: LLVMGenerator;
   private readonly llvmType: LLVMType;
+  private readonly declaration: Declaration;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
-    const structType = LLVMStructType.create(generator, "undefined");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_UNDEFINED);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
-  }
-
-  init() {
     const stddefs = this.generator.program
       .getSourceFiles()
       .find((sourceFile) => sourceFile.fileName === stdlib.UNDEFINED_DEFINITION);
+
     if (!stddefs) {
       throw new Error("No undefined definition source file found");
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
-      return ts.isClassDeclaration(node) && node.name?.getText() === "Undefined";
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Undefined";
     });
 
     if (!classDeclaration) {
       throw new Error("Unable to find 'Undefined' declaration in std library definitions");
     }
 
-    const wrappedDeclaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-    const undefinedCtorDeclaration = wrappedDeclaration.members.find((m) => m.isConstructor());
+    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
+
+    this.llvmType = this.declaration.getLLVMStructType("undefined");
+  }
+
+  init() {
+    const undefinedCtorDeclaration = this.declaration.members.find((m) => m.isConstructor());
 
     if (!undefinedCtorDeclaration) {
-      throw new Error(`Unable to find constructor at '${wrappedDeclaration.getText()}'`);
+      throw new Error(`Unable to find constructor at '${this.declaration.getText()}'`);
     }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       undefinedCtorDeclaration,
       undefined,
-      wrappedDeclaration.type,
+      this.declaration.type,
       [],
       this.generator
     );

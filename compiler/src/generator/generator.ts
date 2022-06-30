@@ -16,7 +16,6 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { GC, BuiltinTSClosure, BuiltinIteratorResult, BuiltinNumber, BuiltinBoolean } from "../tsbuiltins";
 import { MetaInfoStorage } from "../generator";
-import { SizeOf } from "../cppintegration";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
 import { LLVMConstantInt, LLVMValue } from "../llvm/value";
@@ -49,21 +48,23 @@ export class LLVMGenerator {
   readonly expressionHandlerChain = new ExpressionHandlerChain(this);
   readonly nodeHandlerChain = new NodeHandlerChain(this);
 
-  readonly builtinNumber: BuiltinNumber;
-  readonly builtinBoolean: BuiltinBoolean;
+  private _builtinNumber: BuiltinNumber | undefined;
+  private _builtinBoolean: BuiltinBoolean | undefined;
 
   private builtinTSClosure: BuiltinTSClosure | undefined;
   private garbageCollector: GC | undefined;
 
   private builtinIteratorResult: BuiltinIteratorResult | undefined;
 
-  readonly sizeOf: SizeOf;
   readonly llvm: LLVM;
-  readonly ts: TS;
+
+  private _ts: TS | undefined;
 
   readonly internalNames = InternalNames;
 
   private readonly debugInfo: DebugInfo | undefined;
+
+  private initialized = false;
 
   constructor(program: ts.Program, generateDebugInfo = false) {
     this.program = program;
@@ -72,21 +73,29 @@ export class LLVMGenerator {
     this.irBuilder = new Builder(this, null);
     this.symbolTable = new SymbolTable();
 
-    this.builtinNumber = new BuiltinNumber(this);
-    this.builtinBoolean = new BuiltinBoolean(this);
-
-    this.sizeOf = new SizeOf();
-
     this.llvm = new LLVM(this);
-
-    this.ts = new TS(this);
 
     if (generateDebugInfo) {
       this.debugInfo = new DebugInfo(this);
     }
   }
 
+  init() {
+    this._ts = new TS(this);
+
+    this._builtinNumber = new BuiltinNumber(this);
+    this._builtinBoolean = new BuiltinBoolean(this);
+
+    this.initialized = true;
+
+    return this;
+  }
+
   createModule(): llvm.Module {
+    if (!this.initialized) {
+      throw new Error("Generator in not initialized. Call LLVMGenerator.init first");
+    }
+
     const dbg = this.debugInfo;
     const mainReturnType = LLVMType.getInt32Type(this);
     const { fn: main } = this.llvm.function.create(mainReturnType, [], "main");
@@ -267,6 +276,30 @@ export class LLVMGenerator {
     }
 
     return this.builtinIteratorResult!;
+  }
+
+  get builtinNumber() {
+    if (!this._builtinNumber) {
+      throw new Error("Builtin 'Number' is not initialized");
+    }
+
+    return this._builtinNumber;
+  }
+
+  get builtinBoolean() {
+    if (!this._builtinBoolean) {
+      throw new Error("Builtin 'Boolean' is not initialized");
+    }
+
+    return this._builtinBoolean;
+  }
+
+  get ts() {
+    if (!this._ts) {
+      throw new Error("'TS' is not initialized");
+    }
+
+    return this._ts;
   }
 
   get randomString() {

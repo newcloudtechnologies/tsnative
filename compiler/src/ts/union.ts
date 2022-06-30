@@ -13,9 +13,8 @@ import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
-import { SIZEOF_UNION } from "../cppintegration";
 
 const stdlib = require("std/constants");
 
@@ -35,7 +34,7 @@ export class TSUnion {
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
-      return ts.isClassDeclaration(node) && node.name?.getText() === "Union";
+      return ts.isClassDeclaration(node) && node.name?.getText(stddefs) === "Union";
     });
 
     if (!classDeclaration) {
@@ -43,11 +42,7 @@ export class TSUnion {
     }
 
     this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-
-    const structType = LLVMStructType.create(generator, "union");
-    const syntheticBody = structType.getSyntheticBody(SIZEOF_UNION);
-    structType.setBody(syntheticBody);
-    this.llvmType = structType.getPointer();
+    this.llvmType = this.declaration.getLLVMStructType("union");
   }
 
   private getCtorFn() {
