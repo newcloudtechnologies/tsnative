@@ -101,7 +101,7 @@ class LazyClosure {
     this.llvmType = structType.getPointer();
   }
 
-  get type() {
+  getLLVMType() {
     return this.llvmType;
   }
 

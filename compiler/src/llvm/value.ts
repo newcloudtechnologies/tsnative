@@ -174,7 +174,8 @@ export class LLVMValue {
       throw new Error(`Source value expected to be of PointerType, got '${other.type.toString()}'`);
     }
 
-    if (value.type.isUnion()) {
+    // mkrv @todo: what if 'value' includes 'other' union type huh?
+    if (value.type.isUnion() && !other.type.isUnion()) {
       this.generator.ts.union.set(value, other);
       return value;
     }

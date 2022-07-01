@@ -412,6 +412,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const expressionDeclaration = Declaration.create(expression, this.generator);
     const scope = expressionDeclaration.getScope(undefined);
+
+    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
+
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
       scope,
@@ -1118,12 +1121,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = constructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
+        parentScope.initializeVariablesAndFunctionDeclarations(body, this.generator);
         environmentVariables.push(
           ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, parentScope, outerEnv)
         );
       }
     }
 
+    parentScope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
     environmentVariables.push(...valueDeclaration.environmentVariables(expression, parentScope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
@@ -1342,6 +1347,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       return nullArg;
     });
+
+    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
 
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
@@ -1673,6 +1680,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
           argumentTypes,
           this.generator
         );
+
+        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body, this.generator);
 
         const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
           signature,

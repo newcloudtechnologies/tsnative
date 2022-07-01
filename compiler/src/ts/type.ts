@@ -594,6 +594,13 @@ export class TSType {
     }
 
     if (this.isFunction()) {
+      if (!this.isSymbolless()) {
+        const valueDeclaration = this.getSymbol().valueDeclaration;
+
+        if (valueDeclaration?.typeParameters) {
+          return this.checker.generator.tsclosure.lazyClosure.getLLVMType();
+        }
+      }
       return this.checker.generator.tsclosure.getLLVMType();
     }
 

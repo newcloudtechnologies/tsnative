@@ -13,7 +13,6 @@ import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../.
 import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import {LLVMType} from "../../llvm/type";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -82,8 +81,25 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = this.generator.builder.createBitCast(initializer, this.generator.ts.undef.getLLVMType());
     }
 
-    // @todo
-    parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
+    let existing = parentScope.get(name);
+
+    if (existing && existing instanceof LLVMValue) {
+      // overwrite pointers that possibly captured in some environments
+      existing.makeAssignment(initializer);
+      // overwrite value for future uses
+      parentScope.overwrite(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
+    } else {
+      parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
+    }
+
+    if (outerEnv?.variables.includes(name)) {
+      const index = outerEnv.getVariableIndex(name);
+      const valuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, index]);
+      const value = this.generator.builder.createLoad(valuePtr);
+
+      value.makeAssignment(initializer);
+    }
+
     const dbg = this.generator.getDebugInfo();
     if (dbg) {
       dbg.emitDeclare(name, initializer, declaration, type);
@@ -138,7 +154,12 @@ export class VariableHandler extends AbstractNodeHandler {
         }
       }
 
-      parentScope.set(name, new HeapVariableDeclaration(allocated, allocated, name, declaration));
+      const value = new HeapVariableDeclaration(allocated, allocated, name, declaration);
+      if (parentScope.get(name)) {
+        parentScope.overwrite(name, value);
+      } else {
+        parentScope.set(name, value);
+      }
       initializer = undefined;
     } else {
       this.checkAssignmentFromMethod(declaration);
