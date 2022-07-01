@@ -70,7 +70,7 @@ export class TemplateInstantiator {
           tsType = typeMap.get(typename)!;
 
           if (tsType.isObject()) {
-            throw new Error("console.log/assert with object is not supported for generic types");
+            return "Object*";
           }
         }
 

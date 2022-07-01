@@ -165,7 +165,7 @@ export class LLVMValue {
   }
 
   makeAssignment(other: LLVMValue): LLVMValue {
-    const value = this as LLVMValue;
+    let value = this as LLVMValue;
 
     if (!value.type.isPointer()) {
       throw new Error(`Assignment destination expected to be of PointerType, got '${value.type.toString()}'`);
@@ -181,8 +181,12 @@ export class LLVMValue {
     const isSame = value.type.getPointerElementType() === other.type.getPointerElementType();
     const int8PtrTy = LLVMType.getInt8Type(this.generator).getPointer();
 
-    if (!isSame && other.type.equals(int8PtrTy)) {
-      other = this.generator.builder.createBitCast(other, value.type);
+    if (!isSame) {
+      if (other.type.equals(int8PtrTy)) {
+        other = this.generator.builder.createBitCast(other, value.type);
+      } else if (value.type.equals(int8PtrTy)) {
+        value = this.generator.builder.createBitCast(value, other.type);
+      }
     }
 
     other = other.adjustToType(value.type.getPointerElementType());

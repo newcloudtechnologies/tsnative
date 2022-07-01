@@ -112,6 +112,15 @@ class LazyClosure {
     return allocated;
   }
 
+  getEnv(lazyClosure: LLVMValue) {
+    if (!this.isLazyClosure(lazyClosure)) {
+      throw new Error(`Expected lazy closure to be passed at LazyClosure.getEnv, got '${lazyClosure.type.toString()}'`);
+    }
+
+    const envPtr = this.generator.builder.createSafeInBoundsGEP(lazyClosure, [0, 0]);
+    return this.generator.builder.createLoad(envPtr);
+  }
+
   isLazyClosure(value: LLVMValue) {
     const nakedType = value.type.unwrapPointer();
     return Boolean(nakedType.isStructType() && nakedType.name?.startsWith(this.tag));
