@@ -26,9 +26,7 @@ class TSNativeStdConan(ConanFile):
 
     def requirements(self):
         self.requires("abseil/20211102.0")
-
-        if self.options.build_tests:
-            self.requires("gtest/1.11.0")
+        self.requires("gtest/1.11.0")
 
     def build_requirements(self):
         # 'if self.user and seld.channel:' ends up in exception when no user and channel values are provided
