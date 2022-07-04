@@ -103,6 +103,8 @@ export class TSArray {
         }
 
         arrayType = this.generator.ts.checker.getTypeAtLocation(expression.parent.type);
+      } else if (ts.isTypeAssertion(expression.parent) || ts.isAsExpression(expression.parent)) {
+        arrayType = this.generator.ts.checker.getTypeFromTypeNode(expression.parent.type);
       }
     }
 

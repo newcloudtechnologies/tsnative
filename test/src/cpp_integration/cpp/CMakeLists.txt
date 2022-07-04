@@ -41,6 +41,7 @@ set(SOURCES
     optional_arguments.cpp
     enum.cpp
     union_narrowing.cpp
+    fileinfo.cpp
 )
 
 list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")

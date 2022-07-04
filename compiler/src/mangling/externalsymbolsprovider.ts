@@ -350,7 +350,14 @@ export class ExternalSymbolsProvider {
   private extractTemplateParameterTypes(cppSignature: string): string[] {
     // @todo: use lazy cache
     const namespaceType = this.namespace + this.thisTypeName;
-    const classTemplateParametersPattern = `(?<=${namespaceType}<)(((?!${namespaceType}<).)*)(?=>::)`;
+
+    // template method signature includes return type, eg. Array<String*>* Array<String*>::map<String*>(TSClosure*)
+    // split signature by whitespace and use the fact that C++ functions only may return pointers; signature itself is never ends with *
+    const splitSignature = cppSignature.split(" ");
+    const signatureWithReturnType = splitSignature[0].endsWith("*");
+    const maybeExtraSpace = signatureWithReturnType ? " " : "";
+
+    const classTemplateParametersPattern = `(?<=${maybeExtraSpace}${namespaceType}<)(((?!::${namespaceType}<).)*)(?=>::)`;
     const classTemplateParametersMatches = cppSignature.match(classTemplateParametersPattern);
     const functionTemplateParametersMatches = cppSignature.match(`(?<=${this.methodName}<).*(?=>\\()`);
 
