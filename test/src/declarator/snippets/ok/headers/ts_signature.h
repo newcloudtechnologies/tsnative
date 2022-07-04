@@ -66,3 +66,22 @@ TS_EXPORT TS_SIGNATURE("function someFunc2(n: number, m: number): data.FileInfo_
                                                                                        int x = -1,
                                                                                        int y = -1);
 
+class TS_EXPORT Multiline
+{
+    TS_METHOD TS_SIGNATURE("multiline(arg1: number,"
+    "arg2: number, arg3: "
+    "number,"
+    "arg4: number,"
+    "arg5: number, arg6:          "
+    "number, arg7: number): number")
+    static Number* multiline(int* arg1, int* arg2, int* arg3, int* arg4, int* arg5, int* arg6, int* arg7);
+};
+
+TS_EXPORT TS_SIGNATURE("function multiline(arg1: number,"
+"arg2: number, arg3: "
+"number,"
+"arg4: number,"
+"arg5: number, arg6:          "
+"number, arg7: number): number")
+Number* multiline(int* arg1, int* arg2, int* arg3, int* arg4, int* arg5, int* arg6, int* arg7);
+

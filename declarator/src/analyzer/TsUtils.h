@@ -46,6 +46,7 @@ private:
     std::string m_retType;
 
 private:
+    std::string normalize(const std::string& sig);
     void parse(const std::string& sig);
     std::vector<Argument> parseArgumentList(const std::string& args);
     TsSignature::Argument parseArgument(const std::string& args);

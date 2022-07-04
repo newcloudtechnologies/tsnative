@@ -39,3 +39,11 @@ export function mapWidget2<U>(callbackfn: (value: U, index: number, array: reado
 export function someFunc(n: number, m: number): number;
 
 export function someFunc2(n: number, m: number): data.FileInfo_t[];
+
+export class Multiline {
+    private p0_Multiline: boolean;
+
+    static multiline(arg1: number, arg2: number, arg3: number, arg4: number, arg5: number, arg6: number, arg7: number): number;
+}
+
+export function multiline(arg1: number, arg2: number, arg3: number, arg4: number, arg5: number, arg6: number, arg7: number): number;
