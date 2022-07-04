@@ -203,6 +203,11 @@ export class TemplateInstantiator {
 
       const templateInstance = `template class ${tsType.toPlainCppType()};`;
       this.generatedContent.push(templateInstance, ...this.instantiateIteratorResult(tsType));
+    } else if (ts.isTypeAssertion(node.initializer) || ts.isAsExpression(node.initializer)) {
+      const tsType = this.generator.ts.checker.getTypeFromTypeNode(node.initializer.type);
+
+      const templateInstance = `template class ${tsType.toPlainCppType()};`;
+      this.generatedContent.push(templateInstance, ...this.instantiateIteratorResult(tsType));
     }
   }
 
