@@ -7,6 +7,7 @@ import os
 
 class TSNativeStdConan(ConanFile):
     name = "tsnative-std"
+    testSuffix = "_GTEST"
 
     description = "Typescript standard library implementation"
     settings = "os", "compiler", "build_type", "arch", "target_abi"
@@ -15,8 +16,19 @@ class TSNativeStdConan(ConanFile):
 
     exports_sources = "*"
 
+    options = {
+        "build_tests": [True, False]
+    }
+
+    default_options = {
+        "build_tests": False
+    }
+
     def requirements(self):
         self.requires("abseil/20211102.0")
+
+        if self.options.build_tests:
+            self.requires("gtest/1.11.0")
 
     def build_requirements(self):
         # 'if self.user and seld.channel:' ends up in exception when no user and channel values are provided
@@ -46,12 +58,18 @@ class TSNativeStdConan(ConanFile):
             self.output.warn("Declarations generation is disabled for OS %s" % str(self.settings.os))
             cmake.definitions["GENERATE_DECLARATIONS"] = 'OFF'
 
+        cmake.definitions["BUILD_TEST"] = 'ON' if self.options.build_tests else 'OFF'
+
         cmake.configure()
         cmake.build()
         cmake.install()
+        cmake.test(output_on_failure=True)
 
     def package(self):
         self.copy("constants.*", "declarations/tsnative/std")
+
+    def package_id(self):
+        del self.info.options.build_tests
 
     def package_info(self):
         self.cpp_info.name = self.name
