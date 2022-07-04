@@ -59,6 +59,7 @@ pipeline {
                             string(name: 'PKG_CONAN_VERSION', value: version),
                             string(name: 'PKG_CONAN_USER', value: user),
                             string(name: 'PKG_CONAN_CHANNEL', value: channel),
+                            string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*msvc.*'),
                             booleanParam(name: 'PKG_IS_BUILD_TOOL', value: true)
                         ]
                 }
@@ -77,6 +78,7 @@ pipeline {
                             string(name: 'PKG_CONAN_VERSION', value: version),
                             string(name: 'PKG_CONAN_USER', value: user),
                             string(name: 'PKG_CONAN_CHANNEL', value: channel),
+                            string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*msvc.*'),
                             booleanParam(name: 'PKG_IS_BUILD_TOOL', value: true)
                         ]
                 }
@@ -96,6 +98,7 @@ pipeline {
                             string(name: 'PKG_CONAN_USER', value: user),
                             string(name: 'PKG_CONAN_CHANNEL', value: channel),
                             string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True"),
+                            string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*'),
                             booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                         ]
                 }

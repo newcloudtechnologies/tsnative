@@ -1,6 +1,6 @@
 from conans import ConanFile
 from conans.model.version import Version
-
+from distutils.dir_util import copy_tree
 import os, shutil
 
 class TSNativeCompilerConan(ConanFile):
@@ -13,11 +13,7 @@ class TSNativeCompilerConan(ConanFile):
     debug_build_type = "Debug"
 
     def requirements(self):
-        self.requires("llvm-node/3.0.4")
-
-    def imports(self):
-        self.keep_imports = True # keep copied files in build folder
-        self.copy("*", os.path.join("deps","llvm-node"))
+        self.requires("llvm-node/3.0.5", private=True)
 
     def export_sources(self):
         self.copy("package.json")
@@ -42,7 +38,8 @@ class TSNativeCompilerConan(ConanFile):
         # install npm dependencies
         self.run('npm install')
         # copy conan dependencies to node_modules
-        self.copytree("deps/*", "node_modules")
+        ln = self.dependencies["llvm-node"]
+        copy_tree(ln.package_folder, os.path.join("node_modules","llvm-node"))
 
         if (self.settings.build_type == self.debug_build_type):
             # Generate source maps for the code. Paths are relative to build directory.
@@ -111,10 +108,3 @@ class TSNativeCompilerConan(ConanFile):
                 self.run('npm config set unsafe-perm true')
                 self.output.info("== patch: install npm@6")
                 self.run('npm install -g npm@6')
-
-    def copytree(self, src, dst, symlinks=False, ignore=None):
-        # Conan generates a really long paths that easily exceed default 260 chars limit on Windows.
-        # Even though it's possible to ask Windows to extend this limit, python seems to unable to
-        # to take advantage of this tweak and keeps failing when we try to use shutils.copytree to
-        # copy files to destinations with long paths.
-        self.run("cp -rf %s %s" % (src, dst))
