@@ -67,6 +67,8 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     PUBLIC
         "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>"
+    INTERFACE
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
     )
 
 target_link_libraries(${PROJECT_NAME}
@@ -141,3 +143,22 @@ install(
     FILES       ${PROJECT_NAME}-config.cmake
     DESTINATION "cmake"
 )
+
+if (BUILD_TEST)
+    enable_testing()
+    find_package(GTest REQUIRED)
+    include(GoogleTest)
+
+    set(TEST_SOURCES test/gtest_example.cpp)
+
+    add_executable(${PROJECT_NAME}_GTEST ${TEST_SOURCES})
+
+    target_link_libraries(${PROJECT_NAME}_GTEST
+                        ${PROJECT_NAME}
+                        GTest::gtest
+                        GTest::gtest_main
+                        GTest::gmock_main
+                        GTest::gmock)
+
+    gtest_add_tests(TARGET ${PROJECT_NAME}_GTEST)
+endif()        
