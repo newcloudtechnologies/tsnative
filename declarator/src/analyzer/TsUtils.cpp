@@ -13,10 +13,22 @@
 
 #include "utils/Exception.h"
 
+#include <iterator>
 #include <regex>
+#include <sstream>
 
 namespace analyzer
 {
+
+std::string TsSignature::normalize(const std::string& sig)
+{
+    std::stringstream ss;
+
+    // remove paired quotes
+    std::regex vowel_re(R"(\"\s*\")");
+    std::regex_replace(std::ostreambuf_iterator<char>(ss), sig.begin(), sig.end(), vowel_re, "");
+    return ss.str();
+}
 
 void TsSignature::parse(const std::string& sig)
 {
@@ -143,7 +155,7 @@ std::vector<std::string> TsSignature::parseTemplateArguments(const std::string& 
 
 TsSignature::TsSignature(const std::string& sig)
 {
-    parse(sig);
+    parse(normalize(sig));
 }
 
 TsSignature::Type TsSignature::type() const
