@@ -290,6 +290,14 @@ export class LLVMStructType extends LLVMType {
   }
 
   static create(generator: LLVMGenerator, name?: string, types?: LLVMType[]) {
+    if (name) {
+      const type = generator.module.getTypeByName(name);
+
+      if (type) {
+        return LLVMType.make(type, generator) as LLVMStructType;
+      }
+    }
+
     // mkrv: seems like optional arguments are not forwardable
     const type = llvm.StructType.create(generator.context, name || "");
 
