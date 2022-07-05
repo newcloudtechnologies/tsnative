@@ -15,11 +15,7 @@ project(tsnative-declarator LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    find_package(LLVM "11.1.0" REQUIRED CONFIG)
-else()
-    find_package(LLVM "11.0.0" REQUIRED CONFIG)
-endif()
+find_package(LLVM "11.1.0" REQUIRED CONFIG)
 
 message(STATUS "LLVM_CMAKE_DIR=${LLVM_CMAKE_DIR}")
 message(STATUS "LLVM_INCLUDE_DIRS=${LLVM_INCLUDE_DIRS}")
@@ -60,7 +56,7 @@ target_compile_options (${PROJECT_NAME} PUBLIC -fexceptions)
 
 # windows package provides libclang.dll
 set (CLANG_LIB clang)
-if (MSVC)
+if (WIN32)
     set (CLANG_LIB libclang)
 endif()
 
