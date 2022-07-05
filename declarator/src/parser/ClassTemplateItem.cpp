@@ -46,7 +46,8 @@ int ClassTemplateItem::size() const
                                                settings.source(),
                                                settings.includeDirs(),
                                                settings.definitions(),
-                                               settings.compilerAbi());
+                                               settings.compilerAbi(),
+                                               settings.sysroot());
 
         auto instance = instantiator.instantiate();
 

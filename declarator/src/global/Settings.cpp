@@ -39,6 +39,10 @@ void Settings::do_init(int argc, char** argv)
               {
                   m_compiler_abi = val;
               }
+              else if (opt == "sysroot")
+              {
+                  m_sysroot = val;
+              }
               else if (opt == "")
               {
                   m_source = val;
@@ -139,6 +143,11 @@ std::string Settings::source() const
 std::string Settings::compilerAbi() const
 {
     return m_compiler_abi;
+}
+
+std::string Settings::sysroot() const
+{
+    return m_sysroot;
 }
 
 std::vector<std::string> Settings::includeDirs() const

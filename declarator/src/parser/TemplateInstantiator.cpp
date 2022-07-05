@@ -108,11 +108,12 @@ ClassTemplateInstantiator::ClassTemplateInstantiator(parser::const_class_templat
                                                      const std::string& source_path,
                                                      const std::vector<std::string>& include_dirs,
                                                      const std::vector<std::string>& definitions,
-                                                     const std::string& compiler_abi)
+                                                     const std::string& compiler_abi,
+                                                     const std::string& sys_root)
 {
     // include source header into instance
     m_instancePath = createInstance(classTemplateItem, {source_path});
-    m_tu = createTranslationUnit(m_instancePath, include_dirs, definitions, compiler_abi);
+    m_tu = createTranslationUnit(m_instancePath, include_dirs, definitions, compiler_abi, sys_root);
 }
 
 ClassTemplateInstantiator::~ClassTemplateInstantiator()
@@ -204,9 +205,11 @@ void ClassTemplateInstantiator::deleteInstance(const std::string& instance_path)
 CXTranslationUnit ClassTemplateInstantiator::createTranslationUnit(const std::string& instance_path,
                                                                    const std::vector<std::string>& include_dirs,
                                                                    const std::vector<std::string>& definitions,
-                                                                   const std::string& compiler_abi)
+                                                                   const std::string& compiler_abi,
+                                                                   const std::string& sys_root)
 {
     std::string target = utils::strprintf("--target=%s", compiler_abi.c_str());
+    std::string sysroot = !sys_root.empty() ? utils::strprintf("--sysroot=%s", sys_root.c_str()) : "";
 
     std::vector<std::string> Is;
     std::vector<std::string> Ds;
@@ -224,6 +227,11 @@ CXTranslationUnit ClassTemplateInstantiator::createTranslationUnit(const std::st
     }
 
     std::vector<const char*> args = {"-x", "c++", target.c_str()};
+
+    if (!sysroot.empty())
+    {
+        args.push_back(sysroot.c_str());
+    }
 
     for (const auto& it : Is)
     {

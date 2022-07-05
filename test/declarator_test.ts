@@ -28,6 +28,7 @@ const platform = os.platform();
 console.log(`Platform detected: ${platform}`);
 
 const compiler_abi = process.env.COMPILER_ABI as string;
+const declarator_include_dirs = process.env.DECLARATOR_INCLUDE_DIRS!.split(";") as string[];
 
 if (compiler_abi == undefined || compiler_abi == "") {
     console.error("Compiler ABI cannot be empty. Please provide one with COMPILER_ABI env variable");
@@ -112,13 +113,14 @@ class Declarator extends Process {
         const declarator_bin = process.env.DECLARATOR_BIN
 
         let include_list: string[] = [];
-        // TODO: add additional include paths
-        include_list.push(`${process.env.INCLUDES_DECLARATOR}`)
-        include_list.push(`${process.env.INCLUDES_STD}`)
 
-        if (os.platform() === "win32") {
-            include_list.push(`C:/msys64/mingw64/lib/gcc/${compiler_abi}/${process.env.GCC_VERSION}/include`);
+        const DECLARATOR_INCLUDE_DIRS = process.env.DECLARATOR_INCLUDE_DIRS;
+
+        for (let item of DECLARATOR_INCLUDE_DIRS!.split(";")) {
+            include_list.push(item)
         }
+
+        include_list.concat(declarator_include_dirs);
 
         include_list.forEach(function (_, index, array) {
             array[index] = "-I " + array[index];
@@ -131,7 +133,7 @@ class Declarator extends Process {
                 fs.mkdirSync(output_dir, { recursive: true });
             }
 
-            let { stdout, stderr } = await exec(`${declarator_bin} -x c++ --target=${compiler_abi} -D TS ${headerFilePath} ${includes}`,
+            let { stdout, stderr } = await exec(`${declarator_bin} -nobuiltininc -x c++ --target=${compiler_abi} -D TS ${headerFilePath} ${includes}`,
                 { env: { 'DECLARATOR_OUTPUT_DIR': output_dir } });
 
             declarator = new Declarator(stdout, stderr, headerFilePath);

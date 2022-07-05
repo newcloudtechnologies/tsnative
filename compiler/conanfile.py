@@ -13,7 +13,7 @@ class TSNativeCompilerConan(ConanFile):
     debug_build_type = "Debug"
 
     def requirements(self):
-        self.requires("llvm-node/3.0.5", private=True)
+        self.requires("llvm-node/3.0.6", private=True)
 
     def export_sources(self):
         self.copy("package.json")

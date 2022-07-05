@@ -111,12 +111,8 @@ function(run_declarator NAME ...)
     set(INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES})
     list(APPEND INCLUDE_DIRECTORIES "${tsnative-declarator_INCLUDE_DIRS}" "${tsnative-std_INCLUDE_DIRS}")
 
-    # FIXME: need to research how to force declarator to find all standard headers
-    if (WIN32)
-        set (MINGW_GCC_INCLUDE_PATH "/mingw64/lib/gcc/${CMAKE_CXX_COMPILER_TARGET}/${CMAKE_CXX_COMPILER_VERSION}/include")
-        list(APPEND INCLUDE_DIRECTORIES "${MINGW_GCC_INCLUDE_PATH}")
-        message(WARNING "MSYS hack: adding gcc path to includes: ${MINGW_GCC_INCLUDE_PATH}")
-    endif()
+    # append builting include dirs
+    list(APPEND INCLUDE_DIRECTORIES "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
 
     # remove empty strings
     list(FILTER INCLUDE_DIRECTORIES EXCLUDE REGEX "^$")
@@ -143,13 +139,13 @@ function(run_declarator NAME ...)
     string(REPLACE ";" " " DEFINITIONS "${DEFINITIONS}")
 
     set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
-    set(command "${variables} ${TS_DECLARATOR} -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} ${DEFINITIONS} ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
+    set(command "${variables} ${TS_DECLARATOR} -nobuiltininc -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} ${DEFINITIONS} ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
         DEPENDS ${ARG_SOURCE}
         COMMAND echo "Run declarator..."
-        COMMAND mkdir -p "${OUTPUT_DIR}"
+        COMMAND sh -c "mkdir -p ${OUTPUT_DIR}"
         VERBATIM COMMAND sh -c "${command}"
     )
 

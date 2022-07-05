@@ -5,13 +5,14 @@ import os
 
 # required_conan_version = ">=1.33.0"
 
+
 class TSNativeStdConan(ConanFile):
     name = "tsnative-std"
     testSuffix = "_GTEST"
 
     description = "Typescript standard library implementation"
     settings = "os", "compiler", "build_type", "arch", "target_abi"
-    
+
     generators = "cmake", "CMakeDeps", "cmake_find_package"
 
     exports_sources = "*"
@@ -31,7 +32,8 @@ class TSNativeStdConan(ConanFile):
     def build_requirements(self):
         # 'if self.user and seld.channel:' ends up in exception when no user and channel values are provided
         if self._conan_user and self._conan_channel:
-            self.build_requires("tsnative-declarator/%s@%s/%s" % (self.version, self.user, self.channel))
+            self.build_requires("tsnative-declarator/%s@%s/%s" %
+                                (self.version, self.user, self.channel))
         else:
             self.build_requires("tsnative-declarator/%s" % self.version)
 
@@ -44,17 +46,12 @@ class TSNativeStdConan(ConanFile):
     def build(self):
         cmake = CMake(self)
         if self.settings.target_abi is None:
-            self.output.error("Target ABI is not specified. Please provide settings.target_abi value")
+            self.output.error(
+                "Target ABI is not specified. Please provide settings.target_abi value")
         else:
             self.output.info("Target ABI is %s" % self.settings.target_abi)
             cmake.definitions["CMAKE_CXX_COMPILER_TARGET"] = self.settings.target_abi
-        
-        # TODO: it's possible to generate std declaration only on linux for now
-        if (self.settings.os == "Linux"):
             cmake.definitions["GENERATE_DECLARATIONS"] = 'ON'
-        else:
-            self.output.warn("Declarations generation is disabled for OS %s" % str(self.settings.os))
-            cmake.definitions["GENERATE_DECLARATIONS"] = 'OFF'
 
         cmake.definitions["BUILD_TEST"] = 'ON' if self.options.build_tests else 'OFF'
 
@@ -76,6 +73,5 @@ class TSNativeStdConan(ConanFile):
         self.cpp_info.includedirs = ['include']
         self.cpp_info.defines = ['USE_STD_ARRAY_BACKEND']
         self.cpp_info.set_property("cmake_target_name", self.name)
-        self.user_info.NODE_PATH = os.path.join(self.package_folder, "declarations/tsnative")
-
-
+        self.user_info.NODE_PATH = os.path.join(
+            self.package_folder, "declarations/tsnative")

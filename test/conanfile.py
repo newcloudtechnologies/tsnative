@@ -2,13 +2,16 @@ from conans import ConanFile
 from conan.tools.cmake import CMakeDeps
 from conans.tools import load, save
 
-import os, shutil, subprocess
+import os
+import shutil
+
 
 def pkg_suffix(self):
     if self._conan_user and self._conan_channel:
         return "%s@%s/%s" % (self.version, self.user, self.channel)
     else:
-        return  "%s" % self.version
+        return "%s" % self.version
+
 
 class TSNativeTestsConan(ConanFile):
     name = "tsnative-tests"
@@ -16,7 +19,7 @@ class TSNativeTestsConan(ConanFile):
     generators = "cmake_find_package", "cmake_paths", "CMakeDeps"
 
     options = {
-        "run_mode": ["compile" , "runtime", "declarator", "all"]
+        "run_mode": ["compile", "runtime", "declarator", "all"]
     }
 
     default_options = {
@@ -39,7 +42,7 @@ class TSNativeTestsConan(ConanFile):
         cmake.generate()
 
     def imports(self):
-        self.keep_imports = True # keep copied declarations in build folder
+        self.keep_imports = True  # keep copied declarations in build folder
         self.copy("*.ts", ignore_case=True)
 
     def setup_npm(self):
@@ -48,7 +51,8 @@ class TSNativeTestsConan(ConanFile):
 
     def build(self):
         if self.settings.target_abi is None:
-            self.output.error("Target ABI is not specified. Please provide settings.target_abi value")
+            self.output.error(
+                "Target ABI is not specified. Please provide settings.target_abi value")
         else:
             self.output.info("Target ABI is %s" % self.settings.target_abi)
 
@@ -59,36 +63,68 @@ class TSNativeTestsConan(ConanFile):
             self.output.info("======== RUNTIME TESTS ========")
             self.run("npx ts-node runtime_test.ts")
 
+        # TODO: AN-858
+        '''
         if self.options.run_mode == "declarator" or self.options.run_mode == "all":
             self.setup_npm()
             self.output.info("======== DECLARATOR TESTS ========")
-            if self.settings.os == "Windows":
-                ps = subprocess.Popen(('gcc', '--version'), stdout=subprocess.PIPE)
-                ps = subprocess.Popen(('grep', '-Eo','[0-9]*\\.[0-9]*\\.[0-9]*'), stdin=ps.stdout, stdout=subprocess.PIPE)
-                ver = subprocess.check_output(('tail', '-n1'), stdin=ps.stdout).decode('ascii').strip()
-                ps.wait()
-                os.environ["GCC_VERSION"]=ver
-            os.environ["COMPILER_ABI"]=str(self.settings.target_abi)
-            os.environ["INCLUDES_STD"]=''.join(self.dependencies["tsnative-std"].cpp_info.includedirs)
+
+            DECLARATOR_INCLUDE_DIRS = []
+
+            # FIXME: Big crutch: retrieve gcc builtin includes
+            ps = subprocess.Popen(
+                ('gcc', '-xc++', '/dev/null', '-E', '-Wp,-v'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            output = ps.stderr.read().decode('utf8')
+
+            ps.wait()
+
+            for line in output.splitlines():
+                line = line.strip()
+                match = re.match(r"^[A-Z]\:\/.*", line)
+
+                if not match:
+                    match = re.match(r"^\/.*", line)
+
+                if match:
+                    DECLARATOR_INCLUDE_DIRS.append(line)
+
+            # std includes
+            DECLARATOR_INCLUDE_DIRS.append(''.join(
+                self.dependencies["tsnative-std"].cpp_info.includedirs))
+
+            os.environ["COMPILER_ABI"] = str(self.settings.target_abi)
+
             # TODO: why tf declarator cannot be referenced through key like std?!
             for require, dependency in self.dependencies.items():
                 if "tsnative-declarator" in dependency.ref:
-                    os.environ["INCLUDES_DECLARATOR"]=''.join(dependency.cpp_info.includedirs)
-                    os.environ["DECLARATOR_BIN"]=os.path.join(''.join(dependency.cpp_info.bindirs), "tsnative-declarator")
+                    # declarator includes
+                    DECLARATOR_INCLUDE_DIRS.append(''.join(
+                        dependency.cpp_info.includedirs))
+                    # declarator binary
+                    os.environ["DECLARATOR_BIN"] = os.path.join(
+                        ''.join(dependency.cpp_info.bindirs), "tsnative-declarator")
+
+            os.environ["DECLARATOR_INCLUDE_DIRS"] = ';'.join(
+                DECLARATOR_INCLUDE_DIRS)
 
             self.run("npx ts-node declarator_test.ts")
+            self.output.warn("disabled!")
+        '''
 
         if self.options.run_mode == "compile" or self.options.run_mode == "all":
             self.output.info("======== COMPILED TESTS ========")
             args = ""
+
             if "ARGS" in os.environ:
                 args = os.environ["ARGS"]
+
             self.run("./testrunner.sh %s" % args)
 
     def package(self):
         if self.options.run_mode == "all":
             ctestfile = load("out/CTestTestfile.cmake")
-            raw_lines = [ l for l in ctestfile.splitlines() if "add_test(" in l ]
+            raw_lines = [l for l in ctestfile.splitlines() if "add_test(" in l]
             pkg_bin_dir = os.path.join(self.folders.base_package, "bin")
             ctestfile_out = ""
             os.makedirs(pkg_bin_dir)
@@ -96,11 +132,14 @@ class TSNativeTestsConan(ConanFile):
                 tokens = l.split("\"")
                 self.output.info("Install test file: %s" % tokens[1])
                 shutil.copy2(tokens[1], pkg_bin_dir)
-                ctestfile_out += "add_test(%s \"%s\")%s" % (os.path.basename(tokens[1]), os.path.join("bin", os.path.basename(tokens[1])), os.linesep)
+                ctestfile_out += "add_test(%s \"%s\")%s" % (os.path.basename(
+                    tokens[1]), os.path.join("bin", os.path.basename(tokens[1])), os.linesep)
 
-            save(os.path.join(self.folders.base_package, "CTestTestfile.cmake"), ctestfile_out)
+            save(os.path.join(self.folders.base_package,
+                 "CTestTestfile.cmake"), ctestfile_out)
         else:
-            self.output.warn("Files packed only when run_mode=all, but current mode is %s" % self.options.run_mode)
+            self.output.warn(
+                "Files packed only when run_mode=all, but current mode is %s" % self.options.run_mode)
 
     # TODO: common python lib required - use python_requires?
     # keep in sync with compiler/conanfile.py
@@ -111,14 +150,13 @@ class TSNativeTestsConan(ConanFile):
                 self.output.error("CI=true but missing WORKSPACE variable")
 
             self.output.info("== patch: NPM_CONFIG_CACHE=$\{WORKSPACE\}")
-            os.environ["NPM_CONFIG_CACHE"]=os.environ["WORKSPACE"] + "/.npm"
+            os.environ["NPM_CONFIG_CACHE"] = os.environ["WORKSPACE"] + "/.npm"
 
             # hack for docker containers with root user
             if self.settings.os == "Linux":
                 os.environ["HOME"] = os.environ["WORKSPACE"]
                 self.run('npm install -g npm@6')
                 self.run('npm config set unsafe-perm true')
-
 
             # hack for docker containers with root user
             if self.settings.os == "Linux":
