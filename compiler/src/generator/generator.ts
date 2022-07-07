@@ -98,7 +98,7 @@ export class LLVMGenerator {
 
     const dbg = this.debugInfo;
     const mainReturnType = LLVMType.getInt32Type(this);
-    const { fn: main } = this.llvm.function.create(mainReturnType, [], "main");
+    const { fn: main } = this.llvm.function.create(mainReturnType, [], "__ts_main");
 
     const entryBlock = llvm.BasicBlock.create(this.context, "entry", main.unwrapped as llvm.Function);
 

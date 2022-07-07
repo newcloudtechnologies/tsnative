@@ -72,6 +72,8 @@ export const CONSOLE_DEFINITION = toPosixStyle(
 
 export const GC_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "gc.d.ts"));
 
+export const RUNTIME_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "runtime.d.ts"));
+
 export const CLOSURE_DEFINITION = toPosixStyle(
   path.join(__dirname, "definitions", "tsclosure.d.ts")
 );

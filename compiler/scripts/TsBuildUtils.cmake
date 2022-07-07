@@ -108,21 +108,21 @@ function(extractSymbols target dep_target dependencies output_dir demangledList 
 endfunction()
 
 function(generateSeed target dep_target output_dir seed_src)
-    set(output "${output_dir}/seed.cpp")
+    set(SEED_CPP_OUT "${output_dir}/seed.cpp")
+    set(TSMAIN_H_OUT "${output_dir}/tsmain.h")
 
     add_custom_command(
-        OUTPUT ${output}
-        COMMAND echo "Generating seed..."
-        COMMAND echo "int seed(){return 0;}" > ${output} VERBATIM
+        OUTPUT ${SEED_CPP_OUT} ${TSMAIN_H_OUT}
+        COMMAND cp "${CMAKE_CURRENT_LIST_DIR}/seed/*" "${output_dir}"
     )
 
     add_custom_target(${target}
-        DEPENDS ${output}
+        DEPENDS ${SEED_CPP_OUT}
     )
 
     add_dependencies(${target} ${dep_target})
 
-    set(${seed_src} ${output} PARENT_SCOPE)
+    set(${seed_src} ${SEED_CPP_OUT} PARENT_SCOPE)
 endfunction()
 
 function(instantiate_classes target dep_target entry sources includes output_dir trace_opt classes_src)
@@ -326,6 +326,8 @@ function(link target dep_target seed_src compiled_source dependencies)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${binaryPath}")
 
     add_executable(${${target}} WIN32 ${seed_src})
+
+    target_include_directories(${${target}} PUBLIC ${tsnative-declarator_INCLUDE_DIRS})
 
     target_link_libraries(${${target}}
         PRIVATE
