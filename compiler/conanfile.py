@@ -20,6 +20,7 @@ class TSNativeCompilerConan(ConanFile):
         self.copy("tsconfig.json")
         self.copy("src*")
         self.copy("scripts*")
+        self.copy("seed*")
         self.copy(".npm*")
 
     def build(self):
@@ -57,6 +58,7 @@ class TSNativeCompilerConan(ConanFile):
 
     def package(self):
         self.copy("*", src="bin")
+        self.copy("*", src="seed", dst="seed")
         self.copy("*", src="scripts", excludes="tsnative-compiler*")
         self.copy("tsconfig.json")
         

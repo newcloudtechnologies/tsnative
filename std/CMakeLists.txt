@@ -33,6 +33,7 @@ set(HEADERS
     include/std/iterators/setiterator.h
     include/std/iterators/stringiterator.h
     include/std/tsmath.h
+    include/std/runtime.h
 )
 
 set(SOURCES
@@ -50,6 +51,7 @@ set(SOURCES
     src/tsunion.cpp
     src/template_instances.cpp
     src/tsstring.cpp
+    src/runtime.cpp
 
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
@@ -149,9 +151,12 @@ if (BUILD_TEST)
     find_package(GTest REQUIRED)
     include(GoogleTest)
 
-    set(TEST_SOURCES test/gtest_example.cpp)
+    set(TEST_HEADERS test/equality_checkers.h)
 
-    add_executable(${PROJECT_NAME}_GTEST ${TEST_SOURCES})
+    set(TEST_SOURCES test/runtime_tests.cpp
+                     test/equality_checkers.cpp)
+
+    add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 
     target_link_libraries(${PROJECT_NAME}_GTEST
                         ${PROJECT_NAME}

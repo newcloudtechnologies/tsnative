@@ -1,0 +1,1 @@
+extern "C" int __ts_main();

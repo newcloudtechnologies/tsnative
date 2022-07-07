@@ -62,6 +62,7 @@ mkdir -p ${BUILD_DIR}
 TEST_DIRS=( "${CURRENT_DIR}/src/app" \
             "${CURRENT_DIR}/src/basic" \
             "${CURRENT_DIR}/src/cpp_integration" \
+            "${CURRENT_DIR}/src/runtime" \
             "${CURRENT_DIR}/src/cpp_closures" )
 
 # basic filters to choose test files
@@ -146,7 +147,7 @@ build_test() {
         --build ${build_dir} \
         --baseUrl ${INSTALL_DIR}/declarations \
         --test \
-#        --debug
+        # --debug
         # --jobs "4" \
 }
 

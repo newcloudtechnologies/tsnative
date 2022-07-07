@@ -95,7 +95,8 @@ async function main() {
     stdlib.MAP_ITERATOR_DEFINITION,
     stdlib.SET_ITERATOR_DEFINITION,
     stdlib.DATE_DEFINITION,
-    stdlib.MATH_DEFINITION
+    stdlib.MATH_DEFINITION,
+    stdlib.RUNTIME_DEFINITION
   ];
   options.types = [];
 
