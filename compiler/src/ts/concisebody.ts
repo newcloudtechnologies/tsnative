@@ -109,24 +109,7 @@ export class ConciseBody {
         const visitor = (node: ts.Node) => {
           addNonLocalVariableIfNeeded(node);
 
-          if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
-            if (!handled.includes(node.body)) {
-              handled.push(node.body);
-
-              const innerFunctionSignature = this.generator.ts.checker.getSignatureFromDeclaration(
-                Declaration.create(node, this.generator)
-              );
-
-              extendScope.withThisKeeping(() => {
-                ConciseBody.create(node.body, this.generator).getFunctionEnvironmentVariables(
-                  innerFunctionSignature,
-                  extendScope,
-                  environmentVariables,
-                  handled
-                );
-              });
-            }
-          } else if (ts.isPropertyAccessExpression(node)) {
+          if (ts.isPropertyAccessExpression(node)) {
             const accessorType = Expression.create(node, this.generator).getAccessorType();
             if (accessorType) {
               const symbol = this.generator.ts.checker.getSymbolAtLocation(node);
