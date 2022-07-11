@@ -154,3 +154,21 @@
   }
   console.assert(f(1) === 10, "Function without explicit terminator must have implicit one");
 }
+
+{
+  const i = 42;
+
+  function create() {
+    const list = {};
+
+    return function () {
+      console.assert(i === 42, "Outer variables are available inside nested function");
+      return list;
+    }
+  }
+
+  const first = create();
+  const second = create();
+
+  console.assert(first() !== second(), "Nested functions should not reuse same parent function locals");
+}
