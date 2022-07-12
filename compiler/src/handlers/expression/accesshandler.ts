@@ -59,11 +59,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     let propertyName = expression.name.text;
 
     if (env) {
-      let index = env.getVariableIndex(left.getText() + "." + propertyName);
-      if (index < 0) {
-        index = env.getVariableIndex(propertyName);
-      }
-
+      const index = env.getVariableIndex(left.getText() + "." + propertyName);
       if (index > -1) {
         return this.generator.builder.createSafeExtractValue(env.typed.getValue(), [index]);
       }

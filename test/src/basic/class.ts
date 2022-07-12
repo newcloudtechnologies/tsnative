@@ -1552,3 +1552,22 @@
 
   console.assert(RxIconButton_t.y === 210, "Static class property is captured in environment");
 }
+
+{
+  class C {
+    obj = {
+      fieldName: "default"
+    };
+
+    constructor() {
+      const fieldName = "non-default"; // variable name potentially clashes with this.obj.fieldName
+      this.render();
+    }
+
+    render() {
+      console.assert(this.obj.fieldName === "default", "Variable names should not clash with object property name");
+    }
+  }
+
+  new C;
+}

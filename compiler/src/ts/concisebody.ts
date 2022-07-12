@@ -84,6 +84,12 @@ export class ConciseBody {
             return;
           }
 
+          // obj.prop
+          // capture only 'obj', skip 'prop'
+          if (ts.isPropertyAccessExpression(node.parent) && node !== node.parent.expression) {
+            return;
+          }
+
           const nodeText = node.getText();
 
           const isLocal = bodyScope.get(nodeText);
@@ -92,8 +98,8 @@ export class ConciseBody {
           }
 
           const isKnown = environmentVariables.includes(nodeText);
-          const isThis = nodeText === this.generator.internalNames.This;
-          if (isKnown || isThis) {
+          const isThisAccess = nodeText.startsWith(this.generator.internalNames.This);
+          if (isKnown || isThisAccess) {
             return;
           }
 
