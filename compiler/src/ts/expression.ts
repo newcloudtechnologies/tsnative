@@ -98,6 +98,11 @@ export class Expression {
       }
 
       let argType = this.generator.ts.checker.getTypeAtLocation(arg);
+
+      if (ts.isSpreadElement(arg)) {
+        argType = this.generator.ts.checker.getTypeAtLocation(arg.expression);
+      }
+
       if (argType.isTypeParameter()) {
         const typenameAlias = argType.toString();
         argType = this.generator.symbolTable.currentScope.typeMapper.get(typenameAlias);
@@ -122,7 +127,10 @@ export class Expression {
       }
 
       const arg = args[index];
-      handleArg(arg);
+
+      if (arg) {
+        handleArg(arg);
+      }
     });
 
     return argumentTypes;

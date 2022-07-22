@@ -32,6 +32,7 @@ import {
 
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
+import { FunctionDeclarationHandler } from "./functiondeclarationhandler";
 
 export class NodeHandlerChain {
   private readonly root: AbstractNodeHandler;
@@ -41,6 +42,7 @@ export class NodeHandlerChain {
 
     imports
       .setNext(new BlockHandler(generator))
+      .setNext(new FunctionDeclarationHandler(generator))
       .setNext(new BranchHandler(generator))
       .setNext(new BreakHandler(generator))
       .setNext(new BypassingHandler(generator))

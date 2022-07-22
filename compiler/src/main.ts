@@ -7,7 +7,6 @@ import * as ts from "typescript";
 import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
 import { TemplateInstantiator } from "./cppintegration/templateinstantiator";
-import { Preprocessor } from "./preprocessing";
 
 var pjson = require('../package.json');
 var version_string = pjson.version + ' (Based on Node.js ' + process.version + ")"
@@ -53,6 +52,13 @@ function parseTSConfig(): any {
   }
 
   return tsconfig;
+}
+
+// compiler requires source files to follow imports relations
+// create fake program from single entry point to get properly ordered source files
+function getFullProgramSources(rootNames: readonly string[], options: ts.CompilerOptions, host?: ts.CompilerHost) {
+  const program = ts.createProgram(rootNames, options, host);
+  return program.getSourceFiles().map((file) => file.fileName);
 }
 
 // entry point
@@ -133,8 +139,9 @@ async function main() {
   }
 
   const host = ts.createCompilerHost(options);
-  const preprocessor = new Preprocessor(files, options, host, argv.build);
-  const program = preprocessor.program;
+
+  const sources = getFullProgramSources(files, options, host);
+  const program = ts.createProgram(sources, options, host);
 
   const diagnostics = ts.getPreEmitDiagnostics(program);
 

@@ -134,7 +134,7 @@ export class SysVFunctionHandler {
 
     const args = expression.arguments.map((argument, index) => {
       if (ts.isSpreadElement(argument)) {
-        throw new Error("Spread element in arguments is not supported");
+        return this.generator.handleExpression(argument.expression, env);
       }
 
       const arg = this.generator.handleExpression(argument, env);

@@ -729,10 +729,6 @@ export class TSType {
       return "Object*";
     }
 
-    if (this.isTypeParameter()) {
-      return "Object*";
-    }
-
     if (this.isEnum() && !this.isAmbient()) {
       return this.getEnumElementCppType();
     }

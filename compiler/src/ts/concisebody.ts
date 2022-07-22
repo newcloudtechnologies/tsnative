@@ -84,6 +84,13 @@ export class ConciseBody {
             return;
           }
 
+          if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(node)) {
+            const symbol = this.generator.ts.checker.getSymbolAtLocation(node);
+            if (symbol.isParameter()) {
+              return;
+            }
+          }
+
           // obj.prop
           // capture only 'obj', skip 'prop'
           if (ts.isPropertyAccessExpression(node.parent) && node !== node.parent.expression) {
@@ -105,6 +112,7 @@ export class ConciseBody {
 
           const isPropertyAccess = ts.isPropertyAccessExpression(node);
           const isIdentifier = ts.isIdentifier(node);
+
           if (!isIdentifier && !isPropertyAccess) {
             return;
           }
@@ -276,6 +284,18 @@ export class ConciseBody {
         };
 
         const fakeVariablesCreator = (node: ts.Node) => {
+          if (ts.isFunctionDeclaration(node) && node.name) {
+            bodyScope.set(
+              node.name.getText(),
+              new HeapVariableDeclaration(
+                LLVMConstantInt.getFalse(this.generator),
+                LLVMConstantInt.getFalse(this.generator),
+                ""
+              )
+            );
+          }
+
+          // skip function body
           if (ts.isFunctionLike(node)) {
             return;
           }

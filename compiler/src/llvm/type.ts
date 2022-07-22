@@ -128,27 +128,12 @@ export class LLVMType {
 
   isArray() {
     const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Array__"));
+    return Boolean(nakedType.type.isStructTy() && nakedType.type.name === "array");
   }
 
   isLLVMArray() {
     const nakedType = this.unwrapPointer();
     return nakedType.type.isArrayTy();
-  }
-
-  isMap() {
-    const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Map__"));
-  }
-
-  isSet() {
-    const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Set__"));
-  }
-
-  isTuple() {
-    const nakedType = this.unwrapPointer();
-    return Boolean(nakedType.type.isStructTy() && nakedType.type.name?.startsWith("Tuple__"));
   }
 
   isTSClass() {

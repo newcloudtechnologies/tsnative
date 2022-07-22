@@ -152,7 +152,7 @@ export class TSArray {
     const symbol = arrayType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
     if (!valueDeclaration) {
-      throw new Error(`No value declaration found at '${expression.getText()}'`);
+      throw new Error(`No value declaration found at '${expression.pos > 0 ? expression.getText() : "<synthetic array node>"}' type ${arrayType.toString()}`);
     }
 
     const constructorDeclaration = valueDeclaration.members.find((m) => m.isConstructor())!;

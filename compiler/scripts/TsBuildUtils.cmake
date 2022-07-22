@@ -264,9 +264,9 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
 
     set(output "${output_dir}/${OUTPUT_FN}")
 
-    set(PRINT_IR )
+    set(MAYBE_PRINT_IR )
     if (${is_printIr})
-        set(PRINT_IR --printIR)
+        set(MAYBE_PRINT_IR --printIR)
     endif()
 
     set(TS_DEBUG )
@@ -286,7 +286,7 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
                       --mangledTables ${MANGLED}
                       --build ${output_dir}
                       --emitIR
-                      ${PRINT_IR}
+                      ${MAYBE_PRINT_IR}
                       ${trace_opt}
                       ${TS_DEBUG}
     )
