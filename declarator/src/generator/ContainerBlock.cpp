@@ -26,11 +26,15 @@ ContainerBlock::ContainerBlock(Type type, const std::string& name)
 
 void ContainerBlock::add(abstract_block_t block)
 {
+    block->setParent(shared_from_this());
+
     m_children.push_back(block);
 }
 
 void ContainerBlock::add_before(const std::string& siblingName, abstract_block_t block)
 {
+    block->setParent(shared_from_this());
+
     auto it = std::find_if(
         m_children.begin(), m_children.end(), [siblingName](auto it) { return it->name() == siblingName; });
 

@@ -27,6 +27,10 @@ class File : public ContainerBlock
 
 protected:
     void printBody(generator::print::printer_t printer) const override;
+    void printChildImpl(int index,
+                        int size,
+                        const_abstract_block_t child,
+                        generator::print::printer_t printer) const override;
 
 private:
     File();

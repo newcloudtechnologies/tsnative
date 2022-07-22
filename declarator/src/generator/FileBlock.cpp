@@ -27,6 +27,16 @@ void File::printBody(generator::print::printer_t printer) const
     ContainerBlock::printBodyImpl(printer);
 }
 
+void File::printChildImpl(int index, int size, const_abstract_block_t child, generator::print::printer_t printer) const
+{
+    if (child->type() != AbstractBlock::Type::IMPORT)
+    {
+        printer->enter();
+    }
+
+    child->print(printer);
+}
+
 } // namespace ts
 
 } // namespace generator

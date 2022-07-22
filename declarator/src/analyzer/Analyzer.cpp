@@ -50,6 +50,46 @@
 namespace
 {
 
+bool detectImport(generator::ts::const_abstract_block_t block)
+{
+    using namespace generator::ts;
+
+    bool result = false;
+
+    if (AbstractBlock::isContainerBlock(block))
+    {
+        auto containerBlock = std::static_pointer_cast<ContainerBlock const>(block);
+
+        for (const auto& it : containerBlock->children())
+        {
+            if (it->type() == AbstractBlock::Type::IMPORT)
+            {
+                result = true;
+                break;
+            }
+        }
+
+        if (!result)
+        {
+            const_container_block_t parent = containerBlock->parent();
+            if (parent)
+            {
+                result = detectImport(parent);
+            }
+        }
+    }
+    else
+    {
+        const_container_block_t parent = block->parent();
+        if (parent)
+        {
+            result = detectImport(parent);
+        }
+    }
+
+    return result;
+}
+
 void do_create(parser::const_abstract_item_t item,
                const analyzer::TypeMapper& typeMapper,
                const std::vector<generator::ts::import_block_t>& importBlocks,
@@ -59,63 +99,84 @@ void do_create(parser::const_abstract_item_t item,
     using namespace analyzer;
     using namespace generator::ts;
 
+    auto parentBlock = [block]()
+    {
+        _ASSERT(AbstractBlock::isContainerBlock(block));
+        return std::static_pointer_cast<ContainerBlock>(block);
+    };
+
+    auto addImports = [&importBlocks](generator::ts::container_block_t containerBlock)
+    {
+        if (!detectImport(containerBlock))
+        {
+            for (const auto& it : importBlocks)
+            {
+                containerBlock->add(it);
+            }
+        }
+    };
+
     switch (item->type())
     {
         case AbstractItem::Type::NAMESPACE:
         {
             _ASSERT(AbstractBlock::isContainerBlock(block));
 
-            makeNamespace(std::static_pointer_cast<const NamespaceItem>(item),
-                          importBlocks,
-                          std::static_pointer_cast<ContainerBlock>(block));
+            namespace_block_t namespaceBlock =
+                makeNamespace(std::static_pointer_cast<const NamespaceItem>(item), parentBlock());
+
+            _ASSERT(namespaceBlock->type() == AbstractBlock::Type::MODULE ||
+                    namespaceBlock->type() == AbstractBlock::Type::NAMESPACE);
+
+            // add imports into module block
+            if (namespaceBlock->type() == AbstractBlock::Type::MODULE)
+            {
+                addImports(namespaceBlock);
+            }
+
             break;
         }
         case AbstractItem::Type::CLASS:
         {
-            _ASSERT(AbstractBlock::isContainerBlock(block));
+            // add imports into parent block
+            addImports(parentBlock());
 
-            makeClass(std::static_pointer_cast<const ClassItem>(item),
-                      typeMapper,
-                      std::static_pointer_cast<ContainerBlock>(block));
+            makeClass(std::static_pointer_cast<const ClassItem>(item), typeMapper, parentBlock());
             break;
         }
         case AbstractItem::Type::CLASS_TEMPLATE:
         {
-            _ASSERT(AbstractBlock::isContainerBlock(block));
+            // add imports into parent block
+            addImports(parentBlock());
 
-            makeGenericClass(std::static_pointer_cast<const ClassTemplateItem>(item),
-                             typeMapper,
-                             std::static_pointer_cast<ContainerBlock>(block));
+            makeGenericClass(std::static_pointer_cast<const ClassTemplateItem>(item), typeMapper, parentBlock());
             break;
         }
         case AbstractItem::Type::ENUM:
         {
-            _ASSERT(AbstractBlock::isContainerBlock(block));
+            // add imports into parent block
+            addImports(parentBlock());
 
-            makeEnum(std::static_pointer_cast<const EnumItem>(item),
-                     typeMapper,
-                     std::static_pointer_cast<ContainerBlock>(block));
+            makeEnum(std::static_pointer_cast<const EnumItem>(item), typeMapper, parentBlock());
             break;
         }
         case AbstractItem::Type::FUNCTION:
         {
-            _ASSERT(AbstractBlock::isContainerBlock(block));
+            // add imports into parent block
+            addImports(parentBlock());
 
-            makeFunction(std::static_pointer_cast<const FunctionItem>(item),
-                         typeMapper,
-                         std::static_pointer_cast<ContainerBlock>(block));
+            makeFunction(std::static_pointer_cast<const FunctionItem>(item), typeMapper, parentBlock());
             break;
         }
         case AbstractItem::Type::FUNCTION_TEMPLATE:
         {
-            _ASSERT(AbstractBlock::isContainerBlock(block));
+            // add imports into parent block
+            addImports(parentBlock());
 
             // TODO: handle template functions
             // here ordinary function is used
             // template parameters ignore
-            makeFunction(std::static_pointer_cast<const FunctionTemplateItem>(item),
-                         typeMapper,
-                         std::static_pointer_cast<ContainerBlock>(block));
+            makeFunction(std::static_pointer_cast<const FunctionTemplateItem>(item), typeMapper, parentBlock());
             break;
         }
         case AbstractItem::Type::CODE_BLOCK:
