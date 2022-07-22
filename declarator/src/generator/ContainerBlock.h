@@ -13,6 +13,7 @@
 
 #include "AbstractBlock.h"
 
+#include <memory>
 #include <vector>
 
 namespace generator
@@ -21,13 +22,14 @@ namespace generator
 namespace ts
 {
 
-class ContainerBlock : public AbstractBlock
+class ContainerBlock : public std::enable_shared_from_this<ContainerBlock>, public AbstractBlock
 {
     std::vector<abstract_block_t> m_children;
 
 protected:
     ContainerBlock(Type type, const std::string& name = "");
 
+    // TODO: pass const m_children as argument instead size
     virtual void printChildImpl(int index,
                                 int size,
                                 const_abstract_block_t child,

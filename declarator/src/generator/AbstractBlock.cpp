@@ -43,6 +43,16 @@ std::string AbstractBlock::name() const
     return m_name;
 }
 
+void AbstractBlock::setParent(const_container_block_t parent)
+{
+    m_parent = parent;
+}
+
+const_container_block_t AbstractBlock::parent() const
+{
+    return m_parent;
+}
+
 void AbstractBlock::addDecorator(decorator_t decorator)
 {
     m_decorators.push_back(decorator);

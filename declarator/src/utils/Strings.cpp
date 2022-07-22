@@ -12,6 +12,7 @@
 #include "Strings.h"
 
 #include <algorithm>
+#include <cctype>
 #include <stdarg.h>
 #include <string.h>
 #include <vector>
@@ -140,6 +141,18 @@ void replace_all(std::string& s, const std::string& search, const std::string& r
         s.erase(pos, search.length());
         s.insert(pos, replace);
     }
+}
+
+std::string toUpperCase(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+    return s;
+}
+
+std::string toLowerCase(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+    return s;
 }
 
 template <>

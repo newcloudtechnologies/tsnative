@@ -34,8 +34,14 @@ using const_abstract_block_t = block_t<const AbstractBlock>;
 using block_list_t = std::vector<abstract_block_t>;
 using const_block_list_t = std::vector<const_abstract_block_t>;
 
+class ContainerBlock;
+using container_block_t = block_t<ContainerBlock>;
+using const_container_block_t = block_t<const ContainerBlock>;
+
 struct AbstractBlock
 {
+    friend class ContainerBlock;
+
     typedef enum
     {
         CLASS,
@@ -61,10 +67,13 @@ struct AbstractBlock
 private:
     Type m_type;
     std::string m_name;
+    const_container_block_t m_parent;
     decorator_list_t m_decorators;
     bool m_hasIgnore = false;
 
 private:
+    void setParent(const_container_block_t parent);
+
     void printDecorators(generator::print::printer_t printer) const;
     void printIgnore(generator::print::printer_t printer) const;
 
@@ -76,6 +85,8 @@ protected:
 public:
     AbstractBlock(Type type, const std::string& name = "");
     virtual ~AbstractBlock() = default;
+
+    const_container_block_t parent() const;
 
     Type type() const;
     std::string name() const;

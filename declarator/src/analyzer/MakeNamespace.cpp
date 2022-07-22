@@ -10,13 +10,11 @@
  */
 
 #include "MakeNamespace.h"
-
 #include "Annotation.h"
 
 #include "parser/Annotation.h"
 
 #include "generator/ModuleBlock.h"
-#include "generator/NamespaceBlock.h"
 
 #include "global/Annotations.h"
 
@@ -25,9 +23,8 @@
 namespace analyzer
 {
 
-void makeNamespace(parser::const_namespace_item_t item,
-                   const std::vector<generator::ts::import_block_t>& importBlocks,
-                   generator::ts::container_block_t block)
+generator::ts::namespace_block_t makeNamespace(parser::const_namespace_item_t item,
+                                               generator::ts::container_block_t parentBlock)
 {
     using namespace global::annotations;
     using namespace generator::ts;
@@ -46,11 +43,6 @@ void makeNamespace(parser::const_namespace_item_t item,
         }
 
         namespaceBlock = AbstractBlock::make<ModuleBlock>(item->name());
-
-        for (const auto& it : importBlocks)
-        {
-            namespaceBlock->add(it);
-        }
     }
     else if (annotations.exist(TS_NAMESPACE) && !annotations.exist(TS_MODULE))
     {
@@ -81,7 +73,9 @@ void makeNamespace(parser::const_namespace_item_t item,
                                _STAMP());
     }
 
-    block->add(namespaceBlock);
+    parentBlock->add(namespaceBlock);
+
+    return namespaceBlock;
 }
 
 } // namespace analyzer

@@ -38,6 +38,9 @@ std::string join(std::vector<std::string> list, const std::string& delimiter = "
 
 void replace_all(std::string& s, const std::string& search, const std::string& replace);
 
+std::string toUpperCase(std::string s);
+std::string toLowerCase(std::string s);
+
 template <typename T>
 bool is_type(const std::string& s, T& result)
 {

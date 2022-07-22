@@ -81,6 +81,7 @@ target_link_libraries(${PROJECT_NAME}
 
 if (GENERATE_DECLARATIONS)
     set(IMPORT "")
+    set(NO_IMPORT_STD "true")
     set(TS_SOURCES ${HEADERS})
     set(TS_DECLARATIONS )
     set(INCLUDE_DIRECTORIES 
@@ -94,6 +95,7 @@ if (GENERATE_DECLARATIONS)
         TS_HEADERS "${TS_SOURCES}"
         TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         TS_IMPORT "${IMPORT}"
+        TS_NO_IMPORT_STD "${NO_IMPORT_STD}"
     )
 
     ts_generate_declarations(${PROJECT_NAME}

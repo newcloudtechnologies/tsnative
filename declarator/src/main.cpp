@@ -187,7 +187,19 @@ int main(int argc, char** argv)
 
         abstract_block_t file = makeFile();
 
-        auto importBlocks = getImports(stdImportSignatures);
+        std::string DECLARATOR_NO_IMPORT_STD = utils::toUpperCase(utils::getEnv("DECLARATOR_NO_IMPORT_STD"));
+
+        std::vector<generator::ts::import_block_t> importBlocks;
+
+        if (DECLARATOR_NO_IMPORT_STD == "TRUE" || DECLARATOR_NO_IMPORT_STD == "ON" || DECLARATOR_NO_IMPORT_STD == "YES")
+        {
+            importBlocks = getImports("");
+        }
+        else
+        {
+            importBlocks = getImports(stdImportSignatures);
+        }
+
         importBlocks = getImports(getEnv("DECLARATOR_IMPORT"), importBlocks);
 
         for (const auto& it : getSuitableItems(Collection::get()))

@@ -25,6 +25,11 @@ define_property(TARGET PROPERTY TS_IMPORT
     FULL_DOCS "list of extra import signatures"
 )
 
+define_property(TARGET PROPERTY TS_NO_IMPORT_STD
+    BRIEF_DOCS "Whether or not import std"
+    FULL_DOCS "Whether or not import std [true/false]"
+)
+
 define_property(TARGET PROPERTY TS_EXPORTED_NAME
     BRIEF_DOCS "exported name from export signature"
     FULL_DOCS "e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}'"
@@ -70,6 +75,7 @@ endfunction()
 # TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
 # IMPORT - extra import string:
 #   (e.g. cmake: set(IMPORT "import { M1 } from \'path/to/M1\'; import { M2 } from \'path/to/M2\'"))
+# NO_IMPORT_STD - declarator doesn't add standard imports by default [true/false]
 # TEMP_DIR - absolute path to temporary directory
 # OUTPUT_DIR - absolute path to output directory
 # INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
@@ -77,7 +83,7 @@ endfunction()
 function(run_declarator NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "SOURCE;TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
+        "SOURCE;TARGET_COMPILER_ABI;IMPORT;NO_IMPORT_STD;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
         "DEFINITIONS;INCLUDE_DIRECTORIES;"
     )
 
@@ -103,6 +109,10 @@ function(run_declarator NAME ...)
 
     if (NOT ARG_INCLUDE_DIRECTORIES)
         message (FATAL_ERROR "INCLUDE_DIRECTORIES is not specified")
+    endif ()
+
+    if (NOT ARG_NO_IMPORT_STD)
+        set(ARG_NO_IMPORT_STD "false")
     endif ()
 
     get_filename_component(source_fn "${ARG_SOURCE}" NAME)
@@ -138,7 +148,7 @@ function(run_declarator NAME ...)
     list(FILTER DEFINITIONS EXCLUDE REGEX "^$") # remove empty strings
     string(REPLACE ";" " " DEFINITIONS "${DEFINITIONS}")
 
-    set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
+    set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_NO_IMPORT_STD=\"${ARG_NO_IMPORT_STD}\"  DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
     set(command "${variables} ${TS_DECLARATOR} -nobuiltininc -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} ${DEFINITIONS} ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
 
     add_custom_command(
@@ -167,6 +177,7 @@ endfunction()
 # TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
 # IMPORT - extra import string:
 #   (e.g. cmake: set(IMPORT "import { M1 } from \'path/to/M1\'; import { M2 } from \'path/to/M2\'"))
+# NO_IMPORT_STD - declarator doesn't add standard imports by default [true/false]
 # TEMP_DIR - absolute path to temporary directory
 # OUTPUT_DIR - absolute path to output directory
 # INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
@@ -175,7 +186,7 @@ endfunction()
 function(generate_declarations_ex NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "TARGET_COMPILER_ABI;IMPORT;TEMP_DIR;OUTPUT_DIR"
+        "TARGET_COMPILER_ABI;IMPORT;NO_IMPORT_STD;TEMP_DIR;OUTPUT_DIR"
         "DEFINITIONS;SOURCES;INCLUDE_DIRECTORIES;OUT_DECLARATIONS"
     )
 
@@ -213,6 +224,7 @@ function(generate_declarations_ex NAME ...)
             INCLUDE_DIRECTORIES ${ARG_INCLUDE_DIRECTORIES}
             TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
             IMPORT "${ARG_IMPORT}"
+            NO_IMPORT_STD "${ARG_NO_IMPORT_STD}"
             TEMP_DIR "${ARG_TEMP_DIR}"
             OUTPUT_DIR "${ARG_OUTPUT_DIR}"
             OUT_DECLARATION output
@@ -258,12 +270,14 @@ function(ts_generate_declarations NAME ...)
     get_target_property(SOURCES ${NAME} TS_HEADERS)
     get_target_property(INCLUDE_DIRECTORIES ${NAME} TS_INCLUDE_DIRECTORIES)
     get_target_property(IMPORT ${NAME} TS_IMPORT)
+    get_target_property(NO_IMPORT_STD ${NAME} TS_NO_IMPORT_STD)
 
     set(DECLARATIONS )
     generate_declarations_ex(${NAME}
         SOURCES ${SOURCES}
         TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
         IMPORT "${IMPORT}"
+        NO_IMPORT_STD "${NO_IMPORT_STD}"
         DEFINITIONS ${ARG_DEFINITIONS}
         INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         OUTPUT_DIR "${ARG_OUTPUT_DIR}"
@@ -389,7 +403,8 @@ endfunction()
 ### Build TS Extension library
 ### Args:
 # NAME - target name
-# IMPORT - import signature
+# TS_IMPORT - import signature
+# TS_NO_IMPORT_STD - whether or not import std [true/false]
 # TS_EXPORTED_NAME - exported name from export signature
 # TS_MODULE_NAME - module name from export signature
 # SOURCES - source files to compile
@@ -403,7 +418,7 @@ function (ts_build_extension NAME ...)
     cmake_parse_arguments (PARSE_ARGV 1
         "ARG"
         ""
-        "TS_IMPORT;TS_EXPORTED_NAME;TS_MODULE_NAME;TS_DECLARATIONS_OUT_DIR"
+        "TS_IMPORT;TS_NO_IMPORT_STD;TS_EXPORTED_NAME;TS_MODULE_NAME;TS_DECLARATIONS_OUT_DIR"
         "SOURCES;INCLUDE_DIRECTORIES;LINK_LIBRARIES;DEFINITIONS;LIBRARY_DEPENDENCIES;TS_HEADERS"
     )
 
@@ -443,6 +458,7 @@ function (ts_build_extension NAME ...)
         TS_HEADERS "${ARG_TS_HEADERS}"
         TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         TS_IMPORT "${ARG_TS_IMPORT}"
+        TS_NO_IMPORT_STD "${ARG_TS_NO_IMPORT_STD}"
         TS_EXPORTED_NAME "${ARG_TS_EXPORTED_NAME}"
         TS_MODULE_NAME "${ARG_TS_MODULE_NAME}"
         TS_DECLARATIONS_OUT_DIR "${ARG_TS_DECLARATIONS_OUT_DIR}"
