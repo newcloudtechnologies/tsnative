@@ -285,14 +285,11 @@ export class ConciseBody {
 
         const fakeVariablesCreator = (node: ts.Node) => {
           if (ts.isFunctionDeclaration(node) && node.name) {
-            bodyScope.set(
-              node.name.getText(),
-              new HeapVariableDeclaration(
-                LLVMConstantInt.getFalse(this.generator),
-                LLVMConstantInt.getFalse(this.generator),
-                ""
-              )
-            );
+            const variableName = node.name.getText();
+            const dummyValue = LLVMConstantInt.getFalse(this.generator);
+            const fakeVariable = new HeapVariableDeclaration(dummyValue, dummyValue, "");
+
+            bodyScope.set(variableName, fakeVariable);
           }
 
           // skip function body
@@ -302,14 +299,11 @@ export class ConciseBody {
 
           if (ts.isVariableStatement(node)) {
             node.declarationList.declarations.forEach((declaration) => {
-              bodyScope.set(
-                declaration.name.getText(),
-                new HeapVariableDeclaration(
-                  LLVMConstantInt.getFalse(this.generator),
-                  LLVMConstantInt.getFalse(this.generator),
-                  ""
-                )
-              );
+              const variableName = declaration.name.getText();
+              const dummyValue = LLVMConstantInt.getFalse(this.generator);
+              const fakeVariable = new HeapVariableDeclaration(dummyValue, dummyValue, "");
+
+              bodyScope.set(variableName, fakeVariable);
             });
           }
 

@@ -61,6 +61,7 @@ mkdir -p ${BUILD_DIR}
 # set directories containing tests
 TEST_DIRS=( "${CURRENT_DIR}/src/app" \
             "${CURRENT_DIR}/src/basic" \
+            "${CURRENT_DIR}/src/complex" \
             "${CURRENT_DIR}/src/cpp_integration" \
             "${CURRENT_DIR}/src/runtime" \
             "${CURRENT_DIR}/src/cpp_closures" )

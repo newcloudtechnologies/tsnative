@@ -476,10 +476,6 @@ export function populateContext(
           }
           const maybeFound = findPropertyAccess(value, values, seen);
           if (maybeFound) {
-            if ((maybeFound instanceof HeapVariableDeclaration) && value.isNamespace) {
-              maybeFound.name = value.name + "." + maybeFound.name;
-            }
-
             return maybeFound;
           }
         }
@@ -493,7 +489,7 @@ export function populateContext(
     const key = values.join(".");
     const value = findPropertyAccess(root, values);
 
-    if (value instanceof HeapVariableDeclaration) {
+    if (value instanceof HeapVariableDeclaration && !context.includes(value)) {
       value.name = key;
       context.push(value);
     } else if (value instanceof LLVMValue) {
