@@ -25,3 +25,4 @@ export { VariableHandler } from "./variablehandler";
 export { SwitchHandler } from "./switchhandler";
 export { EnumHandler } from "./enumhandler";
 export { ExceptionHandler } from "./exceptionhandler";
+export { FunctionDeclarationHandler } from "./functiondeclarationhandler";

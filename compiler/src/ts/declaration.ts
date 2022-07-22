@@ -98,7 +98,9 @@ export class Declaration {
     const candidates = this.members.filter((m) => m.isConstructor());
 
     return candidates.find((decl) => {
-      if (decl.parameters.length < argumentTypes.length) {
+      const lastParameter = decl.parameters[decl.parameters.length - 1];
+
+      if (decl.parameters.length < argumentTypes.length && !lastParameter?.dotDotDotToken) {
         return false;
       }
 

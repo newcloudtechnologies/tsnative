@@ -390,28 +390,32 @@ export class TemplateInstantiator {
 
     const argumentTypes: string[] = [];
 
-    declaredParameters.forEach((p, index) => {
-      if (p.questionToken) {
+    args.forEach((arg, index) => {
+      const declaration = declaredParameters[index];
+
+      if (declaration?.questionToken) {
         argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
         return;
       }
 
-      if (p.dotDotDotToken) {
-        const restArgs = args.slice(index);
-        const types = restArgs.map((a) => this.generator.ts.checker.getTypeAtLocation(a).toCppType());
-        argumentTypes.push(...types);
+      if (ts.isSpreadElement(arg)) {
+        argumentTypes.push(tsArrayType.toCppType());
         return;
       }
 
-      const arg = args[index];
-      const tsType = this.generator.ts.checker.getTypeAtLocation(arg || p);
+      const tsType = this.generator.ts.checker.getTypeAtLocation(arg);
       const cppType = tsType.toCppType();
 
       argumentTypes.push(cppType);
     });
 
-    const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
+    if (args.length < declaredParameters.length) {
+      for (let i = args.length; i < declaredParameters.length; ++i) {
+        argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
+      }
+    }
 
+    const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
     const exists = maybeExists.some((signature) => {
       return (
         ExternalSymbolsProvider.extractParameterTypes(signature) ===

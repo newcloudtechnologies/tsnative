@@ -48,8 +48,13 @@ public:
 
     TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(T v);
 
+    Number* push(Array<T>* other);
+
     template <typename... Ts>
     Number* push(T t, Ts... ts);
+
+    template <typename... Ts>
+    Number* push(Array<T>* t, Ts... ts);
 
     TS_METHOD TS_GETTER Number* length() const;
     TS_METHOD TS_SETTER void length(Number* value);
@@ -143,6 +148,21 @@ Number* Array<T>::push(T t)
 {
     int result = _d->push(t);
     return GC::track(new Number(static_cast<double>(result)));
+}
+
+template <typename T>
+Number* Array<T>::push(Array<T>* other)
+{
+    auto iterator = other->iterator();
+    auto result = iterator->next();
+
+    while (!result->done()->unboxed())
+    {
+        push(result->value());
+        result = iterator->next();
+    }
+
+    return length();
 }
 
 template <typename T>
@@ -292,10 +312,20 @@ template <typename T>
 template <typename... Ts>
 Number* Array<T>::push(T t, Ts... ts)
 {
-#ifdef USE_STD_ARRAY_BACKEND
-    int result = static_cast<DequeueBackend<T>*>(_d)->push(t, ts...);
-    return GC::track(new Number(static_cast<double>(result)));
-#endif
+    push(t);
+    push(ts...);
+
+    return length();
+}
+
+template <typename T>
+template <typename... Ts>
+Number* Array<T>::push(Array<T>* t, Ts... ts)
+{
+    push(t);
+    push(ts...);
+
+    return length();
 }
 
 template <typename T>
@@ -331,7 +361,7 @@ template <typename T>
 Array<String*>* Array<T>::getKeysArray() const
 {
     auto result = GC::track(new Array<String*>{});
-    const auto keys =_d->keys();
+    const auto keys = _d->keys();
 
     for (const auto k : keys)
     {

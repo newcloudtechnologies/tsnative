@@ -372,11 +372,9 @@
 
 {
   class WithoutConstructorDeclaration { };
-  // classes without constructor declaration provided should be compilable due to empty constructor generation during preprocessing
   new WithoutConstructorDeclaration;
 
   class DerivedWithoutConstructorDeclaration extends WithoutConstructorDeclaration { };
-  // 'super' call should also be generated
   new DerivedWithoutConstructorDeclaration;
 }
 

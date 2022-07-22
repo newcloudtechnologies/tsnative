@@ -476,3 +476,17 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
   console.assert(arr[0].s === "2", "Optional union is casted to array element type");
 }
+
+{
+  const expected = [1, 2, 3];
+
+  function f(...ns: number[]) {
+    console.assert(is_equal(ns, expected), "Spread element as argument to rest arguments");
+  }
+
+  function getns() {
+    return expected;
+  }
+
+  f(...getns());
+}
