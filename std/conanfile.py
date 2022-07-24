@@ -73,5 +73,6 @@ class TSNativeStdConan(ConanFile):
         self.cpp_info.includedirs = ['include']
         self.cpp_info.defines = ['USE_STD_ARRAY_BACKEND']
         self.cpp_info.set_property("cmake_target_name", self.name)
+        self.cpp_info.set_property("cmake_target_aliases", ["tsnative-std::tsnative-std"])
         self.user_info.NODE_PATH = os.path.join(
             self.package_folder, "declarations/tsnative")
