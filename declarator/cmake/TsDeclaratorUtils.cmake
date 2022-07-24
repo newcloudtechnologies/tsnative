@@ -48,6 +48,13 @@ define_property(TARGET PROPERTY TS_MODULE_NAME
 function(get_target_includes TARGET INCLUDE_LIST)
     set(result )
 
+    if (${TARGET} IN_LIST processed_targets)
+        #message(STATUS "Target ${TARGET} exist in ${processed_targets}")
+        return()
+    else()
+        set(processed_targets "${processed_targets};${TARGET}")
+    endif()
+
     get_target_property(includes ${TARGET} INTERFACE_INCLUDE_DIRECTORIES)
     list(FILTER includes EXCLUDE REGEX ".*[-]NOTFOUND")
     list(APPEND result ${includes})
@@ -65,6 +72,7 @@ function(get_target_includes TARGET INCLUDE_LIST)
     list(REMOVE_DUPLICATES result)
 
     set(${INCLUDE_LIST} ${result} PARENT_SCOPE)
+    set(processed_targets "${processed_targets};${TARGET}" PARENT_SCOPE)
 endfunction()
 
 
