@@ -20,6 +20,10 @@ set (__ts_build_utils_cmake_guard 1)
 
 message(STATUS "Found TsBuildUtils in ${CMAKE_CURRENT_LIST_DIR}")
 
+# CMake return wrong value for this inside the function and do not
+# point to this file.
+set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
+
 function(makeOutputDir target dep_target entry output_dir)
     getBinaryName(${entry} binary_name)
 
@@ -113,7 +117,7 @@ function(generateSeed target dep_target output_dir seed_src)
 
     add_custom_command(
         OUTPUT ${SEED_CPP_OUT} ${TSMAIN_H_OUT}
-        COMMAND cp "${CMAKE_CURRENT_LIST_DIR}/seed/*" "${output_dir}"
+        COMMAND cp "${CACHED_CMAKE_CURRENT_LIST_DIR}/seed/*" "${output_dir}"
     )
 
     add_custom_target(${target}
