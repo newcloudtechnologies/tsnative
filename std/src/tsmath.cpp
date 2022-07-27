@@ -2,26 +2,25 @@
 
 #include "std/private/tsmath_p.h"
 
-#include "std/gc.h"
 #include "std/tsnumber.h"
 #include "std/tsstring.h"
 
 #define DEFINE_MATH_METHOD0(name)                                       \
     Number* Math::name() noexcept                                       \
     {                                                                   \
-        return GC::track(new Number(MathPrivate::name()));              \
+        return new Number(MathPrivate::name());              \
     }
 
 #define DEFINE_MATH_METHOD1(name)                                       \
     Number* Math::name(Number* x) noexcept                        \
     {                                                                   \
-        return GC::track(new Number(MathPrivate::name(x->unboxed())));  \
+        return new Number(MathPrivate::name(x->unboxed()));  \
     }
 
 #define DEFINE_MATH_METHOD2(name)                                                       \
     Number* Math::name(Number* x, Number* y) noexcept                       \
     {                                                                                   \
-        return GC::track(new Number(MathPrivate::name(x->unboxed(), y->unboxed())));    \
+        return new Number(MathPrivate::name(x->unboxed(), y->unboxed()));    \
     }
 
 DEFINE_MATH_METHOD0(E)
@@ -71,5 +70,5 @@ DEFINE_MATH_METHOD0(random)
 
 String* Math::toString() const
 {
-    return GC::track(new String("Global Math Object"));
+    return new String("Global Math Object");
 }

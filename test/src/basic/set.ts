@@ -9,6 +9,7 @@
  *
  */
 
+
 class A {
     constructor(n: number, s: string) {
         this.n = n;
@@ -16,9 +17,11 @@ class A {
     }
 
     readonly n: number;
-    readonly s: string
+    readonly s: string;
 }
+
 const set: Set<A> = new Set;
+
 
 const first = new A(1, "1");
 const second = new A(2, "2");
@@ -26,9 +29,10 @@ const third = new A(3, "3");
 
 // test `add` chaining
 set.add(first)
-    .add(second)
-    .add(third);
+   .add(second)
+   .add(third);
 
+ 
 // test size
 console.assert(set.size === 3, "Set size");
 
@@ -50,6 +54,7 @@ set.forEach((v, v1) => {
     nValuesSum += v.n;
     sValuesSum += v1.s;
 });
+
 
 console.assert(nValuesSum === expected_nValuesSum, "Ns sum");
 console.assert(sValuesSum === expected_sValuesSum, "Ss sum");

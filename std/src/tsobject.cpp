@@ -2,30 +2,35 @@
 
 #include "std/private/tsmap_p.h"
 #include "std/private/tsobject_os.h"
+#include "std/private/logger.h"
 
 #include "std/tsboolean.h"
 #include "std/tsmap.h"
 #include "std/tsstring.h"
 #include "std/tsarray.h"
 
+#include "std/runtime.h"
+#include "std/gc.h"
+
 static String* superKey = new String("super");
 static String* parentKey = new String("parent");
 
 Object::Object()
 #ifdef USE_MAP_STD_BACKEND
-    : _props(GC::track(new MapStdPrivate<String*, void*>()))
+    : _props(new MapStdPrivate<String*, void*>()),
+    _isMarked{false}
 #endif
 {
 }
 
 Object::Object(Map<String*, void*>* props)
-    : _props(props->_d)
+    : _props(props->_d),
+    _isMarked{false}
 {
 }
 
 Object::~Object()
 {
-    // @todo untrack
     delete _props;
 }
 
@@ -93,7 +98,7 @@ Array<String*>* Object::getKeysArray() const
 {
     auto uniqueKeys = getUniqueKeys(this);
 
-    auto result = GC::track(new Array<String*>());
+    auto result = new Array<String*>();
 
     for (auto* s : uniqueKeys) 
     {
@@ -131,7 +136,7 @@ void* Object::get(String* key) const
         }
     }
 
-    auto optional = GC::track(new Union());
+    auto optional = new Union();
     _props->set(key, optional);
 
     return optional;
@@ -139,28 +144,28 @@ void* Object::get(String* key) const
 
 void Object::set(String* key, void* value)
 {
-    auto optional = GC::track(new Union(static_cast<Object*>(value)));
+    auto optional = new Union(static_cast<Object*>(value));
     _props->set(key, optional);
 }
 
 void* Object::get(const std::string& key) const
 {
-    auto keyWrapped = GC::track(new String(key));
+    auto keyWrapped = new String(key);
 
     if (_props->has(keyWrapped))
     {
         return (static_cast<Union*>(_props->get(keyWrapped))->getValue());
     }
 
-    auto optional = GC::track(new Union());
+    auto optional = new Union();
     _props->set(keyWrapped, optional);
     return (optional->getValue());
 }
 
 void Object::set(const std::string& key, void* value)
 {
-    auto keyWrapped = GC::track(new String(key));
-    auto optional = GC::track(new Union(static_cast<Object*>(value)));
+    auto keyWrapped = new String(key);
+    auto optional = new Union(static_cast<Object*>(value));
     _props->set(keyWrapped, optional);
 }
 
@@ -168,17 +173,71 @@ String* Object::toString() const
 {
     std::ostringstream oss;
     oss << this;
-    return GC::track(new String(oss.str()));
+    return new String(oss.str());
 }
 
 Boolean* Object::toBool() const
 {
-    return GC::track(new Boolean(true));
+    return new Boolean(true);
 }
 
 Array<String*>* Object::keys(Object* entity)
 {
     return entity->getKeysArray();
+}
+
+bool Object::isMarked() const
+{
+    return _isMarked;
+}
+
+void Object::mark()
+{
+    _isMarked = true;
+    markChildren();
+}
+
+void Object::unmark()
+{
+    _isMarked = false;
+}
+
+void Object::markChildren()
+{
+    LOG_INFO("Calling OBJECT::markChildren");
+
+    const auto callable = [](auto& entry)
+    {
+        auto* key = entry.first;
+        auto* value = static_cast<Object*>(entry.second);
+
+        if (key && !key->isMarked())
+        {
+            key->mark();
+        }
+        if (value && !value->isMarked())
+        {
+            value->mark();
+        }
+    };
+    _props->forEachEntry(callable);
+
+    LOG_INFO("Finished calling OBJECT::markChildren");
+}
+
+void* Object::operator new (std::size_t n)
+{
+    LOG_INFO("Calling Object new operator");
+
+    auto* gc = Runtime::getGC();
+
+    // gc == nullptr can be if we allocate
+    // static String* s = new String("adasd")
+    if (!gc)
+    {
+        return :: operator new(n);
+    }
+    return gc->allocateObject(static_cast<double>(n));
 }
 
 class String;

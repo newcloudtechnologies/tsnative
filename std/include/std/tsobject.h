@@ -24,9 +24,9 @@ public:
     TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") Object();
     Object(Map<String*, void*>* props);
 
-protected:
     virtual ~Object();
 
+protected:
     bool has(String* key) const;
 
     virtual Array<String*>* getKeysArray() const;
@@ -52,9 +52,18 @@ public:
 
     TS_METHOD static Array<String*>* keys(Object* entity);
 
+    bool isMarked() const;
+    void mark();
+    void unmark();
+
+    virtual void markChildren();
+
+    void* operator new (std::size_t n);
+
 protected:
     MapPrivate<String*, void*>* _props = nullptr;
 
 private:
     std::unordered_set<String*> getUniqueKeys(const Object* o) const;
+    bool _isMarked = false;
 };

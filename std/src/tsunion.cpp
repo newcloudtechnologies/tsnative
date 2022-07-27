@@ -38,3 +38,11 @@ Boolean* Union::toBool() const
 {
     return _value->toBool();
 }
+
+void Union::markChildren()
+{
+    if (_value && !_value->isMarked())
+    {
+        _value->mark();
+    }
+}

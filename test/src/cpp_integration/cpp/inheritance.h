@@ -10,7 +10,7 @@
 
 namespace cpp
 {
-  class VirtualBase
+  class VirtualBase : public Object
   {
   public:
     VirtualBase();
@@ -20,7 +20,7 @@ namespace cpp
     virtual const Number *pureVirtualMethodToOverride() const = 0;
 
   private:
-    String *s = GC::track(new String{"base virtual method"});
+    String *s = new String{"base virtual method"};
   };
 
   class DerivedFromVirtualBase : public VirtualBase

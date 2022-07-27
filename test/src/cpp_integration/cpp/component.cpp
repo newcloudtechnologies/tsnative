@@ -32,7 +32,7 @@ public:
 
 Component::Component()
 {
-    set("m", GC::track(new Number(222)));
+    set("m", new Number(222));
 }
 
 void Component::test()

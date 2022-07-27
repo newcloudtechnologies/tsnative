@@ -7,6 +7,8 @@
 #include <ostream>
 #include <string>
 
+#include <iostream>
+
 // mkrv @todo
 // some kind of storage is needed for this stuff
 static auto parentString = new String("parent");

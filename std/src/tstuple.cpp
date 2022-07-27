@@ -1,18 +1,10 @@
 #include "std/tstuple.h"
-
-#include "std/gc.h"
 #include "std/tsarray.h"
 #include "std/tsstring.h"
 
 Tuple::Tuple()
     : _d(new Array<Object*>())
 {
-}
-
-Tuple::~Tuple()
-{
-    // @todo: untrack elements?
-    delete _d;
 }
 
 Number* Tuple::length() const
@@ -39,5 +31,13 @@ String* Tuple::toString() const
 {
     std::ostringstream oss;
     oss << this;
-    return GC::track(new String(oss.str()));
+    return new String(oss.str());
+}
+
+void Tuple::markChildren()
+{
+    if(_d && !_d->isMarked())
+    {
+        _d->mark();
+    }
 }

@@ -36,10 +36,10 @@ Array<Point *> *Rect::getDiagonal() const
   auto br = bottomRight();
   auto tl = topLeft();
 
-  auto *p1 = GC::track(new Point(tl->x(), tl->y()));
-  auto *p2 = GC::track(new Point(br->x(), br->y()));
+  auto *p1 = new Point(tl->x(), tl->y());
+  auto *p2 = new Point(br->x(), br->y());
 
-  auto *coords = GC::track(new Array<Point *>);
+  auto *coords = new Array<Point *>;
   coords->push(p1);
   coords->push(p2);
   return coords;

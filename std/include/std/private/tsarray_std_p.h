@@ -74,11 +74,6 @@ void DequeueBackend<T>::length(int len)
         return;
     }
 
-    if (len < size)
-    {
-        std::for_each(storage_.cbegin() + len, storage_.cend(), [](T v) { GC::untrack(v); });
-    }
-
     storage_.resize(len);
 }
 

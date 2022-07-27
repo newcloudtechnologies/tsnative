@@ -3,6 +3,7 @@
 #include <std/gc.h>
 #include <std/tsstring.h>
 #include <std/tsobject.h>
+#include <std/tsnumber.h>
 
 template <typename T, typename R>
 R sum(T op1, T op2) { return op1 + op2; }
@@ -27,11 +28,11 @@ namespace NS
     T getGenericNumber();
 
     template <>
-    Number *getGenericNumber() { return GC::track(new Number(42)); }
+    Number *getGenericNumber() { return new Number(42); }
     template <>
     String *getGenericNumber()
     {
-      return GC::track(new String("forty two"));
+      return new String("forty two");
     }
 
   } // namespace innerNS
@@ -46,14 +47,14 @@ public:
   typename std::enable_if<std::is_same<T, Number *>::value, T>::type
   getWithAdditionOfTwo(T v) const
   {
-    return v->add(GC::track(new Number(2)));
+    return v->add(new Number(2));
   }
 
   template <typename T>
   typename std::enable_if<std::is_same<T, String *>::value, T>::type
   getWithAdditionOfTwo(T v) const
   {
-    return v->concat(GC::track(new String("_2")));
+    return v->concat(new String("_2"));
   }
 };
 

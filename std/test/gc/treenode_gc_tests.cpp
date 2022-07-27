@@ -1,0 +1,548 @@
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include "std/private/default_gc.h"
+#include "std/tsobject.h"
+#include "std/private/allocator.h"
+
+#include <memory>
+#include <vector>
+
+namespace
+{
+std::unique_ptr<Allocator> globalAllocator;
+
+struct TreeNode : public Object
+{
+    TreeNode(char n, TreeNode* l = nullptr, TreeNode* r = nullptr)
+        : Object{},
+        name{n},
+        left{l},
+        right{r}
+    {}
+
+    void markChildren() override
+    {
+        if (left && !left->isMarked())
+        {
+            left->mark();
+        }
+
+        if (right && !right->isMarked())
+        {
+            right->mark();
+        }
+    }
+
+    void* operator new (std::size_t n)
+    {
+        return globalAllocator->allocateObject(n);
+    }
+
+    char name;
+    TreeNode* left = nullptr;
+    TreeNode* right = nullptr;
+};
+
+class TreeNodeGCTestFixture : public ::testing::Test
+{
+public:
+    void SetUp() override
+    {
+        DefaultGC::Callbacks gcCallbacks;
+        gcCallbacks.beforeDeleted = [this](const Object& o)
+        {
+            auto it = std::find(_actualAliveObjects.begin(), _actualAliveObjects.end(), &o);
+            ASSERT_NE(_actualAliveObjects.end(), it);
+            _actualAliveObjects.erase(it);
+        };
+
+        _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks));
+
+        Allocator::Callbacks allocatorCallbacks;
+        allocatorCallbacks.onObjectAllocated = [this] (Object* o)
+        {
+            _gc->addObject(o);
+            _actualAliveObjects.push_back(o);
+        };
+        globalAllocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
+    }
+
+    void TearDown() override
+    {
+        globalAllocator = nullptr;
+        _gc = nullptr;
+        _actualAliveObjects.clear();
+    }
+
+    void robustCollection()
+    {
+        _gc->collect();
+    }
+
+    const std::vector<const Object*>& getActualAliveObjects() const
+    {
+        return _actualAliveObjects;
+    }
+
+    const DefaultGC& getGC() const
+    {
+        return *_gc;
+    }
+
+    DefaultGC& getGC()
+    {
+        return *_gc;
+    }
+
+private:
+    std::vector<const Object*> _actualAliveObjects;
+    std::unique_ptr<DefaultGC> _gc;
+};
+
+// Init:
+// A -> B -> C
+// Action:
+// A X-> B -> C
+// Result:
+// A
+TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
+{
+    const auto garbageMaker = [this](TreeNode*& suspensionPoint)
+    {
+        auto B = new TreeNode{'B'};
+        auto C = new TreeNode{'C'};
+
+        getGC().addRoot(B);
+        getGC().addRoot(C);
+
+        B->left = C;
+        suspensionPoint = B;
+
+        getGC().removeRoot(B);
+        getGC().removeRoot(C);
+    };
+
+    auto A = new TreeNode{'A'};
+    getGC().addRoot(A);
+
+    garbageMaker(A->left);
+
+    A->left = nullptr; // Loose garbage
+
+    EXPECT_EQ(3u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> B
+// B -> A
+// Action:
+// A X-> B
+// B -> A
+// Result:
+// A
+TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
+{
+    const auto garbageMaker = [this]
+    {
+        auto A = new TreeNode{'A'};
+        auto B = new TreeNode{'B'};
+
+        getGC().addRoot(A);
+        getGC().addRoot(B);
+
+        A->left = B;
+        B->left = A;
+        
+        // Do not remove A since it is a return value
+        getGC().removeRoot(B);
+
+        return A;
+    };
+
+    auto* A = garbageMaker();
+
+    A->left = nullptr; // Loose garbage
+
+    EXPECT_EQ(2u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> B
+// B -> A
+// Action:
+// No action
+// Result:
+// A, B
+TEST_F(TreeNodeGCTestFixture, simpleCycleNoBreak)
+{
+    auto A = new TreeNode{'A'};
+    auto B = new TreeNode{'B'};
+
+    getGC().addRoot(A);
+    getGC().addRoot(B);
+
+    A->left = B;
+    B->left = A;
+
+    EXPECT_EQ(2u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(2u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A, B};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> B
+// C -> D
+// Action:
+// Loose C and D
+// Result:
+// A, B
+TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
+{
+    const auto garbageMaker = [this]
+    {
+        auto C = new TreeNode{'C'};
+        auto D = new TreeNode{'D'};
+
+        getGC().addRoot(C);
+        getGC().addRoot(D);
+
+        C->right = D;
+
+        getGC().removeRoot(C);
+        getGC().removeRoot(D);
+    };
+
+    auto A = new TreeNode{'A'};
+    auto B = new TreeNode{'B'};
+    getGC().addRoot(A);
+    getGC().addRoot(B);
+    
+    A->left = B;
+    garbageMaker();
+
+    EXPECT_EQ(4u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(2u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A, B};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+class DeepGarbageMaker final
+{
+public:
+    DeepGarbageMaker(DefaultGC& gc)
+        : _gc{gc}
+    {
+        
+    }
+
+    void __attribute__((noinline)) make() const
+    { 
+        bar(); 
+    }
+
+private:
+    void __attribute__((noinline)) bar() const
+    { 
+        baz(); 
+    }
+
+    void __attribute__((noinline)) baz() const
+    { 
+        abacaba(); 
+    }
+
+    void __attribute__((noinline)) abacaba() const
+    {
+        auto C = new TreeNode{'C'};
+        auto D = new TreeNode{'D'};
+
+        _gc.addRoot(C);
+        _gc.addRoot(D);
+
+        C->right = D;
+
+        _gc.removeRoot(C);
+        _gc.removeRoot(D);
+    }
+
+    DefaultGC& _gc;
+};
+
+// Init:
+// C -> D
+// Action:
+// Loose C and D
+// Result:
+// {}
+TEST_F(TreeNodeGCTestFixture, detectDeepGarbage)
+{
+    auto A = new TreeNode{'A'};
+    auto B = new TreeNode{'B'};
+    A->left = B;
+
+    getGC().addRoot(A);
+    getGC().addRoot(B);
+
+    DeepGarbageMaker deepGarbageMaker{getGC()};
+    deepGarbageMaker.make();
+
+    EXPECT_EQ(4u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(2u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A, B};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> B -> C
+// A -> C
+// Action:
+// B X-> C
+// Result:
+// {A, B, C}
+TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
+{
+    const auto createNodes = [this]
+    {
+        auto A = new TreeNode{'A'};
+        auto B = new TreeNode{'B'};
+        auto C = new TreeNode{'C'};
+
+        getGC().addRoot(A);
+        getGC().addRoot(B);
+        getGC().addRoot(C);
+
+        A->left = B;
+        B->left = C;
+        A->right = C;
+
+        // Do not remove A since it is a return value
+        getGC().removeRoot(B);
+        getGC().removeRoot(C);
+
+        return A;
+    };
+
+    auto* A = createNodes();
+
+    A->left->left = nullptr; // B X-> C
+
+    EXPECT_EQ(3u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(3u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A, A->left, A->right};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> B -> C
+// D -> E -> F
+// Action:
+// X A, X D
+// Result:
+// {}
+TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
+{
+    const auto createNodes = [this]
+    {
+        auto A = new TreeNode{'A'};
+        auto B = new TreeNode{'B'};
+        auto C = new TreeNode{'C'};
+
+        getGC().addRoot(A);
+        getGC().addRoot(B);
+        getGC().addRoot(C);
+
+        A->left = B;
+        B->left = C;
+
+        auto D = new TreeNode{'D'};
+        auto E = new TreeNode{'E'};
+        auto F = new TreeNode{'F'};
+
+        getGC().addRoot(D);
+        getGC().addRoot(E);
+        getGC().addRoot(F);
+
+        D->right = E;
+        E->right = F;
+
+        getGC().removeRoot(A);
+        getGC().removeRoot(B);
+        getGC().removeRoot(C);
+        getGC().removeRoot(D);
+        getGC().removeRoot(E);
+        getGC().removeRoot(F);
+    };
+
+    createNodes();
+
+    EXPECT_EQ(6u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(0u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> A
+// Action:
+// A X-> A
+// Result:
+// {A}
+TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
+{
+    const auto createNodes = [this]
+    {
+        auto A = new TreeNode{'A'};
+        getGC().addRoot(A);
+
+        A->left = A;
+
+        // Do not remove A since it is a return value
+        return A;
+    };
+    
+    auto A = createNodes();
+
+    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
+
+    A->left = nullptr;
+
+    robustCollection();
+
+    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> A
+// Action:
+// X A
+// Result:
+// {}
+TEST_F(TreeNodeGCTestFixture, lostSelfCycleNode)
+{
+    const auto createNodes = [this]
+    {
+        auto A = new TreeNode{'A'};
+        getGC().addRoot(A);
+
+        A->left = A;
+
+        getGC().removeRoot(A);
+    };
+    
+    createNodes();
+
+    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
+
+    robustCollection();
+
+    EXPECT_EQ(0u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+// Init:
+// A -> B -> C -> D
+// D -> A
+// Action:
+// B X-> C
+// Result:
+// {A}
+TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
+{
+    TreeNode* AA = nullptr;
+    TreeNode* BB = nullptr;
+
+    const auto createNodes = [&AA, &BB, this]
+    {
+        auto A = new TreeNode{'A'};
+        auto B = new TreeNode{'B'};
+        auto C = new TreeNode{'C'};
+        auto D = new TreeNode{'D'};
+
+        getGC().addRoot(A);
+        getGC().addRoot(B);
+        getGC().addRoot(C);
+        getGC().addRoot(D);
+        
+        A->left = B;
+        B->left = C;
+        C->left = D;
+        D->left = A;
+
+        AA = A;
+        BB = B;
+
+        getGC().removeRoot(A);
+        getGC().removeRoot(B);
+        getGC().removeRoot(C);
+        getGC().removeRoot(D);
+    };
+    
+    createNodes();
+
+    getGC().addRoot(AA);
+    getGC().addRoot(BB);
+
+    EXPECT_EQ(4u, getGC().getAliveObjectsCount());
+
+    AA->left->left = nullptr; // B X-> C
+
+    robustCollection();
+
+    EXPECT_EQ(2u, getGC().getAliveObjectsCount());
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{AA, BB};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+}
+
+}

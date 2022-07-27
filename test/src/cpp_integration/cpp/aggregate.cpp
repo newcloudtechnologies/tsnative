@@ -41,12 +41,11 @@ Rect *RectHolder::getRect() const
 
 LargerAggregate::LargerAggregate(Number *x1, Number *y1, Number *x2, Number *y2)
 {
-  auto pair = GC::track(new PointPair(x1, y1, x2, y2));
-  auto rect = GC::track(
-      new Rect(
+  auto pair = new PointPair(x1, y1, x2, y2);
+  auto rect = new Rect(
           pair->getTopLeft(),
-          pair->getBottomRight()));
-  auto holder = GC::track(new RectHolder(rect));
+          pair->getBottomRight());
+  auto holder = new RectHolder(rect);
 
   set("pointPair", pair);
   set("rectHolder", holder);
@@ -82,7 +81,6 @@ LargerAggregate *LargerAggregate::getScaled(Number *factor) const
   auto tl = getTopLeft();
   auto br = getBottomRight();
 
-  return GC::track(
-      new LargerAggregate{tl->x()->mul(factor), tl->y()->mul(factor),
-                br->x()->mul(factor), br->y()->mul(factor)});
+  return new LargerAggregate{tl->x()->mul(factor), tl->y()->mul(factor),
+                br->x()->mul(factor), br->y()->mul(factor)};
 }

@@ -4,7 +4,6 @@
 
 #include "std/private/options.h"
 
-#include "std/gc.h"
 #include "std/iterable.h"
 #include "std/tsarray.h"
 #include "std/tsclosure.h"
@@ -57,6 +56,8 @@ public:
     template <typename U, typename W>
     friend std::ostream& operator<<(std::ostream& os, const Map<U, W>* m);
 
+    void markChildren() override;
+
     friend class Object;
 
 private:
@@ -87,7 +88,7 @@ template <typename K, typename V>
 Boolean* Map<K, V>::remove(K key)
 {
     bool result = _d->remove(key);
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 template <typename K, typename V>
@@ -127,7 +128,7 @@ template <typename K, typename V>
 Boolean* Map<K, V>::has(K key) const
 {
     bool result = _d->has(key);
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 template <typename K, typename V>
@@ -141,7 +142,7 @@ template <typename K, typename V>
 Number* Map<K, V>::size() const
 {
     int size = _d->size();
-    return GC::track(new Number(static_cast<double>(size)));
+    return new Number(static_cast<double>(size));
 }
 
 template <typename K, typename V>
@@ -156,8 +157,7 @@ IterableIterator<V>* Map<K, V>::values()
     }
 
     auto valuesArray = Array<V>::fromStdVector(values);
-    auto it = new ArrayIterator<V>(valuesArray);
-    return GC::track(it);
+    return new ArrayIterator<V>(valuesArray);
 }
 
 template <typename K, typename V>
@@ -172,25 +172,23 @@ IterableIterator<Tuple*>* Map<K, V>::iterator()
         tuple->push(static_cast<Object*>(key));
         tuple->push(static_cast<Object*>(get(key)));
 
-        zipped->push(GC::track(tuple));
+        zipped->push(tuple);
     }
 
-    auto it = new MapIterator<Tuple*>(zipped);
-    return GC::track(it);
+    return new MapIterator<Tuple*>(zipped);
 }
 
 template <typename K, typename V>
 String* Map<K, V>::toString() const
 {
-    return GC::track(new String(_d->toString()));
+    return new String(_d->toString());
 }
 
 template <typename K, typename V>
 IterableIterator<K>* Map<K, V>::keys()
 {
     auto keys = Array<K>::fromStdVector(_d->orderedKeys());
-    auto it = new ArrayIterator<K>(keys);
-    return GC::track(it);
+    return new ArrayIterator<K>(keys);
 }
 
 template <typename K, typename V>
@@ -198,4 +196,24 @@ inline std::ostream& operator<<(std::ostream& os, const Map<K, V>* m)
 {
     os << m->_d->toString();
     return os;
+}
+
+template <typename K, typename V>
+void Map<K, V>::markChildren()
+{    
+    const auto callable = [](auto& entry)
+    {
+        auto* key = entry.first;
+        auto* value = static_cast<Object*>(entry.second);
+
+        if (key && !key->isMarked())
+        {
+            key->mark();
+        }
+        if (value && !value->isMarked())
+        {
+            value->mark();
+        }
+    };
+    _props->forEachEntry(callable);
 }

@@ -29,6 +29,7 @@ Boolean::Boolean(Number* value)
 #endif
 {
 }
+
 Boolean::Boolean(String* value)
 #ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
     : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
@@ -43,19 +44,19 @@ Boolean::~Boolean()
 
 Boolean* Boolean::negate() const
 {
-    return GC::track(new Boolean(!_d->value()));
+    return new Boolean(!_d->value());
 }
 
 Boolean* Boolean::equals(Boolean* other) const
 {
-    return GC::track(new Boolean(_d->value() == other->unboxed()));
+    return new Boolean(_d->value() == other->unboxed());
 }
 
 String* Boolean::toString() const
 {
     std::ostringstream oss;
     oss << this;
-    return GC::track(new String(oss.str()));
+    return new String(oss.str());
 }
 
 Boolean* Boolean::toBool() const
@@ -70,5 +71,5 @@ bool Boolean::unboxed() const
 
 Boolean* Boolean::clone() const
 {
-    return GC::track(new Boolean(this->unboxed()));
+    return new Boolean(this->unboxed());
 }

@@ -1348,7 +1348,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       const vtableIdx = virtualMethods.findIndex((v) => v.method.name!.getText() === method.name!.getText());
       const virtualDestructorsOffset = 2; // @todo: handcoded cause all the CXX class expected to be derived from Object and thus have virtual destructor
-      const objectVirtualMethodsCount = 3; // @todo: how this can be non-handcoded?
+      const objectVirtualMethodsCount = 4; // @todo: how this can be non-handcoded?
 
       const virtualFnPtr = this.generator.builder.createSafeInBoundsGEP(vtableAsArray, [
         0,

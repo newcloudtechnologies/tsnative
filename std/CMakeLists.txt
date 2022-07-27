@@ -28,12 +28,15 @@ set(HEADERS
     include/std/tsdate.h
     include/std/tstuple.h
     include/std/tsclosure.h
-    include/std/gc.h
     include/std/iterators/mapiterator.h
     include/std/iterators/setiterator.h
     include/std/iterators/stringiterator.h
     include/std/tsmath.h
     include/std/runtime.h
+    include/std/gc.h
+    include/std/igc_impl.h
+    include/std/diagnostics.h
+    include/std/memory_diagnostics.h
 )
 
 set(SOURCES
@@ -52,13 +55,22 @@ set(SOURCES
     src/template_instances.cpp
     src/tsstring.cpp
     src/runtime.cpp
+    src/diagnostics.cpp
+    src/memory_diagnostics.cpp
 
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
     src/private/tsdate_absl_p.cpp
     src/private/tsmath_p.cpp
+    src/private/default_gc.cpp
+    src/private/allocator.cpp
+    src/private/memory_diagnostics_storage.cpp
 )
+
+if(ENABLE_LOGS)
+    add_definitions( -DENABLE_LOGS )
+endif()
 
 add_library(${PROJECT_NAME}
     ${HEADERS} ${SOURCES} 
@@ -156,16 +168,18 @@ if (BUILD_TEST)
     set(TEST_HEADERS test/equality_checkers.h)
 
     set(TEST_SOURCES test/runtime_tests.cpp
-                     test/equality_checkers.cpp)
+                     test/equality_checkers.cpp
+                     test/gc/treenode_gc_tests.cpp)
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 
     target_link_libraries(${PROJECT_NAME}_GTEST
-                        ${PROJECT_NAME}
-                        GTest::gtest
-                        GTest::gtest_main
-                        GTest::gmock_main
-                        GTest::gmock)
+                        PUBLIC
+                            ${PROJECT_NAME}
+                            GTest::gtest
+                            GTest::gtest_main
+                            GTest::gmock_main
+                            GTest::gmock)
 
     gtest_add_tests(TARGET ${PROJECT_NAME}_GTEST)
 endif()        

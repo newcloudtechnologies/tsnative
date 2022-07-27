@@ -4,6 +4,7 @@
 
 #include "std/iterable.h"
 #include "std/tsstring.h"
+#include "std/tsnumber.h"
 
 template <typename T>
 class TS_DECLARE StringIterator : public IterableIterator<T>
@@ -18,15 +19,13 @@ public:
     {
         if (currentIndex == static_cast<size_t>(_iterable->length()->unboxed()))
         {
-            auto result = new IteratorResult<T>{true, {}};
-            return GC::track(result);
+            return new IteratorResult<T>{true, {}};
         }
 
         T value = _iterable->operator[](currentIndex);
         ++currentIndex;
 
-        auto result = new IteratorResult<T>{false, value};
-        return GC::track(result);
+        return new IteratorResult<T>{false, value};
     }
 
 private:

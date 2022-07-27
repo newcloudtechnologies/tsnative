@@ -21,9 +21,11 @@ public:
     bool remove(V value) override;
     void clear() override;
 
-    int size() const override;
+    std::size_t size() const override;
 
     const std::vector<V>& ordered() const override;
+    void forEach(std::function<void(V&)> callable) override;
+    void forEach(std::function<void(const V&)> callable) const override;
 
     std::string toString() const override;
 
@@ -82,9 +84,27 @@ void SetStdPrivate<V>::clear()
 }
 
 template <typename V>
-int SetStdPrivate<V>::size() const
+std::size_t SetStdPrivate<V>::size() const
 {
-    return static_cast<int>(_set.size());
+    return _set.size();
+}
+
+template <typename V>
+void SetStdPrivate<V>::forEach(std::function<void(V&)> callable)
+{
+    for (auto& v : _ordered)
+    {
+        callable(v);
+    }
+}
+
+template <typename V>
+void SetStdPrivate<V>::forEach(std::function<void(const V&)> callable) const
+{
+    for (auto& v : _ordered)
+    {
+        callable(v);
+    }
 }
 
 template <typename V>
