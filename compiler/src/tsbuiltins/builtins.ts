@@ -9,48 +9,6 @@ import { TSType } from "../ts/type";
 
 const stdlib = require("std/constants");
 
-export class GC {
-  private readonly allocateFn: LLVMValue;
-  private readonly generator: LLVMGenerator;
-
-  constructor(declaration: Declaration, generator: LLVMGenerator) {
-    this.generator = generator;
-
-    const allocateDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "allocate")!;
-
-    const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-
-    const { qualifiedName } = FunctionMangler.mangle(
-      allocateDeclaration,
-      undefined,
-      thisType,
-      [],
-      this.generator,
-      undefined,
-      ["double"]
-    );
-
-    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
-    const llvmArgumentTypes = [LLVMType.getDoubleType(this.generator)];
-
-    this.allocateFn = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
-  }
-
-  allocate(type: LLVMType, name?: string) {
-    if (type.isPointer()) {
-      throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
-    }
-
-    const size = type.getTypeSize();
-
-    const returnValue = this.generator.builder.createSafeCall(this.allocateFn, [
-      LLVMConstantFP.get(this.generator, size || 1),
-    ]);
-
-    return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
-  }
-}
-
 class Builtin {
   readonly name: string;
   readonly generator: LLVMGenerator;

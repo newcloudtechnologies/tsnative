@@ -1,20 +1,33 @@
 #pragma once
 
-#include "private/options.h"
-
 #include <TS.h>
 
-#include "std/private/options.h"
-#include "std/tsnumber.h"
+#include "std/tsobject.h"
 
 #include <cstdint>
 #include <type_traits>
+#include <memory>
+
+class IGCImpl;
+class Allocator;
 
 class TS_EXPORT TS_DECLARE GC
 {
 public:
-    TS_METHOD TS_SIGNATURE("allocate(numBytes: any): void") static void* allocate(double numBytes);
+    GC(std::unique_ptr<IGCImpl> impl, std::unique_ptr<Allocator> allocator);
 
+    // TODO Should be removed. Allocator should allocate, not GC
+    TS_METHOD TS_SIGNATURE("allocate(numBytes: any): void") void* allocate(double numBytes);
+    TS_METHOD TS_SIGNATURE("allocateObject(numBytes: any): void") void* allocateObject(double numBytes);
+    TS_METHOD TS_SIGNATURE("deallocate(): void") void deallocate(void*);
+    TS_METHOD void collect();
+
+private:
+    std::unique_ptr<IGCImpl> _impl;
+    std::unique_ptr<Allocator> _allocator;
+
+public:
+    // Deprecated API
     template <typename Source>
     static Source track(Source value)
     {
@@ -23,6 +36,7 @@ public:
         return value;
     }
 
+    // Deprecated API
     template <typename TsTypePtrT, typename SourceT>
     static TsTypePtrT track_as(SourceT value)
     {
@@ -35,6 +49,7 @@ public:
         return ret;
     }
 
+    // Deprecated API
     template <typename Source>
     static Source untrack(Source value)
     {
@@ -43,6 +58,7 @@ public:
         return value;
     }
 
+    // Deprecated API
     // mkrv @todo: better remove this method
     template <typename Destination, typename Source>
     static Destination* createHeapAllocated(Source value)

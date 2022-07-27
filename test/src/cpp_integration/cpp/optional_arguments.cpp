@@ -36,10 +36,10 @@ String *WithOptionalArgs::getString() const
 
 Number *WithOptionalArgs::getDefaultNumber() const
 {
-    return GC::track_as<Number*>(888.0);
+    return new Number(888.0);
 }
 
 String *WithOptionalArgs::getDefaultString() const
 {
-    return GC::track_as<String*>("DEFAULT");
+    return new String("DEFAULT");
 }

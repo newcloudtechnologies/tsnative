@@ -14,7 +14,7 @@ Number* Date::parse(String* date_string)
 {
 #ifdef USE_ABSL_DATE_BACKEND
     AbslDatePrivate priv;
-    return GC::track(new Number(priv.parse(date_string->cpp_str())));
+    return new Number(priv.parse(date_string->cpp_str()));
 #endif
 }
 
@@ -22,7 +22,7 @@ Number* Date::now()
 {
 #ifdef USE_ABSL_DATE_BACKEND
     AbslDatePrivate priv;
-    return GC::track(new Number(priv.now()));
+    return new Number(priv.now());
 #endif
 }
 
@@ -45,13 +45,13 @@ Number* Date::UTC(Number* year,
 #ifdef USE_ABSL_DATE_BACKEND
     AbslDatePrivate priv;
 
-    return GC::track(new Number(priv.UTC(unboxedYear,
+    return new Number(priv.UTC(unboxedYear,
                                          unboxedMonthIndex,
                                          unboxedDay,
                                          unboxedHours,
                                          unboxedMinutes,
                                          unboxedSeconds,
-                                         unboxedMilliseconds)));
+                                         unboxedMilliseconds));
 #endif
 }
 
@@ -105,109 +105,109 @@ Date::Date(String* date_string)
 Number* Date::getDate() const noexcept
 {
     double date = _d->getDate();
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::getDay() const noexcept
 {
     double day = _d->getDay();
-    return GC::track(new Number(day));
+    return new Number(day);
 }
 
 Number* Date::getFullYear() const noexcept
 {
     double year = _d->getFullYear();
-    return GC::track(new Number(year));
+    return new Number(year);
 }
 
 Number* Date::getHours() const noexcept
 {
     double hours = _d->getHours();
-    return GC::track(new Number(hours));
+    return new Number(hours);
 }
 
 Number* Date::getMilliseconds() const noexcept
 {
     double ms = _d->getMilliseconds();
-    return GC::track(new Number(ms));
+    return new Number(ms);
 }
 
 Number* Date::getMinutes() const noexcept
 {
     double minutes = _d->getMinutes();
-    return GC::track(new Number(minutes));
+    return new Number(minutes);
 }
 
 Number* Date::getMonth() const noexcept
 {
     double month = _d->getMonth();
-    return GC::track(new Number(month));
+    return new Number(month);
 }
 
 Number* Date::getSeconds() const noexcept
 {
     double seconds = _d->getSeconds();
-    return GC::track(new Number(seconds));
+    return new Number(seconds);
 }
 
 Number* Date::getTime() const noexcept
 {
     double time = _d->getTime();
-    return GC::track(new Number(time));
+    return new Number(time);
 }
 
 Number* Date::getTimezoneOffset() const noexcept
 {
     double offset = _d->getTimezoneOffset();
-    return GC::track(new Number(offset));
+    return new Number(offset);
 }
 
 Number* Date::getUTCDate() const noexcept
 {
     double utcDate = _d->getUTCDate();
-    return GC::track(new Number(utcDate));
+    return new Number(utcDate);
 }
 
 Number* Date::getUTCDay() const noexcept
 {
     double utcDay = _d->getUTCDay();
-    return GC::track(new Number(utcDay));
+    return new Number(utcDay);
 }
 
 Number* Date::getUTCFullYear() const noexcept
 {
     double utcYear = _d->getUTCFullYear();
-    return GC::track(new Number(utcYear));
+    return new Number(utcYear);
 }
 
 Number* Date::getUTCMilliseconds() const noexcept
 {
     double utcMs = _d->getUTCMilliseconds();
-    return GC::track(new Number(utcMs));
+    return new Number(utcMs);
 }
 
 Number* Date::getUTCHours() const noexcept
 {
     double utcHours = _d->getUTCHours();
-    return GC::track(new Number(utcHours));
+    return new Number(utcHours);
 }
 
 Number* Date::getUTCMinutes() const noexcept
 {
     double utcMinutes = _d->getUTCMinutes();
-    return GC::track(new Number(utcMinutes));
+    return new Number(utcMinutes);
 }
 
 Number* Date::getUTCMonth() const noexcept
 {
     double utcMonth = _d->getUTCMonth();
-    return GC::track(new Number(utcMonth));
+    return new Number(utcMonth);
 }
 
 Number* Date::getUTCSeconds() const noexcept
 {
     double utcSeconds = _d->getUTCSeconds();
-    return GC::track(new Number(utcSeconds));
+    return new Number(utcSeconds);
 }
 
 Number* Date::setFullYear(Number* new_year, MaybeNumber* new_month, MaybeNumber* new_day)
@@ -218,7 +218,7 @@ Number* Date::setFullYear(Number* new_year, MaybeNumber* new_month, MaybeNumber*
 
     double date = _d->setFullYear(newYearUnboxed, newMonthUnboxed, newDayUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setMonth(Number* new_month, MaybeNumber* new_day)
@@ -228,14 +228,14 @@ Number* Date::setMonth(Number* new_month, MaybeNumber* new_day)
 
     double date = _d->setMonth(newMonthUnboxed, newDayUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setDate(Number* new_date)
 {
     double date = _d->setDate(new_date->unboxed());
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setHours(Number* new_hours,
@@ -250,7 +250,7 @@ Number* Date::setHours(Number* new_hours,
 
     double date = _d->setHours(newHoursUnboxed, newMinutesUnboxed, newSecondsUnboxed, newMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setMinutes(Number* new_minutes, MaybeNumber* new_seconds, MaybeNumber* new_milliseconds)
@@ -261,7 +261,7 @@ Number* Date::setMinutes(Number* new_minutes, MaybeNumber* new_seconds, MaybeNum
 
     double date = _d->setMinutes(newMinutesUnboxed, newSecondsUnboxed, newMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setSeconds(Number* new_seconds, MaybeNumber* new_milliseconds)
@@ -271,7 +271,7 @@ Number* Date::setSeconds(Number* new_seconds, MaybeNumber* new_milliseconds)
 
     double date = _d->setSeconds(newSecondsUnboxed, newMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setMilliseconds(Number* new_milliseconds)
@@ -280,7 +280,7 @@ Number* Date::setMilliseconds(Number* new_milliseconds)
 
     double date = _d->setMilliseconds(newMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setTime(Number* milliseconds_epoch_time)
@@ -289,7 +289,7 @@ Number* Date::setTime(Number* milliseconds_epoch_time)
 
     double date = _d->setTime(timeUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCFullYear(Number* new_utc_year, MaybeNumber* new_utc_month, MaybeNumber* new_utc_days)
@@ -300,7 +300,7 @@ Number* Date::setUTCFullYear(Number* new_utc_year, MaybeNumber* new_utc_month, M
 
     double date = _d->setUTCFullYear(newUTCYearUnboxed, newUTCMonthUnboxed, newUTCDaysUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCMonth(Number* new_utc_month, MaybeNumber* new_utc_days)
@@ -310,7 +310,7 @@ Number* Date::setUTCMonth(Number* new_utc_month, MaybeNumber* new_utc_days)
 
     double date = _d->setUTCMonth(newUTCMonthUnboxed, newUTCDaysUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCDate(Number* new_utc_date)
@@ -319,7 +319,7 @@ Number* Date::setUTCDate(Number* new_utc_date)
 
     double date = _d->setUTCDate(newUTCDateUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCHours(Number* new_utc_hours,
@@ -336,7 +336,7 @@ Number* Date::setUTCHours(Number* new_utc_hours,
     double date =
         _d->setUTCHours(newUTCHoursUnboxed, newUTCMinutesUnboxed, newUTCSecondsUnboxed, newUTCMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCMinutes(Number* new_utc_minutes, MaybeNumber* new_utc_seconds, MaybeNumber* new_utc_milliseconds)
@@ -348,7 +348,7 @@ Number* Date::setUTCMinutes(Number* new_utc_minutes, MaybeNumber* new_utc_second
 
     double date = _d->setUTCMinutes(newUTCMinutesUnboxed, newUTCSecondsUnboxed, newUTCMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCSeconds(Number* new_utc_seconds, MaybeNumber* new_utc_milliseconds)
@@ -359,7 +359,7 @@ Number* Date::setUTCSeconds(Number* new_utc_seconds, MaybeNumber* new_utc_millis
 
     double date = _d->setUTCSeconds(newUTCSecondsUnboxed, newUTCMillisecondsUnboxed);
 
-    return GC::track(new Number(date));
+    return new Number(date);
 }
 
 Number* Date::setUTCMilliseconds(Number* new_utc_milliseconds)
@@ -370,25 +370,25 @@ Number* Date::setUTCMilliseconds(Number* new_utc_milliseconds)
 String* Date::toString() const
 {
     auto string = _d->toString();
-    return GC::track(new String(string));
+    return new String(string);
 }
 
 String* Date::toDateString() const noexcept
 {
     auto string = _d->toDateString();
-    return GC::track(new String(string));
+    return new String(string);
 }
 
 String* Date::toUTCString() const noexcept
 {
     auto string = _d->toUTCString();
-    return GC::track(new String(string));
+    return new String(string);
 }
 
 String* Date::toISOString() const noexcept
 {
     auto string = _d->toISOString();
-    return GC::track(new String(string));
+    return new String(string);
 }
 
 String* Date::toJSON() const noexcept
@@ -399,7 +399,7 @@ String* Date::toJSON() const noexcept
 String* Date::toTimeString() const noexcept
 {
     auto string = _d->toTimeString();
-    return GC::track(new String(string));
+    return new String(string);
 }
 
 Number* Date::valueOf() const noexcept

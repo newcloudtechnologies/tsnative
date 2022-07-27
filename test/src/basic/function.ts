@@ -128,9 +128,12 @@
 {
   // Test only buildability
   function createStore<S, A>(reducer: (state: S, action: A) => S, initialState: S): S {
-    let state = initialState;
+    // TODO AN-1117
+    // If you write "state" here instead of a "newState" then you will get GC segfault.
+    // See the task for more details
+    let newState = initialState;
     let unused = reducer;
-    return state;
+    return newState;
   }
 
   function FMReducer(state: string, action: number): string {

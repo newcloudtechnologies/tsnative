@@ -1,6 +1,4 @@
 #include "std/tsstring.h"
-
-#include "std/gc.h"
 #include "std/tsarray.h"
 #include "std/tsnumber.h"
 #include "std/tsunion.h"
@@ -11,6 +9,8 @@
 #include "std/private/tsstring_std_p.h"
 #endif
 
+#include "std/private/logger.h"
+
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -20,7 +20,9 @@ String::String()
     : _d(new StdStringBackend())
 #endif
 {
+    LOG_ADDRESS("Calling string default ctor ", this);
 }
+
 String::String(Number* d)
 {
     std::ostringstream oss;
@@ -29,6 +31,9 @@ String::String(Number* d)
 #ifdef USE_STD_STRING_BACKEND
     this->_d = new StdStringBackend(oss.str());
 #endif
+
+    LOG_INFO("Calling string ctor from number " + std::to_string(d->unboxed()));
+    LOG_ADDRESS("This address: ", this);
 }
 
 String::String(const int8_t* s)
@@ -36,12 +41,19 @@ String::String(const int8_t* s)
     : _d(new StdStringBackend(reinterpret_cast<const char*>(s)))
 #endif
 {
+    const auto* chars = reinterpret_cast<const char*>(s);
+    LOG_INFO("Calling string ctor from const int8_t* " + std::string(chars));
+    LOG_ADDRESS("This address: ", this);
 }
+
 String::String(const std::string& s)
 #ifdef USE_STD_STRING_BACKEND
     : _d(new StdStringBackend(s))
 #endif
 {
+
+    LOG_INFO("Calling string ctor from const string& " + s);
+    LOG_ADDRESS("This address: ", this);
 }
 
 String::String(const char* s)
@@ -49,23 +61,30 @@ String::String(const char* s)
     : _d(new StdStringBackend(s))
 #endif
 {
+    LOG_INFO("Calling string ctor from const char* " + std::string{s});
+    LOG_ADDRESS("This address: ", this);
 }
 
 String::~String()
 {
+    LOG_INFO("String _d address for " + cpp_str());
+    LOG_ADDRESS("_d address: ", _d);
+
     delete _d;
+
+    LOG_INFO("Finishing string dtor" );
 }
 
 Number* String::length() const
 {
     size_t length = _d->length();
-    return GC::track(new Number(length));
+    return new Number(length);
 }
 
 String* String::concat(String* other) const
 {
     std::string concatenated = _d->concat(other->cpp_str());
-    return GC::track(new String(concatenated));
+    return new String(concatenated);
 }
 
 Boolean* String::startsWith(String* other, Union* maybeStartIndex) const
@@ -82,7 +101,7 @@ Boolean* String::startsWith(String* other, Union* maybeStartIndex) const
         result = _d->startsWith(other->cpp_str(), static_cast<int>(startIndex->unboxed()));
     }
 
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Boolean* String::endsWith(String* other, Union* maybeStartIndex) const
@@ -99,7 +118,7 @@ Boolean* String::endsWith(String* other, Union* maybeStartIndex) const
         result = _d->endsWith(other->cpp_str(), static_cast<int>(startIndex->unboxed()));
     }
 
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Array<String*>* String::split(String* pattern, Union* maybeLimit) const
@@ -122,7 +141,7 @@ Array<String*>* String::split(String* pattern, Union* maybeLimit) const
     std::transform(result.cbegin(),
                    result.cend(),
                    std::back_inserter(boxed),
-                   [](const std::string& value) { return GC::track(new String(value)); });
+                   [](const std::string& value) { return new String(value); });
 
     return Array<String*>::fromStdVector(boxed);
 }
@@ -140,7 +159,7 @@ String* String::slice(Number* startIndex, Union* maybeEndIndex) const
         auto endIndex = static_cast<Number*>(maybeEndIndex->getValue());
         result = _d->slice(static_cast<int>(startIndex->unboxed()), static_cast<int>(endIndex->unboxed()));
     }
-    return GC::track(new String(result));
+    return new String(result);
 }
 
 String* String::substring(Number* startIndex, Union* maybeEndIndex) const
@@ -157,25 +176,25 @@ String* String::substring(Number* startIndex, Union* maybeEndIndex) const
         result = _d->substring(static_cast<int>(startIndex->unboxed()), static_cast<int>(endIndex->unboxed()));
     }
 
-    return GC::track(new String(result));
+    return new String(result);
 }
 
 String* String::trim() const
 {
     std::string result = _d->trim();
-    return GC::track(new String(result));
+    return new String(result);
 }
 
 String* String::toLowerCase() const
 {
     std::string result = _d->toLowerCase();
-    return GC::track(new String(result));
+    return new String(result);
 }
 
 String* String::toUpperCase() const
 {
     std::string result = _d->toUpperCase();
-    return GC::track(new String(result));
+    return new String(result);
 }
 
 Boolean* String::includes(String* pattern, Union* maybeStartIndex) const
@@ -192,7 +211,7 @@ Boolean* String::includes(String* pattern, Union* maybeStartIndex) const
         result = _d->includes(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
     }
 
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Number* String::indexOf(String* pattern, Union* maybeStartIndex) const
@@ -209,7 +228,7 @@ Number* String::indexOf(String* pattern, Union* maybeStartIndex) const
         index = _d->indexOf(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
     }
 
-    return GC::track(new Number(static_cast<double>(index)));
+    return new Number(static_cast<double>(index));
 }
 
 Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
@@ -226,13 +245,13 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
         index = _d->lastIndexOf(pattern->cpp_str(), static_cast<int>(startIndex->unboxed()));
     }
 
-    return GC::track(new Number(static_cast<double>(index)));
+    return new Number(static_cast<double>(index));
 }
 
 Boolean* String::equals(String* other) const
 {
     bool result = _d->equals(other->cpp_str());
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 String* String::operator[](Number* index) const
@@ -243,13 +262,12 @@ String* String::operator[](Number* index) const
 String* String::operator[](size_t index) const
 {
     std::string symbol = _d->operator[](index);
-    return GC::track(new String(symbol));
+    return new String(symbol);
 }
 
 IterableIterator<String*>* String::iterator()
 {
-    auto it = new StringIterator<String*>(this);
-    return GC::track(it);
+    return new StringIterator<String*>(this);
 }
 
 String* String::toString() const
@@ -259,7 +277,7 @@ String* String::toString() const
 
 Boolean* String::toBool() const
 {
-    return GC::track(new Boolean(_d->toBool()));
+    return new Boolean(_d->toBool());
 }
 
 const std::string& String::cpp_str() const
@@ -269,15 +287,17 @@ const std::string& String::cpp_str() const
 
 String* String::clone() const
 {
-    return GC::track(new String(cpp_str()));
+    LOG_INFO("Calling String::clone for " + cpp_str());
+    LOG_ADDRESS("This address: ", this);
+    return new String(cpp_str());
 }
 
 Array<String*>* String::getKeysArray() const
 {
-    auto result = GC::track(new Array<String*>());
+    auto result = new Array<String*>();
     for (std::size_t i = 0 ; i < length()->unboxed() ; ++i)
     {
-        auto n = GC::track(new Number(i));
+        auto n = new Number(i);
         result->push(n->toString());
     }
 

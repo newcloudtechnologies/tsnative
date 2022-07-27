@@ -14,7 +14,9 @@ import { NodeHandlerChain } from "../handlers/node";
 import { Scope, SymbolTable, Environment, addClassScope } from "../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import { GC, BuiltinTSClosure, BuiltinIteratorResult, BuiltinNumber, BuiltinBoolean } from "../tsbuiltins";
+import { BuiltinTSClosure, BuiltinIteratorResult, BuiltinNumber, BuiltinBoolean } from "../tsbuiltins";
+import { GC } from "../tsbuiltins/gc"
+import { Runtime } from "../tsbuiltins/runtime";
 import { MetaInfoStorage } from "../generator";
 import { LLVM } from "../llvm/llvm";
 import { TS } from "../ts/ts";
@@ -52,7 +54,7 @@ export class LLVMGenerator {
   private _builtinBoolean: BuiltinBoolean | undefined;
 
   private builtinTSClosure: BuiltinTSClosure | undefined;
-  private garbageCollector: GC | undefined;
+  private globalRuntime: Runtime | undefined;
 
   private builtinIteratorResult: BuiltinIteratorResult | undefined;
 
@@ -138,22 +140,22 @@ export class LLVMGenerator {
     return this.module;
   }
 
-  initGC(): void {
-    const gc = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.GC_DEFINITION);
-    if (!gc) {
-      throw new Error("No std GC file found");
+  initRuntime(): void {
+    const runtime = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.RUNTIME_DEFINITION);
+    if (!runtime) {
+      throw new Error("No std Runtime file found");
     }
-    gc.forEachChild((node) => {
+    runtime.forEachChild((node) => {
       if (ts.isClassDeclaration(node)) {
         const clazz = Declaration.create(node as ts.ClassDeclaration, this);
         const clazzName = clazz.type.getSymbol().escapedName;
-        if (clazzName === "GC") {
-          this.garbageCollector = new GC(clazz, this);
+        if (clazzName === "Runtime") {
+          this.globalRuntime = new Runtime(clazz, this);
         }
       }
     });
-    if (!this.garbageCollector) {
-      throw new Error("GC declaration not found");
+    if (!this.globalRuntime) {
+      throw new Error("Runtime declaration not found");
     }
   }
 
@@ -258,10 +260,14 @@ export class LLVMGenerator {
   }
 
   get gc(): GC {
-    if (!this.garbageCollector) {
-      this.initGC();
+    return this.runtime.gc;
+  }
+
+  get runtime(): Runtime {
+    if (!this.globalRuntime) {
+      this.initRuntime();
     }
-    return this.garbageCollector!;
+    return this.globalRuntime!;
   }
 
   get tsclosure() {

@@ -21,9 +21,11 @@ public:
     bool remove(K key) override;
     void clear() override;
 
-    int size() const override;
+    std::size_t size() const override;
 
     const std::vector<K>& orderedKeys() const override;
+    void forEachEntry(std::function<void(std::pair<K, V>&)> callable) override;
+    void forEachEntry(std::function<void(const std::pair<K, V>&)> callable) const override;
 
     std::string toString() const override;
 
@@ -34,6 +36,28 @@ private:
     std::unordered_map<K, V> _hashmap;
     std::vector<K> _orderedKeys;
 };
+
+template <typename K, typename V>
+void MapStdPrivate<K, V>::forEachEntry(std::function<void(std::pair<K, V>&)> callable)
+{
+    for (auto& key : _orderedKeys)
+    {
+        auto& value = _hashmap.at(key);
+        auto p = std::make_pair(key, value);
+        callable(p);
+    }
+}
+
+template <typename K, typename V>
+void MapStdPrivate<K, V>::forEachEntry(std::function<void(const std::pair<K, V>&)> callable) const
+{
+    for (auto& key : _orderedKeys)
+    {
+        auto& value = _hashmap.at(key);
+        auto p = std::make_pair(key, value);
+        callable(p);
+    }
+}
 
 template <typename K, typename V>
 void MapStdPrivate<K, V>::set(K key, V value)
@@ -98,9 +122,9 @@ void MapStdPrivate<K, V>::clear()
 }
 
 template <typename K, typename V>
-int MapStdPrivate<K, V>::size() const
+std::size_t MapStdPrivate<K, V>::size() const
 {
-    return static_cast<int>(_hashmap.size());
+    return _hashmap.size();
 }
 
 template <typename K, typename V>

@@ -18,11 +18,13 @@ class TSNativeStdConan(ConanFile):
     exports_sources = "*"
 
     options = {
-        "build_tests": [True, False]
+        "build_tests": [True, False],
+        "enable_logs": [True, False]
     }
 
     default_options = {
-        "build_tests": False
+        "build_tests": False,
+        "enable_logs": False
     }
 
     def requirements(self):
@@ -54,6 +56,7 @@ class TSNativeStdConan(ConanFile):
             cmake.definitions["GENERATE_DECLARATIONS"] = 'ON'
 
         cmake.definitions["BUILD_TEST"] = 'ON' if self.options.build_tests else 'OFF'
+        cmake.definitions["ENABLE_LOGS"] = 'ON' if self.options.enable_logs else 'OFF'
 
         cmake.configure()
         cmake.build()
@@ -65,6 +68,7 @@ class TSNativeStdConan(ConanFile):
 
     def package_id(self):
         del self.info.options.build_tests
+        del self.info.options.enable_logs
 
     def package_info(self):
         self.cpp_info.name = self.name

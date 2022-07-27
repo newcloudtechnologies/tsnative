@@ -69,8 +69,6 @@ main().catch((e) => {
 
 async function main() {
   // print command line
-  console.log(process.argv.join(" "))
-
   const files = argv.args;
   console.log(process.argv.join(" "))
 
@@ -102,7 +100,9 @@ async function main() {
     stdlib.SET_ITERATOR_DEFINITION,
     stdlib.DATE_DEFINITION,
     stdlib.MATH_DEFINITION,
-    stdlib.RUNTIME_DEFINITION
+    stdlib.RUNTIME_DEFINITION,
+    stdlib.DIAGNOSTICS_DEFINITION,
+    stdlib.MEMORY_DIAGNOSTICS_DEFINITION
   ];
   options.types = [];
 
@@ -235,6 +235,8 @@ async function main() {
   }
 
   if (argv.emitIR) {
-    new Build().writeIRToFile(llvmModule, program, argv);
+    const dotTsFiles = process.argv.filter((s) => { return s.endsWith(".ts"); });
+    const outputName = dotTsFiles.length !== 0 ? dotTsFiles[0] : "a.ts";
+    new Build().writeIRToFile(llvmModule, outputName, argv);
   }
 }

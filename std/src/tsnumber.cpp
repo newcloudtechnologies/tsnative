@@ -1,5 +1,4 @@
 #include "std/tsnumber.h"
-#include "std/gc.h"
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
@@ -31,31 +30,31 @@ Number::~Number()
 Number* Number::add(Number* other) const
 {
     double result = _d->add(other->unboxed());
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::sub(Number* other) const
 {
     double result = _d->sub(other->unboxed());
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::mul(Number* other) const
 {
     double result = _d->mul(other->unboxed());
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::div(Number* other) const
 {
     double result = _d->div(other->unboxed());
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::mod(Number* other) const
 {
     double result = _d->mod(other->unboxed());
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::addInplace(Number* other)
@@ -103,7 +102,7 @@ Number* Number::prefixIncrement()
 Number* Number::postfixIncrement()
 {
     double result = _d->postfixIncrement();
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::prefixDecrement()
@@ -115,33 +114,33 @@ Number* Number::prefixDecrement()
 Number* Number::postfixDecrement()
 {
     double result = _d->postfixDecrement();
-    return GC::track(new Number(result));
+    return new Number(result);
 }
 
 Number* Number::bitwiseAnd(Number* other) const
 {
     uint64_t result = _d->bitwiseAnd(static_cast<uint64_t>(other->unboxed()));
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 Number* Number::bitwiseOr(Number* other) const
 {
     uint64_t result = _d->bitwiseOr(static_cast<uint64_t>(other->unboxed()));
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 Number* Number::bitwiseXor(Number* other) const
 {
     uint64_t result = _d->bitwiseXor(static_cast<uint64_t>(other->unboxed()));
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 Number* Number::bitwiseLeftShift(Number* other) const
 {
     uint64_t result = _d->bitwiseLeftShift(static_cast<uint64_t>(other->unboxed()));
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 Number* Number::bitwiseRightShift(Number* other) const
 {
     uint64_t result = _d->bitwiseRightShift(static_cast<uint64_t>(other->unboxed()));
-    return GC::track(new Number(static_cast<double>(static_cast<int64_t>(result))));
+    return new Number(static_cast<double>(static_cast<int64_t>(result)));
 }
 
 Number* Number::bitwiseAndInplace(Number* other)
@@ -173,37 +172,37 @@ Number* Number::bitwiseRightShiftInplace(Number* other)
 Boolean* Number::equals(Number* other) const
 {
     bool result = _d->equals(other->unboxed());
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Boolean* Number::lessThan(Number* other) const
 {
     bool result = _d->lessThan(other->unboxed());
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Boolean* Number::lessEqualsThan(Number* other) const
 {
     bool result = _d->lessEqualsThan(other->unboxed());
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Boolean* Number::greaterThan(Number* other) const
 {
     bool result = _d->greaterThan(other->unboxed());
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Boolean* Number::greaterEqualsThan(Number* other) const
 {
     bool result = _d->greaterEqualsThan(other->unboxed());
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 Boolean* Number::toBool() const
 {
     bool result = _d->toBool();
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 double Number::unboxed() const
@@ -213,12 +212,12 @@ double Number::unboxed() const
 
 Number* Number::clone() const
 {
-    return GC::track(new Number(this->unboxed()));
+    return new Number(this->unboxed());
 }
 
 String* Number::toString() const
 {
     std::ostringstream oss;
     oss << this->unboxed();
-    return GC::track(new String(oss.str()));
+    return new String(oss.str());
 }

@@ -20,7 +20,7 @@ export enum MathFlags {
 
 export class LLVMValue {
   protected value: llvm.Value;
-  protected readonly generator: LLVMGenerator;
+  readonly generator: LLVMGenerator;
 
   protected constructor(value: llvm.Value, generator: LLVMGenerator) {
     this.value = value;

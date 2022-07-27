@@ -4,9 +4,13 @@
 
 int main(int argc, char* argv[])
 {
-    Runtime::init(argc, argv);
-    const auto res = __ts_main();
-    Runtime::destroy();
+    int result = Runtime::init(argc, argv);
+    if (result != 0)
+    {
+        return result;
+    }
+    
+    result = __ts_main();
 
-    return res;
+    return result;
 }

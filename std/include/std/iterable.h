@@ -4,7 +4,6 @@
 
 #include "std/private/options.h"
 
-#include "std/gc.h"
 #include "std/tsboolean.h"
 
 #include <type_traits>
@@ -27,7 +26,7 @@ private:
 
 template <typename T>
 IteratorResult<T>::IteratorResult(bool done, T value)
-    : _done(GC::track(new Boolean(done)))
+    : _done(new Boolean(done))
     , _value(value)
 {
 }

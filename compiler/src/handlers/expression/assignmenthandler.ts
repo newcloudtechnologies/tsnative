@@ -13,6 +13,7 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
+import { LLVMType } from "../../llvm/type";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -67,6 +68,10 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             right.kind === ts.SyntaxKind.NullKeyword
               ? this.generator.ts.union.create(this.generator.ts.null.get())
               : this.generator.handleExpression(right, env);
+
+          if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
+            this.generator.gc.deallocate(lhs);
+          }
 
           return lhs.makeAssignment(rhs);
         default:

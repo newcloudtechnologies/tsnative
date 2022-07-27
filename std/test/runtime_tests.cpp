@@ -5,22 +5,14 @@
 #include "std/tsarray.h"
 #include "equality_checkers.h"
 
-TEST(RuntimeTests, actOnUninitializedRuntime) 
-{
-    EXPECT_THROW(Runtime::getCmdArgs(), std::runtime_error);
-}
-
-TEST(RuntimeTests, destroyUninitializedRuntime) 
-{
-    EXPECT_THROW(Runtime::destroy(), std::runtime_error);
-}
-
 TEST(RuntimeTests, initRuntimeTwice) 
 {
     const int ac = 0;
     char** av;
 
-    Runtime::init(ac, av);
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
     ASSERT_THROW(Runtime::init(ac, av), std::runtime_error);
     Runtime::destroy();
 }
@@ -30,13 +22,16 @@ TEST(RuntimeTests, emptyCmdArgs)
     const int ac = 0;
     char** av;
 
-    Runtime::init(ac, av);
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
     const auto* arr = Runtime::getCmdArgs();
-    Runtime::destroy();
 
     ASSERT_NE(nullptr, arr);
     ASSERT_NE(nullptr, arr->length());
     EXPECT_EQ(0u, arr->length()->unboxed());
+
+    Runtime::destroy();
 }
 
 TEST(RuntimeTests, simpleCmdArgs) 
@@ -49,14 +44,17 @@ TEST(RuntimeTests, simpleCmdArgs)
     // Avoid ISO C++ forbids converting a string constant to 'char*'
     char* av[] = {abacaba, rama};
 
-    Runtime::init(ac, av);
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
     const auto* arr = Runtime::getCmdArgs();
-    Runtime::destroy();
 
     ASSERT_NE(nullptr, arr);
     const auto actual = arr->toStdVector();
 
     EXPECT_THAT(actual, ::testing::ElementsAreArray(expected));
+
+    Runtime::destroy();
 }
 
 TEST(RuntimeTests, argvSizeLessThanArgs) 
@@ -71,12 +69,15 @@ TEST(RuntimeTests, argvSizeLessThanArgs)
     // Avoid ISO C++ forbids converting a string constant to 'char*'
     char* av[] = {abacaba, rama};
 
-    Runtime::init(ac, av);
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
     const auto* arr = Runtime::getCmdArgs();
-    Runtime::destroy();
 
     ASSERT_NE(nullptr, arr);
     const auto actual = arr->toStdVector();
 
     EXPECT_THAT(actual, ::testing::ElementsAreArray(expected));
+
+    Runtime::destroy();
 }

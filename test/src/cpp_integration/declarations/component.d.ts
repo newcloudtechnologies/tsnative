@@ -10,7 +10,7 @@ export declare class AnotherWidget {
 @VTable
 @VirtualDestructor
 // @ts-ignore
-@VTableSize(9)
+@VTableSize(10)
 export declare class Component {
     constructor();
 

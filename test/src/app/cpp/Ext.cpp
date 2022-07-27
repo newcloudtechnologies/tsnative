@@ -10,7 +10,6 @@
  */
 
 #include "Ext.h"
-#include <std/gc.h>
 
 #include <iostream>
 

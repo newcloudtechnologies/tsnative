@@ -24,6 +24,7 @@ public:
     TS_METHOD TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
     // this class is not an owner of passed ptrs, so use default dtor.
     // @todo: should ptrs be untracked here?
+    // TODO Env should be deleted by the destructor
     ~TSClosure() override = default;
 
     TS_METHOD void** getEnvironment() const;
@@ -39,6 +40,8 @@ public:
     void* call() const;
 
     TS_METHOD String* toString() const override;
+
+    void markChildren() override;
 
 private:
     void* fn = nullptr;

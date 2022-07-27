@@ -19,6 +19,8 @@
 #include "std/private/tsset_std_p.h"
 #endif
 
+#include "std/private/logger.h"
+
 template <typename T>
 class SetPrivate;
 
@@ -50,6 +52,8 @@ public:
 
     TS_METHOD String* toString() const override;
 
+    void markChildren() override;
+
 private:
     SetPrivate<T>* _d = nullptr;
 };
@@ -78,7 +82,7 @@ template <typename T>
 Boolean* Set<T>::remove(T value)
 {
     bool result = _d->remove(value);
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 template <typename T>
@@ -112,7 +116,7 @@ template <typename T>
 Boolean* Set<T>::has(T value) const
 {
     bool result = _d->has(value);
-    return GC::track(new Boolean(result));
+    return new Boolean(result);
 }
 
 template <typename T>
@@ -126,15 +130,14 @@ template <typename T>
 Number* Set<T>::size() const
 {
     int size = _d->size();
-    return GC::track(new Number(static_cast<double>(size)));
+    return new Number(static_cast<double>(size));
 }
 
 template <typename T>
 IterableIterator<T>* Set<T>::values()
 {
     auto values = Array<T>::fromStdVector(_d->ordered());
-    auto it = new SetIterator<T>(values);
-    return GC::track(it);
+    return new SetIterator<T>(values);
 }
 
 template <typename T>
@@ -152,7 +155,23 @@ IterableIterator<T>* Set<T>::keys()
 template <typename T>
 String* Set<T>::toString() const
 {
-    return GC::track(new String(_d->toString()));
+    return new String(_d->toString());
+}
+
+template <typename T>
+void Set<T>::markChildren()
+{
+    LOG_INFO("Calling set::markChildren");
+    const auto callable = [](T& entry)
+    {
+        auto* object = static_cast<Object*>(entry);
+        if (object && !object->isMarked())
+        {
+            object->mark();
+        }
+    };
+
+    _d->forEach(callable);
 }
 
 template <typename U>

@@ -6,6 +6,7 @@
 
 #include <std/tsstring.h>
 #include <std/tsobject.h>
+#include <std/console.h>
 
 namespace cpp
 {

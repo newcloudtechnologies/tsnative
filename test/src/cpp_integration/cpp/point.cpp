@@ -25,6 +25,5 @@ void Point::setY(Number *y) { set("y", y); }
 
 Point *Point::clone() const
 {
-  Point *clone = new Point(*this);
-  return GC::track(clone);
+  return new Point(*this);
 }

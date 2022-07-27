@@ -2,7 +2,6 @@
 
 #include <TS.h>
 
-#include "std/gc.h"
 #include "std/private/options.h"
 #include "std/tsobject.h"
 
@@ -18,7 +17,6 @@ class TS_DECLARE Tuple : public Object
 {
 public:
     TS_METHOD Tuple();
-    ~Tuple() override;
 
     TS_METHOD TS_GETTER Number* length() const;
     TS_METHOD TS_SIGNATURE("[index: number]: any") void* operator[](Number* index);
@@ -29,6 +27,8 @@ public:
     TS_METHOD String* toString() const override;
 
     friend std::ostream& operator<<(std::ostream& os, const Tuple* tuple);
+
+    void markChildren() override;
 
 private:
     Array<Object*>* _d = nullptr;

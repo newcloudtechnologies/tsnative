@@ -4,7 +4,6 @@
 
 #include "std/private/options.h"
 
-#include "std/gc.h"
 #include "std/iterable.h"
 #include "std/tsboolean.h"
 #include "std/tsclosure.h"
@@ -36,7 +35,7 @@ public:
 
     static Array<T>* fromStdVector(const std::vector<T>& initializer)
     {
-        auto array = GC::track(new Array<T>{});
+        auto array = new Array<T>{};
 
         for (const auto& value : initializer)
         {
@@ -84,7 +83,7 @@ public:
     TS_METHOD TS_SIGNATURE("concat(other: T[]): T[]") Array<T>* concat(const Array<T>* other) const;
 
     std::vector<T> toStdVector() const;
-    TS_METHOD String* toString() const;
+    TS_METHOD String* toString() const override;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>")
         TS_DECORATOR("MapsTo('iterator')") IterableIterator<T>* iterator() override;
@@ -93,6 +92,8 @@ public:
 
     template <typename U>
     friend std::ostream& operator<<(std::ostream& os, const Array<U>* array);
+
+    void markChildren() override;
 
 private:
     ArrayPrivate<T>* _d = nullptr;
@@ -112,14 +113,14 @@ public:
         if (currentIndex == static_cast<size_t>(_iterable->length()->unboxed()))
         {
             auto result = new IteratorResult<T>{true, {}};
-            return GC::track(result);
+            return result;
         }
 
         T value = _iterable->operator[](currentIndex);
         ++currentIndex;
 
         auto result = new IteratorResult<T>{false, value};
-        return GC::track(result);
+        return result;
     }
 
 private:
@@ -147,7 +148,7 @@ template <typename T>
 Number* Array<T>::push(T t)
 {
     int result = _d->push(t);
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 
 template <typename T>
@@ -169,7 +170,7 @@ template <typename T>
 Number* Array<T>::length() const
 {
     int result = _d->length();
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 
 template <typename T>
@@ -206,7 +207,7 @@ void Array<T>::forEach(TSClosure* closure) const
 
         if (numArgs > 1)
         {
-            closure->setEnvironmentElement(GC::track(new Number(static_cast<double>(i))), 1);
+            closure->setEnvironmentElement(new Number(static_cast<double>(i)), 1);
         }
 
         if (numArgs > 2)
@@ -232,7 +233,7 @@ Number* Array<T>::indexOf(T value, Union* maybeFromIndex) const
         result = _d->indexOf(value, static_cast<int>(fromIndex->unboxed()));
     }
 
-    return GC::track(new Number(static_cast<double>(result)));
+    return new Number(static_cast<double>(result));
 }
 
 template <typename T>
@@ -269,7 +270,7 @@ template <typename T>
 String* Array<T>::toString() const
 {
     std::string result = _d->toString();
-    return GC::track(new String(result));
+    return new String(result);
 }
 
 template <typename T>
@@ -279,7 +280,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
     static_assert(std::is_pointer<U>::value, "TS Array elements expected to be of pointer type");
 
-    auto transformedArray = GC::track(new Array<U>());
+    auto transformedArray = new Array<U>();
     auto numArgs = closure->getNumArgs()->unboxed();
 
     size_t length = static_cast<size_t>(_d->length());
@@ -293,7 +294,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
 
         if (numArgs > 1)
         {
-            closure->setEnvironmentElement(GC::track(new Number(static_cast<double>(i))), 1);
+            closure->setEnvironmentElement(new Number(static_cast<double>(i)), 1);
         }
 
         if (numArgs > 2)
@@ -331,45 +332,56 @@ Number* Array<T>::push(Array<T>* t, Ts... ts)
 template <typename T>
 IterableIterator<T>* Array<T>::iterator()
 {
-    auto it = new ArrayIterator<T>(this);
-    return GC::track(it);
+    return new ArrayIterator<T>(this);
 }
 
 template <typename T>
 IterableIterator<Number*>* Array<T>::keys()
 {
     auto keys = _d->keys();
-    auto keysArray = GC::track(new Array<Number*>());
+    auto keysArray = new Array<Number*>();
 
     for (auto key : keys)
     {
         keysArray->push(new Number(static_cast<double>(key)));
     }
 
-    auto it = new ArrayIterator<Number*>(keysArray);
-    return GC::track(it);
+    return new ArrayIterator<Number*>(keysArray);
 }
 
 template <typename T>
 IterableIterator<T>* Array<T>::values()
 {
-    auto it = new ArrayIterator<T>(this);
-    return GC::track(it);
+    return new ArrayIterator<T>(this);
 }
 
 template <typename T>
 Array<String*>* Array<T>::getKeysArray() const
 {
-    auto result = GC::track(new Array<String*>{});
-    const auto keys = _d->keys();
+    auto result = new Array<String*>{};
+    const auto keys =_d->keys();
 
     for (const auto k : keys)
     {
-        auto n = GC::track(new Number(k));
+        auto n = new Number(k);
         result->push(n->toString());
     }
 
     return result;
+}
+
+template <typename T>
+void Array<T>::markChildren()
+{
+    auto elements = _d->toStdVector();
+    for (auto& e : elements)
+    {
+        auto* object = static_cast<Object*>(e);
+        if (object && !object->isMarked())
+        {
+            object->mark();
+        }
+    }
 }
 
 template <typename T>
