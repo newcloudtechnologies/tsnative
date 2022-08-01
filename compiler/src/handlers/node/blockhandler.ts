@@ -24,6 +24,7 @@ export class BlockHandler extends AbstractNodeHandler {
             this.generator.handleNode(statement, scope, env);
           }
         }, this.generator.symbolTable.currentScope);
+        this.generator.symbolTable.currentScope.deinitialize();
         return true;
       default:
         break;

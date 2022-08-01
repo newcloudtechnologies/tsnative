@@ -37,3 +37,13 @@ void GC::collect()
 {
     return _impl->collect();
 }
+
+void GC::addRoot(void* root)
+{
+    _impl->addRoot(static_cast<Object*>(root));
+}
+
+void GC::removeRoot(void* root)
+{
+    _impl->removeRoot(static_cast<Object*>(root));
+}

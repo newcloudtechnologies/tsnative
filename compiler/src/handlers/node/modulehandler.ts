@@ -25,7 +25,7 @@ export class ModuleHandler extends AbstractNodeHandler {
       const isNamespace = (node.flags & ts.NodeFlags.Namespace) !== 0;
       if (isNamespace) {
         const name = declaration.name.getText().replace(/\"/g, "");
-        const scope = new Scope(name, name, true);
+        const scope = new Scope(name, name, this.generator.gc, true);
 
         declaration.body.forEachChild((childNode) => this.generator.handleNode(childNode, scope, env));
         parentScope.set(name, scope);

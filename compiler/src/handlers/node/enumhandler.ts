@@ -18,7 +18,7 @@ export class EnumHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isEnumDeclaration(node)) {
       const enumName = node.name.getText();
-      const scope = new Scope(enumName, enumName);
+      const scope = new Scope(enumName, enumName, this.generator.gc);
 
       // @todo:
       // enum E {
