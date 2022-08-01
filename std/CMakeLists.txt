@@ -165,11 +165,17 @@ if (BUILD_TEST)
     find_package(GTest REQUIRED)
     include(GoogleTest)
 
-    set(TEST_HEADERS test/equality_checkers.h)
+    set(TEST_HEADERS test/infrastructure/equality_checkers.h
+                     test/infrastructure/test_allocator.h
+                     test/infrastructure/global_test_allocator_fixture.h
+                     test/infrastructure/object_wrappers.h)
 
-    set(TEST_SOURCES test/runtime_tests.cpp
-                     test/equality_checkers.cpp
-                     test/gc/treenode_gc_tests.cpp)
+    set(TEST_SOURCES test/infrastructure/equality_checkers.cpp
+                     test/infrastructure/test_allocator.cpp
+                     test/infrastructure/global_test_allocator_fixture.cpp
+                     test/gc/treenode_gc_tests.cpp
+                     test/gc/marking_tests.cpp
+                     test/runtime_tests.cpp)
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 

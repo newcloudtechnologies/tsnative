@@ -3,7 +3,7 @@
 
 #include "std/runtime.h"
 #include "std/tsarray.h"
-#include "equality_checkers.h"
+#include "infrastructure/equality_checkers.h"
 
 TEST(RuntimeTests, initRuntimeTwice) 
 {
