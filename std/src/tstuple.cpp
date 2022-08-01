@@ -2,14 +2,23 @@
 #include "std/tsarray.h"
 #include "std/tsstring.h"
 
+#include "std/private/tsarray_std_p.h"
+
 Tuple::Tuple()
-    : _d(new Array<Object*>())
+#ifdef USE_STD_ARRAY_BACKEND
+    : _d(new DequeueBackend<Object*>())
+#endif // USE_STD_ARRAY_BACKEND
 {
+}
+
+Tuple::~Tuple()
+{
+    delete _d;
 }
 
 Number* Tuple::length() const
 {
-    return _d->length();
+    return new Number(_d->length());
 }
 
 void* Tuple::operator[](Number* index)
@@ -36,8 +45,12 @@ String* Tuple::toString() const
 
 void Tuple::markChildren()
 {
-    if(_d && !_d->isMarked())
+    for (int i = 0 ; i <_d->length() ; ++i)
     {
-        _d->mark();
+        auto* o = static_cast<Object*>(_d->operator[](i));
+        if (o && !o->isMarked())
+        {
+            o->mark();
+        }
     }
 }
