@@ -1,17 +1,20 @@
-// import { Runtime } from "tsnative/std/definitions/runtime"
+import { Runtime } from "tsnative/std/definitions/runtime"
 
-// Simple allocation. GC does not delete it
-// {
-//     const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
-//     const internalObjectsCount = memInfo.getAliveObjectsCount();
+// Simple scoped allocation
+{
+    const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
+    const internalObjectsCount = memInfo.getAliveObjectsCount();
 
-//     const a : number[] = [];
+    {
+        const a : number[] = [];
+    }
 
-//     const newObjectCount = memInfo.getAliveObjectsCount();
-//     const diff = newObjectCount - internalObjectsCount;
+    Runtime.getGC().collect();
 
-//     console.assert(1 === diff, "GC failed: one empty array should be allocated");
-// }
+    const newObjectCount = memInfo.getAliveObjectsCount();
+
+    console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
+}
 
 // Simple garbage inside a block. GC deletes it
 {
