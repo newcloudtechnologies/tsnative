@@ -22,6 +22,9 @@ public:
     TS_METHOD TS_SIGNATURE("deallocate(): void") void deallocate(void*);
     TS_METHOD void collect();
 
+    TS_METHOD TS_SIGNATURE("addRoot(void): void") void addRoot(void* root);
+    TS_METHOD TS_SIGNATURE("removeRoot(void): void") void removeRoot(void* root);
+
 private:
     std::unique_ptr<IGCImpl> _impl;
     std::unique_ptr<Allocator> _allocator;

@@ -19,6 +19,7 @@ import { LLVMConstant, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { Signature } from "../ts/signature";
 import { LLVMFunction } from "../llvm/function";
+import { GC } from "../tsbuiltins/gc";
 
 export class Environment {
   private readonly pVariables: string[];
@@ -236,7 +237,7 @@ export function addClassScope(
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-  const scope = new Scope(name, mangledTypename, false, parentScope, { declaration, llvmType, tsType });
+  const scope = new Scope(name, mangledTypename, generator.gc, false, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
 }
@@ -525,7 +526,15 @@ export class Scope {
 
   readonly isNamespace: boolean;
 
-  constructor(name: string | undefined, mangledName: string | undefined, isNamespace: boolean = false, parent?: Scope, data?: ThisData) {
+  private gc : GC;
+
+  constructor(name: string | undefined, 
+              mangledName: string | undefined, 
+              gc: GC,
+              isNamespace: boolean = false, 
+              parent?: Scope, 
+              data?: ThisData) {
+    this.gc = gc;
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.mangledName = mangledName;
@@ -538,6 +547,43 @@ export class Scope {
     }
 
     this.isNamespace = isNamespace;
+    this.addRoots();
+  }
+
+  private addRoots() {
+    for (const entry of this.map) {
+      this.addRoot(entry[1]);
+    }
+  }
+
+  private addRoot(value: ScopeValue) {
+    if (value instanceof LLVMValue) {
+      this.gc.addRoot(value as LLVMValue);
+    }
+    else if (value instanceof HeapVariableDeclaration) {
+      const heapValue = value as HeapVariableDeclaration;
+      this.gc.addRoot(heapValue.allocated);
+    }
+  }
+
+  private removeRoot(value: ScopeValue) {
+    if (value instanceof LLVMValue) {
+      this.gc.removeRoot(value as LLVMValue);
+    }
+    else if (value instanceof HeapVariableDeclaration) {
+      const heapValue = value as HeapVariableDeclaration;
+      this.gc.removeRoot(heapValue.allocated);
+    }
+  }
+
+  private removeRoots() {
+    for (const entry of this.map) {
+      this.removeRoot(entry[1]);
+    }
+  }
+
+  deinitialize() {
+    this.removeRoots();
   }
 
   initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
@@ -585,6 +631,8 @@ export class Scope {
         this.set(name, allocated);
       }
     }
+
+    this.addRoots();
 
     root.forEachChild(initializeFrom);
   }
@@ -641,26 +689,34 @@ export class Scope {
 
   set(identifier: string, value: ScopeValue) {
     if (!this.get(identifier)) {
+      this.addRoot(value);
       return this.map.set(identifier, value);
     }
 
     throw new Error(`Identifier '${identifier}' already exists. Use 'Scope.overwrite' instead of 'Scope.set'`);
   }
 
-  overwrite(identifier: string, value: ScopeValue) {
-    if (this.get(identifier)) {
-      return this.map.set(identifier, value);
+  overwrite(identifier: string, newValue: ScopeValue) {
+    const oldValue = this.get(identifier);
+    if (oldValue) {
+      this.removeRoot(oldValue);
+      this.addRoot(newValue);
+      return this.map.set(identifier, newValue);
     }
 
     throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
   }
 
-  overwriteThroughParentChain(identifier: string, value: ScopeValue) {
-    if (this.map.get(identifier)) {
-      this.map.set(identifier, value);
+  overwriteThroughParentChain(identifier: string, newValue: ScopeValue) {
+    const oldValue = this.get(identifier);
+    if (oldValue) {
+      this.removeRoot(oldValue);
+      this.addRoot(newValue);
+      this.map.set(identifier, newValue);
+
       return;
     } else if (this.parent) {
-      this.parent.overwriteThroughParentChain(identifier, value);
+      this.parent.overwriteThroughParentChain(identifier, newValue);
       return;
     }
 
@@ -668,6 +724,11 @@ export class Scope {
   }
 
   remove(identifier: string) {
+    const scopedValue = this.get(identifier);
+    if (!scopedValue) {
+      throw new Error(`Identifier '${identifier}' has undefined value`);
+    }
+    this.removeRoot(scopedValue);
     this.map.delete(identifier);
   }
 
