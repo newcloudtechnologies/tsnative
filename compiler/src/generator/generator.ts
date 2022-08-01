@@ -39,7 +39,7 @@ enum InternalNames {
 export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
-  readonly symbolTable: SymbolTable;
+  symbolTable: SymbolTable;
   private readonly metainfoStorage = new MetaInfoStorage();
 
   readonly program: ts.Program;
@@ -73,9 +73,9 @@ export class LLVMGenerator {
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
     this.irBuilder = new Builder(this, null);
-    this.symbolTable = new SymbolTable();
-
     this.llvm = new LLVM(this);
+    this._ts = new TS(this);
+    this.symbolTable = new SymbolTable(this);
 
     if (generateDebugInfo) {
       this.debugInfo = new DebugInfo(this);
@@ -83,8 +83,6 @@ export class LLVMGenerator {
   }
 
   init() {
-    this._ts = new TS(this);
-
     this._builtinNumber = new BuiltinNumber(this);
     this._builtinBoolean = new BuiltinBoolean(this);
 
@@ -108,6 +106,8 @@ export class LLVMGenerator {
 
     this.ts.null.init();
     this.ts.undef.init();
+    this.gc.addRoot(this.ts.null.get());
+    this.gc.addRoot(this.ts.undef.get());
 
     if (dbg) {
       dbg.emitMainScope(main.unwrapped as llvm.Function);
