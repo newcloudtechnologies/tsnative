@@ -70,7 +70,7 @@ export class TSNull {
 
     const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
 
     this.generator.builder.createSafeCall(ctor, [thisUntyped]);
@@ -78,9 +78,11 @@ export class TSNull {
     const nullValue = LLVMConstant.createNullValue(this.llvmType, this.generator);
     const globalNull = LLVMGlobalVariable.make(this.generator, this.llvmType, false, nullValue, "null_constant");
 
-    this.generator.builder.createSafeStore(this.generator.builder.createLoad(allocated), globalNull);
+    //this.generator.builder.createSafeStore(this.generator.builder.createLoad(allocated), globalNull);
 
     this.generator.symbolTable.globalScope.set("null", globalNull);
+    this.generator.gc.removeRoot(globalNull);
+    this.generator.gc.addRoot(thisUntyped);
   }
 
   getLLVMType() {
