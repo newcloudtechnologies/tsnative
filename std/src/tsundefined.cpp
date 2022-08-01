@@ -2,8 +2,11 @@
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
+#include "std/private/logger.h"
+
 Undefined::Undefined()
 {
+    LOG_ADDRESS("Calling Undefined ctor ", this);
 }
 
 String* Undefined::toString() const

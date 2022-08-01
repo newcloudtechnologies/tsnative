@@ -46,6 +46,9 @@ void DefaultGC::addRoot(Object* o)
     }
 
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
+
+    LOG_ADDRESS("Adding root: ", o);
+
     _roots.insert(o);
 }
 
@@ -61,6 +64,7 @@ void DefaultGC::removeRoot(Object* o)
         return;
     }
 
+    LOG_ADDRESS("Removing root: ", o);
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
     _roots.erase(it);
 }
@@ -82,6 +86,7 @@ void DefaultGC::mark()
 {
     for (auto* r : _roots)
     {
+        LOG_ADDRESS("Marking root: ", r);
         if (r && !r->isMarked()) 
         {
             r->mark();

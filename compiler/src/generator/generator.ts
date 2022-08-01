@@ -106,8 +106,6 @@ export class LLVMGenerator {
 
     this.ts.null.init();
     this.ts.undef.init();
-    this.gc.addRoot(this.ts.null.get());
-    this.gc.addRoot(this.ts.undef.get());
 
     if (dbg) {
       dbg.emitMainScope(main.unwrapped as llvm.Function);

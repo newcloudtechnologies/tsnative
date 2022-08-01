@@ -558,7 +558,8 @@ export class Scope {
 
   private addRoot(value: ScopeValue) {
     if (value instanceof LLVMValue) {
-      this.gc.addRoot(value as LLVMValue);
+      const v = value as LLVMValue;
+      this.gc.addRoot(v);
     }
     else if (value instanceof HeapVariableDeclaration) {
       const heapValue = value as HeapVariableDeclaration;
@@ -568,7 +569,8 @@ export class Scope {
 
   private removeRoot(value: ScopeValue) {
     if (value instanceof LLVMValue) {
-      this.gc.removeRoot(value as LLVMValue);
+      const v = value as LLVMValue;
+      this.gc.removeRoot(v);
     }
     else if (value instanceof HeapVariableDeclaration) {
       const heapValue = value as HeapVariableDeclaration;
@@ -621,7 +623,7 @@ export class Scope {
       }
 
       const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocate(llvmType.getPointerElementType());
+      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
 
       const name = node.name.getText();
 
@@ -631,8 +633,6 @@ export class Scope {
         this.set(name, allocated);
       }
     }
-
-    this.addRoots();
 
     root.forEachChild(initializeFrom);
   }
