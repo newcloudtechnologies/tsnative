@@ -3,18 +3,18 @@
 
 #include "std/private/default_gc.h"
 #include "std/tsobject.h"
-#include "std/private/allocator.h"
+
+#include "../infrastructure/global_test_allocator_fixture.h"
+#include "../infrastructure/object_wrappers.h"
 
 #include <memory>
 #include <vector>
 
 namespace
 {
-std::unique_ptr<Allocator> globalAllocator;
-
-struct TreeNode : public Object
+struct TreeNodeBase : public Object
 {
-    TreeNode(char n, TreeNode* l = nullptr, TreeNode* r = nullptr)
+    TreeNodeBase(char n, TreeNodeBase* l = nullptr, TreeNodeBase* r = nullptr)
         : Object{},
         name{n},
         left{l},
@@ -34,17 +34,13 @@ struct TreeNode : public Object
         }
     }
 
-    void* operator new (std::size_t n)
-    {
-        return globalAllocator->allocateObject(n);
-    }
-
     char name;
-    TreeNode* left = nullptr;
-    TreeNode* right = nullptr;
+    TreeNodeBase* left = nullptr;
+    TreeNodeBase* right = nullptr;
 };
+using TreeNode = test::GloballyAllocatedObjectWrapper<TreeNodeBase>;
 
-class TreeNodeGCTestFixture : public ::testing::Test
+class TreeNodeGCTestFixture : public test::GlobalTestAllocatorFixture
 {
 public:
     void SetUp() override
@@ -59,18 +55,19 @@ public:
 
         _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
-        Allocator::Callbacks allocatorCallbacks;
-        allocatorCallbacks.onObjectAllocated = [this] (Object* o)
+        TestAllocator::Callbacks allocatorCallbacks;
+        allocatorCallbacks.onAllocated = [this] (void* o)
         {
-            _gc->addObject(o);
-            _actualAliveObjects.push_back(o);
+            auto* obj = static_cast<Object*>(o);
+            _gc->addObject(obj);
+            _actualAliveObjects.push_back(obj);
         };
-        globalAllocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
+        _allocator = std::make_unique<TestAllocator>(std::move(allocatorCallbacks));
     }
 
     void TearDown() override
     {
-        globalAllocator = nullptr;
+        _allocator = nullptr;
         _gc = nullptr;
         _actualAliveObjects.clear();
     }
@@ -108,7 +105,7 @@ private:
 // A
 TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
 {
-    const auto garbageMaker = [this](TreeNode*& suspensionPoint)
+    const auto garbageMaker = [this](TreeNodeBase*& suspensionPoint)
     {
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};

@@ -8,7 +8,7 @@
 #include <sstream>
 
 template <typename T>
-class Array;
+class ArrayPrivate;
 
 class String;
 class Number;
@@ -17,7 +17,8 @@ class TS_DECLARE Tuple : public Object
 {
 public:
     TS_METHOD Tuple();
-
+    ~Tuple() override;
+    
     TS_METHOD TS_GETTER Number* length() const;
     TS_METHOD TS_SIGNATURE("[index: number]: any") void* operator[](Number* index);
     void* operator[](int index);
@@ -31,7 +32,7 @@ public:
     void markChildren() override;
 
 private:
-    Array<Object*>* _d = nullptr;
+    ArrayPrivate<Object*>* _d = nullptr;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tuple* tuple)

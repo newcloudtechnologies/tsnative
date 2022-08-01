@@ -201,9 +201,9 @@ inline std::ostream& operator<<(std::ostream& os, const Map<K, V>* m)
 template <typename K, typename V>
 void Map<K, V>::markChildren()
 {    
-    const auto callable = [](auto& entry)
+    const auto callable = [](std::pair<K, V>& entry)
     {
-        auto* key = entry.first;
+        auto* key = static_cast<Object*>(entry.first);
         auto* value = static_cast<Object*>(entry.second);
 
         if (key && !key->isMarked())
@@ -215,5 +215,5 @@ void Map<K, V>::markChildren()
             value->mark();
         }
     };
-    _props->forEachEntry(callable);
+    _d->forEachEntry(callable);
 }

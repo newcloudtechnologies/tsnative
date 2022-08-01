@@ -49,8 +49,8 @@ void TSClosure::markChildren()
         numArgs->mark();
     }
 
-    const auto numArgs = static_cast<std::size_t>(this->numArgs->unboxed());
-    for (std::size_t i = 0 ; i < numArgs ; ++i)
+    const auto argsCount = static_cast<std::size_t>(this->numArgs->unboxed());
+    for (std::size_t i = 0 ; i < argsCount ; ++i)
     {
         auto* o = static_cast<Object*>(env[i]);
         if (o && !o->isMarked())
