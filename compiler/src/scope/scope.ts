@@ -557,25 +557,25 @@ export class Scope {
   }
 
   private addRoot(value: ScopeValue) {
-    // if (value instanceof LLVMValue) {
-    //   const v = value as LLVMValue;
-    //   this.gc.addRoot(v);
-    // }
-    // else if (value instanceof HeapVariableDeclaration) {
-    //   const heapValue = value as HeapVariableDeclaration;
-    //   this.gc.addRoot(heapValue.allocated);
-    // }
+    if (value instanceof LLVMValue) {
+      const v = value as LLVMValue;
+      this.gc.addRoot(v);
+    }
+    else if (value instanceof HeapVariableDeclaration) {
+      const heapValue = value as HeapVariableDeclaration;
+      this.gc.addRoot(heapValue.allocated);
+    }
   }
 
   private removeRoot(value: ScopeValue) {
-    // if (value instanceof LLVMValue) {
-    //   const v = value as LLVMValue;
-    //   this.gc.removeRoot(v);
-    // }
-    // else if (value instanceof HeapVariableDeclaration) {
-    //   const heapValue = value as HeapVariableDeclaration;
-    //   this.gc.removeRoot(heapValue.allocated);
-    // }
+    if (value instanceof LLVMValue) {
+      const v = value as LLVMValue;
+      this.gc.removeRoot(v);
+    }
+    else if (value instanceof HeapVariableDeclaration) {
+      const heapValue = value as HeapVariableDeclaration;
+      this.gc.removeRoot(heapValue.allocated);
+    }
   }
 
   private removeRoots() {
@@ -623,7 +623,7 @@ export class Scope {
       }
 
       const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocate(llvmType.getPointerElementType());
+      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
 
       const name = node.name.getText();
 

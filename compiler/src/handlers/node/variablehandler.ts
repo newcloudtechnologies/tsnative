@@ -85,6 +85,7 @@ export class VariableHandler extends AbstractNodeHandler {
 
     if (existing && existing instanceof LLVMValue) {
       // overwrite pointers that possibly captured in some environments
+      this.generator.gc.deallocate(existing);
       existing.makeAssignment(initializer);
       // overwrite value for future uses
       parentScope.overwrite(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
