@@ -8,11 +8,15 @@
 
 #include <sstream>
 
+#include "std/private/logger.h"
+
 Number::Number(double v)
 #ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
     : _d(new NumberCXXBuiltinPrivate(v))
 #endif
 {
+    LOG_INFO("Calling number ctor from double: v = " + std::to_string(v));
+    LOG_ADDRESS("This: ", this);
 }
 
 Number::Number(Number* v)
@@ -20,10 +24,13 @@ Number::Number(Number* v)
     : _d(new NumberCXXBuiltinPrivate(v->unboxed()))
 #endif
 {
+    LOG_INFO("Calling number ctor from Number*: v = " + std::to_string(v->unboxed()));
+    LOG_ADDRESS("This: ", this);
 }
 
 Number::~Number()
 {
+    LOG_ADDRESS("Calling number dtor: _d =", _d);
     delete _d;
 }
 
@@ -212,6 +219,7 @@ double Number::unboxed() const
 
 Number* Number::clone() const
 {
+    LOG_ADDRESS("Calling clone from ", this);
     return new Number(this->unboxed());
 }
 

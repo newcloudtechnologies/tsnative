@@ -134,14 +134,14 @@ void DefaultGC::untrackIfObject(void* mem)
     auto heapIt = _heap.find(maybeObject);
     if (heapIt != _heap.end())
     {
-        LOG_ADDRESS("Untracking object", maybeObject);
+        LOG_ADDRESS("Untracking object ", maybeObject);
         _heap.erase(heapIt);
     }
 
     auto rootIt = _roots.find(maybeObject);
     if (rootIt != _roots.end())
     {
-        LOG_ADDRESS("Untracking root", maybeObject);
+        LOG_ADDRESS("Untracking root ", maybeObject);
         _roots.erase(rootIt);
     }
 }
