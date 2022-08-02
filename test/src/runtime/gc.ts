@@ -6,10 +6,10 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     // const internalObjectsCount = memInfo.getAliveObjectsCount();
 
     // {
-    //     const a : number[] = [];
+        const a : string = "abacaba";
     // }
 
-    Runtime.getGC().collect();
+    //Runtime.getGC().collect();
 
     // const newObjectCount = memInfo.getAliveObjectsCount();
 
