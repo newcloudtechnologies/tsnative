@@ -5,11 +5,11 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     // const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
     // const internalObjectsCount = memInfo.getAliveObjectsCount();
 
-    // {
+    {
         const a : string = "abacaba";
-    // }
+    }
 
-    //Runtime.getGC().collect();
+    Runtime.getGC().collect();
 
     // const newObjectCount = memInfo.getAliveObjectsCount();
 

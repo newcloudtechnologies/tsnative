@@ -39,7 +39,7 @@ enum InternalNames {
 export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
-  symbolTable: SymbolTable;
+  readonly symbolTable: SymbolTable;
   private readonly metainfoStorage = new MetaInfoStorage();
 
   readonly program: ts.Program;
