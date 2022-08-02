@@ -100,10 +100,10 @@ void DefaultGC::sweep()
     while (it != _heap.cend()) 
     {
         auto* object = (*it);
-        LOG_ADDRESS("Sweeping object ", object);
 
         if (object->isMarked()) 
         {
+            LOG_ADDRESS("Marked object, continue ", object);
             object->unmark();
             ++it;
             continue;
@@ -134,12 +134,14 @@ void DefaultGC::untrackIfObject(void* mem)
     auto heapIt = _heap.find(maybeObject);
     if (heapIt != _heap.end())
     {
+        LOG_ADDRESS("Untracking object", maybeObject);
         _heap.erase(heapIt);
     }
 
     auto rootIt = _roots.find(maybeObject);
     if (rootIt != _roots.end())
     {
+        LOG_ADDRESS("Untracking root", maybeObject);
         _roots.erase(rootIt);
     }
 }
