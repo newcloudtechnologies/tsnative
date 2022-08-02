@@ -623,7 +623,7 @@ export class Scope {
       }
 
       const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
+      const allocated = generator.gc.allocate(llvmType.getPointerElementType());
 
       const name = node.name.getText();
 
@@ -725,10 +725,9 @@ export class Scope {
 
   remove(identifier: string) {
     const scopedValue = this.get(identifier);
-    if (!scopedValue) {
-      throw new Error(`Identifier '${identifier}' has undefined value`);
+    if (scopedValue) {
+      this.removeRoot(scopedValue);
     }
-    this.removeRoot(scopedValue);
     this.map.delete(identifier);
   }
 
