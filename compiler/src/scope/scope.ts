@@ -517,6 +517,7 @@ export interface ThisData {
 
 export class Scope {
   map: Map<string, ScopeValue>;
+  private localVariables: Set<LLVMValue>;
 
   readonly name: string | undefined;
   readonly mangledName: string | undefined;
@@ -540,6 +541,7 @@ export class Scope {
     this.mangledName = mangledName;
     this.parent = parent;
     this.thisData = data;
+    this.localVariables = new Set<LLVMValue>();
 
     this.typeMapper = new GenericTypeMapper();
     if (parent && parent.typeMapper) {
@@ -547,13 +549,6 @@ export class Scope {
     }
 
     this.isNamespace = isNamespace;
-    this.addRoots();
-  }
-
-  private addRoots() {
-    for (const entry of this.map) {
-      this.addRoot(entry[1]);
-    }
   }
 
   private addRoot(value: ScopeValue) {
@@ -578,14 +573,14 @@ export class Scope {
     }
   }
 
-  private removeRoots() {
-    for (const entry of this.map) {
-      this.removeRoot(entry[1]);
+  private removeLocalRoots() {
+    for (const localVar of this.localVariables) {
+      this.removeRoot(localVar);
     }
   }
 
   deinitialize() {
-    this.removeRoots();
+    this.removeLocalRoots();
   }
 
   initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
@@ -623,14 +618,18 @@ export class Scope {
       }
 
       const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
+      const allocated = generator.gc.allocate(llvmType.getPointerElementType());
+      // Inplace allocated is same as allocated for now
+      const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
+
+      this.localVariables.add(inplaceAllocated);
 
       const name = node.name.getText();
 
       if (this.get(name)) {
-        this.overwrite(name, allocated);
+        this.overwrite(name, inplaceAllocated);
       } else {
-        this.set(name, allocated);
+        this.set(name, inplaceAllocated);
       }
     }
 
