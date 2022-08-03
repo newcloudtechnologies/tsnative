@@ -12,6 +12,8 @@
 #include "std/runtime.h"
 #include "std/gc.h"
 
+#include "std/private/logger.h"
+
 static String* superKey = new String("super");
 static String* parentKey = new String("parent");
 
@@ -21,12 +23,14 @@ Object::Object()
     _isMarked{false}
 #endif
 {
+    LOG_ADDRESS("Calling default object ctor ", this);
 }
 
 Object::Object(Map<String*, void*>* props)
     : _props(props->_d),
     _isMarked{false}
 {
+    LOG_ADDRESS("Calling object ctor with props ", this);
 }
 
 Object::~Object()
