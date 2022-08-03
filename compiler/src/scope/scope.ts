@@ -622,8 +622,6 @@ export class Scope {
       // Inplace allocated is same as allocated for now
       const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
 
-      this.localVariables.add(inplaceAllocated);
-
       const name = node.name.getText();
 
       if (this.get(name)) {
@@ -634,6 +632,12 @@ export class Scope {
     }
 
     root.forEachChild(initializeFrom);
+  }
+
+  // Shit code, should be private.
+  // It is used to add cloned initializers into local variables to remove roots after all
+  addLocalVariable(variable: LLVMValue) {
+    this.localVariables.add(variable);
   }
 
   get(identifier: string): ScopeValue | undefined {
