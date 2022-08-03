@@ -66,6 +66,7 @@ export class VariableHandler extends AbstractNodeHandler {
     if (initializer.isTSPrimitivePtr()) {
       // mimics 'value' semantic for primitives
       initializer = initializer.clone();
+      parentScope.addLocalVariable(initializer);
 
       // convert c++ enumerator values to ts' number
       if (type.isEnum() && initializer.type.isIntegerType()) {

@@ -3,17 +3,16 @@ import { Runtime } from "tsnative/std/definitions/runtime"
 // Simple scoped allocation
 {
     const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
-    // const internalObjectsCount = memInfo.getAliveObjectsCount();
-
-    // {
-    //     const a : string = "abacaba";
-    // }
+    const internalObjectsCount = memInfo.getAliveObjectsCount();
+    {
+        const myStr : string = "abacaba";
+        myStr.trim(); // Use this memory to prove it is alive
+    }
 
     Runtime.getGC().collect();
 
     const newObjectCount = memInfo.getAliveObjectsCount();
-
-    //console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
+    console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
 }
 
 // Simple garbage inside a block. GC deletes it

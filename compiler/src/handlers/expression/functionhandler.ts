@@ -966,6 +966,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       if (value.isTSPrimitivePtr()) {
         // mimics 'value' semantic for primitives
         value = value.clone();
+        scope.addLocalVariable(value);
       }
 
       const parameter = parameters[index];
@@ -1064,6 +1065,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         if (value.isTSPrimitivePtr()) {
           // mimics 'value' semantic for primitives
           value = value.clone();
+          scope.addLocalVariable(value);
         }
 
         this.generator.builder.createSafeCall(push, [
