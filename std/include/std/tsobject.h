@@ -45,8 +45,6 @@ public:
         return static_cast<T>(get(key));
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Object* o);
-
     TS_METHOD virtual String* toString() const;
     TS_METHOD virtual Boolean* toBool() const;
 

@@ -298,10 +298,6 @@ export function createEnvironment(
   const context = populateContext(generator, scope, environmentVariables);
 
   context.forEach((value) => {
-    if (value.name === generator.internalNames.Environment) {
-      return;
-    }
-
     if (!map.has(value.name)) {
       map.set(value.name, { type: value.allocated.type, allocated: value.allocated });
     }
@@ -415,10 +411,6 @@ export function populateContext(
       return false;
     });
 
-    if (index === -1 && key !== generator.internalNames.Environment) {
-      return;
-    }
-
     if (value instanceof Scope && !seenScopes.includes(value) && !value.isNamespace) {
       seenScopes.push(value);
       value.map.forEach((v, k) => {
@@ -430,7 +422,13 @@ export function populateContext(
       if (value.parent && !seenScopes.includes(value.parent)) {
         context.push(...populateContext(generator, value.parent, variables, seenScopes));
       }
-    } else if (value instanceof HeapVariableDeclaration) {
+    }
+
+    if (index === -1) {
+      return;
+    }
+
+    if (value instanceof HeapVariableDeclaration) {
       context.push(value);
     } else if (value instanceof LLVMValue) {
       context.push(new HeapVariableDeclaration(value, value, key));
@@ -471,10 +469,18 @@ export function populateContext(
         if (value instanceof Scope && !seen.includes(value)) {
           seen.push(value);
 
+          let previousHead: string | undefined;
+
           if (name === values[0]) {
-            values.shift();
+            previousHead = values.shift();
           }
+
           const maybeFound = findPropertyAccess(value, values, seen);
+          if (!maybeFound && previousHead) {
+            values.unshift(previousHead);
+            continue;
+          }
+
           if (maybeFound) {
             return maybeFound;
           }

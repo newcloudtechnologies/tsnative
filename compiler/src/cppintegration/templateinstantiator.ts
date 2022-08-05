@@ -36,9 +36,23 @@ export class TemplateInstantiator {
     demangledTables: string[],
     mangledTables: string[]
   ) {
-    // filter declarations
-    this.sources = program.getSourceFiles().filter((source) => !source.isDeclarationFile);
+    const sources = program.getSourceFiles();
+    const declarations = sources.filter((source) => source.isDeclarationFile);
+
+    this.sources = sources.filter((source) => !source.isDeclarationFile);
+
     this.generator = new LLVMGenerator(program).init();
+
+    const visitStdClasses = (node: ts.Node) => {
+      if (!ts.isClassDeclaration(node)) {
+        return;
+      }
+
+      this.generator.handleNode(node, this.generator.symbolTable.globalScope);
+    }
+
+    declarations.forEach(visitStdClasses);
+
     this.includeDirs = includeDirs;
 
     const extractor: NmSymbolExtractor = new NmSymbolExtractor();
@@ -125,6 +139,10 @@ export class TemplateInstantiator {
           const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
           const declaration = symbol.valueDeclaration || symbol.declarations[0];
           tsType = declaration.type;
+
+          if (declaration.isEnumMember() || (declaration.isParameter() && tsType.isEnum())) {
+            tsType = tsType.getEnumElementTSType();
+          }
         } else {
           tsType = this.generator.ts.checker.getTypeAtLocation(arg);
         }

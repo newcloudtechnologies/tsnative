@@ -109,7 +109,7 @@ export class Declaration {
           return true;
         }
 
-        const argumentType = argumentTypes[index];
+        let argumentType = argumentTypes[index];
 
         if (!argumentType && p.initializer) {
           return true;
@@ -121,11 +121,14 @@ export class Declaration {
           return true;
         }
 
-        if (parameterType.isEnum() && argumentType.isEnum()) {
+        if (parameterType.isEnum()) {
           const parameterEnumType = parameterType.getEnumElementTSType();
-          const argumentEnumType = argumentType.getEnumElementTSType();
 
-          return argumentEnumType.isSame(parameterEnumType);
+          if (argumentType.isEnum()) {
+            argumentType = argumentType.getEnumElementTSType();
+          }
+
+          return parameterEnumType.isSame(argumentType);
         }
 
         if (argumentType.isTSObjectType()) {
@@ -304,36 +307,44 @@ export class Declaration {
     });
 
     this.properties.forEach((prop) => {
-      if (!prop.initializer) {
+      const initializer = prop.initializer;
+
+      if (!initializer) {
         return;
       }
 
-      if (ts.isIdentifier(prop.initializer)) {
-        variables.push(prop.initializer.getText());
-      } else if (ts.isFunctionLike(prop.initializer)) {
-        if (!this.generator.ts.checker.nodeHasSymbolAndDeclaration(prop.initializer)) {
-          return;
-        }
+      const initializerText = initializer.getText();
 
-        const initializerSymbol = this.generator.ts.checker.getSymbolAtLocation(prop.initializer);
-        const initializerDeclaration = initializerSymbol.valueDeclaration;
+      if (ts.isIdentifier(initializer)) {
+        variables.push(initializerText);
+        return;
+      }
 
-        if (!initializerDeclaration) {
+      if (!this.generator.ts.checker.nodeHasSymbolAndDeclaration(initializer)) {
+        return;
+      }
+
+      const symbol = this.generator.ts.checker.getSymbolAtLocation(initializer);
+      const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+      if (declaration.isEnumMember()) {
+        const enumName = initializerText.substring(0, initializerText.lastIndexOf("."));
+        variables.push(enumName);
+
+        return;
+      }
+
+      if (ts.isFunctionLike(initializer)) {
+        if (!declaration.body) {
           throw new Error(
-            `Unable to find declaration for property's '${prop.name?.getText()}}' initializer: '${prop.initializer.getText()}'. Error at '${expression.getText()}'`
+            `No body at property '${prop.name?.getText()}}' initializer: '${initializer.getText()}'. Error at '${expression.getText()}'`
           );
         }
 
-        if (!initializerDeclaration.body) {
-          throw new Error(
-            `No body at property '${prop.name?.getText()}}' initializer: '${prop.initializer.getText()}'. Error at '${expression.getText()}'`
-          );
-        }
-
-        const initializerSignature = this.generator.ts.checker.getSignatureFromDeclaration(initializerDeclaration);
+        const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
         variables.push(
-          ...ConciseBody.create(initializerDeclaration.body, this.generator).getEnvironmentVariables(
-            initializerSignature,
+          ...ConciseBody.create(declaration.body, this.generator).getEnvironmentVariables(
+            signature,
             scope,
             env
           )
@@ -448,22 +459,11 @@ export class Declaration {
     return Boolean(this.declaration.getSourceFile()?.fileName.endsWith(".d.ts"));
   }
 
-  isExternalCallArgument() {
-    return (
-      ts.isCallExpression(this.declaration.parent) &&
-      FunctionMangler.checkIfExternalSymbol(this.declaration.parent, this.generator)
-    );
-  }
-
-  getScope(thisType: TSType | undefined): Scope {
-    if (thisType) {
-      const namespace = this.getNamespace(true);
-      const typename = thisType.mangle();
-      const qualifiedName = namespace.concat(typename).join(".");
-      return this.generator.symbolTable.get(qualifiedName) as Scope;
-    }
-
-    return this.generator.symbolTable.currentScope;
+  getScope(thisType: TSType): Scope {
+    const namespace = this.getNamespace(true);
+    const typename = thisType.mangle();
+    const qualifiedName = namespace.concat(typename).join(".");
+    return this.generator.symbolTable.get(qualifiedName) as Scope;
   }
 
   getNamespace(ignoreModules: boolean = false): string[] {

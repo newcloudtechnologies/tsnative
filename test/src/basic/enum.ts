@@ -109,3 +109,75 @@
     const edges: RxMargins_e = RxMargins_e.Top | RxMargins_e.Right;
     console.assert(new Foo_t().margins2(edges) === edges, "Implicit enum cast to number");
 }
+
+enum MyEnum {
+    A = (1 << 0),
+    B = (1 << 1),
+    C = (1 << 2),
+    D = (1 << 3),
+}
+
+const val = MyEnum.A | MyEnum.B;
+
+const res1 = val & MyEnum.A;
+const res2 = val ^ MyEnum.C;
+
+console.assert(res1 === 1, "Enum bitwise AND");
+console.assert(res2 === 7, "Enum bitwise XOR");
+
+class MyBaseClass {
+    _field: MyEnum = MyEnum.A
+
+    constructor(val: MyEnum) {
+        if (val & (MyEnum.B | MyEnum.C)) {
+            this._field = val;
+        }
+    }
+}
+
+const base = new MyBaseClass(MyEnum.A & MyEnum.B | MyEnum.D);
+
+let res3 = "";
+switch (base._field) {
+    case MyEnum.A: {
+        res3 += "A";
+        break;
+    }
+    case MyEnum.B: {
+        res3 += "B";
+        break;
+    }
+    case MyEnum.C: {
+        res3 += "C";
+        break;
+    }
+    case MyEnum.D: {
+        res3 += "D";
+        break;
+    }
+};
+
+console.assert(res3 === "A", "Enum class member initialized correctly");
+
+namespace myspace {
+    export class MyDerivedClass extends MyBaseClass {
+        constructor(val: MyEnum) {
+            super(val | MyEnum.D);
+        }
+
+        getField(): MyEnum {
+            return this._field;
+        }
+
+        getFieldAbc(): MyEnum {
+            return this._field & ((MyEnum.A | MyEnum.B | MyEnum.C));
+        }
+    }
+}
+
+const obj = new myspace.MyDerivedClass(val);
+const res4 = obj.getFieldAbc();
+const res5 = obj.getField();
+
+console.assert(res4 === 3, "Enum class member initialized correctly (2)");
+console.assert(res5 === 11, "Enum class member + bitwise AND");

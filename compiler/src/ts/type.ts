@@ -729,16 +729,20 @@ export class TSType {
       return "Object*";
     }
 
-    if (this.isEnum() && !this.isAmbient()) {
-      return this.getEnumElementCppType();
-    }
-
     if (!this.isSymbolless()) {
       const symbol = this.getSymbol();
       const declaration = symbol.valueDeclaration || symbol.declarations[0];
 
-      if (declaration.isParameter() && declaration.isOptional()) {
-        return "Union*";
+      if (declaration.isParameter()) {
+        if (declaration.isOptional()) {
+          return "Union*";
+        } else if (this.isEnum()) {
+          return this.getEnumElementTSType().toCppType();
+        }
+      }
+
+      if (declaration.isEnumMember()) {
+        return this.getEnumElementTSType().toCppType();
       }
 
       if (!declaration.isAmbient()) {
@@ -746,6 +750,10 @@ export class TSType {
           return "Object*";
         }
       }
+    }
+
+    if (this.isEnum() && !this.isAmbient()) {
+      return "Object*";
     }
 
     let typename = this.toString();

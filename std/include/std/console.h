@@ -27,9 +27,6 @@ void log(T v, Ts... ts);
 template <typename T, typename... Ts>
 void logImpl(T v, Ts... ts);
 
-template <typename... Ts>
-void logImpl(String* v, Ts... ts);
-
 template <typename T, typename... Ts>
 TS_EXPORT TS_SIGNATURE("function assert(assumption: any, ...optionalParams: any[]): void") void assert(T assumption,
                                                                                                        Ts... ts);
@@ -42,7 +39,11 @@ TS_CODE(
 template <typename T>
 void console::log(T value)
 {
-    std::cout << std::boolalpha << value << std::endl;
+    using NonPtrT = typename std::remove_pointer<T>::type;
+    static_assert(std::is_pointer<T>::value &&
+                  (std::is_base_of<Object, NonPtrT>::value || std::is_same<Object, NonPtrT>::value));
+
+    std::cout << std::boolalpha << static_cast<Object*>(value)->toString() << std::endl;
 }
 
 template <typename T, typename... Ts>
@@ -54,42 +55,26 @@ void console::log(T v, Ts... ts)
 template <typename T, typename... Ts>
 void console::logImpl(T v, Ts... ts)
 {
-    std::cout << std::boolalpha << v << " ";
+    using NonPtrT = typename std::remove_pointer<T>::type;
+    static_assert(std::is_pointer<T>::value &&
+                  (std::is_base_of<Object, NonPtrT>::value || std::is_same<Object, NonPtrT>::value));
+
+    std::cout << std::boolalpha << static_cast<Object*>(v)->toString() << " ";
     console::log(ts...);
 }
 
-inline bool endsWith(const std::string& str, const std::string& suffix)
-{
-    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
-}
-
-static const std::string n{"\n"};
-static const std::string rn{"\r\n"};
-
-template <typename... Ts>
-void console::logImpl(String* v, Ts... ts)
-{
-    std::string cppstr = v->cpp_str();
-    if (endsWith(cppstr, n) || endsWith(cppstr, rn))
-    {
-        std::cout << v;
-    }
-    else
-    {
-        std::cout << v << " ";
-    }
-
-    console::log(ts...);
-}
+static String* assertionFailedMessage = new String("Assertion failed:");
 
 template <typename T, typename... Ts>
 void console::assert(T assumption, Ts... ts)
 {
-    static_assert(std::is_pointer<T>::value && std::is_base_of<Object, typename std::remove_pointer<T>::type>::value);
+    using NonPtrT = typename std::remove_pointer<T>::type;
+    static_assert(std::is_pointer<T>::value &&
+                  (std::is_base_of<Object, NonPtrT>::value || std::is_same<Object, NonPtrT>::value));
 
     if (!static_cast<Object*>(assumption)->toBool()->unboxed())
     {
-        console::log("Assertion failed:", ts...);
+        console::log(assertionFailedMessage, ts...);
         std::terminate();
     }
 }

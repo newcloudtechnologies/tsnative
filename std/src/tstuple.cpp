@@ -38,9 +38,7 @@ void Tuple::push(Object* item)
 
 String* Tuple::toString() const
 {
-    std::ostringstream oss;
-    oss << this;
-    return new String(oss.str());
+    return new String(_d->toString());
 }
 
 void Tuple::markChildren()

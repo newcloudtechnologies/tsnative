@@ -46,9 +46,3 @@ private:
     static std::unique_ptr<Diagnostics> _diagnostics;
     static std::unique_ptr<GC> _gc;
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Runtime* runtime)
-{
-    os << runtime->toString();
-    return os;
-}

@@ -18,7 +18,7 @@ export class EnumHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     if (ts.isEnumDeclaration(node)) {
       const enumName = node.name.getText();
-      const scope = new Scope(enumName, enumName);
+      const enumObject = this.generator.ts.obj.create();
 
       // @todo:
       // enum E {
@@ -27,14 +27,17 @@ export class EnumHandler extends AbstractNodeHandler {
       //    v3...
       // }
       node.members.forEach((member, index) => {
-        const value = member.initializer
-          ? this.generator.handleExpression(member.initializer, env)
+        const memberName = member.name.getText();
+        const memberInitializer = member.initializer;
+
+        const value = memberInitializer
+          ? this.generator.handleExpression(memberInitializer, env)
           : this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, index));
 
-        scope.set(member.name.getText(), value);
+        this.generator.ts.obj.set(enumObject, memberName, value);
       });
 
-      parentScope.set(enumName, scope);
+      parentScope.set(enumName, enumObject);
 
       return true;
     }
