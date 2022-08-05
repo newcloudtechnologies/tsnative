@@ -233,15 +233,14 @@ void* Object::operator new (std::size_t n)
 {
     LOG_INFO("Calling Object new operator");
 
-    auto* gc = Runtime::getGC();
-
     // gc == nullptr can be if we allocate
     // static String* s = new String("adasd")
-    if (!gc)
+    if (!Runtime::isInitialized())
     {
         return :: operator new(n);
     }
-    return gc->allocateObject(static_cast<double>(n));
+
+    return Runtime::allocateObject(n);
 }
 
 class String;

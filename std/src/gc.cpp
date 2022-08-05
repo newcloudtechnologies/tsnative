@@ -1,13 +1,19 @@
 #include "std/gc.h"
 
 #include "std/igc_impl.h"
-#include "std/private/allocator.h"
+#include "std/tsboolean.h"
+#include "std/tsstring.h"
 
-GC::GC(std::unique_ptr<IGCImpl> impl, std::unique_ptr<Allocator> allocator)
-    : _impl{std::move(impl)},
-    _allocator{std::move(allocator)}
+#include "std/private/allocator.h"
+#include "std/private/logger.h"
+
+GC::GC(IGCImpl* gcImpl, Allocator* allocator)
+    : _gcImpl{gcImpl},
+    _allocator{allocator}
 {
-    if (!_impl)
+    LOG_ADDRESS("Calling GC wrapper ctor ", this);
+
+    if (!_gcImpl)
     {
         throw std::runtime_error("GC cannot be nullptr");
     }
@@ -20,30 +26,70 @@ GC::GC(std::unique_ptr<IGCImpl> impl, std::unique_ptr<Allocator> allocator)
 
 void* GC::allocate(double numBytes)
 {
+    if (!_allocator)
+    {
+        throw std::runtime_error("Allocator cannot be nullptr");
+    }
+
     return _allocator->allocate(static_cast<std::size_t>(numBytes));
 }
 
 void GC::deallocate(void* m)
 {
+    if (!_allocator)
+    {
+        throw std::runtime_error("Allocator cannot be nullptr");
+    }
+
     _allocator->deallocate(m);
 }
 
 void* GC::allocateObject(double numBytes)
 {
+    if (!_allocator)
+    {
+        throw std::runtime_error("Allocator cannot be nullptr");
+    }
+
     return _allocator->allocateObject(static_cast<std::size_t>(numBytes));
 }
 
 void GC::collect()
 {
-    return _impl->collect();
+    if (!_gcImpl)
+    {
+        throw std::runtime_error("GC cannot be nullptr");
+    }
+
+    return _gcImpl->collect();
 }
 
 void GC::addRoot(void* root)
 {
-    _impl->addRoot(static_cast<Object*>(root));
+    if (!_gcImpl)
+    {
+        throw std::runtime_error("GC cannot be nullptr");
+    }
+
+    _gcImpl->addRoot(static_cast<Object*>(root));
 }
 
 void GC::removeRoot(void* root)
 {
-    _impl->removeRoot(static_cast<Object*>(root));
+    if (!_gcImpl)
+    {
+        throw std::runtime_error("GC cannot be nullptr");
+    }
+    
+    _gcImpl->removeRoot(static_cast<Object*>(root));
+}
+
+String* GC::toString() const
+{
+    return new String("Global GC object");
+}
+
+Boolean* GC::toBool() const
+{
+    return new Boolean(_gcImpl && _allocator);
 }

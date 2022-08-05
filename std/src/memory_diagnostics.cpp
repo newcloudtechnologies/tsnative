@@ -6,10 +6,13 @@
 #include "std/igc_impl.h"
 #include "std/private/memory_diagnostics_storage.h"
 
-MemoryDiagnostics::MemoryDiagnostics(std::unique_ptr<MemoryDiagnosticsStorage> storage, const IGCImpl& gc)
-    : _storage{std::move(storage)},
+#include "std/private/logger.h"
+
+MemoryDiagnostics::MemoryDiagnostics(const MemoryDiagnosticsStorage& storage, const IGCImpl& gc)
+    : _storage{storage},
     _gc{gc}
 {
+    LOG_ADDRESS("Calling mem diagnostics ctor this = ", this);
 }
 
 Number* MemoryDiagnostics::getAliveObjectsCount() const
@@ -20,7 +23,7 @@ Number* MemoryDiagnostics::getAliveObjectsCount() const
 
 Number* MemoryDiagnostics::getDeletedObjectsCount() const
 {
-    return new Number(static_cast<double>(_storage->getDeletedObjectsCount()));
+    return new Number(static_cast<double>(_storage.getDeletedObjectsCount()));
 }
 
 String* MemoryDiagnostics::toString() const

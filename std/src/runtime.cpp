@@ -15,8 +15,9 @@
 
 bool Runtime::_isInitialized = false;
 std::vector<std::string> Runtime::_cmdArgs{};
-std::unique_ptr<GC> Runtime::_gc{nullptr};
-std::unique_ptr<Diagnostics> Runtime::_diagnostics{nullptr};
+std::unique_ptr<IGCImpl> Runtime::_gcImpl{nullptr};
+std::unique_ptr<Allocator> Runtime::_allocator{nullptr};
+std::unique_ptr<MemoryDiagnosticsStorage> Runtime::_memoryDiagnosticsStorage{nullptr};
 
 namespace 
 {
@@ -72,6 +73,28 @@ void Runtime::initCmdArgs(int ac, char* av[])
     }
 }
 
+bool Runtime::isInitialized()
+{
+    return _isInitialized;
+}
+
+void* Runtime::allocateObject(std::size_t n)
+{
+    checkInitialization();
+
+    if (!_allocator)
+    {
+        throw std::runtime_error("Allocator is nullptr");
+    }
+
+    if (!_gcImpl)
+    {
+        throw std::runtime_error("GC is nullptr");
+    }
+
+    return _allocator->allocateObject(n);
+}
+
 Array<String*>* Runtime::getCmdArgs()
 {
     checkInitialization();
@@ -88,17 +111,7 @@ Array<String*>* Runtime::getCmdArgs()
 
 GC* Runtime::getGC()
 {
-    return _gc.get();
-}
-
-void Runtime::setGC(std::unique_ptr<GC> newGC)
-{
-    if (_gc)
-    {
-        _gc->collect();
-    }
-    
-    _gc = std::move(newGC);
+    return new GC{_gcImpl.get(), _allocator.get()};
 }
 
 int Runtime::init(int ac, char* av[])
@@ -108,18 +121,15 @@ int Runtime::init(int ac, char* av[])
         throw std::runtime_error("Runtime was already initialized");
     }
 
-    auto memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
+    _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
 
     DefaultGC::Callbacks gcCallbacks;
-    gcCallbacks.afterDeleted = [memStorage = memoryDiagnosticsStorage.get()](const void* o) 
+    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o) 
     { 
         memStorage->onDeleted(o);
     };
     auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
-    auto memoryDiagnostics = std::make_unique<MemoryDiagnostics>(std::move(memoryDiagnosticsStorage), *defaultGC);
-    _diagnostics = std::make_unique<Diagnostics>(std::move(memoryDiagnostics));
-    
     Allocator::Callbacks allocatorCallbacks;
     allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()] (Object* o)
     {
@@ -131,9 +141,8 @@ int Runtime::init(int ac, char* av[])
         gc->untrackIfObject(m);
     };
 
-    auto allocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
-
-    _gc = std::make_unique<GC>(std::move(defaultGC), std::move(allocator));
+    _gcImpl = std::move(defaultGC);
+    _allocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
 
     initCmdArgs(ac, av);
 
@@ -146,7 +155,7 @@ int Runtime::init(int ac, char* av[])
 
 Diagnostics* Runtime::getDiagnostics()
 {
-    return _diagnostics.get();
+    return new Diagnostics{*_gcImpl, *_memoryDiagnosticsStorage};
 }
 
 void Runtime::destroy()
@@ -160,7 +169,7 @@ void Runtime::destroy()
 
     _cmdArgs.clear();
 
-    _gc = nullptr;
+    _gcImpl = nullptr;
     
     _isInitialized = false;
 
@@ -176,13 +185,11 @@ String* Runtime::toString() const
     auto cmdArgsHeader = new String{"CmdArgs:"};
     auto cmdArgsStr = getCmdArgs()->toString();
     auto diagnosticsHeader = new String("Diagnostics:");
-    auto diagnostics = _diagnostics->toString(); // Should contain info about all subsystems
 
     return header->concat(separator)
             ->concat(cmdArgsHeader)->concat(separator)
             ->concat(cmdArgsStr)->concat(separator)
-            ->concat(diagnosticsHeader)->concat(separator)
-            ->concat(diagnostics)->concat(separator);
+            ->concat(diagnosticsHeader)->concat(separator);
 }
 
 Boolean* Runtime::toBool() const

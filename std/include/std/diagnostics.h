@@ -9,11 +9,13 @@
 TS_CODE("import { MemoryDiagnostics } from './memory_diagnostics' \n");
 
 class MemoryDiagnostics;
+class MemoryDiagnosticsStorage;
+class IGCImpl;
 
 class TS_EXPORT TS_DECLARE Diagnostics : public Object
 {
 public:
-    Diagnostics(std::unique_ptr<MemoryDiagnostics> memoryDiagnostics);
+    Diagnostics(const IGCImpl& gcImpl, const MemoryDiagnosticsStorage& memoryDiagnosticsStorage);
 
     TS_METHOD MemoryDiagnostics* getMemoryDiagnostics() const;
 
@@ -21,5 +23,6 @@ public:
     TS_METHOD Boolean* toBool() const override;
 
 private:
-    std::unique_ptr<MemoryDiagnostics> _memoryDiagnostics;
+    const IGCImpl& _gcImpl;
+    const MemoryDiagnosticsStorage& _memoryDiagnosticsStorage;
 };

@@ -13,7 +13,7 @@ class IGCImpl;
 class TS_EXPORT TS_DECLARE MemoryDiagnostics : public Object
 {
 public:
-    MemoryDiagnostics(std::unique_ptr<MemoryDiagnosticsStorage> storage, const IGCImpl& gc);
+    MemoryDiagnostics(const MemoryDiagnosticsStorage& storage, const IGCImpl& gc);
 
     TS_METHOD Number* getAliveObjectsCount() const;
     TS_METHOD Number* getDeletedObjectsCount() const;
@@ -22,6 +22,6 @@ public:
     TS_METHOD Boolean* toBool() const override;
 
 private:
-    std::unique_ptr<MemoryDiagnosticsStorage> _storage;
+    const MemoryDiagnosticsStorage& _storage;
     const IGCImpl& _gc;
 };
