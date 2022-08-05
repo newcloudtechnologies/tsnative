@@ -18,13 +18,12 @@ export class BlockHandler extends AbstractNodeHandler {
     switch (node.kind) {
       case ts.SyntaxKind.Block:
         this.generator.symbolTable.withLocalScope((scope) => {
-          scope.initializeVariablesAndFunctionDeclarations(node, this.generator);
+          scope.initializeVariablesAndFunctionDeclarations(node);
 
           for (const statement of (node as ts.Block).statements) {
             this.generator.handleNode(statement, scope, env);
           }
         }, this.generator.symbolTable.currentScope);
-        this.generator.symbolTable.currentScope.deinitialize();
         return true;
       default:
         break;

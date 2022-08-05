@@ -15,6 +15,8 @@ export class Runtime {
 
     private gcType : LLVMType;
     private getGCFn: LLVMValue;
+    private openScopeFn: LLVMValue;
+    private closeScopeFn: LLVMValue;
 
     constructor(declaration: Declaration, generator: LLVMGenerator) {
       this.generator = generator;
@@ -24,16 +26,50 @@ export class Runtime {
       this.gcType = this.generator.ts.checker.getTypeAtLocation(gcDeclaration.unwrapped).getLLVMType();
 
       this.garbageCollector = new GC(gcDeclaration, this.generator, this);
+
+      this.openScopeFn = this.findScopeOpFunction(declaration, "openScope");
+      this.closeScopeFn = this.findScopeOpFunction(declaration, "closeScope");
     }
 
     get gc() : GC {
         return this.garbageCollector!;
     }
 
+    callOpenScope(handle: LLVMValue) {
+      return this.generator.builder.createSafeCall(this.openScopeFn, [handle]);
+    }
+
+    callCloseScope(handle: LLVMValue) {
+      return this.generator.builder.createSafeCall(this.closeScopeFn, [handle]);
+    }
+
     callGetGC() : LLVMValue {
       const gcAddress = this.generator.builder.createSafeCall(this.getGCFn, []);
       return this.generator.builder.createBitCast(gcAddress, this.gcType);
     }
+
+    private findScopeOpFunction(declaration: Declaration, name: string) {
+      const methodDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === name);
+      if (!methodDeclaration) {
+          throw Error(`Unable to find ${name} function`);
+      }
+
+      const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
+      const { qualifiedName } = FunctionMangler.mangle(
+        methodDeclaration,
+          undefined,
+          thisType,
+          [],
+          this.generator,
+          undefined,
+          ["double"]
+      );
+
+      const llvmReturnType = LLVMType.getVoidType(this.generator);
+      const llvmArgumentTypes = [LLVMType.getDoubleType(this.generator)];
+
+      return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
+  }
 
     private findGetGC(declaration: Declaration) {
       const getGCDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "getGC");
