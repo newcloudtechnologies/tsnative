@@ -64,26 +64,6 @@ void GC::collect()
     return _gcImpl->collect();
 }
 
-void GC::addRoot(void* root)
-{
-    if (!_gcImpl)
-    {
-        throw std::runtime_error("GC cannot be nullptr");
-    }
-
-    _gcImpl->addRoot(static_cast<Object*>(root));
-}
-
-void GC::removeRoot(void* root)
-{
-    if (!_gcImpl)
-    {
-        throw std::runtime_error("GC cannot be nullptr");
-    }
-    
-    _gcImpl->removeRoot(static_cast<Object*>(root));
-}
-
 String* GC::toString() const
 {
     return new String("Global GC object");

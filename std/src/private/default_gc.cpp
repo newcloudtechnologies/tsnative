@@ -6,10 +6,10 @@
 #include "std/private/logger.h"
 
 DefaultGC::DefaultGC(Callbacks&& callbacks)
-    : _rootsMutex{},
-    _heapMutex{},
-    _heap{},
-    _roots{},
+    : 
+    _scopesVsObjects{},
+    _closedScopes{},
+    _openedScopes{},
     _callbacks{std::move(callbacks)}
 {
 
@@ -17,105 +17,129 @@ DefaultGC::DefaultGC(Callbacks&& callbacks)
 
 DefaultGC::~DefaultGC()
 {
-    _roots.clear();
+    LOG_INFO("Calling GCImpl dtor");
+    for (const auto entry : _scopesVsObjects)
+    {
+        const auto handle = entry.first;
+        _closedScopes.insert(handle);
+    }
+
     collect();
 }
 
 void DefaultGC::addObject(Object* o)
 {
-    const std::lock_guard<std::mutex> lock{_heapMutex};
     LOG_ADDRESS("Calling add object ", o);
     if (!o)
     {
         throw std::runtime_error("GC: cannot add nullptr as object");
     }
 
-    _heap.insert(o);
+    auto scopeIt = _scopesVsObjects.find(getCurrentScope());
+    if (scopeIt == _scopesVsObjects.end())
+    {
+        throw std::runtime_error("Adding object to non existing scope");
+    }
+
+    auto& scopeHeap = scopeIt->second;
+    scopeHeap.insert(o);
 }
 
 std::size_t DefaultGC::getAliveObjectsCount() const
 {
-    return _heap.size();
-}
-
-void DefaultGC::addRoot(Object* o)
-{
-    if (!o)
+    std::size_t result = 0;
+    for (const auto& entry : _scopesVsObjects)
     {
-        throw std::runtime_error("GC: root cannot be nullptr");
+        const auto handle = entry.first;
+        const auto& scopeHeap = entry.second;
+        result += scopeHeap.size();
     }
-
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex);
-
-    LOG_ADDRESS("Adding root: ", o);
-
-    _roots.insert(o);
-}
-
-void DefaultGC::removeRoot(Object* o)
-{
-    if (!o)
-    {
-        throw std::runtime_error("GC: root cannot be nullptr");
-    }
-    auto it = _roots.find(o);
-    if (it == _roots.cend())
-    {
-        return;
-    }
-
-    LOG_ADDRESS("Removing root: ", o);
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex);
-    _roots.erase(it);
+    return result;
 }
 
 void DefaultGC::collect()
 {
-    std::lock(_heapMutex, _rootsMutex);
-    std::lock_guard<std::mutex> heapLock(_heapMutex, std::adopt_lock);
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex, std::adopt_lock);
+    for (const auto& handle : _closedScopes)
+    {
+        LOG_INFO("Started collect scope call for " + std::to_string(handle));
+        LOG_INFO("Calling mark");
+        mark(handle);
+        LOG_INFO("Calling sweep");
+        sweep(handle);
+        LOG_INFO("Finished collect scope call for " + std::to_string(handle));
+    }
 
-    LOG_INFO("Calling mark");
-    mark();
-    LOG_INFO("Calling sweep");
-    sweep();
-    LOG_INFO("Finished collect call");
+    _closedScopes.clear();
+    LOG_INFO("Finished collect all closed scopes call");
 }
 
-void DefaultGC::mark()
+void DefaultGC::mark(ScopeHandle)
 {
-    for (auto* r : _roots)
-    {
-        LOG_ADDRESS("Marking root: ", r);
-        if (r && !r->isMarked()) 
-        {
-            r->mark();
-        }
-    }
+    // Everything is considered to be alive except closed scopes and their content
+    // Roots will be needed if we want to call collect in the middle of scope processing
 }
 
-void DefaultGC::sweep()
+void DefaultGC::sweep(ScopeHandle handle)
 {
-    auto it = _heap.cbegin();
-    while (it != _heap.cend()) 
+    auto scopeIt = _scopesVsObjects.find(handle);
+    if (scopeIt == _scopesVsObjects.end())
     {
-        auto* object = (*it);
-
-        if (object->isMarked()) 
-        {
-            LOG_ADDRESS("Marked object, continue ", object);
-            object->unmark();
-            ++it;
-            continue;
-        }
-
-        _callbacks.beforeDeleted(*object);
-
-        LOG_ADDRESS("Calling object's dtor ", object);
-        delete object;
-        _callbacks.afterDeleted(object);
-        it = _heap.erase(it);
+        throw std::runtime_error("Sweeping non existing scope");
     }
+
+    auto& scopeHeap = scopeIt->second;
+    for (auto* o : scopeHeap)
+    {
+        _callbacks.beforeDeleted(*o);
+
+        LOG_ADDRESS("Calling object's dtor ", o);
+        delete o;
+
+        _callbacks.afterDeleted(o);
+    }
+
+    _scopesVsObjects.erase(scopeIt);
+}
+
+void DefaultGC::onScopeOpened(ScopeHandle handle)
+{
+    auto scopeIt = _scopesVsObjects.find(handle);
+    if (scopeIt != _scopesVsObjects.end())
+    {
+        throw std::runtime_error("Opening existing scope");
+    }
+
+    _openedScopes.push(handle);
+    LOG_INFO("Opened scope with handle " + std::to_string(handle));
+    _scopesVsObjects[handle] = {};
+}
+
+auto DefaultGC::getCurrentScope() const -> ScopeHandle
+{
+    if (_openedScopes.empty())
+    {
+        throw std::runtime_error("No opened scopes on the stack");
+    }
+
+    return _openedScopes.top();
+}
+
+void DefaultGC::onScopeClosed(ScopeHandle handle)
+{
+    auto scopeIt = _scopesVsObjects.find(handle);
+    if (scopeIt == _scopesVsObjects.end())
+    {
+        throw std::runtime_error("Closing non-existing scope");
+    }
+
+    LOG_INFO("Closed scope with handle " + std::to_string(handle));
+    _closedScopes.insert(handle);
+
+    if (_openedScopes.empty())
+    {
+        throw std::runtime_error("No opened scopes on the stack");
+    }
+    _openedScopes.pop();
 }
 
 void DefaultGC::untrackIfObject(void* mem)
@@ -125,23 +149,19 @@ void DefaultGC::untrackIfObject(void* mem)
         return;
     }
     
-    std::lock(_heapMutex, _rootsMutex);
-    std::lock_guard<std::mutex> heapLock(_heapMutex, std::adopt_lock);
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex, std::adopt_lock);
-
     auto* maybeObject = (Object*)mem;
 
-    auto heapIt = _heap.find(maybeObject);
-    if (heapIt != _heap.end())
+    auto scopeIt = _scopesVsObjects.find(getCurrentScope());
+    if (scopeIt == _scopesVsObjects.end())
     {
-        LOG_ADDRESS("Untracking object ", maybeObject);
-        _heap.erase(heapIt);
+        throw std::runtime_error("Np opened scopes");
     }
 
-    auto rootIt = _roots.find(maybeObject);
-    if (rootIt != _roots.end())
+    auto& scopeHeap = scopeIt->second;
+    auto heapIt = scopeHeap.find(maybeObject);
+    if (heapIt != scopeHeap.end())
     {
-        LOG_ADDRESS("Untracking root ", maybeObject);
-        _roots.erase(rootIt);
+        LOG_ADDRESS("Untracking object ", maybeObject);
+        scopeHeap.erase(heapIt);
     }
 }

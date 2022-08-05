@@ -114,6 +114,18 @@ GC* Runtime::getGC()
     return new GC{_gcImpl.get(), _allocator.get()};
 }
 
+void Runtime::openScope(double handle)
+{
+    checkInitialization();
+    _gcImpl->onScopeOpened(handle);
+}
+
+void Runtime::closeScope(double handle)
+{
+    checkInitialization();
+    _gcImpl->onScopeClosed(handle);
+}
+
 int Runtime::init(int ac, char* av[])
 {
     if (_isInitialized) 
