@@ -173,10 +173,3 @@ void Set<T>::markChildren()
 
     _d->forEach(callable);
 }
-
-template <typename U>
-inline std::ostream& operator<<(std::ostream& os, const Set<U>* s)
-{
-    os << s->toString();
-    return os;
-}

@@ -90,9 +90,6 @@ public:
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<number>") IterableIterator<Number*>* keys();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
 
-    template <typename U>
-    friend std::ostream& operator<<(std::ostream& os, const Array<U>* array);
-
     void markChildren() override;
 
 private:
@@ -382,11 +379,4 @@ void Array<T>::markChildren()
             object->mark();
         }
     }
-}
-
-template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const Array<T>* array)
-{
-    os << array->_d->toString();
-    return os;
 }

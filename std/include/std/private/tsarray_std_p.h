@@ -243,7 +243,7 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
         auto last = array->storage_.back();
         if (last)
         {
-            os << last;
+            os << static_cast<Object*>(last)->toString();
         }
         else
         {

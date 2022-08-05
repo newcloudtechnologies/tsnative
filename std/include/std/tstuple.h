@@ -27,16 +27,8 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    friend std::ostream& operator<<(std::ostream& os, const Tuple* tuple);
-
     void markChildren() override;
 
 private:
     ArrayPrivate<Object*>* _d = nullptr;
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Tuple* tuple)
-{
-    os << tuple->_d;
-    return os;
-}

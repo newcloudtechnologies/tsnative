@@ -87,9 +87,3 @@ public:
 
     TS_METHOD String* toString() const override;
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Math* math)
-{
-    os << math->toString();
-    return os;
-}

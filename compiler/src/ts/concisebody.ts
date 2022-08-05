@@ -33,8 +33,8 @@ export class ConciseBody {
 
   getEnvironmentVariables(signature: Signature | undefined, extendScope: Scope, outerEnv?: Environment) {
     const environmentVariables = this.getEnvironmentVariablesFromBody(signature, extendScope);
-    if (outerEnv) {
-      environmentVariables.push(...outerEnv.variables);
+    if (outerEnv && outerEnv.variables.includes("this")) {
+      environmentVariables.push("this");
     }
 
     return environmentVariables.filter((variable, index) => environmentVariables.indexOf(variable) === index);
@@ -79,15 +79,49 @@ export class ConciseBody {
           return result;
         };
 
+        const parameterNames = signature?.getParameters()
+          .map((p) => p.escapedName.toString()) || [];
+
         const addNonLocalVariableIfNeeded = (node: ts.Node) => {
           if (isStatic(node)) {
             return;
           }
 
+          const nodeText = node.getText();
+          const isLocal = bodyScope.get(nodeText);
+
+          if (isLocal) {
+            return;
+          }
+
           if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(node)) {
             const symbol = this.generator.ts.checker.getSymbolAtLocation(node);
-            if (symbol.isParameter()) {
+            const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+            if (declaration.isParameter() && parameterNames.includes(nodeText)) {
               return;
+            }
+
+            if (declaration.isClass()) {
+              return;
+            }
+
+            if (ts.isPropertyAccessExpression(node)) {
+              if (declaration.isEnumMember()) {
+                const enumName = nodeText.substring(0, nodeText.lastIndexOf("."));
+                environmentVariables.push(enumName);
+                return;
+              }
+
+              if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(node.expression)) {
+                const symbol = this.generator.ts.checker.getSymbolAtLocation(node.expression);
+                const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+                if (declaration.isNamespace()) {
+                  environmentVariables.push(nodeText);
+                  return;
+                }
+              }
             }
           }
 
@@ -97,23 +131,15 @@ export class ConciseBody {
             return;
           }
 
-          const nodeText = node.getText();
-
-          const isLocal = bodyScope.get(nodeText);
-          if (isLocal) {
-            return;
-          }
-
           const isKnown = environmentVariables.includes(nodeText);
           const isThisAccess = nodeText.startsWith(this.generator.internalNames.This);
           if (isKnown || isThisAccess) {
             return;
           }
 
-          const isPropertyAccess = ts.isPropertyAccessExpression(node);
           const isIdentifier = ts.isIdentifier(node);
 
-          if (!isIdentifier && !isPropertyAccess) {
+          if (!isIdentifier) {
             return;
           }
 
@@ -121,6 +147,21 @@ export class ConciseBody {
         };
 
         const visitor = (node: ts.Node) => {
+          // skip nested function parameters, only visit function bodies
+          if (ts.isFunctionLike(node) && !ts.isFunctionTypeNode(node)) {
+            const declaration = Declaration.create(node, this.generator);
+
+            if (declaration.body) {
+              if (ts.isBlock(declaration.body)) {
+                declaration.body.forEachChild(visitor);
+              } else {
+                visitor(declaration.body);
+              }
+            }
+
+            return;
+          }
+
           addNonLocalVariableIfNeeded(node);
 
           if (ts.isPropertyAccessExpression(node)) {
@@ -197,7 +238,11 @@ export class ConciseBody {
                 declaration = symbol.valueDeclaration;
 
                 if (node.expression.kind === ts.SyntaxKind.SuperKeyword) {
-                  declaration = declaration?.members.find((m) => m.isConstructor());
+                  if (!declaration) {
+                    throw new Error(`Unable to find declaration for type '${type.toString()}'`);
+                  }
+
+                  declaration = declaration.members.find((m) => m.isConstructor());
                 }
               }
             } else if (ts.isNewExpression(node)) {
@@ -283,7 +328,7 @@ export class ConciseBody {
           node.forEachChild(visitor);
         };
 
-        const fakeVariablesCreator = (node: ts.Node) => {
+        const createFakeVariables = (node: ts.Node) => {
           if (ts.isFunctionDeclaration(node) && node.name) {
             const variableName = node.name.getText();
             const dummyValue = LLVMConstantInt.getFalse(this.generator);
@@ -307,28 +352,42 @@ export class ConciseBody {
             });
           }
 
-          node.forEachChild(fakeVariablesCreator);
+          node.forEachChild(createFakeVariables);
         };
 
-        this.body.forEachChild(fakeVariablesCreator);
+        if (ts.isBlock(this.body)) {
+          this.body.forEachChild(createFakeVariables);
+        } else {
+          createFakeVariables(this.body)
+        }
 
-        ts.forEachChild(this.body, visitor);
+        if (ts.isBlock(this.body)) {
+          ts.forEachChild(this.body, visitor);
+        } else {
+          visitor(this.body)
+        }
 
         dummyBlock.eraseFromParent();
 
         if (signature) {
-          // @todo: check arguments usage too
-          environmentVariables.push(
-            ...signature
-              .getParameters()
-              .map((p) => p.escapedName.toString())
-              .filter((name) => !environmentVariables.includes(name))
-          );
-
           const declaredParameters = signature.getDeclaredParameters();
           const defaultParameters = declaredParameters
             .filter((param) => param.initializer)
-            .map((param) => param.initializer!.getText());
+            .map((param) => {
+              const initializer = param.initializer!;
+              const initializerText = initializer.getText();
+
+              if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(initializer)) {
+                const symbol = this.generator.ts.checker.getSymbolAtLocation(initializer);
+                const declaration = symbol.valueDeclaration || symbol.declarations[0];
+
+                if (declaration.isEnumMember()) {
+                  return initializerText.substring(0, initializerText.lastIndexOf("."))
+                }
+              }
+
+              return initializerText;
+            });
           environmentVariables.push(...defaultParameters.filter((name) => !environmentVariables.includes(name)));
         }
 

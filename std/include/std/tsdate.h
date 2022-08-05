@@ -151,9 +151,3 @@ public:
 private:
     DatePrivate* _d = nullptr;
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Date* date)
-{
-    os << date->toString();
-    return os;
-}

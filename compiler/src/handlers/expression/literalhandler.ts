@@ -121,8 +121,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const obj = this.generator.ts.obj.create();
 
     llvmValues.forEach((value, key) => {
-      const llvmKey = this.generator.ts.str.create(key);
-      this.generator.ts.obj.set(obj, llvmKey, value);
+      this.generator.ts.obj.set(obj, key, value);
     });
 
     return obj;
