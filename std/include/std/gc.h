@@ -18,14 +18,12 @@ public:
     // same for allocator in the future?
     GC(IGCImpl* gcImpl, Allocator* allocator);
 
+    TS_METHOD void collect();
+
     // TODO Should be removed. Allocator should allocate, not GC
     TS_METHOD TS_SIGNATURE("allocate(numBytes: any): void") void* allocate(double numBytes);
     TS_METHOD TS_SIGNATURE("allocateObject(numBytes: any): void") void* allocateObject(double numBytes);
     TS_METHOD TS_SIGNATURE("deallocate(): void") void deallocate(void*);
-    TS_METHOD void collect();
-
-    TS_METHOD TS_SIGNATURE("addRoot(void): void") void addRoot(void* root);
-    TS_METHOD TS_SIGNATURE("removeRoot(void): void") void removeRoot(void* root);
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;

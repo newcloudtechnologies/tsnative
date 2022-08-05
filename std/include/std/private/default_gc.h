@@ -4,9 +4,10 @@
 
 #include "std/igc_impl.h"
 
+#include <unordered_map>
 #include <unordered_set>
 #include <functional>
-#include <mutex>
+#include <stack>
 
 class Object;
 class IMemoryDiagnosticsImpl;
@@ -14,6 +15,8 @@ class IMemoryDiagnosticsImpl;
 class DefaultGC : public IGCImpl
 {
 public:
+    using ScopeHandle = std::size_t;
+
     struct Callbacks final
     {
         std::function<void(const Object&)> beforeDeleted = [](const Object&){};
@@ -27,23 +30,27 @@ public:
 
     std::size_t getAliveObjectsCount() const override;
     
-    void addRoot(Object* object) override;
-    void removeRoot(Object* object) override;
+    void onScopeOpened(ScopeHandle handle) override;
+    void onScopeClosed(ScopeHandle handle) override;
 
     void collect() override;
 
     void untrackIfObject(void* mem);
 
 private:
-    void mark();
-    void sweep();
-
+    void mark(ScopeHandle handle);
+    void sweep(ScopeHandle handle);
+    ScopeHandle getCurrentScope() const;
+    
 private:
-    std::mutex _rootsMutex;
-    std::mutex _heapMutex;
+    using ScopeObjects = std::unordered_set<Object*>;
+    std::unordered_map<ScopeHandle, ScopeObjects> _scopesVsObjects;
 
-    // TODO Use absl::uset
-    std::unordered_set<Object*> _heap;
-    std::unordered_set<Object*> _roots;
+    std::unordered_set<ScopeHandle> _closedScopes;
+
+    std::stack<ScopeHandle> _openedScopes;
+
+    ScopeHandle _currentScope;
+
     Callbacks _callbacks;
 };

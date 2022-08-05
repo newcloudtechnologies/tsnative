@@ -39,6 +39,12 @@ public:
     // Recursion is caused by the inheritance GC : Object
     static void* allocateObject(std::size_t n);
 
+    static TS_METHOD TS_SIGNATURE("openScope(handle: any): void") 
+    void openScope(double handle);
+    
+    static TS_METHOD TS_SIGNATURE("closeScope(handle: any): void") 
+    void closeScope(double handle);
+
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
