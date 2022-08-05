@@ -91,7 +91,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
             return allocated;
         });
 
-        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(declaration.body, this.generator);
+        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(declaration.body);
 
         const scope = this.generator.symbolTable.currentScope;
 

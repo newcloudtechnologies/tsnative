@@ -10,9 +10,7 @@ export class GC {
     private readonly allocateFn: LLVMValue;
     private readonly allocateObjectFn: LLVMValue;
     private readonly deallocateFn: LLVMValue;
-
-    private readonly addRootFn: LLVMValue;
-    private readonly removeRootFn: LLVMValue;
+    private readonly collectFn: LLVMValue;
 
     private readonly generator: LLVMGenerator;
     private readonly gcType: LLVMType;
@@ -28,13 +26,20 @@ export class GC {
         this.allocateFn = this.findAllocateFunction(declaration, "allocate");
         this.allocateObjectFn = this.findAllocateFunction(declaration, "allocateObject");
         this.deallocateFn = this.findDeallocateFunction(declaration, "deallocate");
-
-        this.addRootFn = this.findRootOpFunction(declaration, "addRoot");
-        this.removeRootFn = this.findRootOpFunction(declaration, "removeRoot");
+        this.collectFn = this.findCollectFunction(declaration);
     }
 
     allocate(type: LLVMType, name?: string) {
         return this.doAllocate(this.allocateFn, type, name);
+    }
+
+    collect() {
+        const gcAddress = this.runtime.callGetGC();
+        const castedGCAddress = this.generator.builder.createBitCast(gcAddress, this.gcType);
+        return this.generator.builder.createSafeCall(this.collectFn, 
+            [
+                castedGCAddress
+            ]);
     }
 
     allocateObject(type: LLVMType, name?: string) {
@@ -54,30 +59,28 @@ export class GC {
         ]);
     }
 
-    addRoot(mem: LLVMValue) {
-        const gcAddress = this.runtime.callGetGC();
-        const castedGCAddress = this.generator.builder.createBitCast(gcAddress, this.gcType);
-
-        const voidStarMem = this.generator.builder.asVoidStar(mem);
-
-        return this.generator.builder.createSafeCall(this.addRootFn, 
-        [
-            castedGCAddress,
-            voidStarMem
-        ]);
-    }
-
-    removeRoot(mem: LLVMValue) {
-        const gcAddress = this.runtime.callGetGC();
-        const castedGCAddress = this.generator.builder.createBitCast(gcAddress, this.gcType);
-
-        const voidStarMem = this.generator.builder.asVoidStar(mem);
-
-        return this.generator.builder.createSafeCall(this.removeRootFn, 
-        [
-            castedGCAddress,
-            voidStarMem
-        ]);
+    private findCollectFunction(declaration: Declaration) {
+        const collectDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "collect");
+        if (!collectDeclaration) {
+          throw Error("Unable to find collect function");
+        }
+  
+        const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
+    
+        const { qualifiedName } = FunctionMangler.mangle(
+            collectDeclaration,
+          undefined,
+          thisType,
+          [],
+          this.generator,
+          undefined,
+          []
+        );
+    
+        const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+        const llvmArgumentTypes : LLVMType[] = [];
+    
+        return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }
 
     private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) {
@@ -95,29 +98,6 @@ export class GC {
         ]);
 
         return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
-    }
-
-    private findRootOpFunction(declaration: Declaration, name: string) {
-        const rootOpDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === name);
-        if (!rootOpDeclaration) {
-            throw Error(`Unable to find ${name} function`);
-        }
-
-        const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-        const { qualifiedName } = FunctionMangler.mangle(
-            rootOpDeclaration,
-            undefined,
-            thisType,
-            [],
-            this.generator,
-            undefined,
-            ["void*"]
-        );
-
-        const llvmReturnType = LLVMType.getVoidType(this.generator);
-        const llvmArgumentTypes = [thisType.getLLVMType(), LLVMType.getInt8Type(this.generator).getPointer()];
-
-        return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }
 
     private findAllocateFunction(declaration: Declaration, name: string) {
