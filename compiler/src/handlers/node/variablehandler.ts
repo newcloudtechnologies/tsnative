@@ -101,6 +101,10 @@ export class VariableHandler extends AbstractNodeHandler {
       value.makeAssignment(initializer);
     }
 
+    if (declaration.initializer && ts.isCallExpression(declaration.initializer)) {
+      this.generator.runtime.gc.collect();
+    }
+
     const dbg = this.generator.getDebugInfo();
     if (dbg) {
       dbg.emitDeclare(name, initializer, declaration, type);

@@ -75,9 +75,8 @@ export class SymbolTable {
     this.generator.runtime.callOpenScope(scope.handle);
     const result = body(scope);
     this.generator.runtime.callCloseScope(scope.handle);
-    this.generator.gc.collect();
-
     this.scopes.pop();
+
     return result;
   }
 
