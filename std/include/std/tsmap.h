@@ -56,7 +56,7 @@ public:
     template <typename U, typename W>
     friend std::ostream& operator<<(std::ostream& os, const Map<U, W>* m);
 
-    void markChildren() override;
+    std::vector<Object*> getChildren() const override;
 
     friend class Object;
 
@@ -199,21 +199,26 @@ inline std::ostream& operator<<(std::ostream& os, const Map<K, V>* m)
 }
 
 template <typename K, typename V>
-void Map<K, V>::markChildren()
+std::vector<Object*> Map<K, V>::getChildren() const
 {    
-    const auto callable = [](std::pair<K, V>& entry)
+    std::vector<Object*> result;
+    result.reserve(_d->size() * 2);
+
+    const auto callable = [&result](const std::pair<K, V>& entry)
     {
         auto* key = static_cast<Object*>(entry.first);
         auto* value = static_cast<Object*>(entry.second);
 
-        if (key && !key->isMarked())
+        if (key)
         {
-            key->mark();
+            result.push_back(key);
         }
-        if (value && !value->isMarked())
+        if (value)
         {
-            value->mark();
+            result.push_back(value);
         }
     };
     _d->forEachEntry(callable);
+
+    return result;
 }

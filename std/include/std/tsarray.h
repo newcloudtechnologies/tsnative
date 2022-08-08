@@ -93,7 +93,7 @@ public:
     template <typename U>
     friend std::ostream& operator<<(std::ostream& os, const Array<U>* array);
 
-    void markChildren() override;
+    std::vector<Object*> getChildren() const override;
 
 private:
     ArrayPrivate<T>* _d = nullptr;
@@ -371,17 +371,21 @@ Array<String*>* Array<T>::getKeysArray() const
 }
 
 template <typename T>
-void Array<T>::markChildren()
+std::vector<Object*> Array<T>::getChildren() const
 {
-    auto elements = _d->toStdVector();
-    for (auto& e : elements)
+    const auto elements = _d->toStdVector();
+    std::vector<Object*> result;
+    result.reserve(elements.size());
+    for (const auto& e : elements)
     {
         auto* object = static_cast<Object*>(e);
-        if (object && !object->isMarked())
+        if (object)
         {
-            object->mark();
+            result.push_back(object);
         }
     }
+
+    return result;
 }
 
 template <typename T>
