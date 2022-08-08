@@ -66,6 +66,7 @@ set(SOURCES
     src/private/default_gc.cpp
     src/private/allocator.cpp
     src/private/memory_diagnostics_storage.cpp
+    src/private/call_stack.cpp
 )
 
 if(ENABLE_LOGS)
