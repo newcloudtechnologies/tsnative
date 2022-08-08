@@ -37,7 +37,9 @@ public:
     void untrackIfObject(void* mem);
 
 private:
-    void moveSideEffectAllocations();
+    void collectEverything();
+    
+    void moveSideEffectAllocations(ScopeHandle from);
     void move(ScopeHandle from, ScopeHandle to, Object* what);
     void sweep(ScopeHandle handle);
     
