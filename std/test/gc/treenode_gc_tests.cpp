@@ -96,55 +96,108 @@ public:
         return _callStack;
     }
 
-private:
-    std::vector<const Object*> _actualAliveObjects;
-    std::unique_ptr<DefaultGC> _gc;
-
-    test::MockCallStack _callStack;
-};
-
-TEST_F(TreeNodeGCTestFixture, simpleLocalAllocation)
-{
-    const CallStackFrame currentFrame{2u};
-    const CallStackFrame parentFrame{1u};
-
+    void initByLocalFrame(const CallStackFrame& currentFrame, 
+                   const CallStackFrame& parentFrame,
+                   std::size_t stackSize)
     {
         using namespace ::testing;
         ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(ReturnRef(currentFrame));
         ON_CALL(getCallStack(), getParentFrame()).WillByDefault(ReturnRef(parentFrame));
-        ON_CALL(getCallStack(), size()).WillByDefault(Return(2u));
+        ON_CALL(getCallStack(), size()).WillByDefault(Return(stackSize));
+        ON_CALL(getCallStack(), empty()).WillByDefault(Return(stackSize == 0));
+    }
+
+    void initByGlobalFrame(const CallStackFrame& frame)
+    {
+        using namespace ::testing;
+        ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(ReturnRef(frame));
+        ON_CALL(getCallStack(), getParentFrame()).WillByDefault(Throw(std::runtime_error("No parent frame for global")));
+        ON_CALL(getCallStack(), size()).WillByDefault(Return(1));
         ON_CALL(getCallStack(), empty()).WillByDefault(Return(false));
     }
 
-    auto& gc = getGC();
-
-    EXPECT_EQ(0u, getGC().getAliveObjectsCount());
-
+    void initByNoFrame()
     {
-        gc.onScopeOpened(parentFrame.scopeHandle);
-
-        {
-            gc.onScopeOpened(currentFrame.scopeHandle);
-
-            auto A = new TreeNode('A');
-
-            const auto actual = getActualAliveObjects();
-            const std::vector<const Object*> expectedAliveObjects{A};
-            EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-
-            gc.beforeScopeClosed(currentFrame.scopeHandle);
-        }
-
-        EXPECT_EQ(1u, getGC().getAliveObjectsCount());
-
-        getGC().collect();
-
-        EXPECT_EQ(0u, getGC().getAliveObjectsCount());
-
-        gc.beforeScopeClosed(parentFrame.scopeHandle);
+        using namespace ::testing;
+        static const auto e = std::runtime_error("No parent frame for global");
+        ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(Throw(e));
+        ON_CALL(getCallStack(), getFrameAtPosition(_)).WillByDefault(Throw(e));
+        ON_CALL(getCallStack(), getParentFrame()).WillByDefault(Throw(e));
+        ON_CALL(getCallStack(), size()).WillByDefault(Return(0u));
+        ON_CALL(getCallStack(), empty()).WillByDefault(Return(true));
     }
 
-    EXPECT_EQ(0u, getGC().getAliveObjectsCount());
+private:
+    std::vector<const Object*> _actualAliveObjects;
+    std::unique_ptr<DefaultGC> _gc;
+
+    ::testing::NiceMock<test::MockCallStack> _callStack;
+};
+
+TEST_F(TreeNodeGCTestFixture, simpleLocalAllocation)
+{
+    const CallStackFrame blockFrame{1u};
+    const CallStackFrame globalFrame{0u};
+
+    auto& gc = getGC();
+
+    initByNoFrame();
+
+    gc.onScopeOpened(globalFrame.scopeHandle);
+    initByGlobalFrame(globalFrame);
+    {
+        gc.onScopeOpened(blockFrame.scopeHandle);
+        initByLocalFrame(blockFrame, globalFrame, 2u);
+
+        auto A = new TreeNode('A');
+
+        const auto actual = getActualAliveObjects();
+        const std::vector<const Object*> expectedAliveObjects{A};
+        EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+
+        gc.beforeScopeClosed(blockFrame.scopeHandle);
+    }
+    initByGlobalFrame(globalFrame);
+
+    EXPECT_EQ(1u, gc.getAliveObjectsCount());
+
+    gc.collect();
+
+    EXPECT_EQ(0u, gc.getAliveObjectsCount());
+
+    gc.beforeScopeClosed(globalFrame.scopeHandle);
+    initByNoFrame();
+
+    EXPECT_EQ(0u, gc.getAliveObjectsCount());
+}
+
+TEST_F(TreeNodeGCTestFixture, localAllocationInGlobalScope)
+{
+    const CallStackFrame globalFrame{0u};
+    // No parent scope, current one is global
+    
+    auto& gc = getGC();
+
+    EXPECT_EQ(0u, gc.getAliveObjectsCount());
+    initByNoFrame();
+
+    gc.onScopeOpened(globalFrame.scopeHandle);
+    initByGlobalFrame(globalFrame);
+
+    auto A = new TreeNode('A');
+
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+
+    gc.beforeScopeClosed(globalFrame.scopeHandle);
+    initByNoFrame();
+
+    EXPECT_EQ(1u, gc.getAliveObjectsCount());
+
+    gc.collect();
+
+    EXPECT_EQ(0u, gc.getAliveObjectsCount());
 }
 
 // Init:
@@ -153,43 +206,85 @@ TEST_F(TreeNodeGCTestFixture, simpleLocalAllocation)
 // A X-> B -> C
 // Result:
 // A
-/*TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
+TEST_F(TreeNodeGCTestFixture, migrateChildrenIntoParentScope)
 {
-    using namespace ::testing;
-    ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(Return(0u));
+    const CallStackFrame functionFrame{2u};
+    const CallStackFrame parentFrame{1u};
+    const CallStackFrame globalFrame{0u};
 
-    getGC().onScopeOpened(0);
+    auto& gc = getGC();
 
-    const auto garbageMaker = [this](TreeNodeBase*& suspensionPoint)
+    std::vector<const Object*> expectedAliveObjects{};
+
+    const auto garbageMaker = [&]
+    (TreeNodeBase*& suspensionPoint)
     {
-        getGC().onScopeOpened(1);
+        gc.onScopeOpened(functionFrame.scopeHandle);
+        initByLocalFrame(functionFrame, parentFrame, 3u);
 
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
+        expectedAliveObjects.push_back(B);
+        expectedAliveObjects.push_back(C);
+
         B->left = C;
         suspensionPoint = B;
 
-        getGC().beforeScopeClosed(1);
+        gc.beforeScopeClosed(functionFrame.scopeHandle);
     };
 
-    auto A = new TreeNode{'A'};
+    initByNoFrame();
 
-    garbageMaker(A->left);
+    gc.onScopeOpened(globalFrame.scopeHandle);
+    initByGlobalFrame(globalFrame);
+    {
+        auto A = new TreeNode{'A'};
+        expectedAliveObjects.push_back(A);
+        
+        {
+            gc.onScopeOpened(parentFrame.scopeHandle);
+            initByLocalFrame(parentFrame, globalFrame, 2u);
 
-    A->left = nullptr; // Loose garbage
+            garbageMaker(A->left);
+            initByLocalFrame(parentFrame, globalFrame, 2u);
 
-    EXPECT_EQ(3u, getGC().getAliveObjectsCount());
+            {
+                const auto actual = getActualAliveObjects();
+                EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+            }
 
-    getGC().collect();
+            gc.collect();
 
-    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
+            {
+                const auto actual = getActualAliveObjects();
+                EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+            }
 
-    const auto actual = getActualAliveObjects();
-    const std::vector<const Object*> expectedAliveObjects{A};
-    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+            A->left = nullptr; // Make garbage unreachible
 
-    getGC().onScopeClosed(0);
+            // Garbage is alive for now
+            {
+                const auto actual = getActualAliveObjects();
+                EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+            }
+
+            gc.beforeScopeClosed(parentFrame.scopeHandle);
+        }
+        initByGlobalFrame(globalFrame);
+
+        // A, B, C will be alive because B and C were moved after their former parent A into global scope
+        gc.collect();
+
+        const auto actual = getActualAliveObjects();
+        EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
+    }
+    // Closing global scope
+    gc.beforeScopeClosed(globalFrame.scopeHandle);
+    initByNoFrame();
+
+    gc.collect();
+    EXPECT_EQ(0u, gc.getAliveObjectsCount());
 }
 /*
 TEST_F(TreeNodeGCTestFixture, allocationWithoutVariable)

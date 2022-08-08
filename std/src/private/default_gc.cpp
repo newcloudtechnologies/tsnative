@@ -20,12 +20,8 @@ DefaultGC::DefaultGC(const ICallStack& callStack, Callbacks&& callbacks)
 DefaultGC::~DefaultGC()
 {
     LOG_INFO("Calling GCImpl dtor");
-    for (const auto entry : _scopesVsObjects)
-    {
-        const auto handle = entry.first;
-        _closedScopes.insert(handle);
-    }
 
+    // There should be no stack frames When the GC dtor is called 
     collect();
 }
 
@@ -62,7 +58,7 @@ std::size_t DefaultGC::getAliveObjectsCount() const
     return result;
 }
 
-void DefaultGC::moveSideEffectAllocations()
+void DefaultGC::moveSideEffectAllocations(ScopeHandle from)
 {
     LOG_INFO("Calling moveSideEffectAllocations");
 
@@ -72,31 +68,47 @@ void DefaultGC::moveSideEffectAllocations()
         return;
     }
 
-    const auto& parentScopeHandle = _callStack.getParentFrame().scopeHandle;
-    auto parentScopeIt = _scopesVsObjects.find(parentScopeHandle);
-    if (parentScopeIt == _scopesVsObjects.end())
+    // Iterate everything except 'from' scope
+    for (auto& entry : _scopesVsObjects)
     {
-        throw std::runtime_error("Parent scope not found while handling side effect allocations");
-    }
-    auto& parentScopeHeap = parentScopeIt->second;
-    for (auto* obj : parentScopeHeap)
-    {
-        for (auto* child : obj->getChildren())
+        const auto& parentScopeHandle = entry.first;
+        if (parentScopeHandle == from)
         {
-            auto objVsScopeIt = _objectsVsScopes.find(child);
-            if (objVsScopeIt == _objectsVsScopes.end())
-            {
-                throw std::runtime_error("Child object does not point to any scope");
-            }
+            continue;
+        }
 
-            const auto& currentChildScope = objVsScopeIt->second;
-            move(currentChildScope, parentScopeHandle, child);
+        const auto& parentScopeHeap = entry.second;
+        for (auto* obj : parentScopeHeap)
+        {
+            for (auto* child : obj->getChildren())
+            {
+                auto objVsScopeIt = _objectsVsScopes.find(child);
+                if (objVsScopeIt == _objectsVsScopes.end())
+                {
+                    throw std::runtime_error("Child object does not point to any scope");
+                }
+
+                const auto& currentChildScope = objVsScopeIt->second;
+                move(currentChildScope, parentScopeHandle, child);
+            }
         }
     }
 }
 
 void DefaultGC::collect()
 {
+    // If the callstack is empty then global scope is closed and we should
+    // thing that everything is a garbage now
+    if (_callStack.empty())
+    {
+        LOG_INFO("Collecting everything");
+        for (const auto entry : _scopesVsObjects)
+        {
+            const auto handle = entry.first;
+            _closedScopes.insert(handle);
+        }
+    }
+
     for (const auto& handle : _closedScopes)
     {
         LOG_INFO("Started collect scope call for " + std::to_string(handle));
@@ -227,7 +239,7 @@ void DefaultGC::beforeScopeClosed(ScopeHandle handle)
         throw std::runtime_error("Closing non-existing scope");
     }
 
-    moveSideEffectAllocations();
+    moveSideEffectAllocations(handle);
     LOG_INFO("Closed scope with handle " + std::to_string(handle));
     _closedScopes.insert(handle);
 }
