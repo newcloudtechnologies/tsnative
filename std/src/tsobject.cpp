@@ -19,16 +19,14 @@ static String* parentKey = new String("parent");
 
 Object::Object()
 #ifdef USE_MAP_STD_BACKEND
-    : _props(new MapStdPrivate<String*, void*>()),
-    _isMarked{false}
+    : _props(new MapStdPrivate<String*, void*>())
 #endif
 {
     LOG_ADDRESS("Calling default object ctor ", this);
 }
 
 Object::Object(Map<String*, void*>* props)
-    : _props(props->_d),
-    _isMarked{false}
+    : _props(props->_d)
 {
     LOG_ADDRESS("Calling object ctor with props ", this);
 }
@@ -190,43 +188,28 @@ Array<String*>* Object::keys(Object* entity)
     return entity->getKeysArray();
 }
 
-bool Object::isMarked() const
+std::vector<Object*> Object::getChildren() const
 {
-    return _isMarked;
-}
+    std::vector<Object*> result;
+    result.reserve(_props->size() * 2);
 
-void Object::mark()
-{
-    _isMarked = true;
-    markChildren();
-}
-
-void Object::unmark()
-{
-    _isMarked = false;
-}
-
-void Object::markChildren()
-{
-    LOG_INFO("Calling OBJECT::markChildren");
-
-    const auto callable = [](auto& entry)
+    const auto callable = [&result](const auto& entry)
     {
         auto* key = entry.first;
         auto* value = static_cast<Object*>(entry.second);
 
-        if (key && !key->isMarked())
+        if (key)
         {
-            key->mark();
+            result.push_back(key);
         }
-        if (value && !value->isMarked())
+        if (value)
         {
-            value->mark();
+            result.push_back(value);
         }
     };
     _props->forEachEntry(callable);
 
-    LOG_INFO("Finished calling OBJECT::markChildren");
+    return result;
 }
 
 void* Object::operator new (std::size_t n)

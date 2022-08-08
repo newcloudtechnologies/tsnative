@@ -21,7 +21,7 @@ TS_CODE("// @ts-ignore\n"
 class TS_EXPORT TS_DECLARE TS_IGNORE TSClosure : public Object
 {
 public:
-    TS_METHOD TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
+    TS_METHOD TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals);
     // this class is not an owner of passed ptrs, so use default dtor.
     // @todo: should ptrs be untracked here?
     // TODO Env should be deleted by the destructor
@@ -41,11 +41,12 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    void markChildren() override;
+    std::vector<Object*> getChildren() const override;
 
 private:
     void* fn = nullptr;
     void** env = nullptr;
+    Number* envLength = nullptr;
     Number* numArgs = nullptr;
     int64_t optionals = 0;
 };

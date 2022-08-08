@@ -5,6 +5,7 @@
 #include <ostream>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 class Boolean;
 class String;
@@ -52,11 +53,7 @@ public:
 
     TS_METHOD static Array<String*>* keys(Object* entity);
 
-    bool isMarked() const;
-    void mark();
-    void unmark();
-
-    virtual void markChildren();
+    virtual std::vector<Object*> getChildren() const;
 
     void* operator new (std::size_t n);
 
@@ -65,5 +62,4 @@ protected:
 
 private:
     std::unordered_set<String*> getUniqueKeys(const Object* o) const;
-    bool _isMarked = false;
 };

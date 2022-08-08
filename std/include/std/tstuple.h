@@ -29,7 +29,7 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const Tuple* tuple);
 
-    void markChildren() override;
+    std::vector<Object*> getChildren() const override;
 
 private:
     ArrayPrivate<Object*>* _d = nullptr;
