@@ -200,7 +200,7 @@ export class BuiltinTSClosure extends Builtin {
       [],
       this.generator,
       undefined,
-      ["void*", "void**", "Number*", "Number*"]
+      ["void*", "void**", "Number*", "Number*", "Number*"]
     );
     if (!isExternalSymbol) {
       throw new Error("External symbol TSClosure constructor not found");
@@ -219,7 +219,7 @@ export class BuiltinTSClosure extends Builtin {
     return constructor;
   }
 
-  createClosure(fn: LLVMValue, env: LLVMValue, functionDeclaraion: Declaration) {
+  createClosure(fn: LLVMValue, env: LLVMValue, envLength : number, functionDeclaration: Declaration) {
     if (fn.type.getPointerLevel() !== 1 || !fn.type.unwrapPointer().isFunction()) {
       throw new Error("Malformed function");
     }
@@ -231,13 +231,13 @@ export class BuiltinTSClosure extends Builtin {
     const untypedFn = this.generator.builder.asVoidStar(fn);
     const untypedEnv = this.generator.builder.asVoidStarStar(env);
 
-    const numArgs = functionDeclaraion.parameters.length;
+    const numArgs = functionDeclaration.parameters.length;
 
     if (numArgs > 63) {
-      throw new Error(`Parameters limited up to 63. Error at closure creation for '${functionDeclaraion.getText()}'`);
+      throw new Error(`Parameters limited up to 63. Error at closure creation for '${functionDeclaration.getText()}'`);
     }
 
-    const optionals = functionDeclaraion.parameters.reduce((acc, parameter, index) => {
+    const optionals = functionDeclaration.parameters.reduce((acc, parameter, index) => {
       if (parameter.questionToken) {
         acc |= 1 << index;
       }
@@ -250,6 +250,7 @@ export class BuiltinTSClosure extends Builtin {
       thisValue,
       untypedFn,
       untypedEnv,
+      this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, envLength)),
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, numArgs)),
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, optionals)),
     ]);
