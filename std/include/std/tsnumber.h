@@ -68,20 +68,12 @@ public:
 
     TS_METHOD Number* clone() const;
 
-    friend std::ostream& operator<<(std::ostream& os, const Number* v);
-
 private:
     NumberPrivate* _d = nullptr;
 };
 
 TS_CODE("// @ts-ignore\n"
         "declare type number = Number;\n");
-
-inline std::ostream& operator<<(std::ostream& os, const Number* v)
-{
-    os << v->unboxed();
-    return os;
-}
 
 namespace std
 {

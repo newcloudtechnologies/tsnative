@@ -66,8 +66,3 @@ void TSClosure::setEnvironmentElement(T value, int index)
     _env[index] = value;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const TSClosure* cl)
-{
-    os << cl->toString();
-    return os;
-}

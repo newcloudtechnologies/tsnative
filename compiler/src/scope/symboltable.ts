@@ -12,6 +12,8 @@
 import { Scope, ScopeValue } from "../scope";
 import { LLVMGenerator } from "../generator/generator"
 
+export class IdentifierNotFound extends Error {}
+
 export class SymbolTable {
   private readonly scopes: Scope[];
   private readonly generator: LLVMGenerator;
@@ -39,7 +41,7 @@ export class SymbolTable {
       const candidates = this.scopes.filter((scope) => scope.map.has(parts[0]));
 
       if (candidates.length === 0) {
-        throw new Error(`No '${parts[0]}' in symbol table`);
+        throw new IdentifierNotFound(`No '${parts[0]}' in symbol table`);
       }
 
       for (const candidate of candidates) {
@@ -50,7 +52,7 @@ export class SymbolTable {
       }
     }
 
-    throw new Error(`Identifier '${identifier}' not found`);
+    throw new IdentifierNotFound(`Identifier '${identifier}' not found`);
   }
 
   addScope(name: string): void {
@@ -76,10 +78,15 @@ export class SymbolTable {
     return result;
   }
 
-  private getNested(parts: string[], scope: Scope): ScopeValue | undefined {
+  private getNested(parts: string[], scope: ScopeValue | undefined): ScopeValue | undefined {
     if (!scope) {
       return undefined;
     }
+
+    if (!(scope instanceof Scope)) {
+      return scope;
+    }
+
     if (parts.length === 1) {
       if (scope.name === parts[0] || scope.mangledName === parts[0]) {
         return scope;
@@ -90,7 +97,8 @@ export class SymbolTable {
         }
       }
     }
-    return this.getNested(parts.slice(1), scope.get(parts[0]) as Scope);
+
+    return this.getNested(parts.slice(1), scope.get(parts[0]));
   }
 
   dump() {

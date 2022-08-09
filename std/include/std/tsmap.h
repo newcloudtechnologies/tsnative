@@ -53,9 +53,6 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    template <typename U, typename W>
-    friend std::ostream& operator<<(std::ostream& os, const Map<U, W>* m);
-
     void markChildren() override;
 
     friend class Object;
@@ -189,13 +186,6 @@ IterableIterator<K>* Map<K, V>::keys()
 {
     auto keys = Array<K>::fromStdVector(_d->orderedKeys());
     return new ArrayIterator<K>(keys);
-}
-
-template <typename K, typename V>
-inline std::ostream& operator<<(std::ostream& os, const Map<K, V>* m)
-{
-    os << m->_d->toString();
-    return os;
 }
 
 template <typename K, typename V>

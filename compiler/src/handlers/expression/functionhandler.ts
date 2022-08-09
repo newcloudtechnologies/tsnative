@@ -312,6 +312,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       throw new Error("This data required");
     }
 
+    const currentScope = this.generator.symbolTable.currentScope;
+
     if (isExternalSymbol) {
       if (!outerEnv) {
         throw new Error(`Expected outer environment to be provided at '${expression.getText()}'`);
@@ -352,15 +354,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       if (body) {
         environmentVariables.push(
-          ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, parentScope, outerEnv)
+          ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, currentScope, outerEnv)
         );
       }
     }
 
-    environmentVariables.push(...valueDeclaration.environmentVariables(expression, parentScope, outerEnv));
+    environmentVariables.push(...valueDeclaration.environmentVariables(expression, currentScope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
-    const env = createEnvironment(parentScope, environmentVariables, this.generator, { args, signature }, outerEnv);
+    const env = createEnvironment(currentScope, environmentVariables, this.generator, { args, signature }, outerEnv);
 
     // hack for polymorphic 'this' using
     qualifiedName += this.generator.randomString;
@@ -370,7 +372,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       [env.voidStar],
       qualifiedName
     );
-    this.handleConstructor(expression, valueDeclaration, constructor, this.generator.symbolTable.currentScope, env);
+    this.handleConstructor(expression, valueDeclaration, constructor, currentScope, env);
 
     setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
 
@@ -410,7 +412,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     });
 
     const expressionDeclaration = Declaration.create(expression, this.generator);
-    const scope = expressionDeclaration.getScope(undefined);
+    const scope = this.generator.symbolTable.currentScope;
 
     this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
 
@@ -460,7 +462,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const tsReturnType = signature.getReturnType();
     const llvmReturnType = tsReturnType.getLLVMReturnType();
 
-    const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], this.generator.randomString);
+    const random = this.generator.randomString;
+    const functionName = ts.isVariableDeclaration(expression.parent) ? `${expression.parent.name.getText()}__arrowfn__${random}` : random;
+
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, [env.voidStar], functionName);
 
     FunctionHandler.handleFunctionBody(expressionDeclaration, fn, this.generator, env);
     LLVMFunction.verify(fn, expression);
@@ -891,20 +896,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
       throw new Error(`Function body required for '${qualifiedName}'. Error at '${expression.getText()}'`);
     }
 
-    const parentScope = valueDeclaration.getScope(undefined);
+    const scope = this.generator.symbolTable.currentScope;
 
     const environmentVariables: string[] = [];
 
     environmentVariables.push(
       ...ConciseBody.create(valueDeclaration.body, this.generator).getEnvironmentVariables(
         signature,
-        parentScope,
+        scope,
         outerEnv
       )
     );
 
     const env = createEnvironment(
-      parentScope,
+      scope,
       environmentVariables,
       this.generator,
       { args, signature },
@@ -928,7 +933,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (!existing) {
       FunctionHandler.handleFunctionBody(valueDeclaration, fn, this.generator, env);
-      setLLVMFunctionScope(fn, parentScope, this.generator, expression);
+      setLLVMFunctionScope(fn, scope, this.generator, expression);
     }
 
     return this.invoke(expression, valueDeclaration.body, fn, callArgs);
@@ -1139,13 +1144,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const thisValue = this.generator.ts.obj.create();
 
-    const parentScope = valueDeclaration.getScope(thisType);
+    const scope = this.generator.symbolTable.currentScope;
 
-    const oldThis = parentScope.get(this.generator.internalNames.This);
+    const oldThis = scope.get(this.generator.internalNames.This);
     if (oldThis) {
-      parentScope.overwrite(this.generator.internalNames.This, thisValue);
+      scope.overwrite(this.generator.internalNames.This, thisValue);
     } else {
-      parentScope.set(this.generator.internalNames.This, thisValue);
+      scope.set(this.generator.internalNames.This, thisValue);
     }
 
     let signature: Signature | undefined;
@@ -1173,19 +1178,19 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = constructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
-        parentScope.initializeVariablesAndFunctionDeclarations(body, this.generator);
+        scope.initializeVariablesAndFunctionDeclarations(body, this.generator);
         environmentVariables.push(
-          ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, parentScope, outerEnv)
+          ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, scope, outerEnv)
         );
       }
     }
 
-    parentScope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
-    environmentVariables.push(...valueDeclaration.environmentVariables(expression, parentScope, outerEnv));
+    scope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
+    environmentVariables.push(...valueDeclaration.environmentVariables(expression, scope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
     const env = createEnvironment(
-      parentScope,
+      scope,
       environmentVariables,
       this.generator,
       { args, signature },
@@ -1200,7 +1205,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
 
     if (!existing) {
-      this.populateGenericTypes(valueDeclaration, parentScope);
+      this.populateGenericTypes(valueDeclaration, scope);
 
       if (expression.typeArguments) {
         const declaredTypeParameters = valueDeclaration.typeParameters;
@@ -1212,18 +1217,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
         expression.typeArguments.forEach((typeArg, index) => {
           const type = this.generator.ts.checker.getTypeFromTypeNode(typeArg);
-          parentScope.typeMapper.register(declaredTypeParameters[index].getText(), type);
+          scope.typeMapper.register(declaredTypeParameters[index].getText(), type);
         });
       }
 
-      this.handleConstructor(expression, valueDeclaration, constructor, parentScope, env);
-      setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
+      this.handleConstructor(expression, valueDeclaration, constructor, scope, env);
+      setLLVMFunctionScope(constructor, scope, this.generator, expression);
     }
 
     const body = constructorDeclaration.isFunctionLike() ? constructorDeclaration.body : undefined;
     this.invoke(expression, body, constructor, [env.untyped]);
 
-    this.patchVTable(valueDeclaration, parentScope, thisValue, env);
+    this.patchVTable(valueDeclaration, scope, thisValue, env);
 
     return thisValue;
   }
@@ -1383,7 +1388,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvmArgumentTypes.push(...new Array(parameters.length).fill(LLVMType.getInt8Type(this.generator).getPointer()));
     }
 
-    const scope = declaration.getScope(undefined);
+    const scope = this.generator.symbolTable.currentScope;
 
     // these dummy arguments will be substituted by actual arguments once called
     const dummyArguments = llvmArgumentTypes.map((t) => {
@@ -1570,7 +1575,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
             const thisValueIdx = environment!.getVariableIndex("this");
             if (thisValueIdx === -1) {
-              throw new Error(`Expected 'this' to be provided to constructor. Error at '${expression.getText()}'`);
+              const isSynthetic = expression.pos === -1;
+              // synthetic 'super' calls may be generated if derived class doesn't provide constructor
+              // at this point it is the only case to meet synthetic node, so substitute location
+              const location = isSynthetic ? "super()" : expression.getText();
+              throw new Error(`Expected 'this' to be provided to constructor. Error at '${location}'`);
             }
 
             const thisValuePtr = this.generator.builder.createInBoundsGEP(environment!.typed, [
@@ -1593,12 +1602,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
             if (classDeclaration.isDerived) {
               const superValue = this.generator.ts.obj.create();
-
-              const parentKey = this.generator.ts.str.create("parent");
-              this.generator.ts.obj.set(superValue, parentKey, thisValue);
-
-              const superKey = this.generator.ts.str.create("super");
-              this.generator.ts.obj.set(thisValue, superKey, superValue);
+              this.generator.ts.obj.set(superValue, "parent", thisValue);
+              this.generator.ts.obj.set(thisValue, "super", superValue);
             }
 
             if (isSuperCall) {
@@ -1655,18 +1660,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
     environment: Environment
   ) {
     classDeclaration.ownProperties.forEach((prop) => {
-      if (!prop.initializer) {
+      const propertyInitializer = prop.initializer;
+      if (!propertyInitializer) {
         return;
       }
 
-      if (!prop.name) {
+      const propertyName = prop.name?.getText();
+      if (!propertyName) {
         throw new Error(`Property name expected. Error at: '${expression.getText()}'`);
       }
 
-      const key = this.generator.ts.str.create(prop.name.getText());
-      const value = this.generator.handleExpression(prop.initializer, environment);
-
-      this.generator.ts.obj.set(thisValue, key, value);
+      const value = this.generator.handleExpression(propertyInitializer, environment);
+      this.generator.ts.obj.set(thisValue, propertyName, value);
     });
   }
 
@@ -1686,8 +1691,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         if (method.isOptional() && !method.body) {
-          const key = this.generator.ts.str.create(method.name.getText());
-          this.generator.ts.obj.set(thisValue, key, this.generator.ts.undef.get());
+          const methodName = method.name.getText();
+          this.generator.ts.obj.set(thisValue, methodName, this.generator.ts.undef.get());
           return;
         }
 
@@ -1774,8 +1779,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           key += "__set";
         }
 
-        const llvmKey = this.generator.ts.str.create(key);
-        this.generator.ts.obj.set(thisValue, llvmKey, closure);
+        this.generator.ts.obj.set(thisValue, key, closure);
       }, bodyScope);
     });
   }

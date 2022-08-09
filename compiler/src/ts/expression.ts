@@ -93,7 +93,13 @@ export class Expression {
       if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(arg)) {
         const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
         const declaration = symbol.valueDeclaration || symbol.declarations[0];
-        argumentTypes.push(declaration.type);
+        let type = declaration.type;
+
+        if (declaration.isEnumMember() || (declaration.isParameter() && type.isEnum())) {
+          type = type.getEnumElementTSType();
+        }
+
+        argumentTypes.push(type);
         return;
       }
 

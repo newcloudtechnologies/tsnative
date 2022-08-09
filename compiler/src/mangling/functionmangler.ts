@@ -79,31 +79,4 @@ export class FunctionMangler {
       qualifiedName: scopePrefix + baseName + typeParametersNames,
     };
   }
-
-  static checkIfExternalSymbol(call: ts.CallExpression, generator: LLVMGenerator) {
-    const argumentTypes = Expression.create(call, generator).getArgumentTypes();
-    const isMethod = Expression.create(call.expression, generator).isMethod();
-    let thisType;
-    if (isMethod) {
-      const methodReference = call.expression as ts.PropertyAccessExpression;
-      thisType = generator.ts.checker.getTypeAtLocation(methodReference.expression);
-    }
-
-    const symbol = generator.ts.checker.getTypeAtLocation(call.expression).getSymbol();
-    const valueDeclaration = symbol.declarations[0];
-
-    const thisTypeForMangling = valueDeclaration.isStatic()
-      ? generator.ts.checker.getTypeAtLocation((call.expression as ts.PropertyAccessExpression).expression)
-      : thisType;
-
-    const { isExternalSymbol } = FunctionMangler.mangle(
-      valueDeclaration,
-      call,
-      thisTypeForMangling,
-      argumentTypes,
-      generator
-    );
-
-    return isExternalSymbol;
-  }
 }

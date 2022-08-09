@@ -29,7 +29,6 @@ import { DebugInfo } from "./debug_info";
 const stdlib = require("std/constants");
 
 enum InternalNames {
-  Environment = "__environment__",
   FunctionScope = "__function_scope__",
   Object = "__object__",
   This = "this",
@@ -111,14 +110,7 @@ export class LLVMGenerator {
       dbg.emitMainScope(main.unwrapped as llvm.Function);
     }
 
-    for (const sourceFile of this.program.getSourceFiles()) {
-      this.currentSource = sourceFile;
-      this.symbolTable.addScope(sourceFile.fileName);
-
-      this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
-
-      sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
-    }
+    this.handleSources(this.program.getSourceFiles())
 
     this.builder.createSafeRet(LLVMConstantInt.get(this, 0));
 
@@ -154,6 +146,17 @@ export class LLVMGenerator {
     });
     if (!this.globalRuntime) {
       throw new Error("Runtime declaration not found");
+    }
+  }
+
+  handleSources(sources: readonly ts.SourceFile[]) {
+    for (const sourceFile of sources) {
+      this.currentSource = sourceFile;
+      this.symbolTable.addScope(sourceFile.fileName);
+
+      this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
+
+      sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
   }
 

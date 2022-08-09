@@ -33,20 +33,12 @@ public:
 
     TS_METHOD TS_RETURN_TYPE("number") bool unboxed() const;
 
-    friend std::ostream& operator<<(std::ostream& os, const Boolean* v);
-
 private:
     BooleanPrivate* _d = nullptr;
 };
 
 TS_CODE("// @ts-ignore\n"
         "declare type boolean = Boolean;\n");
-
-inline std::ostream& operator<<(std::ostream& os, const Boolean* v)
-{
-    os << std::boolalpha << v->unboxed();
-    return os;
-}
 
 namespace std
 {
