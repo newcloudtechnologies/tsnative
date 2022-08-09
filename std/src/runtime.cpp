@@ -145,12 +145,19 @@ int Runtime::init(int ac, char* av[])
     _allocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
 
     initCmdArgs(ac, av);
+    const auto result = register_exit_handlers();
+
+    // Leave runtime to be uninitialized if something is wrong about exit handlers
+    if (result != 0)
+    {
+        return result;
+    }
 
     _isInitialized = true;
 
     LOG_INFO("Runtime initialized");
 
-    return register_exit_handlers();
+    return result;
 }
 
 Diagnostics* Runtime::getDiagnostics()
@@ -167,9 +174,9 @@ void Runtime::destroy()
 
     LOG_INFO("Calling destroy");
 
-    _cmdArgs.clear();
-
     _gcImpl = nullptr;
+
+    _cmdArgs.clear();
     
     _isInitialized = false;
 
