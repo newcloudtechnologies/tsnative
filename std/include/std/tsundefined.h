@@ -18,9 +18,3 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Undefined*)
-{
-    os << "undefined";
-    return os;
-}

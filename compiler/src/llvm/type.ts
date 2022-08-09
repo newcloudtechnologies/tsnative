@@ -156,11 +156,6 @@ export class LLVMType {
     return Boolean(nakedType.isStructTy() && nakedType.name === "object");
   }
 
-  isTSTypeLiteral() {
-    const nakedType = this.unwrapPointer().type;
-    return Boolean(nakedType.isStructTy() && nakedType.name?.includes(this.generator.internalNames.TypeLiteral));
-  }
-
   isPointer() {
     return this.type.isPointerTy();
   }

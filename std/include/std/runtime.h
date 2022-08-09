@@ -55,9 +55,3 @@ private:
     static std::unique_ptr<IGCImpl> _gcImpl;
     static std::unique_ptr<Allocator> _allocator;
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Runtime* runtime)
-{
-    os << runtime->toString();
-    return os;
-}

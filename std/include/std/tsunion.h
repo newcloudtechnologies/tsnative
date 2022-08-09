@@ -40,9 +40,3 @@ public:
 private:
     Object* _value = new Undefined();
 };
-
-inline std::ostream& operator<<(std::ostream& os, const Union* v)
-{
-    os << v->toString();
-    return os;
-}

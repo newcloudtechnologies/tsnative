@@ -1,4 +1,4 @@
-import { Environment, HeapVariableDeclaration, Scope, ScopeValue } from "../../scope";
+import { Environment, HeapVariableDeclaration, IdentifierNotFound, Scope, ScopeValue } from "../../scope";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -55,91 +55,87 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handlePropertyAccessExpression(expression: ts.PropertyAccessExpression, env?: Environment): LLVMValue {
-    const left = expression.expression;
-    let propertyName = expression.name.text;
-
     if (env) {
-      const index = env.getVariableIndex(left.getText() + "." + propertyName);
+      const index = env.getVariableIndex(expression.getText());
       if (index > -1) {
         return this.generator.builder.createSafeExtractValue(env.typed.getValue(), [index]);
       }
     }
 
+    const maybeNamespaceMember = this.tryHandleNamespaceMemberAccess(expression);
+    if (maybeNamespaceMember) {
+      return maybeNamespaceMember;
+    }
+
+    const maybeStaticProperty = this.tryHandleStaticPropertyAccess(expression);
+    if (maybeStaticProperty) {
+      return maybeStaticProperty;
+    }
+
+    return this.handlePropertyAccessGEP(expression, env);
+  }
+
+  private tryHandleNamespaceMemberAccess(expression: ts.PropertyAccessExpression) {
+    const left = expression.expression;
+    const propertyName = expression.name.text;
+
     let scope;
     let identifier = left.getText();
 
-    if (!this.generator.ts.checker.getTypeAtLocation(left).isSymbolless()) {
-      const symbol = this.generator.ts.checker.getTypeAtLocation(left).getSymbol();
-      const valueDeclaration = symbol.valueDeclaration;
-      if (valueDeclaration) {
-        if (valueDeclaration.isInModule()) {
-          if (!valueDeclaration.name) {
-            throw new Error(`Expected declaration name at '${valueDeclaration.getText()}'`);
-          }
-
-          const namespace = valueDeclaration.getNamespace(/*ignore modules = */ true);
-          const declarationName = valueDeclaration.name.getText();
-
-          const fullyQualified = namespace.concat(declarationName, propertyName).join(".");
-
-          const value = this.generator.symbolTable.get(fullyQualified);
-
-          if (value instanceof Scope) {
-            scope = value;
-
-            let parent = expression.parent;
-            while (parent.parent && ts.isPropertyAccessExpression(parent)) {
-              propertyName = parent.name.getText();
-              parent = parent.parent;
-            }
-          } else if (value instanceof LLVMValue) {
-            return value;
-          } else if (value instanceof HeapVariableDeclaration) {
-            return value.allocated;
-          }
-        }
-
-        if (
-          (valueDeclaration.isClass() || valueDeclaration.isInterface()) &&
-          this.hasProperty(valueDeclaration, propertyName)
-        ) {
-          const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
-          identifier = type.mangle();
-        }
+    try {
+      scope = this.generator.symbolTable.get(identifier);
+    } catch (e) {
+      if (!(e instanceof IdentifierNotFound)) {
+        throw e;
       }
     }
 
-    if (!scope) {
-      try {
-        scope = this.generator.symbolTable.get(identifier);
+    if (scope && scope instanceof Scope) {
+      const value = scope.get(propertyName);
 
-        // Ignore empty catch block
-        // tslint:disable-next-line
-      } catch (_) { }
-    }
-
-    while (scope && scope instanceof Scope) {
-      const value: ScopeValue | HeapVariableDeclaration | undefined =
-        scope.get(propertyName) || scope.getStatic(propertyName);
-
-      if (!value) {
-        // @todo: this leads to error postpone in some cases. need some extra checks if can break here
-        break;
-      }
-
-      if (value instanceof HeapVariableDeclaration) {
-        return value.allocated;
-      } else if (value instanceof LLVMValue) {
+      if (value instanceof LLVMValue) {
         return value;
-      } else if (value instanceof Scope) {
-        scope = value;
-        // Consider the only case to get here is a property access chain handling.
-        propertyName = (expression.parent as ts.PropertyAccessExpression).name.getText();
-        continue;
+      } else if (value instanceof HeapVariableDeclaration) {
+        return value.allocated;
       }
     }
 
-    return this.handlePropertyAccessGEP(propertyName, left, env);
+    return;
+  }
+
+  private tryHandleStaticPropertyAccess(expression: ts.PropertyAccessExpression) {
+    const left = expression.expression;
+    const propertyName = expression.name.text;
+
+    let scope;
+    let identifier = left.getText();
+
+    if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(left)) {
+      const symbol = this.generator.ts.checker.getSymbolAtLocation(left);
+      const valueDeclaration = symbol.valueDeclaration || symbol.declarations[0];
+
+      if (valueDeclaration.isClass() && this.hasProperty(valueDeclaration, propertyName)) {
+        const type = this.generator.ts.checker.getTypeOfSymbolAtLocation(symbol, expression);
+        identifier = type.mangle();
+      }
+    }
+
+    try {
+      scope = this.generator.symbolTable.get(identifier);
+
+      // Ignore empty catch block
+      // tslint:disable-next-line
+    } catch (_) { }
+
+    if (scope && scope instanceof Scope) {
+      const value = scope.getStatic(propertyName);
+
+      if (value instanceof LLVMValue) {
+        return value;
+      }
+    }
+
+    return;
   }
 
   private handleElementAccessExpression(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
@@ -196,8 +192,11 @@ export class AccessHandler extends AbstractExpressionHandler {
     return this.generator.builder.createBitCast(element, elementType.getLLVMType());
   }
 
-  private handlePropertyAccessGEP(propertyName: string, expression: ts.Expression, env?: Environment): LLVMValue {
-    let llvmValue = this.generator.handleExpression(expression, env);
+  private handlePropertyAccessGEP(expression: ts.PropertyAccessExpression, env?: Environment): LLVMValue {
+    const left = expression.expression;
+    let propertyName = expression.name.text;
+
+    let llvmValue = this.generator.handleExpression(left, env);
 
     if (!llvmValue.type.isPointer()) {
       throw new Error(`Expected pointer, got '${llvmValue.type}'`);
@@ -205,9 +204,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
     if (!llvmValue.type.isPointerToStruct()) {
       throw new Error(
-        `Expected '${expression.getText()}' to be a pointer to struct, got '${llvmValue.type.toString()}'. Error at '${
-          expression + "." + propertyName
-        }'`
+        `Expected '${left.getText()}' to be a pointer to struct, got '${llvmValue.type.toString()}'. Error at '${expression.getText()}'`
       );
     }
 
@@ -217,7 +214,7 @@ export class AccessHandler extends AbstractExpressionHandler {
 
     let value = this.generator.ts.obj.get(llvmValue, propertyName);
 
-    let type = this.generator.ts.checker.getTypeAtLocation(expression);
+    let type = this.generator.ts.checker.getTypeAtLocation(left);
     if (!type.isSymbolless()) {
       const propertySymbol = type.getProperty(propertyName);
       const propertyDeclaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
@@ -225,13 +222,13 @@ export class AccessHandler extends AbstractExpressionHandler {
 
       type = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
     } else {
-      type = this.generator.ts.checker.getTypeAtLocation(expression.parent);
+      type = this.generator.ts.checker.getTypeAtLocation(left.parent);
     }
 
     let targetLLVMType: LLVMType;
 
     // @todo startsWith?
-    const isThisAccess = expression.getText() === this.generator.internalNames.This;
+    const isThisAccess = left.getText() === this.generator.internalNames.This;
 
     // Check if statement is initialization of 'this' value, e.g.
     // this.v = 22
@@ -239,9 +236,9 @@ export class AccessHandler extends AbstractExpressionHandler {
     // ^^^^^^ expression.parent
     // ^^^^^^^^^^^ expression.parent.parent
     const isInitialization =
-      ts.isBinaryExpression(expression.parent.parent) &&
-      expression.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-      expression.parent.parent.left === expression.parent;
+      ts.isBinaryExpression(left.parent.parent) &&
+      left.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      left.parent.parent.left === left.parent;
 
     if (isThisAccess && isInitialization) {
       targetLLVMType = this.generator.ts.union.getLLVMType();

@@ -209,13 +209,15 @@ export class TSObject {
     return this.generator.builder.createSafeCall(get, [thisUntyped, llvmKey]);
   }
 
-  set(thisValue: LLVMValue, key: LLVMValue, value: LLVMValue) {
+  set(thisValue: LLVMValue, key: string, value: LLVMValue) {
     const set = this.getSetFn();
 
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     const valueUntyped = this.generator.builder.asVoidStar(value);
 
-    return this.generator.builder.createSafeCall(set, [thisUntyped, key, valueUntyped]);
+    const wrappedKey = this.generator.ts.str.create(key);
+
+    return this.generator.builder.createSafeCall(set, [thisUntyped, wrappedKey, valueUntyped]);
   }
 
   getLLVMType() {

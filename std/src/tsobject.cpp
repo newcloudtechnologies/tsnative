@@ -1,13 +1,13 @@
 #include "std/tsobject.h"
 
 #include "std/private/tsmap_p.h"
-#include "std/private/tsobject_os.h"
 #include "std/private/logger.h"
 
 #include "std/tsboolean.h"
 #include "std/tsmap.h"
 #include "std/tsstring.h"
 #include "std/tsarray.h"
+#include "std/tsunion.h"
 
 #include "std/runtime.h"
 #include "std/gc.h"
@@ -176,7 +176,39 @@ void Object::set(const std::string& key, void* value)
 String* Object::toString() const
 {
     std::ostringstream oss;
-    oss << this;
+
+    const auto& keys = _props->orderedKeys();
+
+    static size_t depth = 0;
+    static const int8_t PADDING_WIDTH = 2;
+
+    oss << size_t(this) << ": {\n";
+
+    ++depth;
+
+    for (const auto& key : keys)
+    {
+        oss << std::string(depth * PADDING_WIDTH, ' ') << key << ":";
+
+        bool isParent = key->equals(parentKey)->unboxed();
+        auto maybe = static_cast<const Union*>(_props->get(key));
+        auto obj = maybe->getValue();
+
+        if (isParent)
+        {
+            oss << "<recursive: " << size_t(obj) << ">";
+        }
+        else
+        {
+            oss << obj->toString();
+        }
+
+        oss << "\n";
+    }
+
+    depth--;
+    oss << std::string(depth * PADDING_WIDTH, ' ') + "}";
+
     return new String(oss.str());
 }
 
