@@ -71,6 +71,8 @@ export class SymbolTable {
     this.scopes.push(scope);
     const result = body(scope);
     this.scopes.pop();
+
+    scope.deinitialize();
     return result;
   }
 
