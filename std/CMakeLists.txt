@@ -66,7 +66,6 @@ set(SOURCES
     src/private/default_gc.cpp
     src/private/allocator.cpp
     src/private/memory_diagnostics_storage.cpp
-    src/private/call_stack.cpp
 )
 
 if(ENABLE_LOGS)
@@ -175,7 +174,8 @@ if (BUILD_TEST)
                      test/infrastructure/test_allocator.cpp
                      test/infrastructure/global_test_allocator_fixture.cpp
                      test/gc/treenode_gc_tests.cpp
-                     test/gc/marking_tests.cpp)
+                     test/gc/marking_tests.cpp
+                     test/runtime_tests.cpp)
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 

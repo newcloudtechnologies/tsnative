@@ -81,6 +81,8 @@ export class TSUndefined {
     this.generator.builder.createSafeStore(this.generator.builder.createLoad(allocated), globalUndef);
 
     this.generator.symbolTable.globalScope.set("undefined", globalUndef);
+    this.generator.gc.removeRoot(globalUndef);
+    this.generator.gc.addRoot(thisUntyped);
   }
 
   getLLVMType() {

@@ -91,7 +91,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
             return allocated;
         });
 
-        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(declaration.body);
+        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(declaration.body, this.generator);
 
         const scope = this.generator.symbolTable.currentScope;
 
@@ -129,7 +129,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         FunctionHandler.handleFunctionBody(declaration, fn, this.generator, env);
         LLVMFunction.verify(fn, declaration);
 
-        return this.generator.tsclosure.createClosure(fn, env.untyped, env.variables.length, declaration);
+        return this.generator.tsclosure.createClosure(fn, env.untyped, declaration);
     }
 
     registerClosureForDeclaration(closure: LLVMValue, declaration: Declaration, parentScope: Scope) {

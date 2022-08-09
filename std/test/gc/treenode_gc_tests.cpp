@@ -6,7 +6,6 @@
 
 #include "../infrastructure/global_test_allocator_fixture.h"
 #include "../infrastructure/object_wrappers.h"
-#include "../infrastructure/mocks/mock_call_stack.h"
 
 #include <memory>
 #include <vector>
@@ -22,20 +21,17 @@ struct TreeNodeBase : public Object
         right{r}
     {}
 
-    std::vector<Object*> getChildren() const override
+    void markChildren() override
     {
-        std::vector<Object*> result;
-        if (left)
+        if (left && !left->isMarked())
         {
-            result.push_back(left);
+            left->mark();
         }
 
-        if (right)
+        if (right && !right->isMarked())
         {
-            result.push_back(right);
+            right->mark();
         }
-
-        return result;
     }
 
     char name;
@@ -57,7 +53,7 @@ public:
             _actualAliveObjects.erase(it);
         };
 
-        _gc = std::make_unique<DefaultGC>(_callStack, std::move(gcCallbacks));
+        _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
         TestAllocator::Callbacks allocatorCallbacks;
         allocatorCallbacks.onAllocated = [this] (void* o)
@@ -76,6 +72,11 @@ public:
         _actualAliveObjects.clear();
     }
 
+    void robustCollection()
+    {
+        _gc->collect();
+    }
+
     const std::vector<const Object*>& getActualAliveObjects() const
     {
         return _actualAliveObjects;
@@ -91,114 +92,10 @@ public:
         return *_gc;
     }
 
-    test::MockCallStack& getCallStack()
-    {
-        return _callStack;
-    }
-
-    void initByLocalFrame(const CallStackFrame& currentFrame, 
-                   const CallStackFrame& parentFrame,
-                   std::size_t stackSize)
-    {
-        using namespace ::testing;
-        ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(ReturnRef(currentFrame));
-        ON_CALL(getCallStack(), getParentFrame()).WillByDefault(ReturnRef(parentFrame));
-        ON_CALL(getCallStack(), size()).WillByDefault(Return(stackSize));
-        ON_CALL(getCallStack(), empty()).WillByDefault(Return(stackSize == 0));
-    }
-
-    void initByGlobalFrame(const CallStackFrame& frame)
-    {
-        using namespace ::testing;
-        ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(ReturnRef(frame));
-        ON_CALL(getCallStack(), getParentFrame()).WillByDefault(Throw(std::runtime_error("No parent frame for global")));
-        ON_CALL(getCallStack(), size()).WillByDefault(Return(1));
-        ON_CALL(getCallStack(), empty()).WillByDefault(Return(false));
-    }
-
-    void initByNoFrame()
-    {
-        using namespace ::testing;
-        static const auto e = std::runtime_error("No parent frame for global");
-        ON_CALL(getCallStack(), getCurrentFrame()).WillByDefault(Throw(e));
-        ON_CALL(getCallStack(), getFrameAtPosition(_)).WillByDefault(Throw(e));
-        ON_CALL(getCallStack(), getParentFrame()).WillByDefault(Throw(e));
-        ON_CALL(getCallStack(), size()).WillByDefault(Return(0u));
-        ON_CALL(getCallStack(), empty()).WillByDefault(Return(true));
-    }
-
 private:
     std::vector<const Object*> _actualAliveObjects;
     std::unique_ptr<DefaultGC> _gc;
-
-    ::testing::NiceMock<test::MockCallStack> _callStack;
 };
-
-TEST_F(TreeNodeGCTestFixture, simpleLocalAllocation)
-{
-    const CallStackFrame blockFrame{1u};
-    const CallStackFrame globalFrame{0u};
-
-    auto& gc = getGC();
-
-    initByNoFrame();
-
-    gc.onScopeOpened(globalFrame.scopeHandle);
-    initByGlobalFrame(globalFrame);
-    {
-        gc.onScopeOpened(blockFrame.scopeHandle);
-        initByLocalFrame(blockFrame, globalFrame, 2u);
-
-        auto A = new TreeNode('A');
-
-        const auto actual = getActualAliveObjects();
-        const std::vector<const Object*> expectedAliveObjects{A};
-        EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-
-        gc.beforeScopeClosed(blockFrame.scopeHandle);
-    }
-    initByGlobalFrame(globalFrame);
-
-    EXPECT_EQ(1u, gc.getAliveObjectsCount());
-
-    gc.collect();
-
-    EXPECT_EQ(0u, gc.getAliveObjectsCount());
-
-    gc.beforeScopeClosed(globalFrame.scopeHandle);
-    initByNoFrame();
-
-    EXPECT_EQ(0u, gc.getAliveObjectsCount());
-}
-
-TEST_F(TreeNodeGCTestFixture, localAllocationInGlobalScope)
-{
-    const CallStackFrame globalFrame{0u};
-    // No parent scope, current one is global
-    
-    auto& gc = getGC();
-
-    EXPECT_EQ(0u, gc.getAliveObjectsCount());
-    initByNoFrame();
-
-    gc.onScopeOpened(globalFrame.scopeHandle);
-    initByGlobalFrame(globalFrame);
-
-    auto A = new TreeNode('A');
-
-    const auto actual = getActualAliveObjects();
-    const std::vector<const Object*> expectedAliveObjects{A};
-    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-
-    gc.beforeScopeClosed(globalFrame.scopeHandle);
-    initByNoFrame();
-
-    EXPECT_EQ(1u, gc.getAliveObjectsCount());
-
-    gc.collect();
-
-    EXPECT_EQ(0u, gc.getAliveObjectsCount());
-}
 
 // Init:
 // A -> B -> C
@@ -206,100 +103,39 @@ TEST_F(TreeNodeGCTestFixture, localAllocationInGlobalScope)
 // A X-> B -> C
 // Result:
 // A
-TEST_F(TreeNodeGCTestFixture, migrateChildrenIntoParentScope)
+TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
 {
-    const CallStackFrame functionFrame{2u};
-    const CallStackFrame parentFrame{1u};
-    const CallStackFrame globalFrame{0u};
-
-    auto& gc = getGC();
-
-    std::vector<const Object*> expectedAliveObjects{};
-
-    const auto garbageMaker = [&]
-    (TreeNodeBase*& suspensionPoint)
+    const auto garbageMaker = [this](TreeNodeBase*& suspensionPoint)
     {
-        gc.onScopeOpened(functionFrame.scopeHandle);
-        initByLocalFrame(functionFrame, parentFrame, 3u);
-
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        expectedAliveObjects.push_back(B);
-        expectedAliveObjects.push_back(C);
+        getGC().addRoot(B);
+        getGC().addRoot(C);
 
         B->left = C;
         suspensionPoint = B;
 
-        gc.beforeScopeClosed(functionFrame.scopeHandle);
+        getGC().removeRoot(B);
+        getGC().removeRoot(C);
     };
 
-    initByNoFrame();
+    auto A = new TreeNode{'A'};
+    getGC().addRoot(A);
 
-    gc.onScopeOpened(globalFrame.scopeHandle);
-    initByGlobalFrame(globalFrame);
-    {
-        auto A = new TreeNode{'A'};
-        expectedAliveObjects.push_back(A);
-        
-        {
-            gc.onScopeOpened(parentFrame.scopeHandle);
-            initByLocalFrame(parentFrame, globalFrame, 2u);
+    garbageMaker(A->left);
 
-            garbageMaker(A->left);
-            initByLocalFrame(parentFrame, globalFrame, 2u);
+    A->left = nullptr; // Loose garbage
 
-            {
-                const auto actual = getActualAliveObjects();
-                EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-            }
+    EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
-            gc.collect();
+    robustCollection();
 
-            {
-                const auto actual = getActualAliveObjects();
-                EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-            }
+    EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
-            A->left = nullptr; // Make garbage unreachible
-
-            // Garbage is alive for now
-            {
-                const auto actual = getActualAliveObjects();
-                EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-            }
-
-            gc.beforeScopeClosed(parentFrame.scopeHandle);
-        }
-        initByGlobalFrame(globalFrame);
-
-        // A, B, C will be alive because B and C were moved after their former parent A into global scope
-        gc.collect();
-
-        const auto actual = getActualAliveObjects();
-        EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-    }
-    // Closing global scope
-    gc.beforeScopeClosed(globalFrame.scopeHandle);
-    initByNoFrame();
-
-    gc.collect();
-    EXPECT_EQ(0u, gc.getAliveObjectsCount());
-}
-/*
-TEST_F(TreeNodeGCTestFixture, allocationWithoutVariable)
-{
-    getGC().onScopeOpened(0);
-
-    EXPECT_EQ(0u, getActualAliveObjects().size());
-
-    new TreeNode('A')->name = 'B';
-
-    EXPECT_EQ(1u, getActualAliveObjects().size());
-
-    getGC().onScopeClosed(0);
-
-    EXPECT_EQ(0u, getActualAliveObjects().size());
+    const auto actual = getActualAliveObjects();
+    const std::vector<const Object*> expectedAliveObjects{A};
+    EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
 }
 
 // Init:
@@ -312,18 +148,20 @@ TEST_F(TreeNodeGCTestFixture, allocationWithoutVariable)
 // A
 TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
 {
-    getGC().onScopeOpened(0);
-
     const auto garbageMaker = [this]
     {
-        getGC().onScopeOpened(1);
         auto A = new TreeNode{'A'};
         auto B = new TreeNode{'B'};
 
+        getGC().addRoot(A);
+        getGC().addRoot(B);
+
         A->left = B;
         B->left = A;
+        
+        // Do not remove A since it is a return value
+        getGC().removeRoot(B);
 
-        getGC().onScopeClosed(1);
         return A;
     };
 
@@ -333,18 +171,15 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
     const auto actual = getActualAliveObjects();
     const std::vector<const Object*> expectedAliveObjects{A};
     EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
-
-    getGC().onScopeClosed(0);
 }
 
-/*
 // Init:
 // A -> B
 // B -> A
@@ -365,7 +200,7 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleNoBreak)
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -407,7 +242,7 @@ TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
 
     EXPECT_EQ(4u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -478,7 +313,7 @@ TEST_F(TreeNodeGCTestFixture, detectDeepGarbage)
 
     EXPECT_EQ(4u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -523,7 +358,7 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
 
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
@@ -577,7 +412,7 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
 
     EXPECT_EQ(6u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(0u, getGC().getAliveObjectsCount());
 
@@ -611,7 +446,7 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 
     A->left = nullptr;
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
@@ -642,7 +477,7 @@ TEST_F(TreeNodeGCTestFixture, lostSelfCycleNode)
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(0u, getGC().getAliveObjectsCount());
 
@@ -698,7 +533,7 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
 
     AA->left->left = nullptr; // B X-> C
 
-    getGC().collect();
+    robustCollection();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -706,5 +541,5 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
     const std::vector<const Object*> expectedAliveObjects{AA, BB};
     EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
 }
-*/
+
 }

@@ -11,7 +11,6 @@
 
 import { Scope, ScopeValue } from "../scope";
 import { LLVMGenerator } from "../generator/generator"
-import { Runtime } from "../tsbuiltins/runtime";
 
 export class SymbolTable {
   private readonly scopes: Scope[];
@@ -19,8 +18,7 @@ export class SymbolTable {
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
-    this.scopes = [new Scope("root", "root", generator)];
-    this.generator.runtime.callOpenScope(this.currentScope.handle);
+    this.scopes = [new Scope("root", "root", this.generator.gc)];
   }
 
   getScope(name: string) {
@@ -56,7 +54,7 @@ export class SymbolTable {
   }
 
   addScope(name: string): void {
-    const scope = new Scope(name, name, this.generator);
+    const scope = new Scope(name, name, this.generator.gc);
     this.scopes.push(scope);
   }
 
@@ -69,14 +67,10 @@ export class SymbolTable {
   }
 
   withLocalScope<R>(body: (scope: Scope) => R, parentScope?: Scope, name?: string): R {
-    const scope = new Scope(name, name, this.generator, false, parentScope);
+    const scope = new Scope(name, name, this.generator.gc, false, parentScope);
     this.scopes.push(scope);
-    
-    this.generator.runtime.callOpenScope(scope.handle);
     const result = body(scope);
-    this.generator.runtime.callCloseScope(scope.handle);
     this.scopes.pop();
-
     return result;
   }
 

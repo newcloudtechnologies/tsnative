@@ -39,13 +39,10 @@ Boolean* Union::toBool() const
     return _value->toBool();
 }
 
-std::vector<Object*> Union::getChildren() const
+void Union::markChildren()
 {
-    std::vector<Object*> result;
-    if (_value)
+    if (_value && !_value->isMarked())
     {
-        result.push_back(_value);
+        _value->mark();
     }
-
-    return result;
 }

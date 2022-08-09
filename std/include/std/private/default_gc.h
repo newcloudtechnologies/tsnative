@@ -4,14 +4,12 @@
 
 #include "std/igc_impl.h"
 
-#include <unordered_map>
 #include <unordered_set>
 #include <functional>
-#include <stack>
+#include <mutex>
 
 class Object;
 class IMemoryDiagnosticsImpl;
-class ICallStack;
 
 class DefaultGC : public IGCImpl
 {
@@ -22,34 +20,30 @@ public:
         std::function<void(const void*)> afterDeleted = [](const void*){};
     };
 
-    DefaultGC(const ICallStack& callStack, Callbacks&& callbacks);
+    DefaultGC(Callbacks&& callbacks);
     ~DefaultGC();
     
     void addObject(Object* o);
 
     std::size_t getAliveObjectsCount() const override;
     
-    void onScopeOpened(ScopeHandle handle);
-    void beforeScopeClosed(ScopeHandle handle);
+    void addRoot(Object* object) override;
+    void removeRoot(Object* object) override;
 
     void collect() override;
 
     void untrackIfObject(void* mem);
 
 private:
-    void collectEverything();
-    
-    void moveSideEffectAllocations(ScopeHandle from);
-    void move(ScopeHandle from, ScopeHandle to, Object* what);
-    void sweep(ScopeHandle handle);
-    
+    void mark();
+    void sweep();
+
 private:
-    using ScopeObjects = std::unordered_set<Object*>;
-    std::unordered_map<ScopeHandle, ScopeObjects> _scopesVsObjects;
-    std::unordered_map<Object*, ScopeHandle> _objectsVsScopes;
+    std::mutex _rootsMutex;
+    std::mutex _heapMutex;
 
-    std::unordered_set<ScopeHandle> _closedScopes;
-
-    const ICallStack& _callStack;
+    // TODO Use absl::uset
+    std::unordered_set<Object*> _heap;
+    std::unordered_set<Object*> _roots;
     Callbacks _callbacks;
 };

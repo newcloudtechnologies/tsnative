@@ -1,4 +1,4 @@
-/*#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include "../infrastructure/global_test_allocator_fixture.h"
@@ -235,4 +235,3 @@ TEST_F(MarkingTestFixture, map)
 }
 
 } // anonymous namespace
-*/
