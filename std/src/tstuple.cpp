@@ -43,19 +43,14 @@ String* Tuple::toString() const
     return new String(oss.str());
 }
 
-std::vector<Object*> Tuple::getChildren() const
+void Tuple::markChildren()
 {
-    std::vector<Object*> result;
-    result.reserve(_d->length());
-
-    for (int i = 0 ; i < _d->length() ; ++i)
+    for (int i = 0 ; i <_d->length() ; ++i)
     {
         auto* o = static_cast<Object*>(_d->operator[](i));
-        if (o)
+        if (o && !o->isMarked())
         {
-            result.push_back(o);
+            o->mark();
         }
     }
-
-    return result;
 }

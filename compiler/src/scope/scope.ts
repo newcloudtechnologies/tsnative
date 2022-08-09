@@ -15,11 +15,11 @@ import { GenericTypeMapper, LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { flatten } from "lodash";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { LLVMConstantFP, LLVMConstant, LLVMValue } from "../llvm/value";
+import { LLVMConstant, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { Signature } from "../ts/signature";
 import { LLVMFunction } from "../llvm/function";
-import { Runtime } from "../tsbuiltins/runtime";
+import { GC } from "../tsbuiltins/gc";
 
 export class Environment {
   private readonly pVariables: string[];
@@ -237,7 +237,7 @@ export function addClassScope(
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-  const scope = new Scope(name, mangledTypename, generator, false, parentScope, { declaration, llvmType, tsType });
+  const scope = new Scope(name, mangledTypename, generator.gc, false, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
 }
@@ -517,47 +517,73 @@ export interface ThisData {
 
 export class Scope {
   map: Map<string, ScopeValue>;
+  private localVariables: Set<LLVMValue>;
 
   readonly name: string | undefined;
-  readonly mangledName: string | undefined;;
+  readonly mangledName: string | undefined;
   readonly thisData: ThisData | undefined;
   readonly parent: Scope | undefined;
   typeMapper: GenericTypeMapper;
 
   readonly isNamespace: boolean;
-  private readonly uniqueHandle: LLVMValue;
-  private static handleGenerator = 0;
-  private readonly generator: LLVMGenerator;
+
+  private gc : GC;
 
   constructor(name: string | undefined, 
               mangledName: string | undefined, 
-              generator: LLVMGenerator,
+              gc: GC,
               isNamespace: boolean = false, 
               parent?: Scope, 
               data?: ThisData) {
+    this.gc = gc;
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.mangledName = mangledName;
     this.parent = parent;
     this.thisData = data;
-    this.generator = generator;
+    this.localVariables = new Set<LLVMValue>();
 
     this.typeMapper = new GenericTypeMapper();
     if (parent && parent.typeMapper) {
       this.typeMapper.setParent(parent.typeMapper);
     }
 
-    this.uniqueHandle = LLVMConstantFP.get(this.generator, Scope.handleGenerator);
-    ++Scope.handleGenerator;
-
     this.isNamespace = isNamespace;
   }
 
-  get handle() {
-    return this.uniqueHandle;
+  private addRoot(value: ScopeValue) {
+    if (value instanceof LLVMValue) {
+      const v = value as LLVMValue;
+      this.gc.addRoot(v);
+    }
+    else if (value instanceof HeapVariableDeclaration) {
+      const heapValue = value as HeapVariableDeclaration;
+      this.gc.addRoot(heapValue.allocated);
+    }
   }
 
-  initializeVariablesAndFunctionDeclarations(root: ts.Node) {
+  private removeRoot(value: ScopeValue) {
+    if (value instanceof LLVMValue) {
+      const v = value as LLVMValue;
+      this.gc.removeRoot(v);
+    }
+    else if (value instanceof HeapVariableDeclaration) {
+      const heapValue = value as HeapVariableDeclaration;
+      this.gc.removeRoot(heapValue.allocated);
+    }
+  }
+
+  private removeLocalRoots() {
+    for (const localVar of this.localVariables) {
+      this.removeRoot(localVar);
+    }
+  }
+
+  deinitialize() {
+    this.removeLocalRoots();
+  }
+
+  initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
     const initializeFrom = (node: ts.Node) => {
       // ignore nested blocks and modules/namespaces
       if (ts.isBlock(node) || ts.isModuleBlock(node)) {
@@ -585,16 +611,16 @@ export class Scope {
         return;
       }
 
-      const tsType = this.generator.ts.checker.getTypeAtLocation(node);
+      const tsType = generator.ts.checker.getTypeAtLocation(node);
       if (!tsType.isSupported()) {
         // mkrv @todo resolve generic type
         return;
       }
 
       const llvmType = tsType.getLLVMType();
-      const allocated = this.generator.gc.allocateObject(llvmType.getPointerElementType());
+      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
       // Inplace allocated is same as allocated for now
-      const inplaceAllocated = this.generator.ts.obj.createInplace(allocated, undefined);
+      const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
 
       const name = node.name.getText();
 
@@ -606,6 +632,12 @@ export class Scope {
     }
 
     root.forEachChild(initializeFrom);
+  }
+
+  // Shit code, should be private.
+  // It is used to add cloned initializers into local variables to remove roots after all
+  addLocalVariable(variable: LLVMValue) {
+    this.localVariables.add(variable);
   }
 
   get(identifier: string): ScopeValue | undefined {
@@ -660,6 +692,7 @@ export class Scope {
 
   set(identifier: string, value: ScopeValue) {
     if (!this.get(identifier)) {
+      this.addRoot(value);
       return this.map.set(identifier, value);
     }
 
@@ -669,6 +702,8 @@ export class Scope {
   overwrite(identifier: string, newValue: ScopeValue) {
     const oldValue = this.get(identifier);
     if (oldValue) {
+      this.removeRoot(oldValue);
+      this.addRoot(newValue);
       return this.map.set(identifier, newValue);
     }
 
@@ -678,6 +713,8 @@ export class Scope {
   overwriteThroughParentChain(identifier: string, newValue: ScopeValue) {
     const oldValue = this.get(identifier);
     if (oldValue) {
+      this.removeRoot(oldValue);
+      this.addRoot(newValue);
       this.map.set(identifier, newValue);
 
       return;
@@ -690,6 +727,10 @@ export class Scope {
   }
 
   remove(identifier: string) {
+    const scopedValue = this.get(identifier);
+    if (scopedValue) {
+      this.removeRoot(scopedValue);
+    }
     this.map.delete(identifier);
   }
 

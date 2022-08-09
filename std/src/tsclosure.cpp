@@ -5,10 +5,9 @@
 
 #include "std/private/logger.h"
 
-TSClosure::TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals)
+TSClosure::TSClosure(void* fn, void** env, Number* numArgs, Number* optionals)
     : fn(fn)
     , env(env)
-    , envLength(envLength)
     , numArgs(numArgs)
     , optionals(static_cast<int64_t>(optionals->unboxed()))
 {
@@ -43,21 +42,20 @@ String* TSClosure::toString() const
     return new String("[Function]");
 }
 
-std::vector<Object*> TSClosure::getChildren() const
+void TSClosure::markChildren()
 {
-    const auto envLen = static_cast<std::size_t>(this->envLength->unboxed());
-
-    std::vector<Object*> result{numArgs, envLength};
-    result.reserve(envLen + 2);
-
-    for (std::size_t i = 0 ; i < envLen ; ++i)
+    if (numArgs && !numArgs->isMarked())
     {
-        auto* o = static_cast<Object*>(env[i]);
-        if (o)
-        {
-            result.push_back(o);
-        }
+        numArgs->mark();
     }
 
-    return result;
+    const auto argsCount = static_cast<std::size_t>(this->numArgs->unboxed());
+    for (std::size_t i = 0 ; i < argsCount ; ++i)
+    {
+        auto* o = static_cast<Object*>(env[i]);
+        if (o && !o->isMarked())
+        {
+            o->mark();
+        }
+    }
 }

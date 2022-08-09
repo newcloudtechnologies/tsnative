@@ -412,7 +412,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const expressionDeclaration = Declaration.create(expression, this.generator);
     const scope = expressionDeclaration.getScope(undefined);
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body);
+    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
 
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
@@ -966,6 +966,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       if (value.isTSPrimitivePtr()) {
         // mimics 'value' semantic for primitives
         value = value.clone();
+        scope.addLocalVariable(value);
       }
 
       const parameter = parameters[index];
@@ -1064,6 +1065,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         if (value.isTSPrimitivePtr()) {
           // mimics 'value' semantic for primitives
           value = value.clone();
+          scope.addLocalVariable(value);
         }
 
         this.generator.builder.createSafeCall(push, [
@@ -1078,7 +1080,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private makeClosure(fn: LLVMValue, functionDeclaration: Declaration, env: Environment) {
-    return this.generator.tsclosure.createClosure(fn, env.untyped, env.variables.length, functionDeclaration);
+    return this.generator.tsclosure.createClosure(fn, env.untyped, functionDeclaration);
   }
 
   private handleNewExpression(expression: ts.NewExpression, outerEnv?: Environment): LLVMValue {
@@ -1171,14 +1173,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = constructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
-        parentScope.initializeVariablesAndFunctionDeclarations(body);
+        parentScope.initializeVariablesAndFunctionDeclarations(body, this.generator);
         environmentVariables.push(
           ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, parentScope, outerEnv)
         );
       }
     }
 
-    parentScope.initializeVariablesAndFunctionDeclarations(expression);
+    parentScope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
     environmentVariables.push(...valueDeclaration.environmentVariables(expression, parentScope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
@@ -1398,7 +1400,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return nullArg;
     });
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body);
+    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
 
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
@@ -1731,7 +1733,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator
         );
 
-        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body);
+        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body, this.generator);
 
         const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
           signature,
@@ -1824,7 +1826,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
         if (expressionBody) this.generator.builder.functionMetaEntry.set(expressionBody, { needUnwind: true });
       }
     }
-
     return this.generator.builder.createSafeCall(callee, args);
   }
 }

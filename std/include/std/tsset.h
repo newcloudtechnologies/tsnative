@@ -52,7 +52,7 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    std::vector<Object*> getChildren() const override;
+    void markChildren() override;
 
 private:
     SetPrivate<T>* _d = nullptr;
@@ -159,23 +159,19 @@ String* Set<T>::toString() const
 }
 
 template <typename T>
-std::vector<Object*> Set<T>::getChildren() const
+void Set<T>::markChildren()
 {
-    std::vector<Object*> result;
-    result.reserve(_d->size());
-
-    const auto callable = [&result](T& entry)
+    LOG_INFO("Calling set::markChildren");
+    const auto callable = [](T& entry)
     {
         auto* object = static_cast<Object*>(entry);
-        if (object)
+        if (object && !object->isMarked())
         {
-            result.push_back(object);
+            object->mark();
         }
     };
 
     _d->forEach(callable);
-
-    return result;
 }
 
 template <typename U>

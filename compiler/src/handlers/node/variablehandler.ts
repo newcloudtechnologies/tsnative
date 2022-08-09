@@ -66,6 +66,7 @@ export class VariableHandler extends AbstractNodeHandler {
     if (initializer.isTSPrimitivePtr()) {
       // mimics 'value' semantic for primitives
       initializer = initializer.clone();
+      parentScope.addLocalVariable(initializer);
 
       // convert c++ enumerator values to ts' number
       if (type.isEnum() && initializer.type.isIntegerType()) {
@@ -99,10 +100,6 @@ export class VariableHandler extends AbstractNodeHandler {
       const value = this.generator.builder.createLoad(valuePtr);
 
       value.makeAssignment(initializer);
-    }
-
-    if (declaration.initializer && ts.isCallExpression(declaration.initializer)) {
-      this.generator.runtime.gc.collect();
     }
 
     const dbg = this.generator.getDebugInfo();

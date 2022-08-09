@@ -32,7 +32,7 @@ public:
 
     bool hasValue();
 
-    std::vector<Object*> getChildren() const override;
+    void markChildren() override;
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;

@@ -80,6 +80,8 @@ export class TSNull {
     this.generator.builder.createSafeStore(this.generator.builder.createLoad(allocated), globalNull);
 
     this.generator.symbolTable.globalScope.set("null", globalNull);
+    this.generator.gc.removeRoot(globalNull);
+    this.generator.gc.addRoot(thisUntyped);
   }
 
   getLLVMType() {

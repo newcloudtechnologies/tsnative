@@ -9,7 +9,6 @@
 #include "std/private/default_gc.h"
 #include "std/private/allocator.h"
 #include "std/private/memory_diagnostics_storage.h"
-#include "std/private/call_stack.h"
 #include "std/private/logger.h"
 
 #include <cstdlib>
@@ -19,7 +18,6 @@ std::vector<std::string> Runtime::_cmdArgs{};
 std::unique_ptr<IGCImpl> Runtime::_gcImpl{nullptr};
 std::unique_ptr<Allocator> Runtime::_allocator{nullptr};
 std::unique_ptr<MemoryDiagnosticsStorage> Runtime::_memoryDiagnosticsStorage{nullptr};
-std::unique_ptr<ICallStack> Runtime::_callStack{nullptr};
 
 namespace 
 {
@@ -116,21 +114,6 @@ GC* Runtime::getGC()
     return new GC{_gcImpl.get(), _allocator.get()};
 }
 
-void Runtime::openScope(double handle)
-{
-    checkInitialization();
-
-    const auto h = static_cast<ScopeHandle>(handle);
-    CallStackFrame frame{h};
-    _callStack->push(std::move(frame));
-}
-
-void Runtime::closeScope()
-{
-    checkInitialization();
-    _callStack->pop();
-}
-
 int Runtime::init(int ac, char* av[])
 {
     if (_isInitialized) 
@@ -138,28 +121,14 @@ int Runtime::init(int ac, char* av[])
         throw std::runtime_error("Runtime was already initialized");
     }
 
-    auto callStack = std::make_unique<CallStack>();
     _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
-    
+
     DefaultGC::Callbacks gcCallbacks;
     gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o) 
     { 
         memStorage->onDeleted(o);
     };
-    auto defaultGC = std::make_unique<DefaultGC>(*callStack, std::move(gcCallbacks));
-
-    CallStack::Callbacks callStackCallbacks;
-    callStackCallbacks.onFrameAdded = [gc = defaultGC.get()] (const CallStackFrame& newFrame)
-    {
-        gc->onScopeOpened(newFrame.scopeHandle);
-    };
-
-    callStackCallbacks.beforeFrameRemoved = [gc = defaultGC.get()] (const CallStackFrame& frame)
-    {
-        gc->beforeScopeClosed(frame.scopeHandle);
-    };
-    callStack->registerCallbacks(std::move(callStackCallbacks));
-    _callStack = std::move(callStack);
+    auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
     Allocator::Callbacks allocatorCallbacks;
     allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()] (Object* o)
@@ -177,17 +146,11 @@ int Runtime::init(int ac, char* av[])
 
     initCmdArgs(ac, av);
 
-    const auto result = register_exit_handlers();
-    if (result != 0)
-    {
-        return result;
-    }
-
     _isInitialized = true;
 
     LOG_INFO("Runtime initialized");
 
-    return result;
+    return register_exit_handlers();
 }
 
 Diagnostics* Runtime::getDiagnostics()
@@ -204,9 +167,10 @@ void Runtime::destroy()
 
     LOG_INFO("Calling destroy");
 
-    _gcImpl = nullptr;
-    _callStack = nullptr;
     _cmdArgs.clear();
+
+    _gcImpl = nullptr;
+    
     _isInitialized = false;
 
     LOG_INFO("Runtime destroy finished");

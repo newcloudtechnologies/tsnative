@@ -12,7 +12,6 @@ TS_CODE("import { Diagnostics } from './diagnostics' \n");
 
 class GC;
 class Diagnostics;
-class ICallStack;
 
 template<typename T>
 class Array;
@@ -40,13 +39,6 @@ public:
     // Recursion is caused by the inheritance GC : Object
     static void* allocateObject(std::size_t n);
 
-    static TS_METHOD TS_SIGNATURE("openScope(handle: any): void") 
-    void openScope(double handle);
-    
-    // Closes last opened scope
-    static TS_METHOD TS_SIGNATURE("closeScope(): void") 
-    void closeScope();
-
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
@@ -62,7 +54,6 @@ private:
     static std::unique_ptr<MemoryDiagnosticsStorage> _memoryDiagnosticsStorage;
     static std::unique_ptr<IGCImpl> _gcImpl;
     static std::unique_ptr<Allocator> _allocator;
-    static std::unique_ptr<ICallStack> _callStack;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Runtime* runtime)
