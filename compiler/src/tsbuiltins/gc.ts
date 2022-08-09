@@ -11,16 +11,11 @@ export class GC {
     private readonly allocateObjectFn: LLVMValue;
     private readonly deallocateFn: LLVMValue;
     private readonly generator: LLVMGenerator;
-    private readonly gcType: LLVMType;
     private readonly runtime: Runtime;
 
     constructor(declaration: Declaration, generator: LLVMGenerator, runtime: Runtime) {
         this.generator = generator;
         this.runtime = runtime;
-
-        const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-        this.gcType = thisType.getLLVMType();
-
         this.allocateFn = this.findAllocateFunction(declaration, "allocate");
         this.allocateObjectFn = this.findAllocateFunction(declaration, "allocateObject");
         this.deallocateFn = this.findDeallocateFunction(declaration, "deallocate");
@@ -35,14 +30,12 @@ export class GC {
     }
 
     deallocate(mem: LLVMValue) {
-        const gcAddress = this.runtime.callGetGC();
-        const castedGCAddress = this.generator.builder.createBitCast(gcAddress, this.gcType);
-
+        const gcAddress = this.runtime.getGCAddress();
         const voidStarMem = this.generator.builder.asVoidStar(mem);
 
         return this.generator.builder.createSafeCall(this.deallocateFn, 
         [
-            castedGCAddress,
+            gcAddress,
             voidStarMem
         ]);
     }
@@ -52,12 +45,11 @@ export class GC {
             throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
         }
 
-        const gcAddress = this.runtime.callGetGC();
-        const castedGCAddress = this.generator.builder.createBitCast(gcAddress, this.gcType);
+        const gcAddress = this.runtime.getGCAddress();
         const size = type.getTypeSize();
         const returnValue = this.generator.builder.createSafeCall(callable, 
         [
-            castedGCAddress,
+            gcAddress,
             LLVMConstantFP.get(this.generator, size || 1),
         ]);
 
