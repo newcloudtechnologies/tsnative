@@ -21,7 +21,7 @@ TS_CODE("// @ts-ignore\n"
 class TS_EXPORT TS_DECLARE TS_IGNORE TSClosure : public Object
 {
 public:
-    TS_METHOD TSClosure(void* fn, void** env, Number* numArgs, Number* optionals);
+    TS_METHOD TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals);
     // this class is not an owner of passed ptrs, so use default dtor.
     // @todo: should ptrs be untracked here?
     // TODO Env should be deleted by the destructor
@@ -44,10 +44,11 @@ public:
     void markChildren() override;
 
 private:
-    void* fn = nullptr;
-    void** env = nullptr;
-    Number* numArgs = nullptr;
-    int64_t optionals = 0;
+    void* _fn = nullptr;
+    void** _env = nullptr;
+    Number* _envLength = nullptr;
+    Number* _numArgs = nullptr;
+    int64_t _optionals = 0;
 };
 
 template <typename T>
@@ -55,14 +56,14 @@ void TSClosure::setEnvironmentElement(T value, int index)
 {
     static_assert(std::is_pointer<T>::value, "Expected value to be of pointer type");
 
-    if ((this->optionals & (1 << index)) != 0)
+    if ((this->_optionals & (1 << index)) != 0)
     {
-        Union* optional = static_cast<Union*>(env[index]);
+        Union* optional = static_cast<Union*>(_env[index]);
         optional->setValue(static_cast<Object*>(value));
         return;
     }
 
-    env[index] = value;
+    _env[index] = value;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const TSClosure* cl)

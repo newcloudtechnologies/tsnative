@@ -5,11 +5,12 @@
 
 #include "std/private/logger.h"
 
-TSClosure::TSClosure(void* fn, void** env, Number* numArgs, Number* optionals)
-    : fn(fn)
-    , env(env)
-    , numArgs(numArgs)
-    , optionals(static_cast<int64_t>(optionals->unboxed()))
+TSClosure::TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals)
+    : _fn(fn)
+    , _env(env)
+    , _envLength(envLength)
+    , _numArgs(numArgs)
+    , _optionals(static_cast<int64_t>(optionals->unboxed()))
 {
     LOG_ADDRESS("Calling closure ctor ", this);
     LOG_ADDRESS("Env address: ", env);
@@ -19,17 +20,17 @@ TSClosure::TSClosure(void* fn, void** env, Number* numArgs, Number* optionals)
 
 void** TSClosure::getEnvironment() const
 {
-    return env;
+    return _env;
 }
 
 Number* TSClosure::getNumArgs() const
 {
-    return numArgs;
+    return _numArgs;
 }
 
 void* TSClosure::operator()() const
 {
-    return reinterpret_cast<void* (*)(void**)>(fn)(env);
+    return reinterpret_cast<void* (*)(void**)>(_fn)(_env);
 }
 
 void* TSClosure::call() const
@@ -44,15 +45,20 @@ String* TSClosure::toString() const
 
 void TSClosure::markChildren()
 {
-    if (numArgs && !numArgs->isMarked())
+    if (_numArgs && !_numArgs->isMarked())
     {
-        numArgs->mark();
+        _numArgs->mark();
     }
 
-    const auto argsCount = static_cast<std::size_t>(this->numArgs->unboxed());
+    if (_envLength && !_envLength->isMarked())
+    {
+        _envLength->mark();
+    }
+
+    const auto argsCount = static_cast<std::size_t>(_envLength->unboxed());
     for (std::size_t i = 0 ; i < argsCount ; ++i)
     {
-        auto* o = static_cast<Object*>(env[i]);
+        auto* o = static_cast<Object*>(_env[i]);
         if (o && !o->isMarked())
         {
             o->mark();
