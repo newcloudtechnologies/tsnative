@@ -160,14 +160,15 @@ TEST_F(MarkingTestFixture, closure)
 {
     void* env[] = {new test::Object(), new test::Object()}; // should be marked
 
-    auto* numArgs = new test::Number(2); // should be marked
+    auto* envLength = new test::Number(2.f); // should be marked
+    auto* numArgs = new test::Number(0.f); // should be marked
     ::Number optionals(0.f); // should NOT be marked
 
     void* closureBodyVoidStar = (void*)(&closureBody);
-    auto closure = new test::Closure(closureBodyVoidStar, env, numArgs, &optionals);
+    auto closure = new test::Closure(closureBodyVoidStar, env, envLength, numArgs, &optionals);
 
     const auto& allObjects = getActualAllocatedObjects();
-    EXPECT_EQ(4u, allObjects.size());
+    EXPECT_EQ(5u, allObjects.size());
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
     closure->mark();
