@@ -1,16 +1,17 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
-import { LLVMValue } from "../llvm/value";
+import { LLVMValue, LLVMGlobalVariable, LLVMConstant } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { LLVMType } from "../llvm/type";
 import { GC } from "../tsbuiltins/gc";
 import * as ts from "typescript";
-import { BuiltinBoolean } from "../tsbuiltins/builtins"
 
 const stdlib = require("std/constants");
 
 export class Runtime {
     private readonly generator: LLVMGenerator;
+    private readonly gcKey: string;
+
     private garbageCollector: GC | undefined;
 
     private gcType : LLVMType;
@@ -18,21 +19,33 @@ export class Runtime {
 
     constructor(declaration: Declaration, generator: LLVMGenerator) {
       this.generator = generator;
+      this.gcKey = "global_gc";
 
       this.getGCFn = this.findGetGC(declaration);
       const gcDeclaration = this.getGCDeclaration();
       this.gcType = this.generator.ts.checker.getTypeAtLocation(gcDeclaration.unwrapped).getLLVMType();
 
       this.garbageCollector = new GC(gcDeclaration, this.generator, this);
+
+      const nullValue = LLVMConstant.createNullValue(this.gcType, this.generator);
+      const globalGC = LLVMGlobalVariable.make(this.generator, this.gcType, false, nullValue, "gc_constant");
+      const gcAddress = this.callGetGC();
+      this.generator.builder.createSafeStore(gcAddress, globalGC);
+      this.generator.symbolTable.globalScope.set(this.gcKey, globalGC);
     }
 
     get gc() : GC {
         return this.garbageCollector!;
     }
 
-    callGetGC() : LLVMValue {
-      const gcAddress = this.generator.builder.createSafeCall(this.getGCFn, []);
-      return this.generator.builder.createBitCast(gcAddress, this.gcType);
+    getGCAddress() : LLVMValue {
+      const ptr = this.generator.symbolTable.globalScope.get(this.gcKey) as LLVMValue;
+      return this.generator.builder.createLoad(ptr);
+    }
+
+    private callGetGC() : LLVMValue {
+      const addressVoidStar = this.generator.builder.createSafeCall(this.getGCFn, [], "global GC void*");
+      return this.generator.builder.createBitCast(addressVoidStar, this.gcType, "global GC");
     }
 
     private findGetGC(declaration: Declaration) {
