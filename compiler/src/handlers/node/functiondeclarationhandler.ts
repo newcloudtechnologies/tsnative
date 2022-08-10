@@ -129,7 +129,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         FunctionHandler.handleFunctionBody(declaration, fn, this.generator, env);
         LLVMFunction.verify(fn, declaration);
 
-        return this.generator.tsclosure.createClosure(fn, env.untyped, declaration);
+        return this.generator.tsclosure.createClosure(fn, env, declaration);
     }
 
     registerClosureForDeclaration(closure: LLVMValue, declaration: Declaration, parentScope: Scope) {
