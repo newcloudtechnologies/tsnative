@@ -5,6 +5,9 @@ import { LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { LLVMType } from "../llvm/type";
 
 import { Runtime } from "../tsbuiltins/runtime"
+import * as ts from "typescript";
+
+const stdlib = require("std/constants");
 
 export class GC {
     private readonly allocateFn: LLVMValue;
@@ -16,16 +19,25 @@ export class GC {
 
     private readonly generator: LLVMGenerator;
     private readonly runtime: Runtime;
+    private readonly gcType: LLVMType;
 
-    constructor(declaration: Declaration, generator: LLVMGenerator, runtime: Runtime) {
+    constructor(generator: LLVMGenerator, runtime: Runtime) {
         this.generator = generator;
         this.runtime = runtime;
+
+        const declaration = this.findGCDeclaration();
         this.allocateFn = this.findAllocateFunction(declaration, "allocate");
         this.allocateObjectFn = this.findAllocateFunction(declaration, "allocateObject");
         this.deallocateFn = this.findDeallocateFunction(declaration, "deallocate");
 
         this.addRootFn = this.findRootOpFunction(declaration, "addRoot");
         this.removeRootFn = this.findRootOpFunction(declaration, "removeRoot");
+
+        this.gcType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped).getLLVMType();
+    }
+
+    getGCType() : LLVMType {
+        return this.gcType;
     }
 
     allocate(type: LLVMType, name?: string) {
@@ -154,5 +166,30 @@ export class GC {
         const llvmArgumentTypes = [thisType.getLLVMType(), voidStarType];
 
         return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
+    }
+
+    private findGCDeclaration() : Declaration {
+        const garbageCollector = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.GC_DEFINITION);
+        if (!garbageCollector) {
+          throw new Error("No std Garbage collector file found");
+        }
+  
+        let result: Declaration | null = null;
+
+        garbageCollector.forEachChild((node) => {
+          if (ts.isClassDeclaration(node)) {
+              const clazz = Declaration.create(node as ts.ClassDeclaration, this.generator);
+              const clazzName = clazz.type.getSymbol().escapedName;
+              if (clazzName === "GC") {
+                result = clazz;
+              }
+          }
+        });
+  
+        if (!result) {
+          throw new Error("Garbage collector declaration not found");
+        }
+
+        return result!;
     }
 }
