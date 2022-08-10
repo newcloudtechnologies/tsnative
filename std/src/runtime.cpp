@@ -111,6 +111,8 @@ Array<String*>* Runtime::getCmdArgs()
 
 GC* Runtime::getGC()
 {
+    checkInitialization();
+
     return new GC{_gcImpl.get(), _allocator.get()};
 }
 
@@ -162,6 +164,8 @@ int Runtime::init(int ac, char* av[])
 
 Diagnostics* Runtime::getDiagnostics()
 {
+    checkInitialization();
+    
     return new Diagnostics{*_gcImpl, *_memoryDiagnosticsStorage};
 }
 
