@@ -1,6 +1,6 @@
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { ThisData, Scope } from "../scope";
+import { ThisData, Scope, Environment } from "../scope";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
@@ -213,23 +213,26 @@ export class BuiltinTSClosure extends Builtin {
       LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
       this.generator.builtinNumber.getLLVMType(),
       this.generator.builtinNumber.getLLVMType(),
+      this.generator.builtinNumber.getLLVMType(),
     ];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;
   }
 
-  createClosure(fn: LLVMValue, env: LLVMValue, envLength : number, functionDeclaration: Declaration) {
+  createClosure(fn: LLVMValue, env: Environment, functionDeclaration: Declaration) {
     if (fn.type.getPointerLevel() !== 1 || !fn.type.unwrapPointer().isFunction()) {
       throw new Error("Malformed function");
     }
-    if (env.type.getPointerLevel() !== 1) {
+    if (env.untyped.type.getPointerLevel() !== 1) {
       throw new Error("Malformed environment");
     }
 
+    const envLength = env.variables.length;
+
     const thisValue = this.generator.gc.allocate(this.getLLVMType().unwrapPointer());
     const untypedFn = this.generator.builder.asVoidStar(fn);
-    const untypedEnv = this.generator.builder.asVoidStarStar(env);
+    const untypedEnv = this.generator.builder.asVoidStarStar(env.untyped);
 
     const numArgs = functionDeclaration.parameters.length;
 
