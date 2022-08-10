@@ -1,6 +1,6 @@
 import { LLVMGenerator } from "../generator";
 import * as ts from "typescript";
-import { ThisData, Scope } from "../scope";
+import { ThisData, Scope, Environment } from "../scope";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
@@ -200,7 +200,7 @@ export class BuiltinTSClosure extends Builtin {
       [],
       this.generator,
       undefined,
-      ["void*", "void**", "Number*", "Number*"]
+      ["void*", "void**", "Number*", "Number*", "Number*"]
     );
     if (!isExternalSymbol) {
       throw new Error("External symbol TSClosure constructor not found");
@@ -213,31 +213,34 @@ export class BuiltinTSClosure extends Builtin {
       LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
       this.generator.builtinNumber.getLLVMType(),
       this.generator.builtinNumber.getLLVMType(),
+      this.generator.builtinNumber.getLLVMType(),
     ];
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;
   }
 
-  createClosure(fn: LLVMValue, env: LLVMValue, functionDeclaraion: Declaration) {
+  createClosure(fn: LLVMValue, env: Environment, functionDeclaration: Declaration) {
     if (fn.type.getPointerLevel() !== 1 || !fn.type.unwrapPointer().isFunction()) {
       throw new Error("Malformed function");
     }
-    if (env.type.getPointerLevel() !== 1) {
+    if (env.untyped.type.getPointerLevel() !== 1) {
       throw new Error("Malformed environment");
     }
 
+    const envLength = env.variables.length;
+
     const thisValue = this.generator.gc.allocate(this.getLLVMType().unwrapPointer());
     const untypedFn = this.generator.builder.asVoidStar(fn);
-    const untypedEnv = this.generator.builder.asVoidStarStar(env);
+    const untypedEnv = this.generator.builder.asVoidStarStar(env.untyped);
 
-    const numArgs = functionDeclaraion.parameters.length;
+    const numArgs = functionDeclaration.parameters.length;
 
     if (numArgs > 63) {
-      throw new Error(`Parameters limited up to 63. Error at closure creation for '${functionDeclaraion.getText()}'`);
+      throw new Error(`Parameters limited up to 63. Error at closure creation for '${functionDeclaration.getText()}'`);
     }
 
-    const optionals = functionDeclaraion.parameters.reduce((acc, parameter, index) => {
+    const optionals = functionDeclaration.parameters.reduce((acc, parameter, index) => {
       if (parameter.questionToken) {
         acc |= 1 << index;
       }
@@ -250,6 +253,7 @@ export class BuiltinTSClosure extends Builtin {
       thisValue,
       untypedFn,
       untypedEnv,
+      this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, envLength)),
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, numArgs)),
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, optionals)),
     ]);
