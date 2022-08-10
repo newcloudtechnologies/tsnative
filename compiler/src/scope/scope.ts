@@ -237,7 +237,7 @@ export function addClassScope(
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-  const scope = new Scope(name, mangledTypename, generator.gc, false, parentScope, { declaration, llvmType, tsType });
+  const scope = new Scope(name, mangledTypename, generator, false, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
 }
@@ -533,15 +533,15 @@ export class Scope {
 
   readonly isNamespace: boolean;
 
-  private gc : GC;
+  private generator: LLVMGenerator;
 
   constructor(name: string | undefined, 
               mangledName: string | undefined, 
-              gc: GC,
+              generator : LLVMGenerator,
               isNamespace: boolean = false, 
               parent?: Scope, 
               data?: ThisData) {
-    this.gc = gc;
+    this.generator = generator;
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.mangledName = mangledName;
@@ -560,22 +560,22 @@ export class Scope {
   private addRoot(value: ScopeValue) {
     if (value instanceof LLVMValue) {
       const v = value as LLVMValue;
-      this.gc.addRoot(v);
+      this.generator.gc.addRoot(v);
     }
     else if (value instanceof HeapVariableDeclaration) {
       const heapValue = value as HeapVariableDeclaration;
-      this.gc.addRoot(heapValue.allocated);
+      this.generator.gc.addRoot(heapValue.allocated);
     }
   }
 
   private removeRoot(value: ScopeValue) {
     if (value instanceof LLVMValue) {
       const v = value as LLVMValue;
-      this.gc.removeRoot(v);
+      this.generator.gc.removeRoot(v);
     }
     else if (value instanceof HeapVariableDeclaration) {
       const heapValue = value as HeapVariableDeclaration;
-      this.gc.removeRoot(heapValue.allocated);
+      this.generator.gc.removeRoot(heapValue.allocated);
     }
   }
 

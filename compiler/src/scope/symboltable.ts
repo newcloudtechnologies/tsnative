@@ -20,7 +20,7 @@ export class SymbolTable {
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
-    this.scopes = [new Scope("root", "root", this.generator.gc)];
+    this.scopes = [new Scope("root", "root", this.generator)];
   }
 
   getScope(name: string) {
@@ -56,7 +56,7 @@ export class SymbolTable {
   }
 
   addScope(name: string): void {
-    const scope = new Scope(name, name, this.generator.gc);
+    const scope = new Scope(name, name, this.generator);
     this.scopes.push(scope);
   }
 
@@ -69,7 +69,7 @@ export class SymbolTable {
   }
 
   withLocalScope<R>(body: (scope: Scope) => R, parentScope?: Scope, name?: string): R {
-    const scope = new Scope(name, name, this.generator.gc, false, parentScope);
+    const scope = new Scope(name, name, this.generator, false, parentScope);
     this.scopes.push(scope);
     const result = body(scope);
     this.scopes.pop();

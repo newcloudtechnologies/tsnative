@@ -74,6 +74,7 @@ export class LLVMGenerator {
     this.irBuilder = new Builder(this, null);
     this.llvm = new LLVM(this);
     this._ts = new TS(this);
+
     this.symbolTable = new SymbolTable(this);
 
     if (generateDebugInfo) {
@@ -103,6 +104,7 @@ export class LLVMGenerator {
 
     this.builder.setInsertionPoint(entryBlock);
 
+    this.initRuntime();
     this.ts.null.init();
     this.ts.undef.init();
 
@@ -130,7 +132,7 @@ export class LLVMGenerator {
     return this.module;
   }
 
-  initRuntime(): void {
+  private initRuntime(): void {
     const runtime = this.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.RUNTIME_DEFINITION);
     if (!runtime) {
       throw new Error("No std Runtime file found");
@@ -266,7 +268,7 @@ export class LLVMGenerator {
 
   get runtime(): Runtime {
     if (!this.globalRuntime) {
-      this.initRuntime();
+      throw new Error("Runtime was not initialized");
     }
     return this.globalRuntime!;
   }
