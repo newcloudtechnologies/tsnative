@@ -1085,7 +1085,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private makeClosure(fn: LLVMValue, functionDeclaration: Declaration, env: Environment) {
-    return this.generator.tsclosure.createClosure(fn, env.untyped, env.variables.length, functionDeclaration);
+    return this.generator.tsclosure.createClosure(fn, env, functionDeclaration);
   }
 
   private handleNewExpression(expression: ts.NewExpression, outerEnv?: Environment): LLVMValue {
