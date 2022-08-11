@@ -12,3 +12,11 @@
 {
     console.assert(555);
 }
+
+{
+    enum E {
+        b
+    }
+
+    console.log(E.b);
+}
