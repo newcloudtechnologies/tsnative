@@ -1,8 +1,11 @@
 import { Runtime } from "tsnative/std/definitions/runtime"
 
-// Simple scoped allocation
+// String scoped allocation
 {
-    const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
+    // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+    // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+    const diagnostics = Runtime.getDiagnostics();
+    const memInfo = diagnostics.getMemoryDiagnostics();
     const internalObjectsCount = memInfo.getAliveObjectsCount();
     {
         const myStr : string = "abacaba";
@@ -12,6 +15,30 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     Runtime.getGC().collect();
 
     const newObjectCount = memInfo.getAliveObjectsCount();
+    console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
+}
+
+// Collect from the prev test
+Runtime.getGC().collect();
+
+// Non primitive type scoped collection
+{
+    // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+    // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+    const diagnostics = Runtime.getDiagnostics();
+    const memInfo = diagnostics.getMemoryDiagnostics();
+    const internalObjectsCount = memInfo.getAliveObjectsCount();
+    {
+        class A {};
+        const a = new A();
+    }
+
+    Runtime.getGC().collect();
+    
+    const newObjectCount = memInfo.getAliveObjectsCount();
+
+    console.log(internalObjectsCount);
+    console.log(newObjectCount);
     console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
 }
 
