@@ -18,6 +18,7 @@ MemoryDiagnostics::MemoryDiagnostics(const MemoryDiagnosticsStorage& storage, co
 Number* MemoryDiagnostics::getAliveObjectsCount() const
 {
     const auto objectsCount = _gc.getAliveObjectsCount();
+    LOG_INFO("Current alive objects: " + std::to_string(objectsCount));
     return new Number{static_cast<double>(objectsCount)};
 }
 
