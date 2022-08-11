@@ -627,6 +627,7 @@ export class Scope {
       const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
       // Inplace allocated is same as allocated for now
       const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
+      this.addLocalVariable(allocated);
 
       const name = node.name.getText();
 
@@ -642,8 +643,15 @@ export class Scope {
 
   // Shit code, should be private.
   // It is used to add cloned initializers into local variables to remove roots after all
-  addLocalVariable(variable: LLVMValue) {
-    this.localVariables.add(variable);
+  addLocalVariable(variable: ScopeValue) {
+    if (variable instanceof LLVMValue) {
+      const v = variable as LLVMValue;
+      this.localVariables.add(v);
+    }
+    else if (variable instanceof HeapVariableDeclaration) {
+      const heapValue = variable as HeapVariableDeclaration;
+      this.localVariables.add(heapValue.allocated);
+    }
   }
 
   get(identifier: string): ScopeValue | undefined {
@@ -698,7 +706,7 @@ export class Scope {
 
   set(identifier: string, value: ScopeValue) {
     if (!this.get(identifier)) {
-      this.addRoot(value);
+      this.addRoot(value); 
       return this.map.set(identifier, value);
     }
 
