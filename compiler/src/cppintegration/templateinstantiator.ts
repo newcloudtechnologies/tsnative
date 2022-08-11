@@ -57,6 +57,8 @@ export class TemplateInstantiator {
 
       this.generator.builder.setInsertionPoint(entryBlock);
 
+      this.generator.runtime.initGlobalState();
+
       declarations.forEach((declaration) => {
         this.generator.symbolTable.addScope(declaration.fileName);
         declaration.forEachChild((node) => this.generator.handleNode(node, this.generator.symbolTable.currentScope));
