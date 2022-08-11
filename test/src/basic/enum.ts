@@ -181,3 +181,38 @@ const res5 = obj.getField();
 
 console.assert(res4 === 3, "Enum class member initialized correctly (2)");
 console.assert(res5 === 11, "Enum class member + bitwise AND");
+
+// only test buildability
+{
+    enum MyEnum {
+        A, B, C
+    };
+    console.log(MyEnum.A);
+
+    type YourEnum = MyEnum;
+    let val: YourEnum = MyEnum.A;
+    console.log(val);
+
+    type YourEnum2 = MyEnum.A;
+    let val2: YourEnum2 = MyEnum.A;
+    console.log(val2);
+
+    type YourEnum3 = MyEnum.A | MyEnum.C;
+    let val3: YourEnum3 = MyEnum.C;
+    console.log(val3);
+
+    class Printer<T> {
+        sayHi(name: T) {
+            console.log(name + ", Mr.Robot")
+        }
+
+    }
+
+    type MyString = string;
+
+    // @todo: AN-1155
+    // (new Printer<MyString>()).sayHi("Bula");
+
+    const p = new Printer<MyString>();
+    p.sayHi("Bula");
+}

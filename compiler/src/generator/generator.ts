@@ -86,6 +86,7 @@ export class LLVMGenerator {
     this._builtinNumber = new BuiltinNumber(this);
     this._builtinBoolean = new BuiltinBoolean(this);
 
+    this.initRuntime();
     this.initialized = true;
 
     return this;
@@ -104,7 +105,7 @@ export class LLVMGenerator {
 
     this.builder.setInsertionPoint(entryBlock);
 
-    this.initRuntime();
+    this.runtime.initGlobalState();
     this.ts.null.init();
     this.ts.undef.init();
 
@@ -263,6 +264,10 @@ export class LLVMGenerator {
   }
 
   get gc(): GC {
+    if (!this.globalRuntime) {
+      throw new Error("Runtime was not initialized");
+    }
+    
     return this.runtime.gc;
   }
 

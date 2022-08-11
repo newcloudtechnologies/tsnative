@@ -183,14 +183,16 @@ async function main() {
   llvm.initializeAllAsmParsers();
   llvm.initializeAllAsmPrinters();
 
+  const { demangledSymbols, mangledSymbols } = await prepareExternalSymbols(demangledTables, mangledTables);
+  injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
+
   // generate template classes
   if (argv.processTemplateClasses) {
     const templateInstantiator = new TemplateInstantiator(
       program,
       includeDirs,
       argv.templatesOutputDir,
-      demangledTables,
-      mangledTables
+      demangledSymbols
     );
     templateInstantiator.instantiateClasses();
     return;
@@ -202,16 +204,11 @@ async function main() {
       program,
       includeDirs,
       argv.templatesOutputDir,
-      demangledTables,
-      mangledTables
+      demangledSymbols
     );
     templateInstantiator.instantiateFunctions();
     return;
   }
-
-  const { demangledSymbols, mangledSymbols } = await prepareExternalSymbols(demangledTables, mangledTables);
-
-  injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
 
   let llvmModule;
   try {

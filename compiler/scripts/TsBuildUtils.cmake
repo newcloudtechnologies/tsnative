@@ -129,10 +129,12 @@ function(generateSeed target dep_target output_dir seed_src)
     set(${seed_src} ${SEED_CPP_OUT} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_classes target dep_target entry sources includes output_dir trace_opt classes_src)
+function(instantiate_classes target dep_target entry sources includes output_dir trace_opt classes_src demangledList mangledList)
     set(output
         "${output_dir}/instantiated_classes.cpp")
 
+    string(REPLACE ";" ", " DEMANGLED "${demangledList}")
+    string(REPLACE ";" ", " MANGLED "${mangledList}")
     string(REPLACE ";" ", " INCLUDES "${includes}")
 
     set(INCLUDE_DIRS )
@@ -153,6 +155,8 @@ function(instantiate_classes target dep_target entry sources includes output_dir
                         ${INCLUDE_DIRS}
                         --templatesOutputDir ${output_dir}
                         --build ${output_dir}
+                        --demangledTables ${DEMANGLED}
+                        --mangledTables ${MANGLED}
                         ${trace_opt}
     )
 
@@ -377,23 +381,106 @@ function(build target dep_target entry includes dependencies definitions optimiz
     # TODO: restore verifier
     # verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${output_dir}")
 
-    instantiate_classes(instantiate_classes_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" "${TRACE_OPT}" CLASSES_SRC)
+    extractSymbols(
+        extract_std_symbols_${binary_name}
+        makeOutputDir_${binary_name}
+        "${DEPENDENCIES}"
+        "${output_dir}"
+        DEPENDENCIES_DEMANGLED_NAMES
+        DEPENDENCIES_MANGLED_NAMES
+    )
 
-    compile_cpp(compile_classes_${binary_name} instantiate_classes_${binary_name} "${includes}" "${definitions}" "${CLASSES_SRC}" "${output_dir}" COMPILED_CLASSES)
+    instantiate_classes(
+        instantiate_classes_${binary_name}
+        extract_std_symbols_${binary_name}
+        "${entry}"
+        "${sources}"
+        "${includes}"
+        "${output_dir}"
+        "${TRACE_OPT}"
+        CLASSES_SRC
+        "${DEPENDENCIES_DEMANGLED_NAMES}"
+        "${DEPENDENCIES_MANGLED_NAMES}"
+    )
 
-    extractSymbols(extract_classes_symbols_${binary_name} compile_classes_${binary_name} "${COMPILED_CLASSES}" "${output_dir}" COMPILED_CLASSES_DEMANGLED_NAMES COMPILED_CLASSES_MANGLED_NAMES)
+    compile_cpp(
+        compile_classes_${binary_name}
+        instantiate_classes_${binary_name}
+        "${includes}"
+        "${definitions}"
+        "${CLASSES_SRC}"
+        "${output_dir}"
+        COMPILED_CLASSES
+    )
 
-    instantiate_functions(instantiate_functions_${binary_name} extract_classes_symbols_${binary_name} "${entry}" "${sources}" "${includes}" "${output_dir}" "${COMPILED_CLASSES_DEMANGLED_NAMES}" ${COMPILED_CLASSES_MANGLED_NAMES} "${TRACE_OPT}" FUNCTIONS_SRC)
+    extractSymbols(
+        extract_classes_symbols_${binary_name}
+        compile_classes_${binary_name}
+        "${COMPILED_CLASSES}"
+        "${output_dir}"
+        COMPILED_CLASSES_DEMANGLED_NAMES
+        COMPILED_CLASSES_MANGLED_NAMES
+    )
 
-    compile_cpp(compile_functions_${binary_name} instantiate_functions_${binary_name} "${includes}" "${definitions}" "${FUNCTIONS_SRC}" "${output_dir}" COMPILED_FUNCTIONS)
+    list(APPEND DEPENDENCIES_DEMANGLED_NAMES "${COMPILED_CLASSES_DEMANGLED_NAMES}")
+    list(APPEND DEPENDENCIES_MANGLED_NAMES "${COMPILED_CLASSES_MANGLED_NAMES}")
+
+    instantiate_functions(
+        instantiate_functions_${binary_name}
+        extract_classes_symbols_${binary_name}
+        "${entry}"
+        "${sources}"
+        "${includes}"
+        "${output_dir}"
+        "${DEPENDENCIES_DEMANGLED_NAMES}"
+        "${DEPENDENCIES_MANGLED_NAMES}"
+        "${TRACE_OPT}"
+        FUNCTIONS_SRC
+    )
+
+    compile_cpp(
+        compile_functions_${binary_name}
+        instantiate_functions_${binary_name}
+        "${includes}"
+        "${definitions}"
+        "${FUNCTIONS_SRC}"
+        "${output_dir}"
+        COMPILED_FUNCTIONS
+    )
 
     list(PREPEND DEPENDENCIES ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
 
-    extractSymbols(extract_symbols_${binary_name} compile_functions_${binary_name} "${DEPENDENCIES}" "${output_dir}" DEMANGLED_NAMES MANGLED_NAMES)
+    extractSymbols(
+        extract_symbols_${binary_name}
+        compile_functions_${binary_name}
+        "${DEPENDENCIES}"
+        "${output_dir}"
+        DEMANGLED_NAMES
+        MANGLED_NAMES
+    )
 
-    compile_ts(compile_ts_${binary_name} extract_symbols_${binary_name} "${entry}" "${sources}" "${DEMANGLED_NAMES}" "${MANGLED_NAMES}" "${output_dir}" "${is_printIr}" "${TRACE_OPT}" LL_BYTECODE "${is_debug}")
+    compile_ts(
+        compile_ts_${binary_name}
+        extract_symbols_${binary_name}
+        "${entry}"
+        "${sources}"
+        "${DEMANGLED_NAMES}"
+        "${MANGLED_NAMES}"
+        "${output_dir}"
+        "${is_printIr}"
+        "${TRACE_OPT}"
+        LL_BYTECODE
+        "${is_debug}"
+    )
 
-    compile_ll(compile_ll_${binary_name} compile_ts_${binary_name} "${LL_BYTECODE}" "${optimization_level}" "${output_dir}" COMPILED_SOURCE)
+    compile_ll(
+        compile_ll_${binary_name}
+        compile_ts_${binary_name}
+        "${LL_BYTECODE}"
+        "${optimization_level}"
+        "${output_dir}"
+        COMPILED_SOURCE
+    )
 
     generateSeed(generate_seed_${binary_name} compile_ll_${binary_name} "${output_dir}" SEED_SRC)
 

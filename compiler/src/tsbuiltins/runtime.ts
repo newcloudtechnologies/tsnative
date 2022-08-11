@@ -19,8 +19,6 @@ export class Runtime {
       this.getGCFn = this.findGetGC(declaration);
 
       this.garbageCollector = new GC(this.generator, this);
-
-      this.putGCIntoGlobalVariable();
     }
 
     get gc() : GC {
@@ -32,6 +30,10 @@ export class Runtime {
         throw new Error("Cannot get GC address because global gc variable has not been created yet");
       }
       return this.generator.builder.createLoad(this.globalGCAddress);
+    }
+
+    initGlobalState() {
+      this.putGCIntoGlobalVariable();
     }
 
     private putGCIntoGlobalVariable() {
