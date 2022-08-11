@@ -12,11 +12,13 @@
 import * as fs from "fs";
 import * as ts from "typescript";
 import * as path from "path";
+import * as llvm from "llvm-node";
 import { flatten } from "lodash";
-import { NmSymbolExtractor, ExternalSymbolsProvider } from "../mangling";
+import { ExternalSymbolsProvider } from "../mangling";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
+import { LLVMType } from "../llvm/type";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
@@ -33,32 +35,37 @@ export class TemplateInstantiator {
     program: ts.Program,
     includeDirs: string[],
     templateInstancesPath: string,
-    demangledTables: string[],
-    mangledTables: string[]
+    demangledSymbols: string[]
   ) {
     const sources = program.getSourceFiles();
-    const declarations = sources.filter((source) => source.isDeclarationFile);
 
     this.sources = sources.filter((source) => !source.isDeclarationFile);
 
     this.generator = new LLVMGenerator(program).init();
 
-    const visitStdClasses = (node: ts.Node) => {
-      if (!ts.isClassDeclaration(node)) {
-        return;
-      }
+    // handle declarations to put all declared symbols into symbol table
+    {
+      const declarations = sources.filter((source) => source.isDeclarationFile);
 
-      this.generator.handleNode(node, this.generator.symbolTable.globalScope);
+      // some nodes, e.g EnumDeclaration requires some IR to be generated before symbol can be put into symbol table
+      // this in turn require existing IR function
+      // create fake main and point builder to it
+      const mainReturnType = LLVMType.getInt32Type(this.generator);
+      const { fn: main } = this.generator.llvm.function.create(mainReturnType, [], "__ts_main");
+
+      const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", main.unwrapped as llvm.Function);
+
+      this.generator.builder.setInsertionPoint(entryBlock);
+
+      declarations.forEach((declaration) => {
+        this.generator.symbolTable.addScope(declaration.fileName);
+        declaration.forEachChild((node) => this.generator.handleNode(node, this.generator.symbolTable.currentScope));
+      });
     }
-
-    declarations.forEach(visitStdClasses);
 
     this.includeDirs = includeDirs;
 
-    const extractor: NmSymbolExtractor = new NmSymbolExtractor();
-    const symbols = extractor.readSymbols(demangledTables, mangledTables);
-
-    this.demangled = symbols.demangledSymbols;
+    this.demangled = demangledSymbols;
 
     this.INSTANTIATED_FUNCTIONS_FILE = path.join(templateInstancesPath, "instantiated_functions.cpp");
     this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
