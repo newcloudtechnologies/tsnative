@@ -1,64 +1,86 @@
 import { Runtime } from "tsnative/std/definitions/runtime"
 
-// String scoped allocation
-{
-    // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
-    // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
-    const diagnostics = Runtime.getDiagnostics();
-    const memInfo = diagnostics.getMemoryDiagnostics();
-    const internalObjectsCount = memInfo.getAliveObjectsCount();
+// // String scoped allocation
+// {
+//     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+//     // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+//     const diagnostics = Runtime.getDiagnostics();
+//     const memInfo = diagnostics.getMemoryDiagnostics();
+//     const internalObjectsCount = memInfo.getAliveObjectsCount();
 
-    {
-        const myStr : string = "abacaba";
-        myStr.trim(); // Use this memory to prove it is alive
-    }
+//     {
+//         const myStr : string = "abacaba";
+//         myStr.trim(); // Use this memory to prove it is alive
+//     }
 
-    Runtime.getGC().collect();
+//     Runtime.getGC().collect();
 
-    const newObjectCount = memInfo.getAliveObjectsCount();
-    console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
-}
+//     const newObjectCount = memInfo.getAliveObjectsCount();
+//     console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
+// }
 
-// Collect from the prev test
-Runtime.getGC().collect();
+// // Collect from the prev test
+// Runtime.getGC().collect();
 
-// Non primitive type scoped collection
-{
-    // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
-    // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
-    const diagnostics = Runtime.getDiagnostics();
-    const memInfo = diagnostics.getMemoryDiagnostics();
-    const internalObjectsCount = memInfo.getAliveObjectsCount();
+// // Non primitive type scoped collection
+// {
+//     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+//     // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+//     const diagnostics = Runtime.getDiagnostics();
+//     const memInfo = diagnostics.getMemoryDiagnostics();
+//     const internalObjectsCount = memInfo.getAliveObjectsCount();
 
-    {
-        class A {
-            n: number;
+//     {
+//         class A {
+//             n: number;
 
-            constructor() {
-                this.n = 15;
-            }
+//             constructor() {
+//                 this.n = 15;
+//             }
 
-            get getter() { return 10; }
+//             get getter() { return 10; }
 
-            foo() {}
-        };
-        const a = new A();
-        a.foo();
+//             foo() {}
+//         };
+//         const a = new A();
+//         a.foo();
 
-        let b = a.getter;
-        b = 15;
+//         let b = a.getter;
+//         b = 15;
 
-        a.n = 10;
-    }
+//         a.n = 10;
+//     }
 
-    Runtime.getGC().collect();
+//     Runtime.getGC().collect();
     
+//     const newObjectCount = memInfo.getAliveObjectsCount();
+//     console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
+// }
+
+// Collect primitive inside of a function
+{
+    // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+    // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+    const diagnostics = Runtime.getDiagnostics();
+    const memInfo = diagnostics.getMemoryDiagnostics();
+    const internalObjectsCount = memInfo.getAliveObjectsCount();
+
+    function foo() {
+        let a : string = "abacaba";
+        // let b : string = "mama rama";
+        // return a + b;
+    };
+    // let e = foo();
+    // e = e.trim();
+
+    Runtime.getGC().collect();
+
     const newObjectCount = memInfo.getAliveObjectsCount();
     console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
 }
 
 // Simple garbage inside a block. GC deletes it
-{
+// {
     // const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
     // const internalObjectsCount = memInfo.getAliveObjectsCount();
 
@@ -96,4 +118,4 @@ Runtime.getGC().collect();
     // const newObjectCount = memInfo.getAliveObjectsCount();
     // console.assert(internalObjectsCount === newObjectCount, "GC failed: erray was not deleted");
     //console.assert(false, "GC failed: erray was not deleted");
-}
+// }
