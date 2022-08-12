@@ -66,7 +66,6 @@ export class VariableHandler extends AbstractNodeHandler {
     if (initializer.isTSPrimitivePtr()) {
       // mimics 'value' semantic for primitives
       initializer = initializer.clone();
-      parentScope.addLocalVariable(initializer);
 
       // convert c++ enumerator values to ts' number
       if (type.isEnum() && initializer.type.isIntegerType()) {
@@ -149,7 +148,7 @@ export class VariableHandler extends AbstractNodeHandler {
           }
 
           if (!variableTypeDeclaration.isAmbient()) {
-            allocated = this.generator.ts.obj.create(parentScope);
+            allocated = this.generator.ts.obj.create();
           } else {
             allocated = this.generator.gc.allocate(type.getLLVMType().getPointerElementType());
           }

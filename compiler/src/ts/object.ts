@@ -169,11 +169,10 @@ export class TSObject {
     return keys;
   }
 
-  create(scope: Scope, props?: LLVMValue) {
+  create(props?: LLVMValue) {
     const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
 
     this.createInplace(allocated, props);
-    scope.addLocalVariable(allocated);
     
     return allocated;
   }

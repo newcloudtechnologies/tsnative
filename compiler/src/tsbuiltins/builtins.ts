@@ -222,8 +222,7 @@ export class BuiltinTSClosure extends Builtin {
 
   createClosure(fn: LLVMValue, 
                 env: Environment, 
-                functionDeclaration: Declaration, 
-                scope: Scope) {
+                functionDeclaration: Declaration) {
     if (fn.type.getPointerLevel() !== 1 || !fn.type.unwrapPointer().isFunction()) {
       throw new Error("Malformed function");
     }
@@ -260,9 +259,6 @@ export class BuiltinTSClosure extends Builtin {
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, numArgs)),
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, optionals)),
     ]);
-  
-    scope.addLocalVariable(thisValue);
-    this.generator.gc.addRoot(thisValue);
 
     return thisValue;
   }
