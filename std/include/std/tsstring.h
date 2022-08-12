@@ -26,7 +26,6 @@ class TS_DECLARE String : public Object, public Iterable<String*>
 public:
     TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") String();
     String(Number* d);
-    String(const int8_t* s);
     String(const std::string& s);
     String(const char* s);
 

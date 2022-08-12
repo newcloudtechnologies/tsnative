@@ -70,7 +70,7 @@ export class TSString {
       argTypes,
       this.generator,
       undefined,
-      constructorArg ? undefined : ["signed char"]
+      constructorArg ? undefined : ["char"]
     );
 
     if (!isExternalSymbol) {
