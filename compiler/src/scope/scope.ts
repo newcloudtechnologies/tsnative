@@ -523,7 +523,6 @@ export interface ThisData {
 
 export class Scope {
   map: Map<string, ScopeValue>;
-  private localVariables: Set<LLVMValue>;
 
   readonly name: string | undefined;
   readonly mangledName: string | undefined;
@@ -547,7 +546,6 @@ export class Scope {
     this.mangledName = mangledName;
     this.parent = parent;
     this.thisData = data;
-    this.localVariables = new Set<LLVMValue>();
 
     this.typeMapper = new GenericTypeMapper();
     if (parent && parent.typeMapper) {
@@ -580,7 +578,7 @@ export class Scope {
   }
 
   private removeLocalRoots() {
-    for (const localVar of this.localVariables) {
+    for (const [_, localVar] of this.map) {
       this.removeRoot(localVar);
     }
   }
@@ -627,7 +625,7 @@ export class Scope {
       const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
       // Inplace allocated is same as allocated for now
       const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
-      this.addLocalVariable(allocated);
+      this.addRoot(inplaceAllocated);
 
       const name = node.name.getText();
 
@@ -639,19 +637,6 @@ export class Scope {
     }
 
     root.forEachChild(initializeFrom);
-  }
-
-  // Shit code, should be private.
-  // It is used to add cloned initializers into local variables to remove roots after all
-  addLocalVariable(variable: ScopeValue) {
-    if (variable instanceof LLVMValue) {
-      const v = variable as LLVMValue;
-      this.localVariables.add(v);
-    }
-    else if (variable instanceof HeapVariableDeclaration) {
-      const heapValue = variable as HeapVariableDeclaration;
-      this.localVariables.add(heapValue.allocated);
-    }
   }
 
   get(identifier: string): ScopeValue | undefined {
