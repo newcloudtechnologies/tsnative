@@ -220,7 +220,10 @@ export class BuiltinTSClosure extends Builtin {
     return constructor;
   }
 
-  createClosure(fn: LLVMValue, env: Environment, functionDeclaration: Declaration) {
+  createClosure(fn: LLVMValue, 
+                env: Environment, 
+                functionDeclaration: Declaration, 
+                scope: Scope) {
     if (fn.type.getPointerLevel() !== 1 || !fn.type.unwrapPointer().isFunction()) {
       throw new Error("Malformed function");
     }
@@ -230,7 +233,7 @@ export class BuiltinTSClosure extends Builtin {
 
     const envLength = env.variables.length;
 
-    const thisValue = this.generator.gc.allocate(this.getLLVMType().unwrapPointer());
+    const thisValue = this.generator.gc.allocateObject(this.getLLVMType().unwrapPointer());
     const untypedFn = this.generator.builder.asVoidStar(fn);
     const untypedEnv = this.generator.builder.asVoidStarStar(env.untyped);
 
@@ -257,6 +260,10 @@ export class BuiltinTSClosure extends Builtin {
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, numArgs)),
       this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, optionals)),
     ]);
+  
+    scope.addLocalVariable(thisValue);
+    this.generator.gc.addRoot(thisValue);
+
     return thisValue;
   }
 
@@ -467,7 +474,7 @@ export class BuiltinNumber extends Builtin {
   create(value: LLVMValue) {
     const constructorFn = this.createCtorFn();
 
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
 
     this.generator.builder.createSafeCall(constructorFn, [thisUntyped, value]);

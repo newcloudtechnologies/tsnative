@@ -40,15 +40,15 @@ export class GC {
         return this.gcType;
     }
 
-    allocate(type: LLVMType, name?: string) {
+    allocate(type: LLVMType, name?: string) : LLVMValue {
         return this.doAllocate(this.allocateFn, type, name);
     }
 
-    allocateObject(type: LLVMType, name?: string) {
+    allocateObject(type: LLVMType, name?: string) : LLVMValue {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
-    deallocate(mem: LLVMValue) {
+    deallocate(mem: LLVMValue) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const voidStarMem = this.generator.builder.asVoidStar(mem);
 
@@ -59,7 +59,7 @@ export class GC {
         ]);
     }
 
-    addRoot(mem: LLVMValue) {
+    addRoot(mem: LLVMValue) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const voidStarMem = this.generator.builder.asVoidStar(mem);
 
@@ -70,7 +70,7 @@ export class GC {
         ]);
     }
 
-    removeRoot(mem: LLVMValue) {
+    removeRoot(mem: LLVMValue) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const voidStarMem = this.generator.builder.asVoidStar(mem);
 
@@ -81,7 +81,7 @@ export class GC {
         ]);
     }
 
-    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) {
+    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
         if (type.isPointer()) {
             throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
         }
