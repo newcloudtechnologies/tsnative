@@ -15,7 +15,7 @@ import { Environment } from "../../scope";
 import { LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { Expression } from "../../ts/expression";
-import { ExternalSymbolsProvider } from "../../mangling";
+import { CXXSymbols } from "../../mangling";
 import { Declaration } from "../../ts/declaration";
 
 export class SysVFunctionHandler {
@@ -328,7 +328,7 @@ export class SysVFunctionHandler {
 
     const qualifiedClassName = valueDeclaration.getNamespace().concat(valueDeclaration.name.getText()).join("::");
 
-    const vtable = ExternalSymbolsProvider.getVTableSymbolFor(qualifiedClassName);
+    const vtable = CXXSymbols().getVTableSymbolFor(qualifiedClassName);
     const vtableType = LLVMArrayType.get(
       this.generator,
       LLVMType.getInt8Type(this.generator).getPointer(),
