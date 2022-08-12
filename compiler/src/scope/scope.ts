@@ -625,8 +625,6 @@ export class Scope {
       const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
       // Inplace allocated is same as allocated for now
       const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
-      this.addRoot(inplaceAllocated);
-
       const name = node.name.getText();
 
       if (this.get(name)) {
