@@ -145,20 +145,9 @@ async function main() {
 
   const diagnostics = ts.getPreEmitDiagnostics(program);
 
-  if (argv.demangledTables) {
-    const list = argv.demangledTables as string[];
-    list.forEach((v: string, i: number, a: string[]) => {
-      a[i] = v.trim();
-    });
-    demangledTables.push(...list);
-  }
-
-  if (argv.mangledTables) {
-    const list = argv.mangledTables as string[];
-    list.forEach((v: string, i: number, a: string[]) => {
-      a[i] = v.trim();
-    });
-    mangledTables.push(...list);
+  if (argv.demangledTables && argv.mangledTables) {
+    demangledTables.push(...(argv.demangledTables as string[]).map((value) => value.trim()));
+    mangledTables.push(...(argv.mangledTables as string[]).map((value) => value.trim()));
   }
 
   if (argv.includeDirs) {
