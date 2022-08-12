@@ -15,6 +15,7 @@ import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
 import { LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
+import { Scope } from "../scope"
 
 const stdlib = require("std/constants");
 
@@ -168,11 +169,12 @@ export class TSObject {
     return keys;
   }
 
-  create(props?: LLVMValue) {
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+  create(scope: Scope, props?: LLVMValue) {
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
 
     this.createInplace(allocated, props);
-
+    scope.addLocalVariable(allocated);
+    
     return allocated;
   }
 

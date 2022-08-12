@@ -40,7 +40,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         }
 
         const env = this.createEnvironmentForDeclaration(declaration, outerEnv);
-        const closure = this.createClosureForDeclaration(declaration, env);
+        const closure = this.createClosureForDeclaration(declaration, env, parentScope);
 
         this.registerClosureForDeclaration(closure, declaration, parentScope);
 
@@ -113,7 +113,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         );
     }
 
-    createClosureForDeclaration(declaration: Declaration, env: Environment) {
+    createClosureForDeclaration(declaration: Declaration, env: Environment, scope: Scope) {
         if (declaration.typeParameters) {
             this.generator.meta.registerFunctionEnvironment(declaration, env);
             return this.generator.tsclosure.lazyClosure.create(env.typed);
@@ -129,7 +129,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         FunctionHandler.handleFunctionBody(declaration, fn, this.generator, env);
         LLVMFunction.verify(fn, declaration);
 
-        return this.generator.tsclosure.createClosure(fn, env, declaration);
+        return this.generator.tsclosure.createClosure(fn, env, declaration, scope);
     }
 
     registerClosureForDeclaration(closure: LLVMValue, declaration: Declaration, parentScope: Scope) {

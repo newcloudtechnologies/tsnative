@@ -170,7 +170,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     FunctionHandler.handleFunctionBody(valueDeclaration, fn, this.generator, env);
     LLVMFunction.verify(fn, expression);
 
-    const closure = this.makeClosure(fn, valueDeclaration, env);
+    const closure = this.makeClosure(fn, valueDeclaration, env, this.generator.symbolTable.currentScope);
+
     const closureCall = this.generator.tsclosure.getLLVMCall();
     const callResult = this.invoke(expression, valueDeclaration.body, closureCall, [closure]);
 
@@ -470,7 +471,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     FunctionHandler.handleFunctionBody(expressionDeclaration, fn, this.generator, env);
     LLVMFunction.verify(fn, expression);
 
-    return this.makeClosure(fn, expressionDeclaration, env);
+    return this.makeClosure(fn, expressionDeclaration, env, scope);
   }
 
   private handleGetAccessExpression(expression: ts.PropertyAccessExpression, outerEnv?: Environment): LLVMValue {
@@ -1084,8 +1085,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return restArguments;
   }
 
-  private makeClosure(fn: LLVMValue, functionDeclaration: Declaration, env: Environment) {
-    return this.generator.tsclosure.createClosure(fn, env, functionDeclaration);
+  private makeClosure(fn: LLVMValue, 
+                      functionDeclaration: Declaration, 
+                      env: Environment,
+                      scope: Scope) {
+    return this.generator.tsclosure.createClosure(fn, env, functionDeclaration, scope);
   }
 
   private handleNewExpression(expression: ts.NewExpression, outerEnv?: Environment): LLVMValue {
@@ -1142,9 +1146,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    const thisValue = this.generator.ts.obj.create();
-
     const scope = this.generator.symbolTable.currentScope;
+    const thisValue = this.generator.ts.obj.create(scope);
 
     const oldThis = scope.get(this.generator.internalNames.This);
     if (oldThis) {
@@ -1296,7 +1299,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       FunctionHandler.handleFunctionBody(method, fn, this.generator, env);
       LLVMFunction.verify(fn, valueDeclaration);
 
-      const closure = this.makeClosure(fn, method, env);
+      const closure = this.makeClosure(fn, method, env, parentScope);
 
       const nullInitializer = this.generator.tsclosure.createNullValue();
       const closureGlobal = LLVMGlobalVariable.make(
@@ -1443,7 +1446,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     FunctionHandler.handleFunctionBody(expressionDeclaration, fn, this.generator, env);
     LLVMFunction.verify(fn, expression);
 
-    return this.makeClosure(fn, expressionDeclaration, env);
+    return this.makeClosure(fn, expressionDeclaration, env, scope);
   }
 
   public static withEnvironmentPointerFromArguments<R>(
@@ -1601,7 +1604,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
             }
 
             if (classDeclaration.isDerived) {
-              const superValue = this.generator.ts.obj.create();
+              const superValue = this.generator.ts.obj.create(this.generator.symbolTable.currentScope);
               this.generator.ts.obj.set(superValue, "parent", thisValue);
               this.generator.ts.obj.set(thisValue, "super", superValue);
             }
@@ -1770,7 +1773,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         FunctionHandler.handleFunctionBody(method, fn, this.generator, env);
         LLVMFunction.verify(fn, expression);
 
-        const closure = this.makeClosure(fn, method, env);
+        const closure = this.makeClosure(fn, method, env, scope);
 
         let key = method.name.getText();
         if (method.isGetAccessor()) {
