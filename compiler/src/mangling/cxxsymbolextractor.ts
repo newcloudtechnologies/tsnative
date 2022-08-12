@@ -12,7 +12,7 @@
 import { flatten, zipWith } from "lodash";
 import * as fs from "fs";
 
-export class NmSymbolExtractor {
+export class CXXSymbolExtractor {
   readSymbols(demangledTables: string[], mangledTables: string[]) {
     const demangledSymbols: string[] = flatten(
       demangledTables.map((file) => {
