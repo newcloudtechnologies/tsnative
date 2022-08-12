@@ -240,7 +240,7 @@ void Object::unmark()
 
 void Object::markChildren()
 {
-    LOG_INFO("Calling OBJECT::markChildren");
+    LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
 
     const auto callable = [](auto& entry)
     {
@@ -249,10 +249,12 @@ void Object::markChildren()
 
         if (key && !key->isMarked())
         {
+            LOG_ADDRESS("Mark child: ", key);
             key->mark();
         }
         if (value && !value->isMarked())
         {
+            LOG_ADDRESS("Mark child: ", key);
             value->mark();
         }
     };

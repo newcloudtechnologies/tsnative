@@ -3,13 +3,17 @@
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
+#include "std/private/logger.h"
+
 Union::Union()
 {
+    LOG_ADDRESS("Calling Union default ctor this = ", this);
 }
 
 Union::Union(Object* value)
     : _value(value)
 {
+    LOG_ADDRESS("Calling Union ctor from Object this = ", this);
 }
 
 Object* Union::getValue() const
@@ -41,8 +45,11 @@ Boolean* Union::toBool() const
 
 void Union::markChildren()
 {
+    LOG_ADDRESS("Calling Union::markChildren on ", this);
+
     if (_value && !_value->isMarked())
     {
+        LOG_ADDRESS("Mark child: ", _value);
         _value->mark();
     }
 }

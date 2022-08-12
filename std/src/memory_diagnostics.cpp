@@ -12,7 +12,7 @@ MemoryDiagnostics::MemoryDiagnostics(const MemoryDiagnosticsStorage& storage, co
     : _storage{storage},
     _gc{gc}
 {
-    LOG_ADDRESS("Calling mem diagnostics ctor this = ", this);
+    LOG_ADDRESS("Calling MemoryDiagnostics ctor this = ", this);
 }
 
 Number* MemoryDiagnostics::getAliveObjectsCount() const

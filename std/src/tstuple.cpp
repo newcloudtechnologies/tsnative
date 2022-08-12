@@ -4,11 +4,14 @@
 
 #include "std/private/tsarray_std_p.h"
 
+#include "std/private/logger.h"
+
 Tuple::Tuple()
 #ifdef USE_STD_ARRAY_BACKEND
     : _d(new DequeueBackend<Object*>())
 #endif // USE_STD_ARRAY_BACKEND
 {
+    LOG_ADDRESS("Calling tuple ctor this= ", this);
 }
 
 Tuple::~Tuple()
@@ -43,11 +46,13 @@ String* Tuple::toString() const
 
 void Tuple::markChildren()
 {
+    LOG_INFO("Calling Tuple::markChildren");
     for (int i = 0 ; i <_d->length() ; ++i)
     {
         auto* o = static_cast<Object*>(_d->operator[](i));
         if (o && !o->isMarked())
         {
+            LOG_ADDRESS("Mark child: ", o);
             o->mark();
         }
     }
