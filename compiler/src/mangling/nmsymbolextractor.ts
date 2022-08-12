@@ -16,6 +16,7 @@ export class NmSymbolExtractor {
   readSymbols(demangledTables: string[], mangledTables: string[]) {
     const demangledSymbols: string[] = flatten(
       demangledTables.map((file) => {
+        console.log(file);
         const contents = fs.readFileSync(file, "utf8");
         return this.getExportedSymbols(contents);
       })
@@ -23,6 +24,7 @@ export class NmSymbolExtractor {
 
     const mangledSymbols: string[] = flatten(
       mangledTables.map((file) => {
+        console.log(file);
         const contents = fs.readFileSync(file, "utf8");
         return this.getExportedSymbols(contents);
       })
