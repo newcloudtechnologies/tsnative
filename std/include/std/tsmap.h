@@ -19,6 +19,8 @@
 #include "std/private/tsmap_std_p.h"
 #endif
 
+#include "std/private/logger.h"
+
 // add TS_DECLARE to template specialization
 template class TS_DECLARE Iterable<Tuple*>;
 
@@ -191,6 +193,7 @@ IterableIterator<K>* Map<K, V>::keys()
 template <typename K, typename V>
 void Map<K, V>::markChildren()
 {    
+    LOG_ADDRESS("Calling Map::markChildren on ", this);
     const auto callable = [](std::pair<K, V>& entry)
     {
         auto* key = static_cast<Object*>(entry.first);
@@ -198,10 +201,12 @@ void Map<K, V>::markChildren()
 
         if (key && !key->isMarked())
         {
+            LOG_ADDRESS("Mark key: ", key);
             key->mark();
         }
         if (value && !value->isMarked())
         {
+            LOG_ADDRESS("Mark value: ", value);
             value->mark();
         }
     };
