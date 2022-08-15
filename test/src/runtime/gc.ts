@@ -57,6 +57,8 @@ import { Runtime } from "tsnative/std/definitions/runtime"
 //     console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
 // }
 
+// Runtime.getGC().collect();
+
 // Collect primitive inside of a function
 {
     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
@@ -66,17 +68,13 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     const internalObjectsCount = memInfo.getAliveObjectsCount();
 
     function foo() {
-        let a : string = "abacaba";
-        // let b : string = "mama rama";
-        // return a + b;
     };
-    // let e = foo();
-    // e = e.trim();
 
     Runtime.getGC().collect();
-
     const newObjectCount = memInfo.getAliveObjectsCount();
-    console.assert(internalObjectsCount === newObjectCount, "GC failed: not all object were collected");
+
+    // +3 are closure, numArgs, envLength
+    console.assert(internalObjectsCount + 3 === newObjectCount, "GC failed: not all object were collected");
 }
 
 // Simple garbage inside a block. GC deletes it
