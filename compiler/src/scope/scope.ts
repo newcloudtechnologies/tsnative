@@ -621,16 +621,18 @@ export class Scope {
         return;
       }
 
-      const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
-      // Inplace allocated is same as allocated for now
-      const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
-      const name = node.name.getText();
+      if (!ts.isFunctionDeclaration(node)) {
+        const llvmType = tsType.getLLVMType();
+        const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
+        // Inplace allocated is same as allocated for now
+        const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
+        const name = node.name.getText();
 
-      if (this.get(name)) {
-        this.overwrite(name, inplaceAllocated);
-      } else {
-        this.set(name, inplaceAllocated);
+        if (this.get(name)) {
+          this.overwrite(name, inplaceAllocated);
+        } else {
+          this.set(name, inplaceAllocated);
+        }
       }
     }
 
