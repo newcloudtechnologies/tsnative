@@ -48,6 +48,24 @@ export class ConciseBody {
     return vars.concat(varsStatic).filter((variable) => variable !== "undefined");
   }
 
+  // IMPORTANT TO READ!
+  // https://jira.ncloudtech.ru:8090/browse/AN-1170
+  // This method simply collects global variables relative to the local function body with respect to the nested functions
+  // Here is an algorithm:
+  // 1. Open new scope to collect local variables. Scope is used as a simple container, nothing more
+  // 2. Open new llvm block
+  // 3. Create fake variables, names is what really important, values are fake.
+  // 4. Put these fake variable into that newly created scope.
+  // 5. Determine global variables using the check like: if (not in local fake scope) then global.
+  // 6. Delete llvm block from the 2. because some calls could generate llvm ir generation.
+
+  // Downsides are:
+  // 1. A lot of fakes
+  // 2. After point 6 and before completion of withLocalScope llvm ir builder in the detached state
+  // It has no place to insert new ir. Old one (fake) was deleted and setInsertionPoint has not been called yet.
+  // 3. Global variables collection should be reaonly relative to ir, to scopes and to everything. This is a simple getter.
+  // Hence this code needs to be refactored. 
+  // Same for the static variant.
   private getFunctionEnvironmentVariables(
     signature: Signature | undefined,
     extendScope: Scope,
@@ -367,6 +385,7 @@ export class ConciseBody {
           visitor(this.body)
         }
 
+        bodyScope.map.clear();
         dummyBlock.eraseFromParent();
 
         if (signature) {
@@ -396,9 +415,11 @@ export class ConciseBody {
     });
   }
 
+  // IMPORTANT 
+  // READ COMMENT FOR getFunctionEnvironmentVariables FUNCTION FIRST!
   private getStaticFunctionEnvironmentVariables(handled: ts.Node[] = []) {
     return this.generator.withInsertBlockKeeping(() => {
-      return this.generator.symbolTable.withLocalScope((_) => {
+      return this.generator.symbolTable.withLocalScope((bodyScope) => {
         const externalVariables: string[] = [];
 
         const dummyBlock = llvm.BasicBlock.create(this.generator.context, "dummy", this.generator.currentFunction);
@@ -442,6 +463,7 @@ export class ConciseBody {
 
         ts.forEachChild(this.body, visitor);
 
+        bodyScope.map.clear();
         dummyBlock.eraseFromParent();
         return externalVariables;
       }, this.generator.symbolTable.currentScope);
