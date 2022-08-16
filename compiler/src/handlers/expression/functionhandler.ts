@@ -1480,6 +1480,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
               const entryBlock = llvm.BasicBlock.create(generator.context, "entry", fn.unwrapped as llvm.Function);
               generator.builder.setInsertionPoint(entryBlock);
 
+              bodyScope.initializeVariableDeclarations(declaration.body!, generator);
               if (dbg) {
                 dbg.emitProcedure(
                   declaration.unwrapped,
