@@ -587,7 +587,7 @@ export class Scope {
     this.removeLocalRoots();
   }
 
-  initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
+  initializeVariableDeclarations(root: ts.Node, generator: LLVMGenerator) {
     const initializeFrom = (node: ts.Node) => {
       // ignore nested blocks and modules/namespaces
       if (ts.isBlock(node) || ts.isModuleBlock(node)) {
@@ -606,12 +606,9 @@ export class Scope {
 
       node.forEachChild(initializeFrom);
 
-      // only interested in variables and functions declarations
-      if (!ts.isVariableDeclaration(node) && !ts.isFunctionDeclaration(node)) {
-        return;
-      }
-
-      if (!node.name) {
+      // Only interested in variables declarations
+      // Function declarations are placed into scope in the functiondeclarationhandler.ts -> registerClosureForDeclaration
+      if (!ts.isVariableDeclaration(node) || !node.name) {
         return;
       }
 
@@ -621,18 +618,16 @@ export class Scope {
         return;
       }
 
-      if (!ts.isFunctionDeclaration(node)) {
-        const llvmType = tsType.getLLVMType();
-        const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
-        // Inplace allocated is same as allocated for now
-        const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
-        const name = node.name.getText();
+      const llvmType = tsType.getLLVMType();
+      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
+      // Inplace allocated is same as allocated for now
+      const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
+      const name = node.name.getText();
 
-        if (this.get(name)) {
-          this.overwrite(name, inplaceAllocated);
-        } else {
-          this.set(name, inplaceAllocated);
-        }
+      if (this.get(name)) {
+        this.overwrite(name, inplaceAllocated);
+      } else {
+        this.set(name, inplaceAllocated);
       }
     }
 

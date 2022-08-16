@@ -59,7 +59,27 @@ import { Runtime } from "tsnative/std/definitions/runtime"
 
 // Runtime.getGC().collect();
 
-// Collect primitive inside of a function
+// // Do not collect function closure
+// {
+//     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+//     // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+//     const diagnostics = Runtime.getDiagnostics();
+//     const memInfo = diagnostics.getMemoryDiagnostics();
+//     const internalObjectsCount = memInfo.getAliveObjectsCount();
+
+//     function foo() {
+//     };
+
+//     Runtime.getGC().collect();
+//     const newObjectCount = memInfo.getAliveObjectsCount();
+
+//     // +3 are closure, numArgs, envLength
+//     console.assert(internalObjectsCount + 3 === newObjectCount, "GC failed: not all object were collected");
+// }
+
+// Runtime.getGC().collect();
+
+// Collect local function variables
 {
     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
     // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
@@ -68,11 +88,17 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     const internalObjectsCount = memInfo.getAliveObjectsCount();
 
     function foo() {
+        let a = "abacaba";
+        let b = "mama rama";
     };
+    
+    foo();
 
     Runtime.getGC().collect();
     const newObjectCount = memInfo.getAliveObjectsCount();
 
+    console.log(internalObjectsCount);
+    console.log(newObjectCount);
     // +3 are closure, numArgs, envLength
     console.assert(internalObjectsCount + 3 === newObjectCount, "GC failed: not all object were collected");
 }
