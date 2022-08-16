@@ -91,8 +91,6 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
             return allocated;
         });
 
-        this.generator.symbolTable.currentScope.initializeVariableDeclarations(declaration.body, this.generator);
-
         const scope = this.generator.symbolTable.currentScope;
 
         const environmentVariables = ConciseBody.create(declaration.body, this.generator).getEnvironmentVariables(
