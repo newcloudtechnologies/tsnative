@@ -77,7 +77,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         return this.generator.symbolTable.withLocalScope(
-          (_) => this.handleCallExpression(call, env),
+          (localScope: Scope) => { 
+            const result = this.handleCallExpression(call, env);
+            localScope.deinitialize();
+            return result;
+          },
           this.generator.symbolTable.currentScope,
           this.generator.internalNames.FunctionScope
         );
@@ -96,7 +100,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
         );
       case ts.SyntaxKind.FunctionExpression:
         return this.generator.symbolTable.withLocalScope(
-          (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
+          (localScope: Scope) => {
+            const result = this.handleFunctionExpression(expression as ts.FunctionExpression, env);
+            localScope.deinitialize();
+            return result;
+          },
           this.generator.symbolTable.currentScope,
           this.generator.internalNames.FunctionScope
         );
@@ -415,7 +423,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const expressionDeclaration = Declaration.create(expression, this.generator);
     const scope = this.generator.symbolTable.currentScope;
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
+    this.generator.symbolTable.currentScope.initializeVariableDeclarations(expression.body, this.generator);
 
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
@@ -1178,14 +1186,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = constructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
-        scope.initializeVariablesAndFunctionDeclarations(body, this.generator);
+        scope.initializeVariableDeclarations(body, this.generator);
         environmentVariables.push(
           ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, scope, outerEnv)
         );
       }
     }
 
-    scope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
+    scope.initializeVariableDeclarations(expression, this.generator);
     environmentVariables.push(...valueDeclaration.environmentVariables(expression, scope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
@@ -1405,7 +1413,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return nullArg;
     });
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
+    this.generator.symbolTable.currentScope.initializeVariableDeclarations(expression.body, this.generator);
 
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
@@ -1742,7 +1750,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator
         );
 
-        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body, this.generator);
+        this.generator.symbolTable.currentScope.initializeVariableDeclarations(method.body, this.generator);
 
         const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
           signature,
@@ -1792,16 +1800,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     parameters.forEach((parameter) => {
       addClassScope(parameter, this.generator.symbolTable.globalScope, this.generator);
     });
-  }
-
-  private isInFunction(expression: ts.Expression) {
-    let parentFunction = expression.parent;
-
-    while (parentFunction && !ts.isFunctionLike(parentFunction)) {
-      parentFunction = parentFunction.parent;
-    }
-
-    return Boolean(parentFunction);
   }
 
   invoke(
