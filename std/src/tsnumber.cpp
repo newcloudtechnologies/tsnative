@@ -31,6 +31,7 @@ Number::Number(Number* v)
 Number::~Number()
 {
     LOG_ADDRESS("Calling number dtor: _d =", _d);
+    LOG_INFO("Value: " + std::to_string(_d->unboxed()));
     delete _d;
 }
 
