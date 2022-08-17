@@ -79,7 +79,31 @@ import { Runtime } from "tsnative/std/definitions/runtime"
 
 // Runtime.getGC().collect();
 
-// Collect local function variables
+// // Collect local function variables
+// {
+//     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
+//     // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
+//     const diagnostics = Runtime.getDiagnostics();
+//     const memInfo = diagnostics.getMemoryDiagnostics();
+//     const internalObjectsCount = memInfo.getAliveObjectsCount();
+
+//     function foo() {
+//         let a = "abacaba";
+//         let b = "mama rama";
+//     };
+    
+//     foo();
+
+//     Runtime.getGC().collect();
+//     const newObjectCount = memInfo.getAliveObjectsCount();
+
+//     // +3 are closure, numArgs, envLength
+//     console.assert(internalObjectsCount + 3 === newObjectCount, "GC failed: not all object were collected");
+// }
+
+// Runtime.getGC().collect();
+
+// Collect local function variables but do not collect environment
 {
     // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
     // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
@@ -87,9 +111,9 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     const memInfo = diagnostics.getMemoryDiagnostics();
     const internalObjectsCount = memInfo.getAliveObjectsCount();
 
+    let i = 22;
     function foo() {
-        let a = "abacaba";
-        let b = "mama rama";
+        i = 42;
     };
     
     foo();
@@ -99,47 +123,6 @@ import { Runtime } from "tsnative/std/definitions/runtime"
 
     console.log(internalObjectsCount);
     console.log(newObjectCount);
-    // +3 are closure, numArgs, envLength
+    // +3 are closure, numArgs, envLength, nothing for i because it's placeholder is created earlier than first getAliveObjectsCount
     console.assert(internalObjectsCount + 3 === newObjectCount, "GC failed: not all object were collected");
 }
-
-// Simple garbage inside a block. GC deletes it
-// {
-    // const memInfo = Runtime.getDiagnostics().getMemoryDiagnostics();
-    // const internalObjectsCount = memInfo.getAliveObjectsCount();
-
-//     {
-// //        const a : number[] = [];
-
-//         const newObjectCount = memInfo.getAliveObjectsCount();
-//         // const diff = newObjectCount - internalObjectsCount;
-
-//         console.assert(1 === newObjectCount, "GC failed: one empty array should be allocated");
-//     }
-
-    // const memoryDiagnostics = Runtime.getDiagnostics().getMemoryDiagnostics();
-    // const prevDeletedObjects = memoryDiagnostics.getDeletedObjectsCount();
-
-    // function foo() {
-    //     let a : string = "abacaba";
-    //     let b : string = "mama rama";
-    //     return a + b;
-    // }
-    // let e = foo();
-
-    // Runtime.getGC().collect();
-
-    // const deletedObjects = memoryDiagnostics.getDeletedObjectsCount() - prevDeletedObjects;
-    // console.log("Deleted objects:");
-    // console.log(deletedObjects);
-    // console.assert(deletedObjects === 2, "GC Failed: gc had not collected the gargbage");
-    
-    // const newObjectCount = memInfo.getAliveObjectsCount();
-
-    // console.log(newObjectCount);
-    // console.log(internalObjectsCount);
-
-    // const newObjectCount = memInfo.getAliveObjectsCount();
-    // console.assert(internalObjectsCount === newObjectCount, "GC failed: erray was not deleted");
-    //console.assert(false, "GC failed: erray was not deleted");
-// }
