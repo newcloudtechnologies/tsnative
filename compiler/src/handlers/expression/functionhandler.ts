@@ -438,7 +438,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const expressionDeclaration = Declaration.create(expression, this.generator);
     const scope = this.generator.symbolTable.currentScope;
 
-    this.generator.symbolTable.currentScope.initializeVariableDeclarations(expression.body, this.generator);
+    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
 
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
@@ -1200,14 +1200,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = constructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
-        scope.initializeVariableDeclarations(body, this.generator);
+        scope.initializeVariablesAndFunctionDeclarations(body, this.generator);
         environmentVariables.push(
           ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, scope, outerEnv)
         );
       }
     }
 
-    scope.initializeVariableDeclarations(expression, this.generator);
+    scope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
     environmentVariables.push(...valueDeclaration.environmentVariables(expression, scope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
@@ -1442,7 +1442,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       return nullArg;
     });
 
-    this.generator.symbolTable.currentScope.initializeVariableDeclarations(expression.body, this.generator);
+    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
 
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
@@ -1508,6 +1508,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
             (environment) => {
               const entryBlock = llvm.BasicBlock.create(generator.context, "entry", fn.unwrapped as llvm.Function);
               generator.builder.setInsertionPoint(entryBlock);
+
+              bodyScope.initializeVariablesAndFunctionDeclarations(declaration.body!, generator);
 
               if (dbg) {
                 dbg.emitProcedure(
@@ -1775,7 +1777,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator
         );
 
-        this.generator.symbolTable.currentScope.initializeVariableDeclarations(method.body, this.generator);
+        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body, this.generator);
 
         const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
           signature,

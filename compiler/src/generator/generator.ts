@@ -159,7 +159,7 @@ export class LLVMGenerator {
       this.currentSource = sourceFile;
       this.symbolTable.addScope(sourceFile.fileName);
 
-      this.symbolTable.currentScope.initializeVariableDeclarations(this.currentSourceFile, this);
+      this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
 
       sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
     }
