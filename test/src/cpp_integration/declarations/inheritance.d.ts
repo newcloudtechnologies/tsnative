@@ -16,6 +16,7 @@ declare module "cpp" {
 
         private p0: number;
         private p1: number;
+        private p2: number;
     }
 
     @VTable
@@ -34,5 +35,18 @@ declare module "cpp" {
         
         private p0: number;
         private p1: number;
+    }
+
+    export class CXXBase {
+        constructor();
+
+        getNumber(): number;
+        callMemberClosure(): string;
+
+        private p0: number;
+        private p1: number;
+        private p2: number;
+        private p3: number;
+        private p4: number;
     }
 }

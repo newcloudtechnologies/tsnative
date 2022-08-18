@@ -168,6 +168,52 @@ export class TSObject {
     return keys;
   }
 
+  private getCopyPropsFunction() {
+    const copyPropsDeclaration = this.declaration.members.find((m) => m.name?.getText() === "copyPropsTo");
+
+    if (!copyPropsDeclaration) {
+      throw new Error(`Unable to find 'copyPropsTo' at '${this.declaration.getText()}'`);
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      copyPropsDeclaration,
+      undefined,
+      this.generator.ts.obj.getTSType(),
+      [this.generator.ts.obj.getTSType()],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Unable to find cxx 'copyPropsTo' for 'Object'`);
+    }
+
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(copyPropsDeclaration);
+    const tsReturnType = signature.getReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType();
+
+    const llvmArgumentTypes = [this.generator.ts.obj.getLLVMType(), this.generator.ts.obj.getLLVMType()];
+
+    const { fn: copyProps } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return copyProps;
+  }
+
+  copyProps(source: LLVMValue, target: LLVMValue) {
+    const copyPropsFn = this.getCopyPropsFunction();
+
+    const castedSource = this.generator.builder.createBitCast(
+      source,
+      this.generator.ts.obj.getLLVMType()
+    );
+
+    const castedTarget = this.generator.builder.createBitCast(
+      target,
+      this.generator.ts.obj.getLLVMType()
+    );
+
+    this.generator.builder.createSafeCall(copyPropsFn, [castedSource, castedTarget]);
+  }
+
   create(props?: LLVMValue) {
     const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
 

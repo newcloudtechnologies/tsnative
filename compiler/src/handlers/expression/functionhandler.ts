@@ -319,7 +319,31 @@ export class FunctionHandler extends AbstractExpressionHandler {
         throw new Error(`Expected outer environment to be provided at '${expression.getText()}'`);
       }
 
-      return this.sysVFunctionHandler.handleNewExpression(expression, qualifiedName, outerEnv);
+      const thisValueIdx = outerEnv.getVariableIndex("this");
+      if (thisValueIdx === -1) {
+        throw new Error(`Expected 'this' to be provided to constructor. Error at '${expression.getText()}'`);
+      }
+
+      const thisValuePtr = this.generator.builder.createInBoundsGEP(outerEnv.typed, [
+        LLVMConstantInt.get(this.generator, 0),
+        LLVMConstantInt.get(this.generator, thisValueIdx),
+      ]);
+
+      const tsThisValue = this.generator.builder.createLoad(thisValuePtr);
+
+      const cxxObjectType = valueDeclaration.type.getLLVMType();
+      let memory = this.generator.gc.allocate(cxxObjectType.getPointerElementType())
+      memory = this.generator.builder.createBitCast(memory, this.generator.ts.obj.getLLVMType());
+
+      this.generator.builder.createSafeStore(memory, thisValuePtr);
+
+      const cxxObject = this.sysVFunctionHandler.handleNewExpression(expression, qualifiedName, outerEnv)
+
+      this.generator.ts.obj.copyProps(tsThisValue, cxxObject);
+
+      this.generator.gc.deallocate(tsThisValue);
+
+      return cxxObject;
     }
 
     if (valueDeclaration.isAmbient()) {
@@ -1140,7 +1164,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    const thisValue = this.generator.ts.obj.create();
+    let thisValue = this.generator.ts.obj.create();
 
     const scope = this.generator.symbolTable.currentScope;
 
@@ -1225,6 +1249,21 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const body = constructorDeclaration.isFunctionLike() ? constructorDeclaration.body : undefined;
     this.invoke(expression, body, constructor, [env.untyped]);
+
+    if (valueDeclaration.cxxBase) {
+      const thisValueIdx = env.getVariableIndex("this");
+      if (thisValueIdx === -1) {
+        throw new Error(`Expected 'this' to be provided for CXX-derived class at '${expression.getText()}'`);
+      }
+
+      const thisValuePtr = this.generator.builder.createInBoundsGEP(env.typed, [
+        LLVMConstantInt.get(this.generator, 0),
+        LLVMConstantInt.get(this.generator, thisValueIdx),
+      ]);
+
+      thisValue = this.generator.builder.createLoad(thisValuePtr);
+      thisValue = this.generator.builder.createBitCast(thisValue, valueDeclaration.type.getLLVMType());
+    }
 
     this.patchVTable(valueDeclaration, scope, thisValue, env);
 
