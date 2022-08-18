@@ -147,8 +147,9 @@ function(instantiate_classes target dep_target entry sources includes output_dir
         DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Instantiating classes..."
-        COMMAND ${TS_COMPILER}
-        ARGS ${entry}   --tsconfig ${TS_CONFIG}
+        COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
+        ARGS ${TS_COMPILER} ${entry}
+                        --tsconfig ${TS_CONFIG}
                         --baseUrl ${PROJECT_BASE_URL}
                         --processTemplateClasses
                         # TODO: use generator expressions: --includeDirs "\'$<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>\'"
@@ -186,8 +187,9 @@ function(instantiate_functions target dep_target entry sources includes output_d
         DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Instantiating functions..."
-        COMMAND ${TS_COMPILER}
-        ARGS ${entry}   --tsconfig ${TS_CONFIG}
+        COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
+        ARGS ${TS_COMPILER} ${entry}
+                        --tsconfig ${TS_CONFIG}
                         --baseUrl ${PROJECT_BASE_URL}
                         --processTemplateFunctions 
                         # TODO: use generator expressions: --includeDirs $<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>
@@ -287,8 +289,9 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
         DEPENDS "${entry}" "${sources}" "${demangledList}" "${mangledList}"
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Running TS compiler: ${entry}"
-        COMMAND ${TS_COMPILER}
-        ARGS ${entry} --tsconfig ${TS_CONFIG}
+        COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
+        ARGS ${TS_COMPILER} ${entry}
+                      --tsconfig ${TS_CONFIG}
                       --baseUrl ${PROJECT_BASE_URL}
                       --demangledTables ${DEMANGLED}
                       --mangledTables ${MANGLED}
