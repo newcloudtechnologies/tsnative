@@ -9,6 +9,6 @@
 /// <reference path="./union_narrowing.d.ts"/>
 /// <reference path="./fileinfo.d.ts"/>
 
-export { Aggregate, Point, LargerAggregate, DerivedFromVirtualBase, Rect, Printable, WithOptionalArgs, DerivedFromBaseInOtherNamespace, E, EnumArgs, UnionTest } from "cpp";
+export { Aggregate, Point, LargerAggregate, DerivedFromVirtualBase, Rect, Printable, WithOptionalArgs, DerivedFromBaseInOtherNamespace, E, EnumArgs, UnionTest, CXXBase } from "cpp";
 export { innerNS } from "NS"
 export { exts } from "poc";

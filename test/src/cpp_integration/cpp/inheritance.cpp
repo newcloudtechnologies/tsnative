@@ -1,6 +1,7 @@
 #include "inheritance.h"
 
 #include <std/gc.h>
+#include <std/tsclosure.h>
 
 using namespace cpp;
 
@@ -14,3 +15,23 @@ const Number *DerivedFromVirtualBase::pureVirtualMethodToOverride() const
 }
 
 DerivedFromBaseInOtherNamespace::DerivedFromBaseInOtherNamespace() {}
+
+CXXBase::CXXBase() {}
+CXXBase::~CXXBase()
+{
+  delete dummyField1;
+  delete dummyField2;
+}
+
+Number *CXXBase::getNumber() const
+{
+  return get<Number *>("n");
+}
+
+String *CXXBase::callMemberClosure() const
+{
+  auto *closure = get<TSClosure *>("m");
+  String *result = static_cast<String *>(closure->call());
+
+  return result->concat(new String("CXX"));
+}

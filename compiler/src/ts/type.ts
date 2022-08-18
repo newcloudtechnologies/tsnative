@@ -620,7 +620,7 @@ export class TSType {
       return this.checker.generator.ts.array.getLLVMType();
     }
 
-    if (this.isClass() && this.isAmbient()) {
+    if (this.isClass()) {
       const symbol = this.getSymbol();
       const declaration = symbol.valueDeclaration;
 
@@ -632,7 +632,14 @@ export class TSType {
         throw new Error(`No name found at declaration '${declaration.getText()}'`);
       }
 
-      return declaration.getLLVMStructType(declaration.name.getText());
+      if (this.isAmbient()) {
+        return declaration.getLLVMStructType(declaration.name.getText());
+      }
+
+      const cxxBase = declaration.cxxBase;
+      if (cxxBase) {
+        return cxxBase.getLLVMStructType(declaration.name.getText());
+      }
     }
 
     if (this.isObject()) {
