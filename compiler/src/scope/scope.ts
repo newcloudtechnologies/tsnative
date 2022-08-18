@@ -546,7 +546,7 @@ export class Scope {
     this.isNamespace = isNamespace;
   }
 
-  initializeVariableDeclarations(root: ts.Node, generator: LLVMGenerator) {
+  initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
     const initializeFrom = (node: ts.Node) => {
       // ignore nested blocks and modules/namespaces
       if (ts.isBlock(node) || ts.isModuleBlock(node)) {
@@ -565,8 +565,8 @@ export class Scope {
 
       node.forEachChild(initializeFrom);
 
-      // Only interested in variables
-      if (!ts.isVariableDeclaration(node)) {
+      // only interested in variables and functions declarations
+      if (!ts.isVariableDeclaration(node) && !ts.isFunctionDeclaration(node)) {
         return;
       }
 
@@ -580,8 +580,6 @@ export class Scope {
         return;
       }
 
-      // Function declarations are placed into scope in the
-      // functiondeclarationhandler.ts -> registerClosureForDeclaration
       const llvmType = tsType.getLLVMType();
       const allocated = generator.gc.allocate(llvmType.getPointerElementType());
 
