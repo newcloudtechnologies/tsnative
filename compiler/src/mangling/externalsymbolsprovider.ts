@@ -117,7 +117,7 @@ export class ExternalSymbolsProvider {
         );
 
         const mixinPattern = new RegExp(
-          `(^[a-zA-Z\ \:]*)<${qualifiedName}>(::)${this.methodName}`
+          `(^[\w\s:]*)<${qualifiedName}>(::)${this.methodName}`
         );
 
         const symbolRange = CXXSymbols().get(qualifiedName);
@@ -242,7 +242,7 @@ export class ExternalSymbolsProvider {
         `(?=(^| )${qualifiedName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
       );
 
-      const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${qualifiedName}>(::)${this.methodName}`);
+      const mixinPattern = new RegExp(`(^[\w\s:]*)<${qualifiedName}>(::)${this.methodName}`);
 
       const symbolRange = CXXSymbols().get(qualifiedName);
 
