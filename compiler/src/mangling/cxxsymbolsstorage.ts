@@ -63,6 +63,10 @@ class CXXSymbolsStorage {
     }
 
     get(key: string) {
+        if (!key) {
+            throw new Error("Empty string requested as a key at CXXSymbolsStorage.get");
+        }
+
         key = key[0].toLowerCase();
 
         if (!this.symbols.has(key)) {
