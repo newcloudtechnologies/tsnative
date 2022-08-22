@@ -222,6 +222,16 @@ Array<String*>* Object::keys(Object* entity)
     return entity->getKeysArray();
 }
 
+void Object::copyPropsTo(Object* target)
+{
+    // @todo: handle 'super' key?
+    _props->forEachEntry(
+        [this, &target](const auto& pair)
+        {
+            target->set(pair.first, static_cast<Union*>(pair.second)->getValue());
+        });
+}
+
 bool Object::isMarked() const
 {
     return _isMarked;

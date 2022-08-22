@@ -90,6 +90,10 @@ export class Declaration {
     return this.getBases().length > 0;
   }
 
+  get cxxBase() {
+    return this.getBases().find((baseClass) => baseClass.isAmbient());
+  }
+
   findConstructor(argumentTypes: TSType[]) {
     if (!this.isClass()) {
       throw new Error(`Expected Declaration.findConstructor to be called on class declaration, called on '${ts.SyntaxKind[this.declaration.kind]}: ${this.declaration.getText()}'`);

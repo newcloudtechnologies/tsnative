@@ -5,6 +5,7 @@ export declare class AnotherWidget {
 
     private p0: number;
     private p1: number;
+    private p2: number;
 }
 
 @VTable
@@ -28,6 +29,7 @@ export declare class Component {
 
     private p0: number;
     private p1: number;
+    private p2: number;
 }
 
 export declare class Handler {
@@ -37,4 +39,5 @@ export declare class Handler {
 
     private p0: number;
     private p1: number;
+    private p2: number;
 }

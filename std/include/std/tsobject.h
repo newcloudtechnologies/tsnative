@@ -50,6 +50,8 @@ public:
 
     TS_METHOD static Array<String*>* keys(Object* entity);
 
+    TS_METHOD void copyPropsTo(Object* target);
+
     bool isMarked() const;
     void mark();
     void unmark();
