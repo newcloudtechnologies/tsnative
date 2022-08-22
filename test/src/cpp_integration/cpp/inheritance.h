@@ -41,4 +41,18 @@ namespace cpp
     DerivedFromBaseInOtherNamespace();
   };
 
+  class CXXBase : public Object
+  {
+  public:
+    CXXBase();
+    ~CXXBase();
+
+    Number *getNumber() const;
+    String *callMemberClosure() const;
+
+  private:
+    int* dummyField1 = new int(1);
+    int* dummyField2 = new int(2);
+  };
+
 } // namespace cpp

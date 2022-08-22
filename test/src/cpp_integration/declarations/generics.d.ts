@@ -5,6 +5,7 @@ export declare class ClassWithTemplateMethod {
 
     private p0: number;
     private p1: number;
+    private p2: number;
 }
 
 export declare class ClassWithTemplateMembers<FirstMemberType, SecondMemberType> {
@@ -14,6 +15,7 @@ export declare class ClassWithTemplateMembers<FirstMemberType, SecondMemberType>
 
     private p0: number;
     private p1: number;
+    private p2: number;
 }
 
 export declare class TemplateClassWithTemplateMethod<T> {
@@ -23,6 +25,7 @@ export declare class TemplateClassWithTemplateMethod<T> {
 
     private p0: number;
     private p1: number;
+    private p2: number;
 }
 
 export declare function sum<T, R>(firstOperand: T, secondOperand: T): R
