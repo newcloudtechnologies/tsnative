@@ -9,11 +9,14 @@
 #include "std/private/tsboolean_cxx_builtin_p.h"
 #endif
 
+#include "std/private/logger.h"
+
 Boolean::Boolean()
 #ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
     : _d(new BooleanCXXBuiltinPrivate)
 #endif
 {
+    LOG_ADDRESS("Calling default bool ctor ", this);
 }
 
 Boolean::Boolean(bool value)
@@ -21,6 +24,7 @@ Boolean::Boolean(bool value)
     : _d(new BooleanCXXBuiltinPrivate(value))
 #endif
 {
+    LOG_ADDRESS("Calling bool from bool ctor " + std::to_string(value) + " ", this);
 }
 
 Boolean::Boolean(Number* value)
@@ -28,6 +32,7 @@ Boolean::Boolean(Number* value)
     : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
 #endif
 {
+    LOG_ADDRESS("Calling bool from number ctor " + std::to_string(value->unboxed()) + " ", this);
 }
 
 Boolean::Boolean(String* value)
@@ -35,10 +40,12 @@ Boolean::Boolean(String* value)
     : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
 #endif
 {
+    LOG_ADDRESS("Calling bool from string ctor " + value->cpp_str() + " ", this);
 }
 
 Boolean::~Boolean()
 {
+    LOG_ADDRESS("Calling bool dtor: _d = ", _d);
     delete _d;
 }
 

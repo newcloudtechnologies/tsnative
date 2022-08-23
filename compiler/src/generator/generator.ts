@@ -73,9 +73,11 @@ export class LLVMGenerator {
     this.module = new llvm.Module("main", this.context);
     this.irBuilder = new Builder(this, null);
 
-    this.symbolTable = new SymbolTable();
-
     this.llvm = new LLVM(this);
+
+    this._ts = new TS(this);
+
+    this.symbolTable = new SymbolTable(this);
 
     if (generateDebugInfo) {
       this.debugInfo = new DebugInfo(this);
@@ -83,8 +85,6 @@ export class LLVMGenerator {
   }
 
   init() {
-    this._ts = new TS(this);
-
     this._builtinNumber = new BuiltinNumber(this);
     this._builtinBoolean = new BuiltinBoolean(this);
 
@@ -275,7 +275,7 @@ export class LLVMGenerator {
 
   get runtime(): Runtime {
     if (!this.globalRuntime) {
-      this.initRuntime();
+      throw new Error("Runtime was not initialized");
     }
     return this.globalRuntime!;
   }

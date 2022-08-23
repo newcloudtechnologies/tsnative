@@ -10,7 +10,9 @@
 #include "std/tsunion.h"
 
 #include "std/runtime.h"
-#include "std/gc.h"
+#include "std/private/allocator.h"
+
+#include "std/private/logger.h"
 
 static String* superKey = new String("super");
 static String* parentKey = new String("parent");
@@ -21,16 +23,19 @@ Object::Object()
     _isMarked{false}
 #endif
 {
+    LOG_ADDRESS("Calling default object ctor ", this);
 }
 
 Object::Object(Map<String*, void*>* props)
     : _props(props->_d),
     _isMarked{false}
 {
+    LOG_ADDRESS("Calling object ctor with props ", this);
 }
 
 Object::~Object()
 {
+    LOG_ADDRESS("Calling object dtor ", this);
     delete _props;
 }
 
@@ -246,7 +251,7 @@ void Object::unmark()
 
 void Object::markChildren()
 {
-    LOG_INFO("Calling OBJECT::markChildren");
+    LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
 
     const auto callable = [](auto& entry)
     {
@@ -255,10 +260,12 @@ void Object::markChildren()
 
         if (key && !key->isMarked())
         {
+            LOG_ADDRESS("Mark key child: ", key);
             key->mark();
         }
         if (value && !value->isMarked())
         {
+            LOG_ADDRESS("Mark value child: ", value);
             value->mark();
         }
     };
@@ -271,15 +278,15 @@ void* Object::operator new (std::size_t n)
 {
     LOG_INFO("Calling Object new operator");
 
-    auto* gc = Runtime::getGC();
-
-    // gc == nullptr can be if we allocate
+    // Runtime can be uninitialized if we allocate
     // static String* s = new String("adasd")
-    if (!gc)
+    if (!Runtime::isInitialized())
     {
         return :: operator new(n);
     }
-    return gc->allocateObject(static_cast<double>(n));
+
+    auto* allocator = Runtime::getAllocator();
+    return allocator->allocateObject(static_cast<double>(n));
 }
 
 class String;

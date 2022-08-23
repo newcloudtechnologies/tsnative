@@ -236,7 +236,7 @@ export function addClassScope(
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-  const scope = new Scope(name, mangledTypename, false, parentScope, { declaration, llvmType, tsType });
+  const scope = new Scope(name, mangledTypename, generator, false, parentScope, { declaration, llvmType, tsType });
 
   parentScope.set(mangledTypename, scope);
 }
@@ -531,7 +531,15 @@ export class Scope {
 
   readonly isNamespace: boolean;
 
-  constructor(name: string | undefined, mangledName: string | undefined, isNamespace: boolean = false, parent?: Scope, data?: ThisData) {
+  private generator: LLVMGenerator;
+
+  constructor(name: string | undefined, 
+              mangledName: string | undefined, 
+              generator : LLVMGenerator,
+              isNamespace: boolean = false, 
+              parent?: Scope, 
+              data?: ThisData) {
+    this.generator = generator;
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.mangledName = mangledName;
@@ -544,6 +552,10 @@ export class Scope {
     }
 
     this.isNamespace = isNamespace;
+  }
+
+  deinitialize() {
+    // Removing roots code will be here
   }
 
   initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
@@ -582,13 +594,14 @@ export class Scope {
 
       const llvmType = tsType.getLLVMType();
       const allocated = generator.gc.allocate(llvmType.getPointerElementType());
+      const inplaceAllocated = generator.ts.obj.createInplace(allocated, undefined);
 
       const name = node.name.getText();
 
       if (this.get(name)) {
-        this.overwrite(name, allocated);
+        this.overwrite(name, inplaceAllocated);
       } else {
-        this.set(name, allocated);
+        this.set(name, inplaceAllocated);
       }
     }
 

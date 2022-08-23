@@ -72,11 +72,6 @@ public:
         _actualAliveObjects.clear();
     }
 
-    void robustCollection()
-    {
-        _gc->collect();
-    }
-
     const std::vector<const Object*>& getActualAliveObjects() const
     {
         return _actualAliveObjects;
@@ -129,7 +124,7 @@ TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
 
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
@@ -171,7 +166,7 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
@@ -200,7 +195,7 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleNoBreak)
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -242,7 +237,7 @@ TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
 
     EXPECT_EQ(4u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -313,7 +308,7 @@ TEST_F(TreeNodeGCTestFixture, detectDeepGarbage)
 
     EXPECT_EQ(4u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -358,7 +353,7 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
 
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
@@ -412,7 +407,7 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
 
     EXPECT_EQ(6u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(0u, getGC().getAliveObjectsCount());
 
@@ -446,7 +441,7 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 
     A->left = nullptr;
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
@@ -477,7 +472,7 @@ TEST_F(TreeNodeGCTestFixture, lostSelfCycleNode)
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(0u, getGC().getAliveObjectsCount());
 
@@ -533,7 +528,7 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
 
     AA->left->left = nullptr; // B X-> C
 
-    robustCollection();
+    getGC().collect();
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 

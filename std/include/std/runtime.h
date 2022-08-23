@@ -17,15 +17,18 @@ template<typename T>
 class Array;
 
 class String;
+class Allocator;
+class MemoryDiagnosticsStorage;
+class IGCImpl;
 
 class TS_EXPORT TS_DECLARE Runtime final : public Object
 {
 public:
     static int init(int argc, char* argv[]);
     static void destroy();
+    static bool isInitialized();
 
     static TS_METHOD GC* getGC();
-    static void setGC(std::unique_ptr<GC> newGC);
 
     static TS_METHOD Diagnostics* getDiagnostics();
 
@@ -33,6 +36,8 @@ public:
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
+
+    static Allocator* getAllocator();
 
 private:
     Runtime() = delete;
@@ -43,6 +48,7 @@ private:
     static std::vector<std::string> _cmdArgs;
     static bool _isInitialized;
 
-    static std::unique_ptr<Diagnostics> _diagnostics;
-    static std::unique_ptr<GC> _gc;
+    static std::unique_ptr<MemoryDiagnosticsStorage> _memoryDiagnosticsStorage;
+    static std::unique_ptr<IGCImpl> _gcImpl;
+    static std::unique_ptr<Allocator> _allocator;
 };

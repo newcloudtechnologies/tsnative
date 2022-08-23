@@ -3,26 +3,29 @@
 #include "std/memory_diagnostics.h"
 #include "std/private/memory_diagnostics_storage.h"
 
-Diagnostics::Diagnostics(std::unique_ptr<MemoryDiagnostics> memoryDiagnostics)
-    : _memoryDiagnostics{std::move(memoryDiagnostics)}
+#include "std/private/logger.h"
+
+Diagnostics::Diagnostics(const IGCImpl& gcImpl,
+                         const MemoryDiagnosticsStorage& memoryDiagnosticsStorage)
+    : _gcImpl{gcImpl},
+    _memoryDiagnosticsStorage{std::move(memoryDiagnosticsStorage)}
 {
-    if (!_memoryDiagnostics)
-    {
-        throw std::runtime_error("Memory diagnostics was set to nullptr");
-    }
+    LOG_ADDRESS("Calling Diagnostics ctor ", this);
 }
 
 MemoryDiagnostics* Diagnostics::getMemoryDiagnostics() const
 {
-    return _memoryDiagnostics.get();
+    return new MemoryDiagnostics(_memoryDiagnosticsStorage, _gcImpl);
 }
 
 String* Diagnostics::toString() const
 {
-    return _memoryDiagnostics->toString();
+    MemoryDiagnostics md{_memoryDiagnosticsStorage, _gcImpl};
+    return md.toString();
 }
 
 Boolean* Diagnostics::toBool() const
 {
-    return _memoryDiagnostics->toBool();
+    MemoryDiagnostics md{_memoryDiagnosticsStorage, _gcImpl};
+    return md.toBool();
 }

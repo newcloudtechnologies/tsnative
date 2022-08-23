@@ -5,7 +5,16 @@
 #include "std/tsarray.h"
 #include "infrastructure/equality_checkers.h"
 
-TEST(RuntimeTests, initRuntimeTwice) 
+class RuntimeTestFixture : public ::testing::Test
+{
+public:
+    void TearDown() override
+    {
+        Runtime::destroy();
+    }
+};
+
+TEST_F(RuntimeTestFixture, initRuntimeTwice) 
 {
     const int ac = 0;
     char** av;
@@ -14,10 +23,9 @@ TEST(RuntimeTests, initRuntimeTwice)
     ASSERT_EQ(0, initResult);
 
     ASSERT_THROW(Runtime::init(ac, av), std::runtime_error);
-    Runtime::destroy();
 }
 
-TEST(RuntimeTests, emptyCmdArgs) 
+TEST_F(RuntimeTestFixture, emptyCmdArgs) 
 {
     const int ac = 0;
     char** av;
@@ -30,11 +38,9 @@ TEST(RuntimeTests, emptyCmdArgs)
     ASSERT_NE(nullptr, arr);
     ASSERT_NE(nullptr, arr->length());
     EXPECT_EQ(0u, arr->length()->unboxed());
-
-    Runtime::destroy();
 }
 
-TEST(RuntimeTests, simpleCmdArgs) 
+TEST_F(RuntimeTestFixture, simpleCmdArgs) 
 {
     const int ac = 2;
     char abacaba[] = {"abacaba"};
@@ -53,11 +59,9 @@ TEST(RuntimeTests, simpleCmdArgs)
     const auto actual = arr->toStdVector();
 
     EXPECT_THAT(actual, ::testing::ElementsAreArray(expected));
-
-    Runtime::destroy();
 }
 
-TEST(RuntimeTests, argvSizeLessThanArgs) 
+TEST_F(RuntimeTestFixture, argvSizeLessThanArgs) 
 {
     const int ac = 1;
     
@@ -78,6 +82,4 @@ TEST(RuntimeTests, argvSizeLessThanArgs)
     const auto actual = arr->toStdVector();
 
     EXPECT_THAT(actual, ::testing::ElementsAreArray(expected));
-
-    Runtime::destroy();
 }

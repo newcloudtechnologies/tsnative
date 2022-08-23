@@ -6,6 +6,8 @@
 #include "std/private/tsnumber_cxx_builtin_p.h"
 #endif
 
+#include "std/private/logger.h"
+
 #include <sstream>
 
 Number::Number(double v)
@@ -13,6 +15,8 @@ Number::Number(double v)
     : _d(new NumberCXXBuiltinPrivate(v))
 #endif
 {
+    LOG_INFO("Calling number ctor from double: v = " + std::to_string(v));
+    LOG_ADDRESS("This: ", this);
 }
 
 Number::Number(Number* v)
@@ -20,10 +24,14 @@ Number::Number(Number* v)
     : _d(new NumberCXXBuiltinPrivate(v->unboxed()))
 #endif
 {
+    LOG_INFO("Calling number ctor from Number*: v = " + std::to_string(v->unboxed()));
+    LOG_ADDRESS("This: ", this);
 }
 
 Number::~Number()
 {
+    LOG_ADDRESS("Calling number dtor: _d =", _d);
+    LOG_INFO("Value: " + std::to_string(_d->unboxed()));
     delete _d;
 }
 
@@ -212,6 +220,7 @@ double Number::unboxed() const
 
 Number* Number::clone() const
 {
+    LOG_ADDRESS("Calling clone from ", this);
     return new Number(this->unboxed());
 }
 
