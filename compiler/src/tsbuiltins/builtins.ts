@@ -90,6 +90,10 @@ export class BuiltinTSClosure extends Builtin {
   private readonly tsType: TSType;
   private readonly declaration: Declaration;
 
+  private readonly callFn: LLVMValue;
+  private readonly getEnvFn: LLVMValue;
+  private readonly ctorFn: LLVMValue;
+
   readonly lazyClosure: LazyClosure;
 
   constructor(generator: LLVMGenerator) {
@@ -97,6 +101,17 @@ export class BuiltinTSClosure extends Builtin {
 
     this.lazyClosure = new LazyClosure(generator);
 
+    this.declaration = this.initClassDeclaration();
+
+    this.tsType = this.declaration.type;
+    this.llvmType = this.declaration.getLLVMStructType("closure");
+
+    this.callFn = this.initCallFn();
+    this.getEnvFn = this.initGetEnvironmentFn();
+    this.ctorFn = this.initCtorFn();
+  }
+
+  private initClassDeclaration() {
     const defs = this.generator.program
       .getSourceFiles()
       .find((sourceFile) => sourceFile.fileName === stdlib.CLOSURE_DEFINITION);
@@ -113,20 +128,10 @@ export class BuiltinTSClosure extends Builtin {
       throw new Error("Unable to find 'TSClosure' declaration in std library utility definitions");
     }
 
-    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-    this.tsType = this.declaration.type;
-    this.llvmType = this.declaration.getLLVMStructType("closure");
+    return Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
   }
 
-  getLLVMType(): LLVMType {
-    return this.llvmType;
-  }
-
-  getTSType() {
-    return this.tsType;
-  }
-
-  getLLVMCall() {
+  private initCallFn() {
     const thisType = this.declaration.type;
 
     const callDeclaration = this.declaration.members.find((m) => m.isMethod() && m.name?.getText() === "call");
@@ -153,7 +158,7 @@ export class BuiltinTSClosure extends Builtin {
     return call;
   }
 
-  getLLVMGetEnvironment() {
+  private initGetEnvironmentFn() {
     const thisType = this.declaration.type;
 
     const getEnvironmentDeclaration = this.declaration.members.find(
@@ -177,15 +182,17 @@ export class BuiltinTSClosure extends Builtin {
 
     const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [this.getLLVMType()];
+
     const { fn: getEnvironment } = this.generator.llvm.function.create(
       llvmReturnType,
       llvmArgumentTypes,
       qualifiedName
     );
+
     return getEnvironment;
   }
 
-  getLLVMConstructor() {
+  private initCtorFn() {
     const thisType = this.declaration.type;
 
     const constructorDeclaration = this.declaration.members.find((m) => m.isConstructor());
@@ -218,6 +225,26 @@ export class BuiltinTSClosure extends Builtin {
     const { fn: constructor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return constructor;
+  }
+
+  getLLVMType(): LLVMType {
+    return this.llvmType;
+  }
+
+  getTSType() {
+    return this.tsType;
+  }
+
+  getLLVMCall() {
+    return this.callFn;
+  }
+
+  getLLVMGetEnvironment() {
+    return this.getEnvFn;
+  }
+
+  getLLVMConstructor() {
+    return this.ctorFn;
   }
 
   createClosure(fn: LLVMValue, env: Environment, functionDeclaration: Declaration) {
