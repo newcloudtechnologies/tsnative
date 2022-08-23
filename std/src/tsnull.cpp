@@ -3,8 +3,11 @@
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
+#include "std/private/logger.h"
+
 Null::Null()
 {
+    LOG_ADDRESS("Calling Null ctor ", this);
 }
 
 String* Null::toString() const

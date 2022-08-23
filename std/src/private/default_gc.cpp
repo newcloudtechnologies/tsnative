@@ -46,6 +46,7 @@ void DefaultGC::addRoot(Object* o)
     }
 
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
+    LOG_ADDRESS("Adding root: ", o);
     _roots.insert(o);
 }
 
@@ -62,6 +63,7 @@ void DefaultGC::removeRoot(Object* o)
     }
 
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
+    LOG_ADDRESS("Removing root: ", o);
     _roots.erase(it);
 }
 
@@ -84,6 +86,7 @@ void DefaultGC::mark()
     {
         if (r && !r->isMarked()) 
         {
+            LOG_ADDRESS("Marking root: ", r);
             r->mark();
         }
     }
@@ -99,6 +102,7 @@ void DefaultGC::sweep()
 
         if (object->isMarked()) 
         {
+            LOG_ADDRESS("Marked object, continue ", object);
             object->unmark();
             ++it;
             continue;
@@ -129,12 +133,14 @@ void DefaultGC::untrackIfObject(void* mem)
     auto heapIt = _heap.find(maybeObject);
     if (heapIt != _heap.end())
     {
+        LOG_ADDRESS("Untracking object ", maybeObject);
         _heap.erase(heapIt);
     }
 
     auto rootIt = _roots.find(maybeObject);
     if (rootIt != _roots.end())
     {
+        LOG_ADDRESS("Untracking root ", maybeObject);
         _roots.erase(rootIt);
     }
 }

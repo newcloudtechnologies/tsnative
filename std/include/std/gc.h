@@ -11,10 +11,12 @@
 class IGCImpl;
 class Allocator;
 
-class TS_EXPORT TS_DECLARE GC
+class TS_EXPORT TS_DECLARE GC : public Object
 {
 public:
-    GC(std::unique_ptr<IGCImpl> impl, std::unique_ptr<Allocator> allocator);
+    // gcImpl can be nullptr if Runtime::destroy was called and user code contains references to GC
+    // same for allocator in the future?
+    GC(IGCImpl* gcImpl, Allocator* allocator);
 
     // TODO Should be removed. Allocator should allocate, not GC
     TS_METHOD TS_SIGNATURE("allocate(numBytes: any): void") void* allocate(double numBytes);
@@ -22,9 +24,15 @@ public:
     TS_METHOD TS_SIGNATURE("deallocate(): void") void deallocate(void*);
     TS_METHOD void collect();
 
+    TS_METHOD TS_SIGNATURE("addRoot(void): void") void addRoot(void* root);
+    TS_METHOD TS_SIGNATURE("removeRoot(void): void") void removeRoot(void* root);
+
+    TS_METHOD String* toString() const override;
+    TS_METHOD Boolean* toBool() const override;
+
 private:
-    std::unique_ptr<IGCImpl> _impl;
-    std::unique_ptr<Allocator> _allocator;
+    IGCImpl* _gcImpl;
+    Allocator* _allocator;
 
 public:
     // Deprecated API

@@ -161,12 +161,13 @@ String* Set<T>::toString() const
 template <typename T>
 void Set<T>::markChildren()
 {
-    LOG_INFO("Calling set::markChildren");
+    LOG_INFO("Calling Set::markChildren");
     const auto callable = [](T& entry)
     {
         auto* object = static_cast<Object*>(entry);
         if (object && !object->isMarked())
         {
+            LOG_ADDRESS("Mark set element: ", object);
             object->mark();
         }
     };

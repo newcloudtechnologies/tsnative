@@ -17,32 +17,38 @@ export class GC {
     private readonly generator: LLVMGenerator;
     private readonly runtime: Runtime;
     private readonly gcType: LLVMType;
+    private readonly addRootFn: LLVMValue;
+    private readonly removeRootFn: LLVMValue;
 
     constructor(generator: LLVMGenerator, runtime: Runtime) {
         this.generator = generator;
         this.runtime = runtime;
 
         const declaration = this.findGCDeclaration();
-        this.gcType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped).getLLVMType();
 
         this.allocateFn = this.findAllocateFunction(declaration, "allocate");
         this.allocateObjectFn = this.findAllocateFunction(declaration, "allocateObject");
         this.deallocateFn = this.findDeallocateFunction(declaration, "deallocate");
+
+        this.addRootFn = this.findRootOpFunction(declaration, "addRoot");
+        this.removeRootFn = this.findRootOpFunction(declaration, "removeRoot");
+
+        this.gcType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped).getLLVMType();
     }
 
     getGCType() : LLVMType {
         return this.gcType;
     }
 
-    allocate(type: LLVMType, name?: string) {
+    allocate(type: LLVMType, name?: string) : LLVMValue {
         return this.doAllocate(this.allocateFn, type, name);
     }
 
-    allocateObject(type: LLVMType, name?: string) {
+    allocateObject(type: LLVMType, name?: string) : LLVMValue {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
-    deallocate(mem: LLVMValue) {
+    deallocate(mem: LLVMValue) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const voidStarMem = this.generator.builder.asVoidStar(mem);
 
@@ -53,7 +59,7 @@ export class GC {
         ]);
     }
 
-    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) {
+    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
         if (type.isPointer()) {
             throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
         }
@@ -67,6 +73,29 @@ export class GC {
         ]);
 
         return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
+    }
+
+    private findRootOpFunction(declaration: Declaration, name: string) {
+        const rootOpDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === name);
+        if (!rootOpDeclaration) {
+            throw Error(`Unable to find ${name} function`);
+        }
+
+        const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
+        const { qualifiedName } = FunctionMangler.mangle(
+            rootOpDeclaration,
+            undefined,
+            thisType,
+            [],
+            this.generator,
+            undefined,
+            ["void*"]
+        );
+
+        const llvmReturnType = LLVMType.getVoidType(this.generator);
+        const llvmArgumentTypes = [thisType.getLLVMType(), LLVMType.getInt8Type(this.generator).getPointer()];
+
+        return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }
 
     private findAllocateFunction(declaration: Declaration, name: string) {
@@ -116,11 +145,11 @@ export class GC {
 
         return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }
-    
+
     private findGCDeclaration() : Declaration {
         const garbageCollector = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.GC_DEFINITION);
         if (!garbageCollector) {
-         throw new Error("No std Garbage collector file found");
+            throw new Error("No std Garbage collector file found");
         }
   
         let result: Declaration | null = null;

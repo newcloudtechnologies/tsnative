@@ -77,7 +77,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         return this.generator.symbolTable.withLocalScope(
-          (_) => this.handleCallExpression(call, env),
+          (localScope: Scope) => { 
+            const result = this.handleCallExpression(call, env);
+            localScope.deinitialize();
+            return result;
+          },
           this.generator.symbolTable.currentScope,
           this.generator.internalNames.FunctionScope
         );
@@ -96,7 +100,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
         );
       case ts.SyntaxKind.FunctionExpression:
         return this.generator.symbolTable.withLocalScope(
-          (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
+          (localScope: Scope) => {
+            const result = this.handleFunctionExpression(expression as ts.FunctionExpression, env);
+            localScope.deinitialize();
+            return result;
+          },
           this.generator.symbolTable.currentScope,
           this.generator.internalNames.FunctionScope
         );
@@ -1527,6 +1535,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
                   if (ts.isReturnStatement(node) && node.expression) {
                     if (ts.isFunctionExpression(node.expression)) {
                       const closure = generator.handleExpression(node.expression, environment);
+                      bodyScope.deinitialize();
                       generator.builder.createSafeRet(closure);
                       return;
                     }
@@ -1545,6 +1554,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
                   blocklessArrowFunctionReturn,
                   currentReturnType
                 );
+                bodyScope.deinitialize();
                 generator.builder.createSafeRet(blocklessArrowFunctionReturn);
               }
 
@@ -1557,10 +1567,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
                 if (returnsOptional) {
                   const nullOptional = generator.ts.union.create();
+                  bodyScope.deinitialize();
                   generator.builder.createSafeRet(nullOptional);
                 } else {
                   let undef = generator.ts.undef.get();
                   undef = generator.builder.createBitCast(undef, currentReturnType);
+                  bodyScope.deinitialize();
                   generator.builder.createSafeRet(undef);
                 }
               }
@@ -1827,16 +1839,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     parameters.forEach((parameter) => {
       addClassScope(parameter, this.generator.symbolTable.globalScope, this.generator);
     });
-  }
-
-  private isInFunction(expression: ts.Expression) {
-    let parentFunction = expression.parent;
-
-    while (parentFunction && !ts.isFunctionLike(parentFunction)) {
-      parentFunction = parentFunction.parent;
-    }
-
-    return Boolean(parentFunction);
   }
 
   invoke(

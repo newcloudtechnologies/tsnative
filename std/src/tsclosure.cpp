@@ -45,13 +45,17 @@ String* TSClosure::toString() const
 
 void TSClosure::markChildren()
 {
+    LOG_ADDRESS("Calling Closure::markChildren on ", this);
+
     if (_numArgs && !_numArgs->isMarked())
     {
+        LOG_ADDRESS("Mark num args ", _numArgs);
         _numArgs->mark();
     }
 
     if (_envLength && !_envLength->isMarked())
     {
+        LOG_ADDRESS("Mark env length args ", _envLength);
         _envLength->mark();
     }
 
@@ -61,6 +65,7 @@ void TSClosure::markChildren()
         auto* o = static_cast<Object*>(_env[i]);
         if (o && !o->isMarked())
         {
+            LOG_ADDRESS("Mark child ", o);
             o->mark();
         }
     }

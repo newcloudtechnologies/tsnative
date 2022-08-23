@@ -23,6 +23,8 @@ export class BlockHandler extends AbstractNodeHandler {
           for (const statement of (node as ts.Block).statements) {
             this.generator.handleNode(statement, scope, env);
           }
+
+          scope.deinitialize();
         }, this.generator.symbolTable.currentScope);
         return true;
       default:

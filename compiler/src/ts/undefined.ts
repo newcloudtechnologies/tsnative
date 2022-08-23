@@ -71,7 +71,7 @@ export class TSUndefined {
 
     const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
 
     this.generator.builder.createSafeCall(ctor, [thisUntyped]);

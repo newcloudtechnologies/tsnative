@@ -10,14 +10,17 @@
  */
 
 import { Scope, ScopeValue } from "../scope";
+import { LLVMGenerator } from "../generator/generator"
 
 export class IdentifierNotFound extends Error {}
 
 export class SymbolTable {
   private readonly scopes: Scope[];
+  private readonly generator: LLVMGenerator;
 
-  constructor() {
-    this.scopes = [new Scope("root", "root")];
+  constructor(generator: LLVMGenerator) {
+    this.generator = generator;
+    this.scopes = [new Scope("root", "root", this.generator)];
   }
 
   getScope(name: string) {
@@ -53,7 +56,7 @@ export class SymbolTable {
   }
 
   addScope(name: string): void {
-    const scope = new Scope(name, name);
+    const scope = new Scope(name, name, this.generator);
     this.scopes.push(scope);
   }
 
@@ -66,10 +69,11 @@ export class SymbolTable {
   }
 
   withLocalScope<R>(body: (scope: Scope) => R, parentScope?: Scope, name?: string): R {
-    const scope = new Scope(name, name, false, parentScope);
+    const scope = new Scope(name, name, this.generator, false, parentScope);
     this.scopes.push(scope);
     const result = body(scope);
     this.scopes.pop();
+    
     return result;
   }
 

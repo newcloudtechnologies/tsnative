@@ -215,9 +215,13 @@ export class TSObject {
   }
 
   create(props?: LLVMValue) {
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    let allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    allocated = this.createInplace(allocated, props);
+    return allocated;
+  }
 
-    const thisUntyped = this.generator.builder.asVoidStar(allocated);
+  createInplace(memory: LLVMValue, props?: LLVMValue) {
+    const thisUntyped = this.generator.builder.asVoidStar(memory);
 
     const args = [thisUntyped];
     if (props) {
@@ -229,7 +233,7 @@ export class TSObject {
 
     this.generator.builder.createSafeCall(ctor, args);
 
-    return allocated;
+    return memory;
   }
 
   getKeys(obj: LLVMValue): LLVMValue {

@@ -19,6 +19,8 @@
 #include <sstream>
 #include <vector>
 
+#include "std/private/logger.h"
+
 template <typename T>
 class ArrayPrivate;
 
@@ -370,12 +372,14 @@ Array<String*>* Array<T>::getKeysArray() const
 template <typename T>
 void Array<T>::markChildren()
 {
+     LOG_ADDRESS("Calling Array::markChildren on ", this);
     auto elements = _d->toStdVector();
     for (auto& e : elements)
     {
         auto* object = static_cast<Object*>(e);
         if (object && !object->isMarked())
         {
+            LOG_ADDRESS("Mark: ", object);
             object->mark();
         }
     }
