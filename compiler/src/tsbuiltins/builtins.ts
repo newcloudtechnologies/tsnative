@@ -782,17 +782,22 @@ export class BuiltinBoolean extends Builtin {
 export class BuiltinIteratorResult extends Builtin {
   private readonly llvmType: LLVMType;
 
+  private readonly classDeclaration: Declaration;
+
+  private readonly valueGetter: LLVMValue;
+  private readonly doneGetters = new Map<string, LLVMValue>();
+
   constructor(declaration: Declaration, generator: LLVMGenerator) {
     super(declaration.type.mangle(), generator);
 
+    this.classDeclaration = declaration;
+
     this.llvmType = declaration.getLLVMStructType();
+
+    this.valueGetter = this.initValueGetter();
   }
 
-  getLLVMType() {
-    return this.llvmType;
-  }
-
-  getValueGetter() {
+  private initValueGetter() {
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
@@ -821,7 +826,29 @@ export class BuiltinIteratorResult extends Builtin {
     return valueGetter;
   }
 
+  getDeclaration() {
+    return this.classDeclaration;
+  }
+
+  getLLVMType() {
+    return this.llvmType;
+  }
+
+  getTSType() {
+    return this.classDeclaration.type;
+  }
+
+  getValueGetter() {
+    return this.valueGetter;
+  }
+
   getDoneGetter(type: TSType) {
+    const typename = type.toString();
+
+    if (this.doneGetters.has(typename)) {
+      return this.doneGetters.get(typename)!;
+    }
+
     const declaration = this.getDeclaration();
     const thisType = this.getTSType();
 
@@ -843,6 +870,8 @@ export class BuiltinIteratorResult extends Builtin {
     const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     const { fn: doneGetter } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    this.doneGetters.set(typename, doneGetter);
 
     return doneGetter;
   }
