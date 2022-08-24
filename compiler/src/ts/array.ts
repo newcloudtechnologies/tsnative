@@ -15,7 +15,7 @@ import * as ts from "typescript";
 import { LLVMValue } from "../llvm/value";
 import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { Declaration } from "./declaration";
 
 const stdlib = require("std/constants");
@@ -23,11 +23,24 @@ const stdlib = require("std/constants");
 export class TSArray {
   private readonly generator: LLVMGenerator;
   private readonly llvmType: LLVMType;
-  private readonly declaration: Declaration;
-  
+  private readonly classDeclaration: Declaration;
+
+  private readonly constructorFns = new Map<string, LLVMValue>();
+  private readonly subscriptFns = new Map<string, LLVMValue>();
+  private readonly pushFns = new Map<string, LLVMValue>();
+  private readonly concatFns = new Map<string, LLVMValue>();
+  private readonly toStringFns = new Map<string, LLVMValue>();
+  private readonly iteratorFns = new Map<string, LLVMValue>();
+
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
-    
+
+    this.classDeclaration = this.initClassDeclaration();
+
+    this.llvmType = this.classDeclaration.getLLVMStructType("array");
+  }
+
+  private initClassDeclaration() {
     const stddefs = this.generator.program
       .getSourceFiles()
       .find((sourceFile) => sourceFile.fileName === stdlib.ARRAY_DEFINITION);
@@ -43,14 +56,13 @@ export class TSArray {
       throw new Error("Unable to find 'Array' declaration in std library definitions");
     }
 
-    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-    this.llvmType = this.declaration.getLLVMStructType("array");
+    return Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
   }
 
   getDeclaration() {
-    return this.declaration;
+    return this.classDeclaration;
   }
-  
+
   getLLVMType() {
     return this.llvmType;
   }
@@ -149,6 +161,14 @@ export class TSArray {
     addClassScope(expression, this.generator.symbolTable.globalScope, this.generator);
 
     const arrayType = this.getType(expression);
+
+    const arrayTypename = arrayType.toString();
+    const allocated = this.generator.gc.allocate(this.classDeclaration.type.getLLVMType().getPointerElementType());
+
+    if (this.constructorFns.has(arrayTypename)) {
+      return { constructor: this.constructorFns.get(arrayTypename)!, allocated };
+    }
+
     const symbol = arrayType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
     if (!valueDeclaration) {
@@ -168,23 +188,25 @@ export class TSArray {
       throw new Error(`Array constructor for type '${arrayType.toString()}' not found`);
     }
 
-    const parentScope = valueDeclaration.getScope(arrayType);
-    if (!parentScope.thisData) {
-      throw new Error("No 'this' data found");
-    }
-
     const { fn: constructor } = this.generator.llvm.function.create(
       LLVMType.getVoidType(this.generator),
       [LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
 
-    const allocated = this.generator.gc.allocate(parentScope.thisData.llvmType.getPointerElementType());
+    this.constructorFns.set(arrayTypename, constructor);
+
     return { constructor, allocated };
   }
 
   createPush(elementType: TSType, expression: ts.ArrayLiteralExpression) {
     const arrayType = this.getType(expression);
+
+    const arrayTypename = arrayType.toString();
+
+    if (this.pushFns.has(arrayTypename)) {
+      return this.pushFns.get(arrayTypename)!;
+    }
 
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();
@@ -215,10 +237,18 @@ export class TSArray {
       qualifiedName
     );
 
+    this.pushFns.set(arrayTypename, push);
+
     return push;
   }
 
   createSubscription(arrayType: TSType) {
+    const arrayTypename = arrayType.toString();
+
+    if (this.subscriptFns.has(arrayTypename)) {
+      return this.subscriptFns.get(arrayTypename)!;
+    }
+
     const valueDeclaration = arrayType.getSymbol().valueDeclaration;
     if (!valueDeclaration) {
       throw new Error("No declaration for Array[] found");
@@ -245,11 +275,18 @@ export class TSArray {
       qualifiedName
     );
 
+    this.subscriptFns.set(arrayTypename, subscript);
+
     return subscript;
   }
 
   createConcat(expression: ts.ArrayLiteralExpression) {
     const arrayType = this.getType(expression);
+
+    const arrayTypename = arrayType.toString();
+    if (this.concatFns.has(arrayTypename)) {
+      return this.concatFns.get(arrayTypename)!;
+    }
 
     const symbol = arrayType.getProperty("concat")!;
     const declaration = symbol.valueDeclaration;
@@ -278,16 +315,16 @@ export class TSArray {
       qualifiedName
     );
 
+    this.concatFns.set(arrayTypename, concat);
+
     return concat;
   }
 
-  createToString(arrayType: TSType, expression: ts.Expression): LLVMValue {
-    let elementType = arrayType.getTypeGenericArguments()[0];
+  getToStringFn(arrayType: TSType, expression: ts.Expression): LLVMValue {
+    const arrayTypename = arrayType.toString();
 
-    if (elementType.isFunction()) {
-      elementType = this.generator.tsclosure.getTSType();
-    } else if (elementType.isNumber()) {
-      elementType = this.generator.builtinNumber.getTSType();
+    if (this.toStringFns.has(arrayTypename)) {
+      return this.toStringFns.get(arrayTypename)!;
     }
 
     const toStringSymbol = arrayType.getProperty("toString");
@@ -315,11 +352,19 @@ export class TSArray {
       qualifiedName
     );
 
+    this.toStringFns.set(arrayTypename, toString);
+
     return toString;
   }
 
   createIterator(expression: ts.ArrayLiteralExpression) {
     const arrayType = this.getType(expression);
+
+    const arrayTypename = arrayType.toString();
+
+    if (this.iteratorFns.has(arrayTypename)) {
+      return this.iteratorFns.get(arrayTypename)!;
+    }
 
     const symbol = arrayType.getProperty("iterator")!;
     const declaration = symbol.valueDeclaration;
@@ -347,6 +392,8 @@ export class TSArray {
       [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
+
+    this.iteratorFns.set(arrayTypename, result);
 
     return result;
   }
