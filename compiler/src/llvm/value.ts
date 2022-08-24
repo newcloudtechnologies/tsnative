@@ -213,7 +213,7 @@ export class LLVMValue {
       const thisUntyped = this.generator.builder.asVoidStar(this);
       return this.generator.builder.createSafeCall(fn, [thisUntyped]);
     } else if (this.type.isTSBoolean()) {
-      const fn = this.generator.builtinBoolean.createNegateFn();
+      const fn = this.generator.builtinBoolean.getNegateFn();
       return this.generator.builder.createSafeCall(fn, [this]);
     } else if (this.type.isUndefined() || this.type.isNull()) {
       return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
