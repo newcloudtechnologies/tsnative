@@ -23,14 +23,23 @@ export class TSMap {
   private readonly llvmType: LLVMType;
   private readonly declaration: Declaration;
 
+  private readonly constructorFns = new Map<string, LLVMValue>();
+  private readonly setFns = new Map<string, LLVMValue>();
+
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
+    this.declaration = this.initClassDeclaration();
+    this.llvmType = this.declaration.getLLVMStructType("map");
+  }
+
+  private initClassDeclaration() {
     const stddefs = this.generator.program
       .getSourceFiles()
       .find((sourceFile) => sourceFile.fileName === stdlib.MAP_DEFINITION);
+
     if (!stddefs) {
-      throw new Error("No map definition source file found");
+      throw new Error("No Map definition source file found");
     }
 
     const classDeclaration = stddefs.statements.find((node) => {
@@ -41,11 +50,16 @@ export class TSMap {
       throw new Error("Unable to find 'Map' declaration in std library definitions");
     }
 
-    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-    this.llvmType = this.declaration.getLLVMStructType("map");
+    return Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
   }
 
   private getCtorFn(templateTypes: string[]) {
+    const id = templateTypes.join();
+
+    if (this.constructorFns.has(id)) {
+      return this.constructorFns.get(id)!;
+    }
+
     const ctorDeclaration = this.declaration.members.find((m) => m.isConstructor());
 
     if (!ctorDeclaration) {
@@ -70,10 +84,18 @@ export class TSMap {
 
     const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
+    this.constructorFns.set(id, ctor);
+
     return ctor;
   }
 
   private getSetFn(templateTypes: string[]) {
+    const id = templateTypes.join();
+
+    if (this.setFns.has(id)) {
+      return this.setFns.get(id)!;
+    }
+
     const setDeclaration = this.declaration.members.find((m) => m.name?.getText() === "set");
 
     if (!setDeclaration) {
@@ -102,6 +124,8 @@ export class TSMap {
     ];
 
     const { fn: set } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    this.setFns.set(id, set);
 
     return set;
   }
