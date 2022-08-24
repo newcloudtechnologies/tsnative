@@ -81,7 +81,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
       allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
     } else if (nakedType.isArray()) {
       const arrayType = this.generator.ts.checker.getTypeAtLocation(expression);
-      const toString = this.generator.ts.array.createToString(arrayType, expression);
+      const toString = this.generator.ts.array.getToStringFn(arrayType, expression);
 
       allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
     } else {
