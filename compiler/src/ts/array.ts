@@ -370,7 +370,7 @@ export class TSArray {
     const declaration = symbol.valueDeclaration;
 
     if (!declaration) {
-      throw new Error("No declaration for Array.concat found");
+      throw new Error(`Unable to find declaration for 'Array.iterator'. Error at type: '${arrayType.toString()}'`);
     }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(

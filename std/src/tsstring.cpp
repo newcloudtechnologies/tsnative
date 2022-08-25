@@ -36,16 +36,6 @@ String::String(Number* d)
     LOG_ADDRESS("This address: ", this);
 }
 
-String::String(const int8_t* s)
-#ifdef USE_STD_STRING_BACKEND
-    : _d(new StdStringBackend(reinterpret_cast<const char*>(s)))
-#endif
-{
-    const auto* chars = reinterpret_cast<const char*>(s);
-    LOG_INFO("Calling string ctor from const int8_t* " + std::string(chars));
-    LOG_ADDRESS("This address: ", this);
-}
-
 String::String(const std::string& s)
 #ifdef USE_STD_STRING_BACKEND
     : _d(new StdStringBackend(s))
