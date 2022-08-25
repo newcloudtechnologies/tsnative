@@ -50,7 +50,7 @@ if [ "$current_launch_number" -eq "$launchNumberToDebug" ]; then
     fi
 else
     echo "[DEBUG MODE] Launching ts-node without stopping on debug:"
-    ts-node $main_ts_path $@
+    ts-node $main_ts_path "$@"
 fi
 
 cd $current_dir
