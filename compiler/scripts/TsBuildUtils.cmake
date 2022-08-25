@@ -90,13 +90,17 @@ function(extractSymbols target dep_target dependencies output_dir demangledList 
 
         add_custom_command(
             OUTPUT ${demangled_nm_fn}
+            # COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag "demangled_symbols_for_${dep_fn}" --start
             COMMAND ${CMAKE_NM} -C ${dep_full_fn} > ${demangled_nm_fn}
+            # COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag "demangled_symbols_for_${dep_fn}" --end
             DEPENDS ${dep_full_fn}
         )
 
         add_custom_command(
             OUTPUT ${mangled_nm_fn}
+            # COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag "mangled_symbols_for_${dep_fn}" --start
             COMMAND ${CMAKE_NM} ${dep_full_fn} > ${mangled_nm_fn}
+            # COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag "mangled_symbols_for_${dep_fn}" --end
             DEPENDS ${dep_full_fn}
         )
     endforeach()
@@ -148,8 +152,9 @@ function(instantiate_classes target dep_target entry sources includes output_dir
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Instantiating classes..."
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
-        ARGS ${TS_COMPILER} ${entry}
-                        --tsconfig ${TS_CONFIG}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag TEMPLATE_CLASSES_INSTANTIATION --start
+        COMMAND ${TS_COMPILER}
+        ARGS ${entry}   --tsconfig ${TS_CONFIG}
                         --baseUrl ${PROJECT_BASE_URL}
                         --processTemplateClasses
                         # TODO: use generator expressions: --includeDirs "\'$<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>\'"
@@ -159,6 +164,7 @@ function(instantiate_classes target dep_target entry sources includes output_dir
                         --demangledTables ${DEMANGLED}
                         --mangledTables ${MANGLED}
                         ${trace_opt}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag TEMPLATE_CLASSES_INSTANTIATION --end
     )
 
     add_custom_target(${target}
@@ -188,8 +194,9 @@ function(instantiate_functions target dep_target entry sources includes output_d
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Instantiating functions..."
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
-        ARGS ${TS_COMPILER} ${entry}
-                        --tsconfig ${TS_CONFIG}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag TEMPLATE_FUNCTIONS_INSTANTIATION --start
+        COMMAND ${TS_COMPILER}
+        ARGS ${entry}   --tsconfig ${TS_CONFIG}
                         --baseUrl ${PROJECT_BASE_URL}
                         --processTemplateFunctions 
                         # TODO: use generator expressions: --includeDirs $<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>
@@ -199,6 +206,7 @@ function(instantiate_functions target dep_target entry sources includes output_d
                         --templatesOutputDir ${output_dir}
                         --build ${output_dir}
                         ${trace_opt}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag TEMPLATE_FUNCTIONS_INSTANTIATION --end
     )
 
     add_custom_target(${target}
@@ -215,6 +223,19 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
     # TODO: refactor this whole sequence
     # 1 use object library
     add_library(${target} STATIC ${entry})
+
+    add_custom_command(
+        TARGET ${target}
+        PRE_BUILD
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag COMPILE_CXX_${bin_name} --start
+    )
+
+    add_custom_command(
+        TARGET ${target}
+        POST_BUILD
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag COMPILE_CXX_${bin_name} --end
+    )
+
     set_target_properties(${target} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${output_dir}
         ARCHIVE_OUTPUT_NAME ${bin_name})
@@ -290,8 +311,9 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
         WORKING_DIRECTORY ${PROJECT_ROOT}
         COMMAND echo "Running TS compiler: ${entry}"
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
-        ARGS ${TS_COMPILER} ${entry}
-                      --tsconfig ${TS_CONFIG}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag COMPILE_TS --start
+        COMMAND ${TS_COMPILER}
+        ARGS ${entry} --tsconfig ${TS_CONFIG}
                       --baseUrl ${PROJECT_BASE_URL}
                       --demangledTables ${DEMANGLED}
                       --mangledTables ${MANGLED}
@@ -300,6 +322,7 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
                       ${MAYBE_PRINT_IR}
                       ${trace_opt}
                       ${TS_DEBUG}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag COMPILE_TS --end
     )
 
     add_custom_target(${target}
@@ -320,7 +343,9 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
         OUTPUT ${output}
         DEPENDS ${ll_bytecode}
         COMMAND echo "Running llc..."
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag COMPILE_IR --start
         COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX} ${optimizationLevel} -relocation-model=pic -filetype=obj ${ll_bytecode} -o ${output}
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag COMPILE_IR --end
     )
 
     add_custom_target(${target}
@@ -337,6 +362,18 @@ function(link target dep_target seed_src compiled_source dependencies)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${binaryPath}")
 
     add_executable(${${target}} WIN32 ${seed_src})
+
+    add_custom_command(
+        TARGET ${${target}}
+        PRE_BUILD
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag LINK --start
+    )
+
+    add_custom_command(
+        TARGET ${${target}}
+        POST_BUILD
+        COMMAND python3 /home/eeiaao/dev/tsnative/compiler/scripts/time.py --tag LINK --end
+    )
 
     target_include_directories(${${target}} PUBLIC ${tsnative-declarator_INCLUDE_DIRS})
 
