@@ -23,27 +23,18 @@ export class TSObject {
   private readonly llvmType: LLVMType;
   private readonly declaration: Declaration;
 
-  private readonly ctorFn: LLVMValue;
-  private readonly defaultCtorFn: LLVMValue;
-  private readonly getFn: LLVMValue;
-  private readonly setFn: LLVMValue;
-  private readonly keysFn: LLVMValue;
-  private readonly copyPropsFn: LLVMValue;
+  private ctorFn: LLVMValue | undefined;
+  private defaultCtorFn: LLVMValue | undefined;
+  private getFn: LLVMValue | undefined;
+  private setFn: LLVMValue | undefined;
+  private keysFn: LLVMValue | undefined;
+  private copyPropsFn: LLVMValue | undefined;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
     this.declaration = this.initClassDeclaration();
     this.llvmType = this.declaration.getLLVMStructType("object");
-
-    const { ctor, defaultCtor } = this.initCtors();
-    this.ctorFn = ctor;
-    this.defaultCtorFn = defaultCtor;
-
-    this.getFn = this.initGetFn();
-    this.setFn = this.initSetFn();
-    this.keysFn = this.initKeysFn();
-    this.copyPropsFn = this.initCopyPropsFn();
   }
 
   private initClassDeclaration() {
@@ -233,6 +224,12 @@ export class TSObject {
   }
 
   private getCtorFn(isDefault: boolean) {
+    if (!this.ctorFn || !this.defaultCtorFn) {
+      const { ctor, defaultCtor } = this.initCtors();
+      this.ctorFn = ctor;
+      this.defaultCtorFn = defaultCtor;
+    }
+
     if (isDefault) {
       return this.defaultCtorFn;
     }
@@ -241,6 +238,10 @@ export class TSObject {
   }
 
   copyProps(source: LLVMValue, target: LLVMValue) {
+    if (!this.copyPropsFn) {
+      this.copyPropsFn = this.initCopyPropsFn();
+    }
+
     const castedSource = this.generator.builder.createBitCast(
       source,
       this.llvmType
@@ -273,6 +274,10 @@ export class TSObject {
   }
 
   getKeys(obj: LLVMValue): LLVMValue {
+    if (!this.keysFn) {
+      this.keysFn = this.initKeysFn();
+    }
+
     const castedObject = this.generator.builder.createBitCast(
       obj,
       this.generator.ts.obj.getLLVMType()
@@ -282,6 +287,10 @@ export class TSObject {
   }
 
   get(thisValue: LLVMValue, key: string) {
+    if (!this.getFn) {
+      this.getFn = this.initGetFn();
+    }
+
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     const llvmKey = this.generator.ts.str.create(key);
 
@@ -289,6 +298,10 @@ export class TSObject {
   }
 
   set(thisValue: LLVMValue, key: string, value: LLVMValue) {
+    if (!this.setFn) {
+      this.setFn = this.initSetFn();
+    }
+
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     const valueUntyped = this.generator.builder.asVoidStar(value);
 
