@@ -24,8 +24,8 @@ message(STATUS "Found TsBuildUtils in ${CMAKE_CURRENT_LIST_DIR}")
 # point to this file.
 set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-function(makeOutputDir target dep_target entry output_dir)
-    getBinaryName(${entry} binary_name)
+function(makeOutputDir target dep_target executablePath entry output_dir)
+    getBinaryName(${entry} binary_name "${executablePath}")
 
     if("${PROJECT_BUILD_DIR}" STREQUAL "")
         set(dir "${CMAKE_CURRENT_BINARY_DIR}/${binary_name}.dir")
@@ -49,22 +49,20 @@ function(makeOutputDir target dep_target entry output_dir)
     set(${output_dir} ${dir} PARENT_SCOPE)
 endfunction()
 
-function(getBinaryName entry binaryName)
-    get_filename_component(entry_fn "${PROJECT_OUTPUT_BINARY}" NAME)
-    set(binary_name ${entry_fn})
+function(getBinaryName entry binaryName executablePath)
+    get_filename_component(entry_fn "${executablePath}" NAME)
 
-    set(${binaryName} ${binary_name} PARENT_SCOPE)
+    set(${binaryName} ${entry_fn} PARENT_SCOPE)
 endfunction()
 
-function(getBinaryPath binaryPath)
-    get_filename_component(source_path "${PROJECT_OUTPUT_BINARY}" DIRECTORY)
-    set(binary_path ${source_path})
+function(getBinaryPath binaryPath executablePath)
+    get_filename_component(source_path "${executablePath}" DIRECTORY)
 
-    set(${binaryPath} ${binary_path} PARENT_SCOPE)
+    set(${binaryPath} ${source_path} PARENT_SCOPE)
 endfunction()
 
-function(getProjectFiles entry projectFiles)
-    file(GLOB_RECURSE project_files ${PROJECT_ROOT}/*.ts)
+function(getProjectFiles projectRoot entry projectFiles)
+    file(GLOB_RECURSE project_files ${projectRoot}/*.ts)
 
     # filter node_modules
     list(FILTER project_files EXCLUDE REGEX ".*/node_modules/.*")
@@ -129,7 +127,7 @@ function(generateSeed target dep_target output_dir seed_src)
     set(${seed_src} ${SEED_CPP_OUT} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_classes target dep_target entry sources includes output_dir trace_opt classes_src demangledList mangledList)
+function(instantiate_classes target dep_target projectRoot entry tsConfig baseUrl sources includes output_dir trace_opt classes_src demangledList mangledList)
     set(output
         "${output_dir}/instantiated_classes.cpp")
 
@@ -145,12 +143,12 @@ function(instantiate_classes target dep_target entry sources includes output_dir
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${entry} ${sources}
-        WORKING_DIRECTORY ${PROJECT_ROOT}
+        WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Instantiating classes..."
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
         ARGS ${TS_COMPILER} ${entry}
-                        --tsconfig ${TS_CONFIG}
-                        --baseUrl ${PROJECT_BASE_URL}
+                        --tsconfig ${tsConfig}
+                        --baseUrl ${baseUrl}
                         --processTemplateClasses
                         # TODO: use generator expressions: --includeDirs "\'$<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>\'"
                         ${INCLUDE_DIRS}
@@ -169,7 +167,7 @@ function(instantiate_classes target dep_target entry sources includes output_dir
     set(${classes_src} ${output} PARENT_SCOPE)
 endfunction()
 
-function(instantiate_functions target dep_target entry sources includes output_dir demangledList mangledList trace_opt functions_src)
+function(instantiate_functions target dep_target projectRoot entry tsConfig baseUrl sources includes output_dir demangledList mangledList trace_opt functions_src)
     set(output
         "${output_dir}/instantiated_functions.cpp")
 
@@ -185,12 +183,12 @@ function(instantiate_functions target dep_target entry sources includes output_d
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${entry} ${sources}
-        WORKING_DIRECTORY ${PROJECT_ROOT}
+        WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Instantiating functions..."
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
         ARGS ${TS_COMPILER} ${entry}
-                        --tsconfig ${TS_CONFIG}
-                        --baseUrl ${PROJECT_BASE_URL}
+                        --tsconfig ${tsConfig}
+                        --baseUrl ${baseUrl}
                         --processTemplateFunctions 
                         # TODO: use generator expressions: --includeDirs $<TARGET_PROPERTY:tsnative-std,INTERFACE_INCLUDE_DIRECTORIES>
                         ${INCLUDE_DIRS}
@@ -235,7 +233,7 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
 endfunction()
 
 
-function(verify_ts target dep_target entry sources output_dir)
+function(verify_ts target dep_target projectRoot entry baseUrl sources output_dir)
     get_filename_component(entry_fn "${entry}" NAME)
 
     string(REPLACE ".ts" ".js" OUTPUT_FN "${entry_fn}")
@@ -246,14 +244,14 @@ function(verify_ts target dep_target entry sources output_dir)
     add_custom_command(
         OUTPUT ${output}
         DEPENDS "${entry}" "${sources}"
-        WORKING_DIRECTORY ${PROJECT_ROOT}
+        WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Running TS verifier: ${entry}"
         COMMAND ${TS_VERIFIER}
         ARGS ${entry} --alwaysStrict 
                       --target es6 
                       --experimentalDecorators
                       --moduleResolution node
-                      --baseUrl ${PROJECT_BASE_URL}
+                      --baseUrl ${baseUrl}
                       --outDir ${output_dir}
                     #   --traceResolution
     )
@@ -265,7 +263,7 @@ function(verify_ts target dep_target entry sources output_dir)
     add_dependencies(${target} ${dep_target})
 endfunction()
 
-function(compile_ts target dep_target entry sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode is_debug)
+function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode is_debug)
     get_filename_component(entry_fn "${entry}" NAME)
 
     string(REPLACE ".ts" ".ll" OUTPUT_FN "${entry_fn}")
@@ -287,12 +285,12 @@ function(compile_ts target dep_target entry sources demangledList mangledList ou
     add_custom_command(
         OUTPUT ${output}
         DEPENDS "${entry}" "${sources}" "${demangledList}" "${mangledList}"
-        WORKING_DIRECTORY ${PROJECT_ROOT}
+        WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Running TS compiler: ${entry}"
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
         ARGS ${TS_COMPILER} ${entry}
-                      --tsconfig ${TS_CONFIG}
-                      --baseUrl ${PROJECT_BASE_URL}
+                      --tsconfig ${tsConfig}
+                      --baseUrl ${baseUrl}
                       --demangledTables ${DEMANGLED}
                       --mangledTables ${MANGLED}
                       --build ${output_dir}
@@ -332,8 +330,8 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
     set(${compiled_source} ${output} PARENT_SCOPE)
 endfunction()
 
-function(link target dep_target seed_src compiled_source dependencies)
-    getBinaryPath(binaryPath)
+function(link target dep_target executablePath seed_src compiled_source dependencies)
+    getBinaryPath(binaryPath "${executablePath}")
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${binaryPath}")
 
     add_executable(${${target}} WIN32 ${seed_src})
@@ -355,34 +353,48 @@ function(link target dep_target seed_src compiled_source dependencies)
     add_dependencies(${${target}} ${dep_target})
 endfunction()
 
-function(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import is_debug)
-    message(STATUS "Build TS:")
-    message(STATUS "--target=${target}")
-    message(STATUS "--dep_target=${dep_target}")
-    message(STATUS "--entry=${entry}")
-    message(STATUS "--includes=${includes}")
-    message(STATUS "--dependencies=${dependencies}")
-    message(STATUS "--definitions=${definitions}")
-    message(STATUS "--optimization_level=${optimization_level}")
-    message(STATUS "--is_test=${is_test}")
-    message(STATUS "--is_printIr=${is_printIr}")
-    message(STATUS "--trace_import=${trace_import}")
-    message(STATUS "--debug=${is_debug}")
+function(add_antiq_executable target ...)
+    cmake_parse_arguments(PARSE_ARGV 1 "ARG"
+        ""
+        "DEP_TARGET;PROJECT_ROOT;ENTRY;TS_CONFIG;BASE_URL;OPTIMIZATION_LEVEL;IS_TEST;IS_PRINT_IR;TRACE_IMPORT;IS_DEBUG;EXECUTABLE_PATH"
+        "INCLUDES;DEPENDENCIES;DEFINITIONS"
+    )
+    message(STATUS "add_antiq_executable:")
+    message(STATUS "target ${target}")
+    message(STATUS "ARG_DEP_TARGET ${ARG_DEP_TARGET}")
+    message(STATUS "ARG_PROJECT_ROOT ${ARG_PROJECT_ROOT}")
+    message(STATUS "ARG_ENTRY ${ARG_ENTRY}")
+    message(STATUS "ARG_TS_CONFIG ${ARG_TS_CONFIG}")
+    message(STATUS "ARG_BASE_URL ${ARG_BASE_URL}")
+    message(STATUS "ARG_INCLUDES ${ARG_INCLUDES}")
+    message(STATUS "ARG_DEPENDENCIES ${ARG_DEPENDENCIES}") # TODO: remove
+    message(STATUS "ARG_DEFINITIONS ${ARG_DEFINITIONS}")
+    message(STATUS "ARG_OPTIMIZATION_LEVEL ${OPTIMIZATION_LEVEL}")
+    message(STATUS "ARG_IS_TEST ${ARG_IS_TEST}")
+    message(STATUS "ARG_IS_PRINT_IR ${ARG_IS_PRINT_IR}")
+    message(STATUS "ARG_TRACE_IMPORT ${ARG_TRACE_IMPORT}")
+    message(STATUS "ARG_IS_DEBUG ${ARG_IS_DEBUG}")
+    message(STATUS "ARG_EXECUTABLE_PATH ${ARG_EXECUTABLE_PATH}")
+
+    if ("${ARG_EXECUTABLE_PATH}" STREQUAL "")
+        set(ARG_EXECUTABLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${target}")
+        message(STATUS "ARG_EXECUTABLE_PATH ${ARG_EXECUTABLE_PATH}")
+    endif()
 
     set(TRACE_OPT)
-    if (${trace_import})
+    if (${ARG_TRACE_IMPORT})
         set(TRACE_OPT "--trace")
     endif()
 
     # Collect all project's *.ts source files to enable incremental build
-    getProjectFiles("${entry}" sources)
+    getProjectFiles("${ARG_PROJECT_ROOT}" "${ARG_ENTRY}" sources)
 
-    getBinaryName("${entry}" binary_name)
+    getBinaryName("${ARG_ENTRY}" binary_name "${ARG_EXECUTABLE_PATH}")
 
-    makeOutputDir(makeOutputDir_${binary_name} ${dep_target} "${entry}" output_dir)
+    makeOutputDir(makeOutputDir_${binary_name} ${ARG_DEP_TARGET} "${ARG_EXECUTABLE_PATH}" "${ARG_ENTRY}" output_dir)
 
     # TODO: restore verifier
-    # verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${entry}" "${sources}" "${output_dir}")
+    # verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${ARG_PROJECT_ROOT}" "${ARG_ENTRY}" "${ARG_BASE_URL}" "${sources}" "${output_dir}")
 
     extractSymbols(
         extract_std_symbols_${binary_name}
@@ -396,9 +408,12 @@ function(build target dep_target entry includes dependencies definitions optimiz
     instantiate_classes(
         instantiate_classes_${binary_name}
         extract_std_symbols_${binary_name}
-        "${entry}"
+        "${ARG_PROJECT_ROOT}"
+        "${ARG_ENTRY}"
+        "${ARG_TS_CONFIG}"
+        "${ARG_BASE_URL}"
         "${sources}"
-        "${includes}"
+        "${ARG_INCLUDES}"
         "${output_dir}"
         "${TRACE_OPT}"
         CLASSES_SRC
@@ -409,8 +424,8 @@ function(build target dep_target entry includes dependencies definitions optimiz
     compile_cpp(
         compile_classes_${binary_name}
         instantiate_classes_${binary_name}
-        "${includes}"
-        "${definitions}"
+        "${ARG_INCLUDES}"
+        "${ARG_DEFINITIONS}"
         "${CLASSES_SRC}"
         "${output_dir}"
         COMPILED_CLASSES
@@ -431,9 +446,12 @@ function(build target dep_target entry includes dependencies definitions optimiz
     instantiate_functions(
         instantiate_functions_${binary_name}
         extract_classes_symbols_${binary_name}
-        "${entry}"
+        "${ARG_PROJECT_ROOT}"
+        "${ARG_ENTRY}"
+        "${ARG_TS_CONFIG}"
+        "${ARG_BASE_URL}"
         "${sources}"
-        "${includes}"
+        "${ARG_INCLUDES}"
         "${output_dir}"
         "${DEPENDENCIES_DEMANGLED_NAMES}"
         "${DEPENDENCIES_MANGLED_NAMES}"
@@ -444,8 +462,8 @@ function(build target dep_target entry includes dependencies definitions optimiz
     compile_cpp(
         compile_functions_${binary_name}
         instantiate_functions_${binary_name}
-        "${includes}"
-        "${definitions}"
+        "${ARG_INCLUDES}"
+        "${ARG_DEFINITIONS}"
         "${FUNCTIONS_SRC}"
         "${output_dir}"
         COMPILED_FUNCTIONS
@@ -465,31 +483,34 @@ function(build target dep_target entry includes dependencies definitions optimiz
     compile_ts(
         compile_ts_${binary_name}
         extract_symbols_${binary_name}
-        "${entry}"
+        "${ARG_PROJECT_ROOT}"
+        "${ARG_ENTRY}"
+        "${ARG_TS_CONFIG}"
+        "${ARG_BASE_URL}"
         "${sources}"
         "${DEMANGLED_NAMES}"
         "${MANGLED_NAMES}"
         "${output_dir}"
-        "${is_printIr}"
+        "${ARG_IS_PRINT_IR}"
         "${TRACE_OPT}"
         LL_BYTECODE
-        "${is_debug}"
+        "${ARG_IS_DEBUG}"
     )
 
     compile_ll(
         compile_ll_${binary_name}
         compile_ts_${binary_name}
         "${LL_BYTECODE}"
-        "${optimization_level}"
+        "${OPTIMIZATION_LEVEL}"
         "${output_dir}"
         COMPILED_SOURCE
     )
 
     generateSeed(generate_seed_${binary_name} compile_ll_${binary_name} "${output_dir}" SEED_SRC)
 
-    link(binary_name generate_seed_${binary_name} "${SEED_SRC}" "${COMPILED_SOURCE}" "${DEPENDENCIES}")
+    link(binary_name generate_seed_${binary_name} "${ARG_EXECUTABLE_PATH}" "${SEED_SRC}" "${COMPILED_SOURCE}" "${DEPENDENCIES}")
 
-    if(is_test)
+    if(ARG_IS_TEST)
         add_test(
             NAME ${binary_name} 
             COMMAND ${binary_name}
@@ -498,5 +519,37 @@ function(build target dep_target entry includes dependencies definitions optimiz
 
     set(${target} ${binary_name} PARENT_SCOPE)
 endfunction()
+
+macro(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import is_debug)
+    message(DEPRECATION "use add_antiq_executable instead of build")
+    if (NOT PROJECT_ROOT)
+        message(FATAL_ERROR "PROJECT_ROOT is undefined")
+    endif()
+    if (NOT TS_CONFIG)
+        message(FATAL_ERROR "TS_CONFIG is undefined")
+    endif()
+    if (NOT PROJECT_BASE_URL)
+        message(FATAL_ERROR "PROJECT_BASE_URL is undefined")
+    endif()
+    if (NOT PROJECT_OUTPUT_BINARY)
+        message(FATAL_ERROR "PROJECT_OUTPUT_BINARY is undefined")
+    endif()
+    add_antiq_executable(${target}
+        DEP_TARGET ${dep_target}
+        PROJECT_ROOT "${PROJECT_ROOT}"
+        ENTRY "${entry}"
+        TS_CONFIG "${TS_CONFIG}"
+        BASE_URL "${PROJECT_BASE_URL}"
+        INCLUDES "${includes}"
+        DEPENDENCIES "${dependencies}"
+        DEFINITIONS "${definitions}"
+        OPTIMIZATION_LEVEL "${optimization_level}"
+        IS_TEST "${is_test}"
+        IS_PRINT_IR "${is_printIr}"
+        TRACE_IMPORT "${trace_import}"
+        IS_DEBUG "${is_debug}"
+        EXECUTABLE_PATH "${PROJECT_OUTPUT_BINARY}"
+    )
+endmacro()
 
 endif() # __ts_build_utils_cmake_guard
