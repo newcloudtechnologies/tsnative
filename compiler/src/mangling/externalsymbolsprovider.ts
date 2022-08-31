@@ -113,7 +113,7 @@ export class ExternalSymbolsProvider {
 
         const classMethodPattern = new RegExp(
           `(?=(^| )${qualifiedName}(<.*>::|::)${this.methodName
-          }(\\(|<.*>\\())`
+          }(\\(|<))`
         );
 
         const mixinPattern = new RegExp(
@@ -219,7 +219,7 @@ export class ExternalSymbolsProvider {
       // @todo is it possible to use mangled form to figure out if this is a class method or free function wrapped in namespace?
       const qualifiedName = `${this.namespace}${this.methodName}`;
 
-      const freeFunctionPattern = new RegExp(`(?=(^| )${qualifiedName}(\\(|<.*>\\())`);
+      const freeFunctionPattern = new RegExp(`(?=(^| )${qualifiedName}(\\(|<))`);
 
       const symbolRange = CXXSymbols().getOrCreate(qualifiedName);
 
@@ -239,7 +239,7 @@ export class ExternalSymbolsProvider {
       // `.*( | ns)Class<T>::method<U>(`
       const qualifiedName = `${this.namespace}${this.thisTypeName}`
       const classMethodPattern = new RegExp(
-        `(?=(^| )${qualifiedName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+        `(?=(^| )${qualifiedName}(<.*>::|::)${this.methodName}(\\(|<))`
       );
 
       const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${qualifiedName}>(::)${this.methodName}`);
