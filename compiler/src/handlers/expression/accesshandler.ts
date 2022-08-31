@@ -169,7 +169,7 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
-    const subscription = this.generator.ts.tuple.createSubscription();
+    const subscription = this.generator.ts.tuple.getSubscriptionFn();
     const tuple = this.generator.handleExpression(expression.expression, env);
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
     const index = this.generator.handleExpression(expression.argumentExpression, env);

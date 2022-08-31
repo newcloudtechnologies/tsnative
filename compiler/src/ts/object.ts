@@ -23,12 +23,25 @@ export class TSObject {
   private readonly llvmType: LLVMType;
   private readonly declaration: Declaration;
 
+  private ctorFn: LLVMValue | undefined;
+  private defaultCtorFn: LLVMValue | undefined;
+  private getFn: LLVMValue | undefined;
+  private setFn: LLVMValue | undefined;
+  private keysFn: LLVMValue | undefined;
+  private copyPropsFn: LLVMValue | undefined;
+
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
+    this.declaration = this.initClassDeclaration();
+    this.llvmType = this.declaration.getLLVMStructType("object");
+  }
+
+  private initClassDeclaration() {
     const stddefs = this.generator.program
       .getSourceFiles()
       .find((sourceFile) => sourceFile.fileName === stdlib.OBJECT_DEFINITION);
+
     if (!stddefs) {
       throw new Error("No object definition source file found");
     }
@@ -41,44 +54,56 @@ export class TSObject {
       throw new Error("Unable to find 'Object' declaration in std library definitions");
     }
 
-    this.declaration = Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
-    this.llvmType = this.declaration.getLLVMStructType("object");
+    return Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
   }
 
-  private getCtorFn(isDefault: boolean) {
+  private initCtors() {
     const ctorDeclaration = this.declaration.members.find((m) => m.isConstructor());
 
     if (!ctorDeclaration) {
       throw new Error(`Unable to find constructor at '${this.declaration.getText()}'`);
     }
 
-    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+    const { qualifiedName: defaultCtorQualifiedName, isExternalSymbol: isDefaultConstructorExternalSymbol } = FunctionMangler.mangle(
+      ctorDeclaration,
+      undefined,
+      this.declaration.type,
+      [],
+      this.generator
+    );
+
+    if (!isDefaultConstructorExternalSymbol) {
+      throw new Error("Unable to find default constructor CXX for 'Object'");
+    }
+
+    const llvmReturnType = LLVMType.getVoidType(this.generator);
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+
+    const { fn: defaultCtor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, defaultCtorQualifiedName);
+
+    const { qualifiedName: constructorQualifiedName, isExternalSymbol: isConstructorExternalSymbol } = FunctionMangler.mangle(
       ctorDeclaration,
       undefined,
       this.declaration.type,
       [],
       this.generator,
       undefined,
-      isDefault ? undefined : ["Map<String*, void*>*"]
+      ["Map<String*, void*>*"]
     );
 
-    if (!isExternalSymbol) {
-      throw new Error("Unable to find cxx constructor for 'Object'");
+    if (!isConstructorExternalSymbol) {
+      throw new Error("Unable to find constructor CXX for 'Object'");
     }
 
-    const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+    llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
 
-    if (!isDefault) {
-      llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
-    }
+    const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, constructorQualifiedName);
 
-    const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return ctor;
+    return { ctor, defaultCtor };
   }
 
-  private getSetFn() {
+
+  private initSetFn() {
     const setDeclaration = this.declaration.members.find((m) => m.name?.getText() === "set");
 
     if (!setDeclaration) {
@@ -111,7 +136,7 @@ export class TSObject {
     return set;
   }
 
-  private getGetFn() {
+  private initGetFn() {
     const getDeclaration = this.declaration.members.find((m) => m.name?.getText() === "get");
 
     if (!getDeclaration) {
@@ -138,7 +163,7 @@ export class TSObject {
     return get;
   }
 
-  private getKeysFn() {
+  private initKeysFn() {
     const keysDeclaration = this.declaration.members.find((m) => m.name?.getText() === "keys");
 
     if (!keysDeclaration) {
@@ -161,14 +186,14 @@ export class TSObject {
     const tsReturnType = signature.getReturnType();
     const llvmReturnType = tsReturnType.getLLVMReturnType();
 
-    const llvmArgumentTypes = [this.generator.ts.obj.getLLVMType()];
+    const llvmArgumentTypes = [this.llvmType];
 
     const { fn: keys } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return keys;
   }
 
-  private getCopyPropsFunction() {
+  private initCopyPropsFn() {
     const copyPropsDeclaration = this.declaration.members.find((m) => m.name?.getText() === "copyPropsTo");
 
     if (!copyPropsDeclaration) {
@@ -178,8 +203,8 @@ export class TSObject {
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       copyPropsDeclaration,
       undefined,
-      this.generator.ts.obj.getTSType(),
-      [this.generator.ts.obj.getTSType()],
+      this.declaration.type,
+      [this.declaration.type],
       this.generator
     );
 
@@ -191,27 +216,43 @@ export class TSObject {
     const tsReturnType = signature.getReturnType();
     const llvmReturnType = tsReturnType.getLLVMReturnType();
 
-    const llvmArgumentTypes = [this.generator.ts.obj.getLLVMType(), this.generator.ts.obj.getLLVMType()];
+    const llvmArgumentTypes = [this.llvmType, this.llvmType];
 
     const { fn: copyProps } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return copyProps;
   }
 
+  private getCtorFn(isDefault: boolean) {
+    if (!this.ctorFn || !this.defaultCtorFn) {
+      const { ctor, defaultCtor } = this.initCtors();
+      this.ctorFn = ctor;
+      this.defaultCtorFn = defaultCtor;
+    }
+
+    if (isDefault) {
+      return this.defaultCtorFn;
+    }
+
+    return this.ctorFn;
+  }
+
   copyProps(source: LLVMValue, target: LLVMValue) {
-    const copyPropsFn = this.getCopyPropsFunction();
+    if (!this.copyPropsFn) {
+      this.copyPropsFn = this.initCopyPropsFn();
+    }
 
     const castedSource = this.generator.builder.createBitCast(
       source,
-      this.generator.ts.obj.getLLVMType()
+      this.llvmType
     );
 
     const castedTarget = this.generator.builder.createBitCast(
       target,
-      this.generator.ts.obj.getLLVMType()
+      this.llvmType
     );
 
-    this.generator.builder.createSafeCall(copyPropsFn, [castedSource, castedTarget]);
+    this.generator.builder.createSafeCall(this.copyPropsFn, [castedSource, castedTarget]);
   }
 
   create(props?: LLVMValue) {
@@ -237,31 +278,40 @@ export class TSObject {
   }
 
   getKeys(obj: LLVMValue): LLVMValue {
-    const fn = this.getKeysFn();
+    if (!this.keysFn) {
+      this.keysFn = this.initKeysFn();
+    }
+
     const castedObject = this.generator.builder.createBitCast(
       obj,
       this.generator.ts.obj.getLLVMType()
     );
-    return this.generator.builder.createSafeCall(fn, [castedObject]);
+
+    return this.generator.builder.createSafeCall(this.keysFn, [castedObject]);
   }
 
   get(thisValue: LLVMValue, key: string) {
-    const get = this.getGetFn();
+    if (!this.getFn) {
+      this.getFn = this.initGetFn();
+    }
+
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     const llvmKey = this.generator.ts.str.create(key);
 
-    return this.generator.builder.createSafeCall(get, [thisUntyped, llvmKey]);
+    return this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
   }
 
   set(thisValue: LLVMValue, key: string, value: LLVMValue) {
-    const set = this.getSetFn();
+    if (!this.setFn) {
+      this.setFn = this.initSetFn();
+    }
 
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     const valueUntyped = this.generator.builder.asVoidStar(value);
 
     const wrappedKey = this.generator.ts.str.create(key);
 
-    return this.generator.builder.createSafeCall(set, [thisUntyped, wrappedKey, valueUntyped]);
+    return this.generator.builder.createSafeCall(this.setFn, [thisUntyped, wrappedKey, valueUntyped]);
   }
 
   getLLVMType() {

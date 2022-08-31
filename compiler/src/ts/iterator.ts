@@ -11,6 +11,7 @@
 
 import { LLVMGenerator } from "../generator";
 import { LLVMType } from "../llvm/type";
+import { LLVMValue } from "../llvm/value";
 import { FunctionMangler } from "../mangling";
 import { TSType } from "./type";
 import { Declaration } from "./declaration";
@@ -18,11 +19,19 @@ import { Declaration } from "./declaration";
 export class TSIterator {
   private readonly generator: LLVMGenerator;
 
+  private readonly nextFns = new Map<string, LLVMValue>();
+
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
   }
 
   getNext(valueDeclaration: Declaration, genericType: TSType) {
+    const id = valueDeclaration.type.toString() + genericType.toString();
+
+    if (this.nextFns.has(id)) {
+      return this.nextFns.get(id)!;
+    }
+
     const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]")!;
     const signature = this.generator.ts.checker.getSignatureFromDeclaration(iteratorDeclaration);
 
@@ -49,6 +58,8 @@ export class TSIterator {
     const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
     const { fn: next } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    this.nextFns.set(id, next);
 
     return next;
   }
