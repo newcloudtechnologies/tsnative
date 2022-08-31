@@ -12,7 +12,7 @@
 import { cloneDeep, flatten } from "lodash";
 import { TypeChecker } from "./typechecker";
 import * as ts from "typescript";
-import { LLVMStructType, LLVMType } from "../llvm/type";
+import { LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
 
 import { TSSymbol } from "./symbol";
@@ -21,13 +21,16 @@ export class TSType {
   private type: ts.Type;
   private readonly originType: ts.Type;
   private readonly checker: TypeChecker;
+  private readonly typeString: string;
 
   private constructor(type: ts.Type, checker: TypeChecker) {
     this.type = type;
     this.originType = type;
     this.checker = checker;
 
-    if (this.toString() !== "this") {
+    this.typeString = checker.unwrap().typeToString(this.type);
+
+    if (this.typeString !== "this") {
       this.tryResolveGenericTypeIfNecessary();
     }
   }
@@ -477,7 +480,7 @@ export class TSType {
   }
 
   toString() {
-    return this.checker.unwrap().typeToString(this.type);
+    return this.typeString;
   }
 
   get types() {
