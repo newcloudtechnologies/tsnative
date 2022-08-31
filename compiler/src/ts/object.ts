@@ -148,7 +148,7 @@ export class TSObject {
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       keysDeclaration,
       undefined,
-      undefined,
+      this.generator.ts.obj.getTSType(),
       [this.generator.ts.obj.getTSType()],
       this.generator
     );

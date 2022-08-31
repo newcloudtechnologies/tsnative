@@ -9,45 +9,13 @@
  *
  */
 
-import { NmSymbolExtractor } from "../mangling";
 import * as ts from "typescript";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
+import { CXXSymbol, CXXSymbols } from "./cxxsymbolsstorage";
 
-export let externalMangledSymbolsTable: string[] = [];
-export let externalDemangledSymbolsTable: string[] = [];
-export function injectExternalSymbolsTables(mangled: string[], demangled: string[]): void {
-  if (mangled.length !== demangled.length) {
-    throw new Error("Symbols tables size mismatch");
-  }
-
-  externalMangledSymbolsTable = mangled;
-  externalDemangledSymbolsTable = demangled;
-}
-
-export async function prepareExternalSymbols(demangledTables: string[], mangledTables: string[]) {
-  switch (process.platform) {
-    case "aix":
-    case "darwin":
-    case "freebsd":
-    case "linux":
-    case "openbsd":
-    case "sunos":
-    case "win32":
-      const extractor = new NmSymbolExtractor();
-      return extractor.readSymbols(demangledTables, mangledTables);
-    default:
-      throw new Error(`Unsupported platform ${process.platform}`);
-  }
-}
-
-class Itanium {
-  static completeObjectConstructor = "C1";
-  static baseObjectConstructor = "C2";
-}
-
-type Predicate = (cppSignature: string, mangledIndex: number) => boolean;
+type Predicate = (cxxSymbol: CXXSymbol) => boolean;
 export class ExternalSymbolsProvider {
   private readonly declaration: Declaration;
   private readonly namespace: string;
@@ -58,15 +26,6 @@ export class ExternalSymbolsProvider {
   private readonly parametersPattern: string;
   private readonly functionTemplateParametersPattern: string;
   private readonly generator: LLVMGenerator;
-
-  static getVTableSymbolFor(className: string) {
-    const vtableIdx = externalDemangledSymbolsTable.findIndex((symbolName) => symbolName === `vtable for ${className}`);
-    if (vtableIdx === -1) {
-      throw new Error(`Unable to find vtable for '${className}'`);
-    }
-
-    return externalMangledSymbolsTable[vtableIdx];
-  }
 
   constructor(
     declaration: Declaration,
@@ -85,7 +44,7 @@ export class ExternalSymbolsProvider {
     this.namespace = namespace ? namespace + "::" : "";
 
     if (thisType) {
-      this.thisTypeName = thisType.getTypename();
+      this.thisTypeName = thisType.getApparentType().getTypename();
 
       if (thisType.isTuple()) {
         this.thisTypeName = this.generator.ts.tuple.getDeclaration().type.toString();
@@ -150,19 +109,22 @@ export class ExternalSymbolsProvider {
       const tryGetFromDeclaration = (otherDeclaration: Declaration, name: string) => {
         const classNamespace = otherDeclaration.getNamespace().join("::");
 
+        const qualifiedName = `${classNamespace.length > 0 ? classNamespace + "::" : ""}${name}`;
+
         const classMethodPattern = new RegExp(
-          `(?=(^| )${classNamespace.length > 0 ? classNamespace + "::" : ""}${name}(<.*>::|::)${
-            this.methodName
+          `(?=(^| )${qualifiedName}(<.*>::|::)${this.methodName
           }(\\(|<.*>\\())`
         );
 
         const mixinPattern = new RegExp(
-          `(^[a-zA-Z\ \:]*)<${classNamespace.length > 0 ? classNamespace + "::" : ""}${name}>(::)${this.methodName}`
+          `(^[a-zA-Z\ \:]*)<${qualifiedName}>(::)${this.methodName}`
         );
 
-        return this.handleDeclarationWithPredicate((cppSignature: string) => {
-          return classMethodPattern.test(cppSignature) || mixinPattern.test(cppSignature);
-        });
+        const symbolRange = CXXSymbols().getOrCreate(qualifiedName);
+
+        return this.handleDeclarationWithPredicate((cxxSymbol) => {
+          return classMethodPattern.test(cxxSymbol.demangled) || mixinPattern.test(cxxSymbol.demangled);
+        }, symbolRange);
       };
 
       // 1. It may be a method of base class in case of extension (A extends B)
@@ -242,20 +204,28 @@ export class ExternalSymbolsProvider {
   }
   private tryGetImpl(declaration: Declaration): string | undefined {
     if (declaration.isConstructor()) {
-      return this.handleDeclarationWithPredicate((cppSignature: string, mangledIndex: number) => {
-        const symbol = externalMangledSymbolsTable[mangledIndex];
-        return (
-          this.isConstructor(cppSignature) &&
-          (symbol.includes(Itanium.completeObjectConstructor) || symbol.includes(Itanium.baseObjectConstructor))
-        );
-      });
+      const classDeclaration = Declaration.create(declaration.parent as ts.ClassDeclaration, this.generator);
+      if (!classDeclaration.name) {
+        return;
+      }
+
+      const className = classDeclaration.name.getText();
+      const qualifiedName = `${this.namespace}${className}`;
+      const symbolRange = CXXSymbols().getOrCreate(qualifiedName);
+
+      return this.handleDeclarationWithPredicate((cxxSymbol) => this.isConstructor(cxxSymbol.demangled), symbolRange);
     } else if (declaration.isFunction()) {
       // `.*methodName<T>(` or `.*methodName(`
       // @todo is it possible to use mangled form to figure out if this is a class method or free function wrapped in namespace?
-      const freeFunctionPattern = new RegExp(`(?=(^| )${this.namespace}${this.methodName}(\\(|<.*>\\())`);
-      return this.handleDeclarationWithPredicate((cppSignature: string) => {
-        return freeFunctionPattern.test(cppSignature);
-      });
+      const qualifiedName = `${this.namespace}${this.methodName}`;
+
+      const freeFunctionPattern = new RegExp(`(?=(^| )${qualifiedName}(\\(|<.*>\\())`);
+
+      const symbolRange = CXXSymbols().getOrCreate(qualifiedName);
+
+      return this.handleDeclarationWithPredicate((cxxSymbol: CXXSymbol) => {
+        return freeFunctionPattern.test(cxxSymbol.demangled);
+      }, symbolRange);
     } else if (
       declaration.isMethod() ||
       declaration.isIndexSignature() ||
@@ -267,47 +237,50 @@ export class ExternalSymbolsProvider {
       // `.*( | ns)Class::method<U>(`
       // `.*( | ns)Class<T>::method(`
       // `.*( | ns)Class<T>::method<U>(`
+      const qualifiedName = `${this.namespace}${this.thisTypeName}`
       const classMethodPattern = new RegExp(
-        `(?=(^| )${this.namespace}${this.thisTypeName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
+        `(?=(^| )${qualifiedName}(<.*>::|::)${this.methodName}(\\(|<.*>\\())`
       );
 
-      const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${this.namespace}${this.thisTypeName}>(::)${this.methodName}`);
+      const mixinPattern = new RegExp(`(^[a-zA-Z\ \:]*)<${qualifiedName}>(::)${this.methodName}`);
 
-      return this.handleDeclarationWithPredicate((cppSignature: string) => {
-        return classMethodPattern.test(cppSignature) || mixinPattern.test(cppSignature);
-      });
+      const symbolRange = CXXSymbols().getOrCreate(qualifiedName);
+
+      return this.handleDeclarationWithPredicate((cxxSymbol: CXXSymbol) => {
+        const demangled = cxxSymbol.demangled;
+        return classMethodPattern.test(demangled) || mixinPattern.test(demangled);
+      }, symbolRange);
     }
 
     return;
   }
-  private handleDeclarationWithPredicate(predicate: Predicate) {
-    let candidates: {
-      index: number;
-      signature: string;
-    }[] = [];
-    for (let i = 0; i < externalDemangledSymbolsTable.length; ++i) {
-      const candidate = externalDemangledSymbolsTable[i];
-      if (predicate(candidate, i)) {
-        candidates.push({ index: i, signature: candidate });
+  private handleDeclarationWithPredicate(predicate: Predicate, symbolRange: CXXSymbol[]) {
+    let candidates: CXXSymbol[] = [];
+
+    for (let i = 0; i < symbolRange.length; ++i) {
+      const candidate = symbolRange[i];
+
+      if (predicate(candidate)) {
+        candidates.push(candidate);
       }
     }
 
-    candidates = candidates.filter((candidate) => this.isMatching(candidate.signature));
+    candidates = candidates.filter((candidate) => this.isMatching(candidate.demangled));
 
     if (candidates.length > 1) {
-      if (candidates.some((c) => c.signature.includes("*"))) {
+      if (candidates.some((c) => c.demangled.includes("*"))) {
         // @todo Very, VERY fragile thing
-        candidates = candidates.filter((c) => c.signature.includes("*"));
+        candidates = candidates.filter((c) => c.demangled.includes("*"));
       }
 
       // duplicates may appear because of TemplateInstantiator
-      const duplicatesOnly = candidates.every((candidate) => candidate.signature === candidates[0].signature);
+      const duplicatesOnly = candidates.every((candidate) => candidate.demangled === candidates[0].demangled);
       if (candidates.length > 1 && !duplicatesOnly) {
         console.log(candidates);
         throw new Error("Ambiguous function call");
       }
     }
-    return externalMangledSymbolsTable[candidates[0]?.index];
+    return candidates.length > 0 ? candidates[0].mangled : undefined;
   }
 
   static getParametersFromSignature(signature: string) {
