@@ -14,7 +14,6 @@ import * as ts from "typescript";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
-import { Expression } from "../ts/expression";
 
 export class FunctionMangler {
   static mangle(

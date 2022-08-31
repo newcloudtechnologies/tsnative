@@ -12,17 +12,33 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMType } from "../llvm/type";
+import { LLVMValue } from "../llvm/value";
 import { Declaration } from "./declaration";
 
 export class TSIterableIterator {
   private readonly generator: LLVMGenerator;
+
+  private readonly iteratorFns = new Map<string, LLVMValue>();
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
   }
 
   createIterator(valueDeclaration: Declaration, knownGenericTypes?: string[]) {
-    const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]")!;
+    let id = valueDeclaration.type.toString();
+    if (knownGenericTypes) {
+      id += knownGenericTypes.join();
+    }
+
+    if (this.iteratorFns.has(id)) {
+      return this.iteratorFns.get(id)!;
+    }
+
+    const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]");
+
+    if (!iteratorDeclaration) {
+      throw new Error(`Unable to find '[Symbol.iterator]' at '${valueDeclaration.getText()}'`);
+    }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       iteratorDeclaration,
@@ -42,6 +58,8 @@ export class TSIterableIterator {
       [LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
+
+    this.iteratorFns.set(id, iterator);
 
     return iterator;
   }
