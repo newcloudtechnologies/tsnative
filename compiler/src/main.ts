@@ -4,9 +4,9 @@ import * as fs from "fs";
 import * as llvm from "llvm-node";
 import * as path from "path";
 import * as ts from "typescript";
-import { injectExternalSymbolsTables, prepareExternalSymbols } from "./mangling";
 import { Build } from "./buildutils/build";
 import { TemplateInstantiator } from "./cppintegration/templateinstantiator";
+import { initCXXSymbols } from "./mangling";
 
 var pjson = require('../package.json');
 var version_string = pjson.version + ' (Based on Node.js ' + process.version + ")"
@@ -145,20 +145,9 @@ async function main() {
 
   const diagnostics = ts.getPreEmitDiagnostics(program);
 
-  if (argv.demangledTables) {
-    const list = argv.demangledTables as string[];
-    list.forEach((v: string, i: number, a: string[]) => {
-      a[i] = v.trim();
-    });
-    demangledTables.push(...list);
-  }
-
-  if (argv.mangledTables) {
-    const list = argv.mangledTables as string[];
-    list.forEach((v: string, i: number, a: string[]) => {
-      a[i] = v.trim();
-    });
-    mangledTables.push(...list);
+  if (argv.demangledTables && argv.mangledTables) {
+    demangledTables.push(...(argv.demangledTables as string[]).map((value) => value.trim()));
+    mangledTables.push(...(argv.mangledTables as string[]).map((value) => value.trim()));
   }
 
   if (argv.includeDirs) {
@@ -183,16 +172,14 @@ async function main() {
   llvm.initializeAllAsmParsers();
   llvm.initializeAllAsmPrinters();
 
-  const { demangledSymbols, mangledSymbols } = await prepareExternalSymbols(demangledTables, mangledTables);
-  injectExternalSymbolsTables(mangledSymbols, demangledSymbols);
+  initCXXSymbols(demangledTables, mangledTables);
 
   // generate template classes
   if (argv.processTemplateClasses) {
     const templateInstantiator = new TemplateInstantiator(
       program,
       includeDirs,
-      argv.templatesOutputDir,
-      demangledSymbols
+      argv.templatesOutputDir
     );
     templateInstantiator.instantiateClasses();
     return;
@@ -203,8 +190,7 @@ async function main() {
     const templateInstantiator = new TemplateInstantiator(
       program,
       includeDirs,
-      argv.templatesOutputDir,
-      demangledSymbols
+      argv.templatesOutputDir
     );
     templateInstantiator.instantiateFunctions();
     return;

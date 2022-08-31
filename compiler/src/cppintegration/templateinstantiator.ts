@@ -14,7 +14,7 @@ import * as ts from "typescript";
 import * as path from "path";
 import * as llvm from "llvm-node";
 import { flatten } from "lodash";
-import { ExternalSymbolsProvider } from "../mangling";
+import { CXXSymbols, ExternalSymbolsProvider } from "../mangling";
 import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
@@ -23,7 +23,6 @@ import { LLVMType } from "../llvm/type";
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
   private readonly generator: LLVMGenerator;
-  private readonly demangled: string[] = [];
   private readonly includeDirs: string[] = [];
 
   private generatedContent: string[] = [];
@@ -34,8 +33,7 @@ export class TemplateInstantiator {
   constructor(
     program: ts.Program,
     includeDirs: string[],
-    templateInstancesPath: string,
-    demangledSymbols: string[]
+    templateInstancesPath: string
   ) {
     const sources = program.getSourceFiles();
 
@@ -66,8 +64,6 @@ export class TemplateInstantiator {
     }
 
     this.includeDirs = includeDirs;
-
-    this.demangled = demangledSymbols;
 
     this.INSTANTIATED_FUNCTIONS_FILE = path.join(templateInstancesPath, "instantiated_functions.cpp");
     this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
@@ -102,11 +98,11 @@ export class TemplateInstantiator {
 
       const consoleFunction = this.getConsoleFunction(call);
 
-      const maybeExists = this.demangled.filter((s) => s.includes(`console::${consoleFunction}`));
+      const maybeExists = CXXSymbols().getOrCreate("console").filter((s) => s.demangled.includes(`console::${consoleFunction}`));
 
       const exists = maybeExists.some((s) => {
         return (
-          ExternalSymbolsProvider.extractParameterTypes(s) ===
+          ExternalSymbolsProvider.extractParameterTypes(s.demangled) ===
           ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
         );
       });
@@ -161,11 +157,11 @@ export class TemplateInstantiator {
 
       const consoleFunction = this.getConsoleFunction(call);
 
-      const maybeExists = this.demangled.filter((s) => s.includes(`console::${consoleFunction}`));
+      const maybeExists = CXXSymbols().getOrCreate("console").filter((s) => s.demangled.includes(`console::${consoleFunction}`));
 
-      const exists = maybeExists.some((signature) => {
+      const exists = maybeExists.some((symbol) => {
         return (
-          ExternalSymbolsProvider.extractParameterTypes(signature) ===
+          ExternalSymbolsProvider.extractParameterTypes(symbol.demangled) ===
           ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
         );
       });
@@ -338,11 +334,11 @@ export class TemplateInstantiator {
         return tsType.toCppType();
       });
 
-      const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
+      const maybeExists = CXXSymbols().getOrCreate(cppArrayType).filter((s) => s.demangled.includes(cppArrayType + "::" + methodName));
 
-      const exists = maybeExists.some((signature) => {
+      const exists = maybeExists.some((symbol) => {
         return (
-          ExternalSymbolsProvider.extractParameterTypes(signature) ===
+          ExternalSymbolsProvider.extractParameterTypes(symbol.demangled) ===
           ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
         );
       });
@@ -442,10 +438,10 @@ export class TemplateInstantiator {
       }
     }
 
-    const maybeExists = this.demangled.filter((s) => s.includes(cppArrayType + "::" + methodName));
-    const exists = maybeExists.some((signature) => {
+    const maybeExists = CXXSymbols().getOrCreate(cppArrayType).filter((s) => s.demangled.includes(cppArrayType + "::" + methodName));
+    const exists = maybeExists.some((symbol) => {
       return (
-        ExternalSymbolsProvider.extractParameterTypes(signature) ===
+        ExternalSymbolsProvider.extractParameterTypes(symbol.demangled) ===
         ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
       );
     });
