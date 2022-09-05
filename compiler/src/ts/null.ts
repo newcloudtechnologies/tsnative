@@ -78,7 +78,7 @@ export class TSNull {
     const nullValue = LLVMConstant.createNullValue(this.llvmType, this.generator);
     const globalNull = LLVMGlobalVariable.make(this.generator, this.llvmType, false, nullValue, "null_constant");
 
-    this.generator.builder.createSafeStore(this.generator.builder.createLoad(allocated), globalNull);
+    this.generator.builder.createSafeStore(allocated, globalNull);
 
     this.generator.symbolTable.globalScope.set("null", globalNull);
   }
