@@ -184,7 +184,7 @@ export class ConciseBody {
 
           if (ts.isPropertyAccessExpression(node)) {
             const accessorType = Expression.create(node, this.generator).getAccessorType();
-            if (accessorType) {
+            if (accessorType && this.generator.ts.checker.nodeHasSymbolAndDeclaration(node)) {
               const symbol = this.generator.ts.checker.getSymbolAtLocation(node);
               const declaration = symbol.declarations.find((decl) =>
                 accessorType === ts.SyntaxKind.GetAccessor ? decl.isGetAccessor() : decl.isSetAccessor()
@@ -231,22 +231,24 @@ export class ConciseBody {
                   propertyAccessRoot = propertyAccessRoot.expression;
                 }
 
-                const propertyAccessRootSymbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccessRoot);
-                const propertyAccessDeclaration = propertyAccessRootSymbol.valueDeclaration;
+                if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(propertyAccessRoot)) {
+                  const propertyAccessRootSymbol = this.generator.ts.checker.getSymbolAtLocation(propertyAccessRoot);
+                  const propertyAccessDeclaration = propertyAccessRootSymbol.valueDeclaration;
 
-                if (propertyAccessRoot.kind === ts.SyntaxKind.ThisKeyword) {
-                  if (!propertyAccessDeclaration?.isClassOrInterface()) {
-                    throw new Error(
-                      `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
+                  if (propertyAccessRoot.kind === ts.SyntaxKind.ThisKeyword) {
+                    if (!propertyAccessDeclaration?.isClassOrInterface()) {
+                      throw new Error(
+                        `Expected class or interface declaration, got '${propertyAccessDeclaration?.getText()}'`
+                      );
+                    }
+
+                    const methodDeclaration = propertyAccessDeclaration.members.find(
+                      (m) => m.name?.getText() === functionName
                     );
-                  }
-
-                  const methodDeclaration = propertyAccessDeclaration.members.find(
-                    (m) => m.name?.getText() === functionName
-                  );
-                  if (methodDeclaration) {
-                    declaration = methodDeclaration;
-                    skip = true;
+                    if (methodDeclaration) {
+                      declaration = methodDeclaration;
+                      skip = true;
+                    }
                   }
                 }
               }
