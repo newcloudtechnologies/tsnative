@@ -224,15 +224,32 @@ export class FunctionHandler extends AbstractExpressionHandler {
           return typeMapper.get(tsType.toString()).getLLVMType();
         });
 
-    const adjustedArgs = args.map((arg, index) => {
-      const llvmArgType = types[index];
-      if (!arg.type.equals(llvmArgType)) {
-        if (llvmArgType.isUnion()) {
-          arg = this.generator.ts.union.create(arg);
+    let adjustedArgs: LLVMValue[] = []
+    if (withRestParameters) {
+      adjustedArgs = args.map((arg, index) => {
+        const llvmArgType = types[index];
+        if (!arg.type.equals(llvmArgType)) {
+          if (llvmArgType.isUnion()) {
+            arg = this.generator.ts.union.create(arg);
+          }
         }
-      }
-      return arg;
-    });
+        return arg;
+      });
+    } else {
+      adjustedArgs = types.map((type, index) => {
+        let arg = args[index];
+        if (!arg) {
+          return this.generator.ts.union.create();
+        }
+
+        if (!arg.type.equals(type)) {
+          if (type.isUnion()) {
+            arg = this.generator.ts.union.create(arg);
+          }
+        }
+        return arg;
+      });
+    }
 
     const fixedArgsCount = this.generator.meta.getFixedArgsCount(closure);
 
