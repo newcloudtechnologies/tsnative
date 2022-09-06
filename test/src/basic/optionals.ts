@@ -63,3 +63,12 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     console.log("BASE:", a.lol);
     console.log("BASE:", a.lol ? a.lol : "nope");
 }
+
+{
+    function myFunc(arg?: number) {
+        return arg;
+    }
+
+    console.assert(myFunc(1) === 1, "Present optional argument should be returned as is");
+    console.assert(myFunc() === undefined, "Absence of optional argument should return 'undefined'");
+}
