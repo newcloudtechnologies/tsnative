@@ -13,13 +13,21 @@ d.test();
 class Inheritor extends CXXBase {
     n = 42
     m = () => "Hello from "
-
-    // NB: constructor is mandatory for CXX derived classes
-    constructor() {
-        super();
-    }
 }
 
 const obj = new Inheritor();
 console.assert(obj.getNumber() === 42, "CXX derived class property must be accessible on CXX side");
 console.assert(obj.callMemberClosure() === "Hello from CXX", "CXX derived class function-like property must be accessible on CXX side");
+
+{
+    class InheritorWithConstructor extends CXXBase {
+        constructor() {
+            super();
+        }
+
+        value = 42
+    }
+
+    const obj = new InheritorWithConstructor();
+    console.assert(obj.value === 42, "CXX derived class may provide its own constructor");
+}

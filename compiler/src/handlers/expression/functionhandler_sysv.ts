@@ -222,9 +222,24 @@ export class SysVFunctionHandler {
     // Getting type for 'expression.expression' of 'new Array<T>' gives 'typeof Array' and this breaks mangling scheme.
     // Since TS constructors actually return values use return type for 'this' type determination.
     // 'super' calls return nothing, so use type at 'super'.
-    const typeSource = ts.isNewExpression(expression) ? expression : expression.expression;
+    let typeSource = ts.isNewExpression(expression) ? expression : expression.expression;
 
-    const thisType = this.generator.ts.checker.getTypeAtLocation(typeSource);
+    let thisType = this.generator.ts.checker.getTypeAtLocation(typeSource);
+
+    const isSynthetic = typeSource.pos === -1;
+    if (isSynthetic) {
+      let parent = expression.parent;
+      while (parent && !ts.isClassLike(parent)) {
+        parent = parent.parent;
+      }
+
+      if (!parent) {
+        throw new Error(`Unable to find class-like parent`);
+      }
+
+      thisType = this.generator.ts.checker.getTypeAtLocation(parent);
+    }
+
     const symbol = thisType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
     if (!valueDeclaration) {
