@@ -37,8 +37,6 @@ class SomeScopeWidget extends Component {
 }
 
 class AnotherSomeScopeWidget extends Component {
-    constructor() { super(); }
-
     @Override()
     draw() {
         console.log("AnotherSomeScopeWidget overrides Component.draw");
