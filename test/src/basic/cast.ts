@@ -19,3 +19,29 @@
     let val: number = <number>edges;
     console.assert(val === 5, "Cast using type assertion");
 }
+
+{
+    interface LoadDataAction_i {
+        type: number
+    }
+
+    interface SaveDataAction_i {
+        type: number,
+        urlToSave?: string,
+    }
+
+    type FileDataAction_ut = LoadDataAction_i | SaveDataAction_i;
+
+    function loadFile(): FileDataAction_ut {
+        return {
+            type: 0
+        }
+    }
+
+    const FileStore_loadFile = () => {
+        const action = loadFile();
+        console.assert((action as LoadDataAction_i).type === 0, "Property access root must be processed correctly at ConciseBody.getFunctionEnvironment");
+    }
+
+    FileStore_loadFile();
+}
