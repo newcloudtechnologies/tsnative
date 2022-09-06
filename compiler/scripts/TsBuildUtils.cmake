@@ -24,6 +24,11 @@ message(STATUS "Found TsBuildUtils in ${CMAKE_CURRENT_LIST_DIR}")
 # point to this file.
 set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+if (TS_PROFILE_BUILD)
+    find_package(Python)
+    set(BUILD_TIME_PROFILER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/build_time_profiler.py)
+endif()
+
 function(makeOutputDir target dep_target executablePath entry output_dir)
     getBinaryName(${entry} binary_name "${executablePath}")
 
@@ -140,11 +145,20 @@ function(instantiate_classes target dep_target projectRoot entry tsConfig baseUr
         set(INCLUDE_DIRS --includeDirs ${INCLUDES})
     endif()
 
+    set(START_PROFILE_COMMAND ":")
+    set(END_PROFILE_COMMAND ":")
+
+    if (TS_PROFILE_BUILD)
+        set(START_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag TEMPLATE_CLASSES_INSTANTIATION --start")
+        set(END_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag TEMPLATE_CLASSES_INSTANTIATION --end")
+    endif()
+
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Instantiating classes..."
+        COMMAND bash -c ${START_PROFILE_COMMAND}
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
         ARGS ${TS_COMPILER} ${entry}
                         --tsconfig ${tsConfig}
@@ -157,6 +171,7 @@ function(instantiate_classes target dep_target projectRoot entry tsConfig baseUr
                         --demangledTables ${DEMANGLED}
                         --mangledTables ${MANGLED}
                         ${trace_opt}
+        COMMAND bash -c ${END_PROFILE_COMMAND}
     )
 
     add_custom_target(${target}
@@ -180,11 +195,20 @@ function(instantiate_functions target dep_target projectRoot entry tsConfig base
         set(INCLUDE_DIRS --includeDirs ${INCLUDES})
     endif()
 
+    set(START_PROFILE_COMMAND ":")
+    set(END_PROFILE_COMMAND ":")
+
+    if (TS_PROFILE_BUILD)
+        set(START_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag TEMPLATE_FUNCTIONS_INSTANTIATION --start")
+        set(END_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag TEMPLATE_FUNCTIONS_INSTANTIATION --end")
+    endif()
+
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${entry} ${sources}
         WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Instantiating functions..."
+        COMMAND bash -c ${START_PROFILE_COMMAND}
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
         ARGS ${TS_COMPILER} ${entry}
                         --tsconfig ${tsConfig}
@@ -197,6 +221,7 @@ function(instantiate_functions target dep_target projectRoot entry tsConfig base
                         --templatesOutputDir ${output_dir}
                         --build ${output_dir}
                         ${trace_opt}
+        COMMAND bash -c ${END_PROFILE_COMMAND}
     )
 
     add_custom_target(${target}
@@ -213,6 +238,25 @@ function(compile_cpp target dep_target includes definitions entry output_dir com
     # TODO: refactor this whole sequence
     # 1 use object library
     add_library(${target} STATIC ${entry})
+
+    if (TS_PROFILE_BUILD)
+        set(START_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag COMPILE_CXX_${bin_name} --start")
+        set(END_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag COMPILE_CXX_${bin_name} --end")
+
+        add_custom_command(
+            TARGET ${target}
+            PRE_BUILD
+            COMMAND bash -c ${START_PROFILE_COMMAND}
+        )
+
+        add_custom_command(
+            TARGET ${target}
+            POST_BUILD
+            COMMAND bash -c ${END_PROFILE_COMMAND}
+        )
+
+    endif()
+
     set_target_properties(${target} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${output_dir}
         ARCHIVE_OUTPUT_NAME ${bin_name})
@@ -282,11 +326,20 @@ function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources
         set(TS_DEBUG --debug)
     endif()
 
+    set(START_PROFILE_COMMAND ":")
+    set(END_PROFILE_COMMAND ":")
+
+    if (TS_PROFILE_BUILD)
+        set(START_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag COMPILE_TS --start")
+        set(END_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag COMPILE_TS --end")
+    endif()
+
     add_custom_command(
         OUTPUT ${output}
         DEPENDS "${entry}" "${sources}" "${demangledList}" "${mangledList}"
         WORKING_DIRECTORY ${projectRoot}
         COMMAND echo "Running TS compiler: ${entry}"
+        COMMAND bash -c ${START_PROFILE_COMMAND}
         COMMAND ${CMAKE_COMMAND} -E env "${TS_COMPILER_ENV}"
         ARGS ${TS_COMPILER} ${entry}
                       --tsconfig ${tsConfig}
@@ -298,6 +351,7 @@ function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources
                       ${MAYBE_PRINT_IR}
                       ${trace_opt}
                       ${TS_DEBUG}
+        COMMAND bash -c ${END_PROFILE_COMMAND}
     )
 
     add_custom_target(${target}
@@ -313,12 +367,22 @@ function(compile_ll target dep_target ll_bytecode optimizationLevel output_dir c
     find_package(LLVM REQUIRED CONFIG)
     string(REPLACE ".ll" ".o" output "${ll_bytecode}")
 
+    set(START_PROFILE_COMMAND ":")
+    set(END_PROFILE_COMMAND ":")
+
+    if (TS_PROFILE_BUILD)
+        set(START_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag COMPILE_IR --start")
+        set(END_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag COMPILE_IR --end")
+    endif()
+
     # TODO: make compile options configurable
     add_custom_command(
         OUTPUT ${output}
         DEPENDS ${ll_bytecode}
         COMMAND echo "Running llc..."
+        COMMAND bash -c ${START_PROFILE_COMMAND}
         COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX} ${optimizationLevel} -relocation-model=pic -filetype=obj ${ll_bytecode} -o ${output}
+        COMMAND bash -c ${END_PROFILE_COMMAND}
     )
 
     add_custom_target(${target}
@@ -335,6 +399,23 @@ function(link target dep_target executablePath seed_src compiled_source dependen
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${binaryPath}")
 
     add_executable(${${target}} WIN32 ${seed_src})
+
+    if (TS_PROFILE_BUILD)
+        set(START_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag LINK --start")
+        set(END_PROFILE_COMMAND "${Python_EXECUTABLE} ${BUILD_TIME_PROFILER_SCRIPT} --tag LINK --end")
+
+        add_custom_command(
+            TARGET ${${target}}
+            PRE_BUILD
+            COMMAND bash -c ${START_PROFILE_COMMAND}
+        )
+
+        add_custom_command(
+            TARGET ${${target}}
+            POST_BUILD
+            COMMAND bash -c ${END_PROFILE_COMMAND}
+        )
+    endif()
 
     target_include_directories(${${target}} PUBLIC ${tsnative-declarator_INCLUDE_DIRS})
 
