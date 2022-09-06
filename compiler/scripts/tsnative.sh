@@ -85,6 +85,10 @@ case $key in
     TS_DEBUG=TRUE
     shift # past argument
     ;;
+    --profile_build)
+    TS_PROFILE_BUILD=TRUE
+    shift # past argument
+    ;;
     --jobs)
     JOBS_NUM="$2"
     shift # past argument
@@ -104,6 +108,7 @@ case $key in
     echo "  --print_ir : print ir code"
     echo "  --test : passing this key will enable test target for specified entry that can be later fun using 'make test' command"
     echo "  --debug : generate debug info"
+    echo "  --profile_build : build time statistics"
     echo "  --jobs : number of build jobs"
     exit 0
     shift # past argument
@@ -177,6 +182,11 @@ then
     PRINT_IR=FALSE
 fi
 
+if [ -z "$TS_PROFILE_BUILD" ]
+then
+    TS_PROFILE_BUILD=FALSE
+fi
+
 if [ "$(uname -s)" == "Darwin" ]; then
     JOBS_NUM=$(sysctl -n hw.ncpu)
 else
@@ -207,7 +217,8 @@ cmake -G "Unix Makefiles" \
     -DIS_TEST=${IS_TEST} \
     -DCMAKE_CXX_COMPILER_TARGET=$TARGET_ABI \
     -DCMAKE_TOOLCHAIN_FILE=${CONAN_INSTALL_DIR}/conan_paths.cmake \
-    -DTS_DEBUG=${TS_DEBUG}
+    -DTS_DEBUG=${TS_DEBUG} \
+    -DTS_PROFILE_BUILD=${TS_PROFILE_BUILD}
     # -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 cmake --build ${PROJECT_BUILD_DIR} --config Release -j${JOBS_NUM}
