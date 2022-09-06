@@ -198,3 +198,33 @@ import createStore2 from "./union_type_imports"
     const b: string | undefined = a;
     console.assert(b as string === "test", "Union-to-union assignment");
 }
+
+{
+    type Window_args = {
+        title: string | undefined,
+    }
+
+    class TextWindow_t {
+        title: string;
+
+        constructor(title: string | undefined) {
+            if (title) {
+                this.title = (title as string) + ' - MyOffice';
+            } else {
+                this.title = 'Untitled Document - MyOffice';
+            }
+        }
+
+    }
+
+    function TextWindow(args: Window_args): TextWindow_t {
+        return new TextWindow_t(args.title);
+    }
+
+
+    const w = TextWindow({
+        title: 'test',
+    });
+
+    console.assert(w.title === "test - MyOffice", "Constructor with optional union parameter must be handled correctly");
+}

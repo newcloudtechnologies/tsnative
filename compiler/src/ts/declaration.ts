@@ -136,35 +136,37 @@ export class Declaration {
         }
 
         if (argumentType.isTSObjectType()) {
-          const parameterDeclaration = parameterType.getSymbol().declarations[0];
-          const argumentDeclaration = argumentType.getSymbol().declarations[0];
+          if (!parameterType.isSymbolless() && !argumentType.isSymbolless()) {
+            const parameterDeclaration = parameterType.getSymbol().declarations[0];
+            const argumentDeclaration = argumentType.getSymbol().declarations[0];
 
-          if (parameterDeclaration && argumentDeclaration) {
-            const parameterProperties = parameterDeclaration.ownProperties;
-            const argumentProperties = argumentDeclaration.ownProperties;
+            if (parameterDeclaration && argumentDeclaration) {
+              const parameterProperties = parameterDeclaration.ownProperties;
+              const argumentProperties = argumentDeclaration.ownProperties;
 
-            const sorter = (lhs: Declaration, rhs: Declaration) => {
-              const lhsName = lhs.name?.getText();
-              const rhsName = rhs.name?.getText();
+              const sorter = (lhs: Declaration, rhs: Declaration) => {
+                const lhsName = lhs.name?.getText();
+                const rhsName = rhs.name?.getText();
 
-              if (!lhsName || !rhsName) {
-                throw new Error(`Expected named property at: '${parameterDeclaration.getText()}' or '${argumentDeclaration.getText()}'`);
+                if (!lhsName || !rhsName) {
+                  throw new Error(`Expected named property at: '${parameterDeclaration.getText()}' or '${argumentDeclaration.getText()}'`);
+                }
+
+                if (lhsName > rhsName) {
+                  return 1;
+                }
+
+                return -1;
               }
 
-              if (lhsName > rhsName) {
-                return 1;
-              }
+              parameterProperties.sort(sorter);
+              argumentProperties.sort(sorter);
 
-              return -1;
+              return parameterProperties.every((prop, index) => {
+                const argumentProperty = argumentProperties[index];
+                return prop.name?.getText() === argumentProperty.name?.getText() && prop.type.isSame(argumentProperty.type);
+              });
             }
-
-            parameterProperties.sort(sorter);
-            argumentProperties.sort(sorter);
-
-            return parameterProperties.every((prop, index) => {
-              const argumentProperty = argumentProperties[index];
-              return prop.name?.getText() === argumentProperty.name?.getText() && prop.type.isSame(argumentProperty.type);
-            });
           }
         }
 
