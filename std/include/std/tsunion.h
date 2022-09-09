@@ -38,5 +38,5 @@ public:
     TS_METHOD Boolean* toBool() const override;
 
 private:
-    Object* _value = new Undefined();
+    Object* _value = Undefined::instance();
 };

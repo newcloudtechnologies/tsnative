@@ -626,14 +626,15 @@ export class Declaration {
   }
 
   withVTable() {
-    const withVTableDecorator = "VTable";
-    const declaredWithVTable = Boolean(
-      this.declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator)
-    );
+    return Boolean(this.vtableSize);
+  //   const withVTableDecorator = "VTable";
+  //   const declaredWithVTable = Boolean(
+  //     this.declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator)
+  //   );
 
-    const haveVirtualBase = this.getBases().some((classDeclaration) => classDeclaration.withVTable());
+  //   const haveVirtualBase = this.getBases().some((classDeclaration) => classDeclaration.withVTable());
 
-    return declaredWithVTable || haveVirtualBase;
+  //   return declaredWithVTable || haveVirtualBase;
   }
 
   get mapping() {

@@ -54,15 +54,16 @@ Boolean* Boolean::negate() const
     return new Boolean(!_d->value());
 }
 
-Boolean* Boolean::equals(Boolean* other) const
+Boolean* Boolean::equals(Object* other) const
 {
-    return new Boolean(_d->value() == other->unboxed());
+    auto asBoolean = static_cast<Boolean*>(other);
+    return new Boolean(_d->value() == asBoolean->unboxed());
 }
 
 String* Boolean::toString() const
 {
     std::ostringstream oss;
-    oss << this;
+    oss << std::boolalpha << this->unboxed();
     return new String(oss.str());
 }
 

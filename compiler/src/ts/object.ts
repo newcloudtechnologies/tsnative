@@ -10,11 +10,13 @@
  */
 
 import { LLVMGenerator } from "../generator";
-import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { FunctionMangler } from "../mangling";
-import { LLVMType } from "../llvm/type";
+import { LLVMArrayType, LLVMType } from "../llvm/type";
 import { LLVMValue } from "../llvm/value";
+
+import * as ts from "typescript";
+import * as llvm from "llvm-node";
 
 const stdlib = require("std/constants");
 
@@ -29,6 +31,7 @@ export class TSObject {
   private setFn: LLVMValue | undefined;
   private keysFn: LLVMValue | undefined;
   private copyPropsFn: LLVMValue | undefined;
+  private equalsFns = new Map<string, LLVMValue>();
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -101,7 +104,6 @@ export class TSObject {
 
     return { ctor, defaultCtor };
   }
-
 
   private initSetFn() {
     const setDeclaration = this.declaration.members.find((m) => m.name?.getText() === "set");
@@ -223,6 +225,65 @@ export class TSObject {
     return copyProps;
   }
 
+  private getVPtrEquals(thisValue: LLVMValue) {
+    const vtables = this.generator.builder.createBitCast(
+      thisValue,
+      LLVMType.getInt8Type(this.generator).getPointer().getPointer()
+    );
+
+    const vtable = this.generator.builder.createLoad(vtables);
+    const vtableAsArray = this.generator.builder.createBitCast(
+      vtable,
+      LLVMArrayType.get(
+        this.generator,
+        LLVMType.getInt8Type(this.generator).getPointer(),
+        this.declaration.vtableSize
+      ).getPointer()
+    );
+
+    const virtualFnPtr = this.generator.builder.createSafeInBoundsGEP(vtableAsArray, [
+      0,
+      5
+    ]);
+
+    // const vtableIdx = this.declaration.getVirtualMethods().findIndex((v) => v.method.name?.getText() === "equals");
+    // const virtualDestructorsOffset = 2; // @todo: handcoded cause all the CXX class expected to be derived from Object and thus have virtual destructor
+    
+    // console.log(this.declaration.getText())
+    // console.log("vtableIdx:", vtableIdx)
+
+    // this.declaration.getVirtualMethods().forEach((m) => console.log(m.method.getText()))
+
+    const virtualFn = virtualFnPtr;
+
+    return virtualFn;
+  }
+
+  private initEqualsFunction(thisValue: LLVMValue) {
+    const equalsDeclaration = this.declaration.members.find((m) => m.name?.getText() === "equals");
+
+    if (!equalsDeclaration) {
+      throw new Error(`Unable to find 'equals' at '${this.declaration.getText()}'`);
+    }
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(equalsDeclaration);
+    const tsReturnType = signature.getReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType();
+
+    const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [cxxVoidStarType, cxxVoidStarType];
+
+    const type = llvm.FunctionType.get(
+      cxxVoidStarType.unwrapped,
+      llvmArgumentTypes.map((t) => t.unwrapped),
+      false
+    ).getPointerTo().getPointerTo();
+
+    let eqFn = this.getVPtrEquals(thisValue);
+    eqFn = this.generator.builder.createBitCast(eqFn, LLVMType.make(type, this.generator));
+
+    return this.generator.builder.createLoad(eqFn);
+  }
+
   private getCtorFn(isDefault: boolean) {
     if (!this.ctorFn || !this.defaultCtorFn) {
       const { ctor, defaultCtor } = this.initCtors();
@@ -312,6 +373,21 @@ export class TSObject {
     const wrappedKey = this.generator.ts.str.create(key);
 
     return this.generator.builder.createSafeCall(this.setFn, [thisUntyped, wrappedKey, valueUntyped]);
+  }
+
+  equals(lhs: LLVMValue, rhs: LLVMValue) {
+    let equalsFn = this.initEqualsFunction(lhs);
+
+    const thisUntyped = this.generator.builder.asVoidStar(lhs);
+    const valueUntyped = this.generator.builder.asVoidStar(rhs);
+
+    let result = this.generator.builder.createSafeCall(equalsFn, [thisUntyped, valueUntyped]);
+    result = this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
+
+    console.log("equalsFn...", equalsFn.type.toString())
+    console.log("r type...", result.type.toString())
+
+    return result;
   }
 
   getLLVMType() {

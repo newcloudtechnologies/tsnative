@@ -48,14 +48,14 @@ export class TSUndefined {
   }
 
   init() {
-    const undefinedCtorDeclaration = this.declaration.members.find((m) => m.isConstructor());
+    const undefinedInstanceDeclaration = this.declaration.members.find((m) => m.name?.getText() === "instance");
 
-    if (!undefinedCtorDeclaration) {
-      throw new Error(`Unable to find constructor at '${this.declaration.getText()}'`);
+    if (!undefinedInstanceDeclaration) {
+      throw new Error(`Unable to find 'instance' at '${this.declaration.getText()}'`);
     }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
-      undefinedCtorDeclaration,
+      undefinedInstanceDeclaration,
       undefined,
       this.declaration.type,
       [],
@@ -63,22 +63,19 @@ export class TSUndefined {
     );
 
     if (!isExternalSymbol) {
-      throw new Error(`Unable to find cxx constructor for 'Undefined'`);
+      throw new Error(`Unable to find cxx 'instance' for 'Undefined'`);
     }
 
-    const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+    const llvmReturnType = this.getLLVMType();
+    const llvmArgumentTypes: LLVMType[] = [];
 
-    const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+    const { fn: instanceFn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
-    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
-    const thisUntyped = this.generator.builder.asVoidStar(allocated);
-
-    this.generator.builder.createSafeCall(ctor, [thisUntyped]);
+    const instance = this.generator.builder.createSafeCall(instanceFn, []);
 
     const nullValue = LLVMConstant.createNullValue(this.llvmType, this.generator);
     const globalUndef = LLVMGlobalVariable.make(this.generator, this.llvmType, false, nullValue, "undefined_constant");
-    this.generator.builder.createSafeStore(allocated, globalUndef);
+    this.generator.builder.createSafeStore(instance, globalUndef);
 
     this.generator.symbolTable.globalScope.set("undefined", globalUndef);
   }

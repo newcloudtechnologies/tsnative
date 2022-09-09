@@ -12,8 +12,10 @@ class Boolean;
 class TS_DECLARE Undefined : public Object
 {
 public:
-    TS_METHOD Undefined();
+    Undefined();
     ~Undefined() override = default;
+
+    TS_METHOD static Undefined* instance();
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
