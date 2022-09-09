@@ -25,11 +25,11 @@ public:
     ~Boolean() override;
 
     TS_METHOD Boolean* negate() const;
-    TS_METHOD Boolean* equals(Boolean* other) const;
     TS_METHOD Boolean* clone() const;
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
+    TS_METHOD Boolean* equals(Object* other) const override;
 
     TS_METHOD TS_RETURN_TYPE("number") bool unboxed() const;
 

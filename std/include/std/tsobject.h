@@ -45,8 +45,11 @@ public:
         return static_cast<T>(get(key));
     }
 
-    TS_METHOD virtual String* toString() const;
-    TS_METHOD virtual Boolean* toBool() const;
+    TS_METHOD TS_DECORATOR("Virtual") virtual String* toString() const;
+    TS_METHOD TS_DECORATOR("Virtual") virtual Boolean* toBool() const;
+
+
+    TS_METHOD TS_DECORATOR("Virtual") virtual Boolean* equals(Object* other) const;
 
     TS_METHOD static Array<String*>* keys(Object* entity);
 

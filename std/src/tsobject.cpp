@@ -217,6 +217,12 @@ Boolean* Object::toBool() const
 {
     return new Boolean(true);
 }
+#include <iostream>
+Boolean* Object::equals(Object* other) const
+{
+    std::cout << "Object::equals: " << std::boolalpha << (other == this) << std::endl;
+    return new Boolean(other == this);
+}
 
 Array<String*>* Object::keys(Object* entity)
 {

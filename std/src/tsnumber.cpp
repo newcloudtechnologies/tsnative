@@ -176,10 +176,14 @@ Number* Number::bitwiseRightShiftInplace(Number* other)
     _d->bitwiseRightShiftInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
-
-Boolean* Number::equals(Number* other) const
+#include <iostream>
+Boolean* Number::equals(Object* other) const
 {
-    bool result = _d->equals(other->unboxed());
+    auto asNumber = static_cast<Number*>(other);
+    bool result = _d->equals(asNumber->unboxed());
+
+    std::cout << "Number::equals " << std::boolalpha << result << std::endl;
+
     return new Boolean(result);
 }
 

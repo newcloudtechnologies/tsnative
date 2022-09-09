@@ -4,9 +4,20 @@
 
 #include "std/private/logger.h"
 
+static Undefined* g_instance = nullptr;
+
 Undefined::Undefined()
 {
     LOG_ADDRESS("Calling Undefined ctor ", this);
+}
+
+Undefined* Undefined::instance()
+{
+    if (!g_instance) {
+        g_instance = new Undefined();
+    }
+
+    return g_instance;
 }
 
 String* Undefined::toString() const

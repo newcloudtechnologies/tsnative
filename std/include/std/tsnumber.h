@@ -55,7 +55,6 @@ public:
     TS_METHOD Number* bitwiseLeftShiftInplace(Number* other);
     TS_METHOD Number* bitwiseRightShiftInplace(Number* other);
 
-    TS_METHOD Boolean* equals(Number* other) const;
     TS_METHOD Boolean* lessThan(Number* other) const;
     TS_METHOD Boolean* lessEqualsThan(Number* other) const;
     TS_METHOD Boolean* greaterThan(Number* other) const;
@@ -63,6 +62,7 @@ public:
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
+    TS_METHOD Boolean* equals(Object* other) const override;
 
     TS_METHOD TS_RETURN_TYPE("number") double unboxed() const;
 

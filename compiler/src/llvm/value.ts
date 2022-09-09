@@ -382,35 +382,13 @@ export class LLVMValue {
   }
 
   createEquals(other: LLVMValue): LLVMValue {
-    const leftType = this.type;
-    const rightType = other.type;
+    // if (this.type.isUnion()) {
+    //   let extracted = this.generator.ts.union.get(this);
+    //   extracted = this.generator.builder.createBitCast(extracted, other.type);
+    //   return extracted.createEquals(other);
+    // }
 
-    if (leftType.isTSNumber() && rightType.isTSNumber()) {
-      const fn = this.generator.builtinNumber.createBooleanFn("equals");
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    } else if (leftType.isString() && rightType.isString()) {
-      const equals = this.generator.ts.str.getLLVMEquals();
-      return this.generator.builder.createSafeCall(equals, [this, other]);
-    } else if (leftType.isTSBoolean() && rightType.isTSBoolean()) {
-      const equals = this.generator.builtinBoolean.getLLVMEquals();
-      return this.generator.builder.createSafeCall(equals, [this, other]);
-    } else if (this.type.isUnion()) {
-      let extracted = this.generator.ts.union.get(this);
-      extracted = this.generator.builder.createBitCast(extracted, rightType);
-      return extracted.createEquals(other);
-    } else if (leftType.type.isPointerTy() && leftType.type.isPointerTy()) {
-      const lhsAddress = this.generator.builder.createPtrToInt(this, LLVMType.getInt32Type(this.generator));
-      const rhsAddress = this.generator.builder.createPtrToInt(other, LLVMType.getInt32Type(this.generator));
-
-      const raw = this.generator.builder.createICmpEQ(lhsAddress, rhsAddress);
-
-      return this.generator.builtinBoolean.create(raw);
-    }
-
-    throw new Error(`Invalid operand types to strict equals: 
-                            lhs: ${leftType.toString()} ${leftType.typeIDName}
-                            rhs: ${rightType.toString()} ${rightType.typeIDName}`);
+    return this.generator.ts.obj.equals(this, other);
   }
 
   createNotEquals(other: LLVMValue): LLVMValue {

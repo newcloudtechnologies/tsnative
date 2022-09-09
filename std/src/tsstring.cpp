@@ -238,9 +238,10 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
     return new Number(static_cast<double>(index));
 }
 
-Boolean* String::equals(String* other) const
+Boolean* String::equals(Object* other) const
 {
-    bool result = _d->equals(other->cpp_str());
+    auto asString = static_cast<String*>(other);
+    bool result = _d->equals(asString->cpp_str());
     return new Boolean(result);
 }
 
