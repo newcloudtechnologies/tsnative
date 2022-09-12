@@ -13,6 +13,9 @@
 
 #include "utils/Exception.h"
 
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/VTableBuilder.h>
+
 namespace parser
 {
 
@@ -81,6 +84,76 @@ std::vector<ParameterValue> MethodItem::parameters() const
 const clang::CXXMethodDecl* MethodItem::decl() const
 {
     return m_decl;
+}
+
+#include <iostream>
+
+int MethodItem::getVTableIndex() const
+{
+    std::cout << "getVTableIndex " << name() << std::endl;
+
+    int result = -1;
+
+    if (!isVirtual())
+    {
+        return result;
+    }
+
+    const clang::CXXRecordDecl* parent = m_decl->getParent();
+    _ASSERT(parent);
+
+    auto* VTableContext = m_decl->getASTContext().getVTableContext();
+
+    std::cout << "0..." << std::endl;
+
+    _ASSERT(VTableContext);
+
+    std::cout << "1..." << std::endl;
+
+    clang::ArrayRef<clang::VTableComponent> vtable_components;
+
+    if (VTableContext->isMicrosoft())
+    {
+        auto* microsoftVTableContext = clang::dyn_cast_or_null<clang::MicrosoftVTableContext>(VTableContext);
+        _ASSERT(microsoftVTableContext);
+
+        const clang::VTableLayout& vtLayout = microsoftVTableContext->getVFTableLayout(parent, clang::CharUnits::One());
+        vtable_components = vtLayout.vtable_components();
+    }
+    else
+    {
+        std::cout << "00..." << std::endl;
+
+        auto* itaniumVTableContext = clang::dyn_cast_or_null<clang::ItaniumVTableContext>(VTableContext);
+        _ASSERT(itaniumVTableContext);
+
+        std::cout << "03..." << std::endl;
+
+        const clang::VTableLayout& vtLayout = itaniumVTableContext->getVTableLayout(parent);
+
+        std::cout << "04..." << std::endl;
+
+        vtable_components = vtLayout.vtable_components();
+
+        std::cout << "05..." << std::endl;
+    }
+
+    std::cout << "2..." << std::endl;
+
+    for (size_t i = 0; i < vtable_components.size(); ++i)
+    {
+        const clang::VTableComponent& component = vtable_components[i];
+
+        if (component.getFunctionDecl() == m_decl)
+        {
+            result = i;
+            break;
+        }
+    }
+
+    std::cout << "3..." << std::endl;
+
+    return result;
 }
 
 } //  namespace parser

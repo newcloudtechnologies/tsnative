@@ -40,6 +40,8 @@ public:
     clang::QualType returnType() const;
     std::vector<ParameterValue> parameters() const;
     const clang::CXXMethodDecl* decl() const;
+
+    int getVTableIndex() const;
 };
 
 } //  namespace parser
