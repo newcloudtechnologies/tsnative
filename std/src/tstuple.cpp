@@ -11,6 +11,8 @@ Tuple::Tuple()
     : _d(new DequeueBackend<Object*>())
 #endif // USE_STD_ARRAY_BACKEND
 {
+    _typeid = TypeID::Tuple;
+
     LOG_ADDRESS("Calling tuple ctor this= ", this);
 }
 

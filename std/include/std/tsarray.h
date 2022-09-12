@@ -135,6 +135,7 @@ Array<T>::Array()
     : _d(new DequeueBackend<T>())
 #endif
 {
+    _typeid = TypeID::Array;
 }
 
 template <typename T>

@@ -7,12 +7,16 @@
 
 Union::Union()
 {
+    _typeid = TypeID::Union;
+
     LOG_ADDRESS("Calling Union default ctor this = ", this);
 }
 
 Union::Union(Object* value)
     : _value(value)
 {
+    _typeid = TypeID::Union;
+
     LOG_ADDRESS("Calling Union default ctor this = ", this);
 }
 

@@ -1,16 +1,16 @@
 #include "std/tsobject.h"
 
-#include "std/private/tsmap_p.h"
 #include "std/private/logger.h"
+#include "std/private/tsmap_p.h"
 
+#include "std/tsarray.h"
 #include "std/tsboolean.h"
 #include "std/tsmap.h"
 #include "std/tsstring.h"
-#include "std/tsarray.h"
 #include "std/tsunion.h"
 
-#include "std/runtime.h"
 #include "std/private/allocator.h"
+#include "std/runtime.h"
 
 #include "std/private/logger.h"
 
@@ -19,16 +19,19 @@ static String* parentKey = new String("parent");
 
 Object::Object()
 #ifdef USE_MAP_STD_BACKEND
-    : _props(new MapStdPrivate<String*, void*>()),
-    _isMarked{false}
+    : _props(new MapStdPrivate<String*, void*>())
+    , _isMarked
+{
+    false
+}
 #endif
 {
     LOG_ADDRESS("Calling default object ctor ", this);
 }
 
 Object::Object(Map<String*, void*>* props)
-    : _props(props->_d),
-    _isMarked{false}
+    : _props(props->_d)
+    , _isMarked{false}
 {
     LOG_ADDRESS("Calling object ctor with props ", this);
 }
@@ -39,6 +42,71 @@ Object::~Object()
     delete _props;
 }
 
+bool Object::isObject() const
+{
+    return _typeid == TypeID::Object;
+}
+
+bool Object::isUnion() const
+{
+    return _typeid == TypeID::Union;
+}
+
+bool Object::isBoolean() const
+{
+    return _typeid == TypeID::Boolean;
+}
+
+bool Object::isNumber() const
+{
+    return _typeid == TypeID::Number;
+}
+
+bool Object::isString() const
+{
+    return _typeid == TypeID::String;
+}
+
+bool Object::isUndefined() const
+{
+    return _typeid == TypeID::Undefined;
+}
+
+bool Object::isNull() const
+{
+    return _typeid == TypeID::Null;
+}
+
+bool Object::isArray() const
+{
+    return _typeid == TypeID::Array;
+}
+
+bool Object::isTuple() const
+{
+    return _typeid == TypeID::Tuple;
+}
+
+bool Object::isSet() const
+{
+    return _typeid == TypeID::Set;
+}
+
+bool Object::isMap() const
+{
+    return _typeid == TypeID::Map;
+}
+
+bool Object::isClosure() const
+{
+    return _typeid == TypeID::Closure;
+}
+
+bool Object::isDate() const
+{
+    return _typeid == TypeID::Date;
+}
+
 bool Object::has(String* key) const
 {
     return _props->has(key);
@@ -47,20 +115,15 @@ bool Object::has(String* key) const
 std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
 {
     std::unordered_set<String*> uniqueKeys;
-    if (!o || !o->_props) 
+    if (!o || !o->_props)
     {
         return uniqueKeys;
     }
 
-    const auto isKeyShouldBeIgnored = [&superKeyCppStr = superKey->cpp_str(),
-                                      &parentKeyCppStr = parentKey->cpp_str()]
-                                     (const String* candidate)
+    const auto isKeyShouldBeIgnored =
+        [&superKeyCppStr = superKey->cpp_str(), &parentKeyCppStr = parentKey->cpp_str()](const String* candidate)
     {
-        static const std::unordered_set<std::string> keysToIgnore
-        {
-            superKeyCppStr,
-            parentKeyCppStr
-        };
+        static const std::unordered_set<std::string> keysToIgnore{superKeyCppStr, parentKeyCppStr};
 
         if (!candidate)
         {
@@ -90,8 +153,8 @@ std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
         // std::make_move_iterator will not help here.
         // uset iterators are const in fact
         // https://en.cppreference.com/w/cpp/container/unordered_set/begin
-        // Because both iterator and const_iterator are constant iterators (and may in fact be the same type), 
-        // it is not possible to mutate the elements of the container 
+        // Because both iterator and const_iterator are constant iterators (and may in fact be the same type),
+        // it is not possible to mutate the elements of the container
         // through an iterator returned by any of these member functions.
         uniqueKeys.insert(superUniqueKeys.begin(), superUniqueKeys.end());
     }
@@ -105,7 +168,7 @@ Array<String*>* Object::getKeysArray() const
 
     auto result = new Array<String*>();
 
-    for (auto* s : uniqueKeys) 
+    for (auto* s : uniqueKeys)
     {
         result->push(s);
     }
@@ -217,10 +280,9 @@ Boolean* Object::toBool() const
 {
     return new Boolean(true);
 }
-#include <iostream>
+
 Boolean* Object::equals(Object* other) const
 {
-    std::cout << "Object::equals: " << std::boolalpha << (other == this) << std::endl;
     return new Boolean(other == this);
 }
 
@@ -232,11 +294,8 @@ Array<String*>* Object::keys(Object* entity)
 void Object::copyPropsTo(Object* target)
 {
     // @todo: handle 'super' key?
-    _props->forEachEntry(
-        [this, &target](const auto& pair)
-        {
-            target->set(pair.first, static_cast<Union*>(pair.second)->getValue());
-        });
+    _props->forEachEntry([this, &target](const auto& pair)
+                         { target->set(pair.first, static_cast<Union*>(pair.second)->getValue()); });
 }
 
 bool Object::isMarked() const
@@ -280,7 +339,7 @@ void Object::markChildren()
     LOG_INFO("Finished calling OBJECT::markChildren");
 }
 
-void* Object::operator new (std::size_t n)
+void* Object::operator new(std::size_t n)
 {
     LOG_INFO("Calling Object new operator");
 
@@ -288,7 +347,7 @@ void* Object::operator new (std::size_t n)
     // static String* s = new String("adasd")
     if (!Runtime::isInitialized())
     {
-        return :: operator new(n);
+        return ::operator new(n);
     }
 
     auto* allocator = Runtime::getAllocator();

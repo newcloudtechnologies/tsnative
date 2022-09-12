@@ -8,6 +8,8 @@ static Undefined* g_instance = nullptr;
 
 Undefined::Undefined()
 {
+    _typeid = TypeID::Undefined;
+
     LOG_ADDRESS("Calling Undefined ctor ", this);
 }
 

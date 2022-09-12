@@ -15,14 +15,14 @@ Number::Number(double v)
     : _d(new NumberCXXBuiltinPrivate(v))
 #endif
 {
+    _typeid = TypeID::Number;
+
     LOG_INFO("Calling number ctor from double: v = " + std::to_string(v));
     LOG_ADDRESS("This: ", this);
 }
 
 Number::Number(Number* v)
-#ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
-    : _d(new NumberCXXBuiltinPrivate(v->unboxed()))
-#endif
+    : Number(v->unboxed())
 {
     LOG_INFO("Calling number ctor from Number*: v = " + std::to_string(v->unboxed()));
     LOG_ADDRESS("This: ", this);
@@ -176,13 +176,15 @@ Number* Number::bitwiseRightShiftInplace(Number* other)
     _d->bitwiseRightShiftInplace(static_cast<uint64_t>(other->unboxed()));
     return this;
 }
-#include <iostream>
+
 Boolean* Number::equals(Object* other) const
 {
+    if (!other->isNumber()) {
+        return new Boolean(false);
+    }
+
     auto asNumber = static_cast<Number*>(other);
     bool result = _d->equals(asNumber->unboxed());
-
-    std::cout << "Number::equals " << std::boolalpha << result << std::endl;
 
     return new Boolean(result);
 }
