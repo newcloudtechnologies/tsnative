@@ -462,6 +462,12 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
                         block->addArgument({it.name, it.type, it.isSpread, it.isOptional});
                     }
 
+                    int vtableIndex = item.getVTableIndex();
+                    if (vtableIndex > -1)
+                    {
+                        block->addDecorator(Decorator::make("VTableIndex", vtableIndex));
+                    }
+
                     result = block;
 
                     break;
@@ -482,6 +488,12 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
                     for (const auto& it : signature.templateArguments())
                     {
                         block->addTemplateArgument(it);
+                    }
+
+                    int vtableIndex = item.getVTableIndex();
+                    if (vtableIndex > -1)
+                    {
+                        block->addDecorator(Decorator::make("VTableIndex", vtableIndex));
                     }
 
                     result = block;
@@ -542,6 +554,12 @@ generator::ts::abstract_method_block_t ClassCollection::makeMethod(const parser:
             {
                 std::string type = m_typeMapper.convertToTSType(classPrefix, it.type());
                 block->addArgument({it.name(), type});
+            }
+
+            int vtableIndex = item.getVTableIndex();
+            if (vtableIndex > -1)
+            {
+                block->addDecorator(Decorator::make("VTableIndex", vtableIndex));
             }
 
             result = block;
