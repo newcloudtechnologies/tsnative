@@ -89,6 +89,10 @@ case $key in
     TS_PROFILE_BUILD=TRUE
     shift # past argument
     ;;
+    --run_event_loop)
+    TS_RUN_EVENT_LOOP=TRUE
+    shift # past argument
+    ;;
     --jobs)
     JOBS_NUM="$2"
     shift # past argument
@@ -109,6 +113,7 @@ case $key in
     echo "  --test : passing this key will enable test target for specified entry that can be later fun using 'make test' command"
     echo "  --debug : generate debug info"
     echo "  --profile_build : build time statistics"
+    echo "  --run_event_loop : Run event loop"
     echo "  --jobs : number of build jobs"
     exit 0
     shift # past argument
@@ -218,7 +223,8 @@ cmake -G "Unix Makefiles" \
     -DCMAKE_CXX_COMPILER_TARGET=$TARGET_ABI \
     -DCMAKE_TOOLCHAIN_FILE=${CONAN_INSTALL_DIR}/conan_paths.cmake \
     -DTS_DEBUG=${TS_DEBUG} \
-    -DTS_PROFILE_BUILD=${TS_PROFILE_BUILD}
+    -DTS_PROFILE_BUILD=${TS_PROFILE_BUILD} \
+    -DTS_RUN_EVENT_LOOP=${TS_RUN_EVENT_LOOP}
     # -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
 
 cmake --build ${PROJECT_BUILD_DIR} --config Release -j${JOBS_NUM}

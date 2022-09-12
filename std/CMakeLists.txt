@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)
 
 find_package(absl)
+find_package(libuv)
 find_package(tsnative-declarator)
 find_program(TS_DECLARATOR tsnative-declarator) # TODO: autodetect during find_package
 
@@ -37,6 +38,13 @@ set(HEADERS
     include/std/igc_impl.h
     include/std/diagnostics.h
     include/std/memory_diagnostics.h
+
+    include/std/set_timeout.h
+    include/std/set_interval.h
+    include/std/event_loop.h
+
+    include/std/private/ievent_loop.h
+    include/std/private/itimer.h
 )
 
 set(SOURCES
@@ -57,6 +65,14 @@ set(SOURCES
     src/runtime.cpp
     src/diagnostics.cpp
     src/memory_diagnostics.cpp
+    src/set_timeout.cpp
+    src/set_interval.cpp
+    src/event_loop.cpp
+
+    src/private/libuv_wrapper/error_event.cpp
+    src/private/libuv_wrapper/loop.cpp
+    src/private/libuv_wrapper/timer_event_handler.cpp
+    src/private/libuv_wrapper/async_event_handler.cpp
 
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
@@ -66,7 +82,9 @@ set(SOURCES
     src/private/default_gc.cpp
     src/private/allocator.cpp
     src/private/memory_diagnostics_storage.cpp
-)
+    src/private/uv_loop_adapter.cpp
+    src/private/uv_timer_adapter.cpp
+    src/private/timers_storage.cpp)
 
 if(ENABLE_LOGS)
     add_definitions( -DENABLE_LOGS )
@@ -89,6 +107,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         tsnative-declarator # for include path only
         absl::time # $<BUILD_INTERFACE:absl::time> ?
+        uv_a
 )
 
 if (GENERATE_DECLARATIONS)
@@ -175,7 +194,10 @@ if (BUILD_TEST)
                      test/infrastructure/global_test_allocator_fixture.cpp
                      test/gc/treenode_gc_tests.cpp
                      test/gc/marking_tests.cpp
-                     test/runtime_tests.cpp)
+                     test/runtime_tests.cpp
+                     test/event_loop/uv_loop_test.cpp
+                     test/event_loop/custom_loop_test.cpp
+                     test/event_loop/timers.cpp)
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 

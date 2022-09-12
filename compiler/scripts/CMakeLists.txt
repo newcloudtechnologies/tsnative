@@ -121,6 +121,7 @@ build(binary_target ${TS_EXTENSION_TARGET}
     "${IS_TEST}"
     "${PRINT_IR}"
     "${TRACE_IMPORT}"
-    "${TS_DEBUG}")
+    "${TS_DEBUG}"
+    "${TS_RUN_EVENT_LOOP}")
 
 add_dependencies(build_anyway ${binary_target})
