@@ -1,15 +1,17 @@
 #include "std/runtime.h"
 
-#include "std/gc.h"
-#include "std/tsstring.h"
-#include "std/tsarray.h"
-#include "std/memory_diagnostics.h"
 #include "std/diagnostics.h"
+#include "std/gc.h"
+#include "std/memory_diagnostics.h"
+#include "std/tsarray.h"
+#include "std/tsstring.h"
 
-#include "std/private/default_gc.h"
+#include "std/event_loop.h"
 #include "std/private/allocator.h"
-#include "std/private/memory_diagnostics_storage.h"
+#include "std/private/default_gc.h"
 #include "std/private/logger.h"
+#include "std/private/memory_diagnostics_storage.h"
+#include "std/private/uv_loop_adapter.h"
 
 #include <cstdlib>
 
@@ -18,8 +20,10 @@ std::vector<std::string> Runtime::_cmdArgs{};
 std::unique_ptr<IGCImpl> Runtime::_gcImpl{nullptr};
 std::unique_ptr<Allocator> Runtime::_allocator{nullptr};
 std::unique_ptr<MemoryDiagnosticsStorage> Runtime::_memoryDiagnosticsStorage{nullptr};
+std::unique_ptr<IEventLoop> Runtime::_loop{nullptr};
+std::unique_ptr<Runtime::Timers> Runtime::_timersStorage{nullptr};
 
-namespace 
+namespace
 {
 void exitHandler()
 {
@@ -38,7 +42,7 @@ int registerExitHandlers()
     // TODO There can be a quick exit like this: std::at_quick_exit
     // But it is not supported by all our agents
     // So we need to check if std::at_quick_exit exists and call it if it does.
-    
+
     // result = std::at_quick_exit(exit_handler);
     // if (result != 0)
     // {
@@ -48,12 +52,11 @@ int registerExitHandlers()
 
     return result;
 }
-}
-
+} // namespace
 
 void Runtime::checkInitialization()
 {
-    if (!_isInitialized) 
+    if (!_isInitialized)
     {
         throw std::runtime_error("Runtime was not initialized");
     }
@@ -61,13 +64,13 @@ void Runtime::checkInitialization()
 
 void Runtime::initCmdArgs(int ac, char* av[])
 {
-    if (_isInitialized) 
+    if (_isInitialized)
     {
         throw std::runtime_error("Runtime was already initialized");
     }
 
     _cmdArgs.reserve(ac);
-    for (int i = 0 ; i < ac ; ++i)
+    for (int i = 0; i < ac; ++i)
     {
         _cmdArgs.emplace_back(av[i]);
     }
@@ -82,6 +85,15 @@ Allocator* Runtime::getAllocator()
 {
     checkInitialization();
     return _allocator.get();
+}
+void Runtime::initLoop()
+{
+    _loop = std::make_unique<UVLoopAdapter>();
+}
+
+void Runtime::initTimersStorage()
+{
+    _timersStorage = std::make_unique<Timers>(*(_loop.get()));
 }
 
 Array<String*>* Runtime::getCmdArgs()
@@ -107,7 +119,7 @@ GC* Runtime::getGC()
 
 int Runtime::init(int ac, char* av[])
 {
-    if (_isInitialized) 
+    if (_isInitialized)
     {
         throw std::runtime_error("Runtime has been initialized already");
     }
@@ -115,22 +127,14 @@ int Runtime::init(int ac, char* av[])
     _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
 
     DefaultGC::Callbacks gcCallbacks;
-    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o) 
-    { 
-        memStorage->onDeleted(o);
-    };
+    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o)
+    { memStorage->onDeleted(o); };
     auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
     Allocator::Callbacks allocatorCallbacks;
-    allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()] (Object* o)
-    {
-        gc->addObject(o);
-    };
+    allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()](Object* o) { gc->addObject(o); };
 
-    allocatorCallbacks.beforeMemoryDeallocated = [gc = defaultGC.get()] (void* m)
-    {
-        gc->untrackIfObject(m);
-    };
+    allocatorCallbacks.beforeMemoryDeallocated = [gc = defaultGC.get()](void* m) { gc->untrackIfObject(m); };
 
     _gcImpl = std::move(defaultGC);
     _allocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
@@ -145,6 +149,8 @@ int Runtime::init(int ac, char* av[])
         return result;
     }
 
+    initLoop();
+    initTimersStorage();
     _isInitialized = true;
 
     LOG_INFO("Runtime initialized");
@@ -155,8 +161,20 @@ int Runtime::init(int ac, char* av[])
 Diagnostics* Runtime::getDiagnostics()
 {
     checkInitialization();
-    
+
     return new Diagnostics{*_gcImpl, *_memoryDiagnosticsStorage};
+}
+
+EventLoop* Runtime::getLoop()
+{
+    checkInitialization();
+    return new EventLoop{*(_loop.get())};
+}
+
+Runtime::Timers* Runtime::getTimersStorage()
+{
+    checkInitialization();
+    return _timersStorage.get();
 }
 
 void Runtime::destroy()
@@ -169,9 +187,9 @@ void Runtime::destroy()
     LOG_INFO("Calling destroy");
 
     _cmdArgs.clear();
-
+    _timersStorage = nullptr;
+    _loop = nullptr;
     _gcImpl = nullptr;
-    _cmdArgs.clear();
 
     _isInitialized = false;
 
@@ -181,15 +199,13 @@ void Runtime::destroy()
 String* Runtime::toString() const
 {
     checkInitialization();
-    
+
     auto header = new String{"GlobalRuntimeObject:"};
     auto separator = new String{"\n"};
     auto cmdArgsHeader = new String{"CmdArgs:"};
     auto cmdArgsStr = getCmdArgs()->toString();
 
-    return header->concat(separator)
-            ->concat(cmdArgsHeader)->concat(separator)
-            ->concat(cmdArgsStr)->concat(separator);
+    return header->concat(separator)->concat(cmdArgsHeader)->concat(separator)->concat(cmdArgsStr)->concat(separator);
 }
 
 Boolean* Runtime::toBool() const

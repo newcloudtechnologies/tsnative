@@ -1,7 +1,7 @@
-from conans import ConanFile, CMake, tools
-from conan.tools.cmake import CMakeToolchain, CMakeDeps
-
 import os
+from conan.tools.cmake import CMakeDeps
+from conans import ConanFile, CMake
+
 
 # required_conan_version = ">=1.33.0"
 
@@ -30,6 +30,7 @@ class TSNativeStdConan(ConanFile):
     def requirements(self):
         self.requires("abseil/20211102.0")
         self.requires("gtest/1.11.0")
+        self.requires("libuv/1.43.0")
 
     def build_requirements(self):
         # 'if self.user and seld.channel:' ends up in exception when no user and channel values are provided

@@ -41,6 +41,7 @@ argv
     }
   )
   .option("--debug", "Generate debug information")
+  .option("--run_event_loop", "Run event loop")
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -102,7 +103,10 @@ async function main() {
     stdlib.MATH_DEFINITION,
     stdlib.RUNTIME_DEFINITION,
     stdlib.DIAGNOSTICS_DEFINITION,
-    stdlib.MEMORY_DIAGNOSTICS_DEFINITION
+    stdlib.MEMORY_DIAGNOSTICS_DEFINITION,
+    stdlib.SET_INTERVAL_DEFINITION,
+    stdlib.SET_TIMEOUT_DEFINITION,
+    stdlib.EVENT_LOOP_DEFINITION,
   ];
   options.types = [];
 
@@ -198,7 +202,7 @@ async function main() {
 
   let llvmModule;
   try {
-    llvmModule = new LLVMGenerator(program, argv.debug).init().createModule();
+    llvmModule = new LLVMGenerator(program, argv.run_event_loop, argv.debug).init().createModule();
   } catch (e) {
     console.log(files);
     console.log(e);

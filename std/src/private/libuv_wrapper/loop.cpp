@@ -1,0 +1,63 @@
+
+#include "std/private/libuv_wrapper/loop.h"
+
+namespace uv
+{
+
+std::unique_ptr<uv_loop_t> uv::Loop::createUvLoop()
+{
+    return std::make_unique<uv_loop_t>();
+}
+
+Loop::Loop() noexcept
+    : _loop{std::move(Loop::createUvLoop())}
+    , isLoopInitialized{uv_loop_init(_loop.get()) == 0}
+{
+}
+
+Loop::~Loop() noexcept
+{
+    if (_loop)
+    {
+        close();
+        _loop.reset();
+    }
+}
+
+int Loop::close()
+{
+    int res = 0;
+
+    if (_loop)
+    {
+        res = uv_loop_close(_loop.get());
+    }
+    return res;
+}
+
+int Loop::run(Loop::RunMode run_mode) noexcept
+{
+    return uv_run(_loop.get(), static_cast<uv_run_mode>(run_mode));
+}
+
+bool Loop::alive() const noexcept
+{
+    return uv_loop_alive(_loop.get());
+}
+
+void Loop::stop() noexcept
+{
+    uv_stop(_loop.get());
+}
+
+uv_loop_t* Loop::raw() const noexcept
+{
+    return _loop.get();
+}
+
+bool Loop::isInitialized() const
+{
+    return isLoopInitialized;
+}
+
+} // namespace uv

@@ -88,4 +88,16 @@ export const MATH_DEFINITION = toPosixStyle(
   path.join(__dirname, "definitions", "tsmath.d.ts")
 );
 
+export const SET_INTERVAL_DEFINITION = toPosixStyle(
+  path.join(__dirname, "definitions", "set_interval.d.ts")
+);
+
+export const SET_TIMEOUT_DEFINITION = toPosixStyle(
+  path.join(__dirname, "definitions", "set_timeout.d.ts")
+);
+
+export const EVENT_LOOP_DEFINITION = toPosixStyle(
+    path.join(__dirname, "definitions", "event_loop.d.ts")
+);
+
 export const STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));

@@ -64,7 +64,7 @@ TEST_DIRS=( "${CURRENT_DIR}/src/app" \
             "${CURRENT_DIR}/src/complex" \
             "${CURRENT_DIR}/src/cpp_integration" \
             "${CURRENT_DIR}/src/runtime" \
-            "${CURRENT_DIR}/src/cpp_closures" )
+            "${CURRENT_DIR}/src/cpp_closures")
 
 # basic filters to choose test files
 INCLUDE_FILTER="*.ts"
@@ -148,7 +148,8 @@ build_test() {
         --build ${build_dir} \
         --baseUrl ${INSTALL_DIR}/declarations \
         --test \
-        # --debug
+        # --run_event_loop \
+        # --debug \
         # --jobs "4" \
 }
 

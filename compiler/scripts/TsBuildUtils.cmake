@@ -132,6 +132,25 @@ function(generateSeed target dep_target output_dir seed_src)
     set(${seed_src} ${SEED_CPP_OUT} PARENT_SCOPE)
 endfunction()
 
+function(generateSeedForTests target dep_target output_dir seed_src)
+    message("GENERATE SEED FOR TESTS")
+    set(SEED_CPP_OUT "${output_dir}/seed_for_tests.cpp")
+    set(TSMAIN_H_OUT "${output_dir}/tsmain.h")
+
+    add_custom_command(
+            OUTPUT ${SEED_CPP_OUT} ${TSMAIN_H_OUT}
+            COMMAND cp "${CACHED_CMAKE_CURRENT_LIST_DIR}/seed/*" "${output_dir}"
+    )
+
+    add_custom_target(${target}
+            DEPENDS ${SEED_CPP_OUT}
+            )
+
+    add_dependencies(${target} ${dep_target})
+
+    set(${seed_src} ${SEED_CPP_OUT} PARENT_SCOPE)
+endfunction()
+
 function(instantiate_classes target dep_target projectRoot entry tsConfig baseUrl sources includes output_dir trace_opt classes_src demangledList mangledList)
     set(output
         "${output_dir}/instantiated_classes.cpp")
@@ -307,7 +326,7 @@ function(verify_ts target dep_target projectRoot entry baseUrl sources output_di
     add_dependencies(${target} ${dep_target})
 endfunction()
 
-function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode is_debug)
+function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources demangledList mangledList output_dir is_printIr trace_opt ll_bytecode is_debug need_run_event_loop)
     get_filename_component(entry_fn "${entry}" NAME)
 
     string(REPLACE ".ts" ".ll" OUTPUT_FN "${entry_fn}")
@@ -324,6 +343,14 @@ function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources
     set(TS_DEBUG )
     if (${is_debug})
         set(TS_DEBUG --debug)
+    endif()
+
+    set(TS_RUN_EVENT_LOOP )
+    if (${need_run_event_loop})
+        set(TS_RUN_EVENT_LOOP --run_event_loop)
+        if (${IS_TEST})
+            unset(TS_RUN_EVENT_LOOP)
+        endif()
     endif()
 
     set(START_PROFILE_COMMAND ":")
@@ -351,7 +378,8 @@ function(compile_ts target dep_target projectRoot entry tsConfig baseUrl sources
                       ${MAYBE_PRINT_IR}
                       ${trace_opt}
                       ${TS_DEBUG}
-        COMMAND bash -c ${END_PROFILE_COMMAND}
+                      ${TS_RUN_EVENT_LOOP}
+                      COMMAND bash -c ${END_PROFILE_COMMAND}
     )
 
     add_custom_target(${target}
@@ -437,7 +465,7 @@ endfunction()
 function(add_antiq_executable target ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "DEP_TARGET;PROJECT_ROOT;ENTRY;TS_CONFIG;BASE_URL;OPTIMIZATION_LEVEL;IS_TEST;IS_PRINT_IR;TRACE_IMPORT;IS_DEBUG;EXECUTABLE_PATH"
+        "DEP_TARGET;PROJECT_ROOT;ENTRY;TS_CONFIG;BASE_URL;OPTIMIZATION_LEVEL;IS_TEST;IS_PRINT_IR;TRACE_IMPORT;IS_DEBUG;NEED_RUN_EVENT_LOOP;EXECUTABLE_PATH"
         "INCLUDES;DEPENDENCIES;DEFINITIONS"
     )
     message(STATUS "add_antiq_executable:")
@@ -455,6 +483,7 @@ function(add_antiq_executable target ...)
     message(STATUS "ARG_IS_PRINT_IR ${ARG_IS_PRINT_IR}")
     message(STATUS "ARG_TRACE_IMPORT ${ARG_TRACE_IMPORT}")
     message(STATUS "ARG_IS_DEBUG ${ARG_IS_DEBUG}")
+    message(STATUS "ARG_NEED_RUN_EVENT_LOOP ${ARG_NEED_RUN_EVENT_LOOP}")
     message(STATUS "ARG_EXECUTABLE_PATH ${ARG_EXECUTABLE_PATH}")
 
     if ("${ARG_EXECUTABLE_PATH}" STREQUAL "")
@@ -576,6 +605,7 @@ function(add_antiq_executable target ...)
         "${TRACE_OPT}"
         LL_BYTECODE
         "${ARG_IS_DEBUG}"
+        "${ARG_NEED_RUN_EVENT_LOOP}"
     )
 
     compile_ll(
@@ -587,21 +617,24 @@ function(add_antiq_executable target ...)
         COMPILED_SOURCE
     )
 
-    generateSeed(generate_seed_${binary_name} compile_ll_${binary_name} "${output_dir}" SEED_SRC)
-
-    link(binary_name generate_seed_${binary_name} "${ARG_EXECUTABLE_PATH}" "${SEED_SRC}" "${COMPILED_SOURCE}" "${DEPENDENCIES}")
-
     if(ARG_IS_TEST)
+        if (ARG_NEED_RUN_EVENT_LOOP)
+            add_compile_definitions(TS_RUN_EVENT_LOOP)
+        endif()
+        generateSeedForTests(generate_seed_${binary_name} compile_ll_${binary_name} "${output_dir}" SEED_SRC)
         add_test(
             NAME ${binary_name} 
             COMMAND ${binary_name}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/..)
+    else()
+        generateSeed(generate_seed_${binary_name} compile_ll_${binary_name} "${output_dir}" SEED_SRC)
     endif()
 
+    link(binary_name generate_seed_${binary_name} "${ARG_EXECUTABLE_PATH}" "${SEED_SRC}" "${COMPILED_SOURCE}" "${DEPENDENCIES}")
     set(${target} ${binary_name} PARENT_SCOPE)
 endfunction()
 
-macro(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import is_debug)
+macro(build target dep_target entry includes dependencies definitions optimization_level is_test is_printIr trace_import is_debug need_run_event_loop)
     message(DEPRECATION "use add_antiq_executable instead of build")
     if (NOT PROJECT_ROOT)
         message(FATAL_ERROR "PROJECT_ROOT is undefined")
@@ -629,6 +662,7 @@ macro(build target dep_target entry includes dependencies definitions optimizati
         IS_PRINT_IR "${is_printIr}"
         TRACE_IMPORT "${trace_import}"
         IS_DEBUG "${is_debug}"
+        NEED_RUN_EVENT_LOOP "${need_run_event_loop}"
         EXECUTABLE_PATH "${PROJECT_OUTPUT_BINARY}"
     )
 endmacro()

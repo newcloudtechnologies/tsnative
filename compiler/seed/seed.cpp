@@ -9,7 +9,6 @@ int main(int argc, char* argv[])
     {
         return result;
     }
-    
     result = __ts_main();
 
     return result;
