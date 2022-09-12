@@ -64,6 +64,7 @@ Set<T>::Set()
     : _d(new SetStdPrivate<T>())
 #endif
 {
+    _typeid = TypeID::Set;
 }
 
 template <typename T>

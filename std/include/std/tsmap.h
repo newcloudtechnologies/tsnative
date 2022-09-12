@@ -69,6 +69,7 @@ Map<K, V>::Map()
     : _d(new MapStdPrivate<K, V>())
 #endif
 {
+    _typeid = TypeID::Map;
 }
 
 template <typename K, typename V>

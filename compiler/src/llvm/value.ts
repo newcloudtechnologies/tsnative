@@ -382,11 +382,15 @@ export class LLVMValue {
   }
 
   createEquals(other: LLVMValue): LLVMValue {
-    // if (this.type.isUnion()) {
-    //   let extracted = this.generator.ts.union.get(this);
-    //   extracted = this.generator.builder.createBitCast(extracted, other.type);
-    //   return extracted.createEquals(other);
-    // }
+    if (this.type.isUnion()) {
+      let extracted = this.generator.ts.union.get(this);
+      extracted = this.generator.builder.createBitCast(extracted, other.type);
+      return extracted.createEquals(other);
+    } else if (other.type.isUnion()) {
+      let extracted = this.generator.ts.union.get(other);
+      extracted = this.generator.builder.createBitCast(extracted, this.type);
+      return this.createEquals(extracted);
+    }
 
     return this.generator.ts.obj.equals(this, other);
   }

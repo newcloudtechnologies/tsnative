@@ -20,11 +20,15 @@ String::String()
     : _d(new StdStringBackend())
 #endif
 {
+    _typeid = TypeID::String;
+
     LOG_ADDRESS("Calling string default ctor ", this);
 }
 
 String::String(Number* d)
 {
+    _typeid = TypeID::String;
+
     std::ostringstream oss;
     oss << std::setprecision(std::numeric_limits<double>::max_digits10) << std::noshowpoint << d->unboxed();
 
@@ -41,6 +45,7 @@ String::String(const std::string& s)
     : _d(new StdStringBackend(s))
 #endif
 {
+    _typeid = TypeID::String;
 
     LOG_INFO("Calling string ctor from const string& " + s);
     LOG_ADDRESS("This address: ", this);
@@ -51,6 +56,8 @@ String::String(const char* s)
     : _d(new StdStringBackend(s))
 #endif
 {
+    _typeid = TypeID::String;
+
     LOG_INFO("Calling string ctor from const char* " + std::string{s});
     LOG_ADDRESS("This address: ", this);
 }
@@ -240,6 +247,10 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
 
 Boolean* String::equals(Object* other) const
 {
+    if (!other->isString()) {
+        return new Boolean(false);
+    }
+
     auto asString = static_cast<String*>(other);
     bool result = _d->equals(asString->cpp_str());
     return new Boolean(result);

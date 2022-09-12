@@ -31,7 +31,7 @@ export class TSObject {
   private setFn: LLVMValue | undefined;
   private keysFn: LLVMValue | undefined;
   private copyPropsFn: LLVMValue | undefined;
-  private equalsFns = new Map<string, LLVMValue>();
+  private equalsFn: LLVMValue | undefined;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -246,29 +246,21 @@ export class TSObject {
       5
     ]);
 
-    // const vtableIdx = this.declaration.getVirtualMethods().findIndex((v) => v.method.name?.getText() === "equals");
+    const vtableIdx = this.declaration.getVirtualMethods().findIndex((v) => v.method.name?.getText() === "equals");
+
+    console.log("@@@ vtableIdx:", vtableIdx)
+
     // const virtualDestructorsOffset = 2; // @todo: handcoded cause all the CXX class expected to be derived from Object and thus have virtual destructor
-    
+
     // console.log(this.declaration.getText())
     // console.log("vtableIdx:", vtableIdx)
 
     // this.declaration.getVirtualMethods().forEach((m) => console.log(m.method.getText()))
 
-    const virtualFn = virtualFnPtr;
-
-    return virtualFn;
+    return virtualFnPtr;
   }
 
   private initEqualsFunction(thisValue: LLVMValue) {
-    const equalsDeclaration = this.declaration.members.find((m) => m.name?.getText() === "equals");
-
-    if (!equalsDeclaration) {
-      throw new Error(`Unable to find 'equals' at '${this.declaration.getText()}'`);
-    }
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(equalsDeclaration);
-    const tsReturnType = signature.getReturnType();
-    const llvmReturnType = tsReturnType.getLLVMReturnType();
-
     const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [cxxVoidStarType, cxxVoidStarType];
 
@@ -376,16 +368,13 @@ export class TSObject {
   }
 
   equals(lhs: LLVMValue, rhs: LLVMValue) {
-    let equalsFn = this.initEqualsFunction(lhs);
+    const equalsFn = this.initEqualsFunction(lhs);
 
     const thisUntyped = this.generator.builder.asVoidStar(lhs);
     const valueUntyped = this.generator.builder.asVoidStar(rhs);
 
     let result = this.generator.builder.createSafeCall(equalsFn, [thisUntyped, valueUntyped]);
     result = this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
-
-    console.log("equalsFn...", equalsFn.type.toString())
-    console.log("r type...", result.type.toString())
 
     return result;
   }

@@ -9,6 +9,8 @@ static Null* g_instance = nullptr;
 
 Null::Null()
 {
+    _typeid = TypeID::Null;
+
     LOG_ADDRESS("Calling Null ctor ", this);
 }
 

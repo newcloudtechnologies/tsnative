@@ -12,6 +12,8 @@ TSClosure::TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, N
     , _numArgs(numArgs)
     , _optionals(static_cast<int64_t>(optionals->unboxed()))
 {
+    _typeid = TypeID::Closure;
+
     LOG_ADDRESS("Calling closure ctor ", this);
     LOG_ADDRESS("Env address: ", env);
 }

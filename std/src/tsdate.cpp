@@ -60,6 +60,7 @@ Date::Date()
     : _d(new AbslDatePrivate)
 #endif
 {
+    _typeid = TypeID::Date;
 }
 
 Date::Date(Number* year,
@@ -70,6 +71,8 @@ Date::Date(Number* year,
            MaybeNumber* seconds,
            MaybeNumber* milliseconds)
 {
+    _typeid = TypeID::Date;
+
     double unboxedYear = year->unboxed();
     double unboxedMonthIndex = month_index->unboxed();
     double unboxedDay = day->hasValue() ? day->getValue<Number*>()->unboxed() : 0;
@@ -86,6 +89,8 @@ Date::Date(Number* year,
 
 Date::Date(Number* since_epoch_milliseconds)
 {
+    _typeid = TypeID::Date;
+
     double unboxedMilliseconds = since_epoch_milliseconds->unboxed();
 
 #ifdef USE_ABSL_DATE_BACKEND
@@ -95,6 +100,8 @@ Date::Date(Number* since_epoch_milliseconds)
 
 Date::Date(String* date_string)
 {
+    _typeid = TypeID::Date;
+
     std::string unboxedString = date_string->cpp_str();
 
 #ifdef USE_ABSL_DATE_BACKEND

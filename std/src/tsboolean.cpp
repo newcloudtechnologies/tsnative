@@ -24,21 +24,19 @@ Boolean::Boolean(bool value)
     : _d(new BooleanCXXBuiltinPrivate(value))
 #endif
 {
+    _typeid = TypeID::Boolean;
+
     LOG_ADDRESS("Calling bool from bool ctor " + std::to_string(value) + " ", this);
 }
 
 Boolean::Boolean(Number* value)
-#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
-    : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
-#endif
+    : Boolean(value->toBool()->unboxed())
 {
     LOG_ADDRESS("Calling bool from number ctor " + std::to_string(value->unboxed()) + " ", this);
 }
 
 Boolean::Boolean(String* value)
-#ifdef USE_BOOLEAN_CXX_BUILTIN_BACKEND
-    : _d(new BooleanCXXBuiltinPrivate(value->toBool()->unboxed()))
-#endif
+    : Boolean(value->toBool()->unboxed())
 {
     LOG_ADDRESS("Calling bool from string ctor " + value->cpp_str() + " ", this);
 }
@@ -56,6 +54,10 @@ Boolean* Boolean::negate() const
 
 Boolean* Boolean::equals(Object* other) const
 {
+    if (!other->isBoolean()) {
+        return new Boolean(false);
+    }
+
     auto asBoolean = static_cast<Boolean*>(other);
     return new Boolean(_d->value() == asBoolean->unboxed());
 }
