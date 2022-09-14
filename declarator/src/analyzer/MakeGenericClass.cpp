@@ -10,6 +10,7 @@
  */
 
 #include "MakeGenericClass.h"
+#include "Checkers.h"
 #include "ClassDetails.h"
 
 #include "generator/AbstractBlock.h"
@@ -36,7 +37,11 @@ void makeGenericClass(parser::const_class_template_item_t item,
     using namespace generator::ts;
     using namespace parser;
 
-    auto classCollection = ClassCollection::make(item, Collection::get(), typeMapper);
+    auto classDetails = ClassDetails::make(item, Collection::ref(), typeMapper);
+
+    // Checking
+    ClassChecker::check(classDetails.item());
+    InheritanceChecker::check(classDetails.item());
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
@@ -67,13 +72,12 @@ void makeGenericClass(parser::const_class_template_item_t item,
         genericClassBlock->addTemplateParameter({it.name(), it.isParameterPack()});
     }
 
-    genericClassBlock->addExtends(Extends::get(item, typeMapper));
-
-    genericClassBlock->addFields(classCollection.fields);
-    genericClassBlock->addMethods(classCollection.methods);
-    genericClassBlock->addGenericMethods(classCollection.generic_methods);
-    genericClassBlock->addClosures(classCollection.closures);
-    genericClassBlock->addOperators(classCollection.operators);
+    genericClassBlock->addExtends(classDetails.extends);
+    genericClassBlock->addFields(classDetails.fields);
+    genericClassBlock->addMethods(classDetails.methods);
+    genericClassBlock->addGenericMethods(classDetails.generic_methods);
+    genericClassBlock->addClosures(classDetails.closures);
+    genericClassBlock->addOperators(classDetails.operators);
 
     if (annotations.exist(TS_DECORATOR))
     {

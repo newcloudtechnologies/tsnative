@@ -14,6 +14,7 @@
 #include "parser/Annotation.h"
 #include "parser/ClassItem.h"
 #include "parser/ClassTemplateItem.h"
+#include "parser/ClassTemplateSpecializationItem.h"
 #include "parser/CodeBlockItem.h"
 #include "parser/EnumItem.h"
 #include "parser/FunctionItem.h"
@@ -51,6 +52,11 @@ std::string getItemAnnotations(parser::const_abstract_item_t item)
         case AbstractItem::Type::CLASS_TEMPLATE:
         {
             result = parser::getAnnotations(AbstractItem::decl<const ClassTemplateItem>(item));
+            break;
+        }
+        case AbstractItem::Type::CLASS_TEMPLATE_SPECIALIZATION:
+        {
+            result = parser::getAnnotations(AbstractItem::decl<const ClassTemplateSpecializationItem>(item));
             break;
         }
         case AbstractItem::Type::ENUM:

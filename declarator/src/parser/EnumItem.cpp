@@ -33,8 +33,9 @@ std::string EnumItem::Enumerator::value() const
     return result;
 }
 
-EnumItem::EnumItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::EnumDecl* decl)
-    : AbstractItem(AbstractItem::Type::ENUM, name, prefix, isLocal)
+EnumItem::EnumItem(
+    const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::EnumDecl* decl)
+    : AbstractItem(AbstractItem::Type::ENUM, name, prefix, isLocal, isCompletedDecl)
     , m_decl(decl)
 {
 }

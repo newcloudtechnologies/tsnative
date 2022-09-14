@@ -15,6 +15,7 @@ set(INCLUDES
     Exception.h
     Strings.h
     Env.h
+    lambda_traits.h
 )
 
 set(SOURCES

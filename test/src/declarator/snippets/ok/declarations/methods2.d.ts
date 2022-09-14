@@ -12,13 +12,16 @@
 */
 
 declare module "test" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace snippets {
+        //@ts-ignore
+        @VTableSize(8)
+        //@ts-ignore
+        @VirtualDestructor
         export class Color {
-            private p0_Color: boolean;
+            private p0_Color: number;
+            private p1_Color: number;
+            private p2_Color: number;
 
             static createRGB(r: number, g: number, b: number): Color;
             static createARGB(a: number, r: number, g: number, b: number): Color;

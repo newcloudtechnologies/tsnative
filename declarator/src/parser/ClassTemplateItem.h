@@ -34,6 +34,7 @@ private:
     ClassTemplateItem(const std::string& name,
                       const std::string& prefix,
                       bool isLocal,
+                      bool isCompletedDecl,
                       const clang::ClassTemplateDecl* decl);
 
 public:

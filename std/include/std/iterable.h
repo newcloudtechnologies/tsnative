@@ -3,13 +3,13 @@
 #include <TS.h>
 
 #include "std/private/options.h"
-
 #include "std/tsboolean.h"
+#include "std/tsobject.h"
 
 #include <type_traits>
 
 template <typename T>
-class TS_DECLARE IteratorResult
+class TS_DECLARE IteratorResult : public Object
 {
     static_assert(std::is_pointer<T>::value, "Expected IteratorResult's 'T' to be of pointer type");
 
@@ -44,7 +44,7 @@ T IteratorResult<T>::value() const
 }
 
 template <typename T>
-class TS_DECLARE Iterator
+class TS_DECLARE Iterator : public Object
 {
     static_assert(std::is_pointer<T>::value, "Expected Iterator's 'T' to be of pointer type");
 
@@ -53,7 +53,7 @@ public:
 };
 
 template <typename T>
-class TS_DECLARE Iterable
+class TS_DECLARE Iterable : public Object
 {
     static_assert(std::is_pointer<T>::value, "Expected Iterable's 'T' to be of pointer type");
 

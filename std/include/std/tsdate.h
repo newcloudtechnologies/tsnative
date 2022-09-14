@@ -11,8 +11,6 @@ class String;
 
 class Union;
 
-using MaybeNumber = Union;
-
 class DatePrivate;
 
 class TS_DECLARE Date : public Object
@@ -25,26 +23,26 @@ public:
     TS_METHOD TS_SIGNATURE("UTC(year: number, month: number, day?: number, hours?: number, minutes?: number, "
                            "seconds?: number, milliseconds?: number): number") static Number* UTC(Number* year,
                                                                                         Number* month_index,
-                                                                                        MaybeNumber* day,
-                                                                                        MaybeNumber* hours,
-                                                                                        MaybeNumber* minutes,
-                                                                                        MaybeNumber* seconds,
-                                                                                        MaybeNumber* milliseconds);
+                                                                                        Union* day,
+                                                                                        Union* hours,
+                                                                                        Union* minutes,
+                                                                                        Union* seconds,
+                                                                                        Union* milliseconds);
 
-    TS_METHOD TS_SIGNATURE("constructor()") Date();
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor()") Date();
 
-    TS_METHOD TS_SIGNATURE("constructor(dateString: string)") explicit Date(String* date_string);
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(dateString: string)") explicit Date(String* date_string);
 
-    TS_METHOD TS_SIGNATURE("constructor(msSinceEpoch: number)") explicit Date(Number* since_epoch_milliseconds);
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(msSinceEpoch: number)") explicit Date(Number* since_epoch_milliseconds);
 
-    TS_METHOD TS_SIGNATURE("constructor(year: number, month: number, day?: number, hours?: number, minutes?: number, "
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(year: number, month: number, day?: number, hours?: number, minutes?: number, "
                            "seconds?: number, milliseconds?: number)") Date(Number* year,
                                                                             Number* month_index,
-                                                                            MaybeNumber* day,
-                                                                            MaybeNumber* hours,
-                                                                            MaybeNumber* minutes,
-                                                                            MaybeNumber* seconds,
-                                                                            MaybeNumber* milliseconds);
+                                                                            Union* day,
+                                                                            Union* hours,
+                                                                            Union* minutes,
+                                                                            Union* seconds,
+                                                                            Union* milliseconds);
 
     // getters
     TS_METHOD Number* getDate() const noexcept;
@@ -86,49 +84,49 @@ public:
 
     // setters
     TS_METHOD TS_SIGNATURE("setFullYear(year: number, month?: number, day?: number): number") Number* setFullYear(
-        Number* new_year, MaybeNumber* new_month, MaybeNumber* new_day);
+        Number* new_year, Union* new_month, Union* new_day);
 
     TS_METHOD TS_SIGNATURE("setMonth(month: number, day?: number): number") Number* setMonth(Number* new_month,
-                                                                                             MaybeNumber* new_day);
+                                                                                             Union* new_day);
 
     TS_METHOD Number* setDate(Number* new_date);
 
     TS_METHOD TS_SIGNATURE("setHours(hours: number, minutes?: number, seconds?: number, milliseconds?: number): number")
         Number* setHours(Number* new_hours,
-                         MaybeNumber* new_minutes,
-                         MaybeNumber* new_seconds,
-                         MaybeNumber* new_milliseconds);
+                         Union* new_minutes,
+                         Union* new_seconds,
+                         Union* new_milliseconds);
 
     TS_METHOD TS_SIGNATURE("setMinutes(minutes: number, seconds?: number, milliseconds?: number): number")
-        Number* setMinutes(Number* new_minutes, MaybeNumber* new_seconds, MaybeNumber* new_milliseconds);
+        Number* setMinutes(Number* new_minutes, Union* new_seconds, Union* new_milliseconds);
 
     TS_METHOD TS_SIGNATURE("setSeconds(seconds: number, milliseconds?: number): number") Number* setSeconds(
-        Number* new_seconds, MaybeNumber* new_milliseconds);
+        Number* new_seconds, Union* new_milliseconds);
 
     TS_METHOD Number* setMilliseconds(Number* new_milliseconds);
 
     TS_METHOD Number* setTime(Number* milliseconds_epoch_time);
 
     TS_METHOD TS_SIGNATURE("setUTCFullYear(year: number, month?: number, day?: number): number") Number* setUTCFullYear(
-        Number* new_utc_year, MaybeNumber* new_utc_month, MaybeNumber* new_utc_days);
+        Number* new_utc_year, Union* new_utc_month, Union* new_utc_days);
 
     TS_METHOD TS_SIGNATURE("setUTCMonth(month: number, day?: number): number") Number* setUTCMonth(
-        Number* new_utc_month, MaybeNumber* new_utc_day);
+        Number* new_utc_month, Union* new_utc_day);
 
     TS_METHOD Number* setUTCDate(Number* new_utc_date);
 
     TS_METHOD TS_SIGNATURE(
         "setUTCHours(hours: number, minutes?: number, seconds?: number, milliseconds?: number): number")
         Number* setUTCHours(Number* new_utc_hours,
-                            MaybeNumber* new_utc_minutes,
-                            MaybeNumber* new_utc_seconds,
-                            MaybeNumber* new_utc_milliseconds);
+                            Union* new_utc_minutes,
+                            Union* new_utc_seconds,
+                            Union* new_utc_milliseconds);
 
     TS_METHOD TS_SIGNATURE("setUTCMinutes(minutes: number, seconds?: number, milliseconds?: number): number")
-        Number* setUTCMinutes(Number* new_utc_minutes, MaybeNumber* new_utc_seconds, MaybeNumber* new_utc_milliseconds);
+        Number* setUTCMinutes(Number* new_utc_minutes, Union* new_utc_seconds, Union* new_utc_milliseconds);
 
     TS_METHOD TS_SIGNATURE("setUTCSeconds(seconds: number, milliseconds?: number): number") Number* setUTCSeconds(
-        Number* new_utc_seconds, MaybeNumber* new_utc_milliseconds);
+        Number* new_utc_seconds, Union* new_utc_milliseconds);
 
     TS_METHOD Number* setUTCMilliseconds(Number* new_utc_milliseconds);
 

@@ -34,11 +34,19 @@ private:
     const clang::CXXRecordDecl* m_decl;
 
 private:
-    ClassItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
+    ClassItem(const std::string& name,
+              const std::string& prefix,
+              bool isLocal,
+              bool isCompletedDecl,
+              const clang::CXXRecordDecl* decl);
 
 protected:
-    ClassItem(
-        Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
+    ClassItem(Type type,
+              const std::string& name,
+              const std::string& prefix,
+              bool isLocal,
+              bool isCompletedDecl,
+              const clang::CXXRecordDecl* decl);
 
     void visit(std::function<void(const clang::Decl* decl)> handler) const;
 
@@ -46,9 +54,9 @@ public:
     virtual ~ClassItem() = default;
     virtual int size() const;
 
-    std::vector<MethodItem> methods() const;
-    std::vector<TemplateMethodItem> templateMethods() const;
-    std::vector<FieldItem> fields() const;
+    method_item_list_t methods() const;
+    template_method_item_list_t templateMethods() const;
+    field_item_list_t fields() const;
     std::vector<clang::CXXBaseSpecifier> bases() const;
     bool hasVirtualDestructor() const;
     bool hasVTable() const;

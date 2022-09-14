@@ -15,7 +15,7 @@ namespace parser
 {
 
 TranslationUnitItem::TranslationUnitItem()
-    : ContainerItem(AbstractItem::TRANSLATION_UNIT, "", "", true)
+    : ContainerItem(AbstractItem::TRANSLATION_UNIT, "", "", true, true)
 {
 }
 

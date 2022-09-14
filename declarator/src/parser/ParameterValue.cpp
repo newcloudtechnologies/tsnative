@@ -34,6 +34,16 @@ bool ParameterValue::isParameterPack() const
     return m_decl->isParameterPack();
 }
 
+bool ParameterValue::isPointerType() const
+{
+    return m_decl->getType()->isAnyPointerType();
+}
+
+bool ParameterValue::isTemplated() const
+{
+    return m_decl->isTemplated();
+}
+
 const clang::ParmVarDecl* ParameterValue::decl() const
 {
     return m_decl;

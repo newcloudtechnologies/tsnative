@@ -27,50 +27,17 @@
 #include "parser/ClassItem.h"
 #include "parser/ClassTemplateItem.h"
 #include "parser/Collection.h"
+#include "parser/MethodItem.h"
 
-#include <optional>
 #include <string>
 #include <vector>
 
 namespace analyzer
 {
 
-class InheritanceNode
+struct ClassDetails
 {
-private:
-    const parser::Collection& m_collection;
-
-    parser::const_class_item_t m_item;
-    std::string m_actualTypeName; // uses for non instantiated templates
-    std::vector<InheritanceNode> m_bases;
-    bool m_instantiated = true; // example; Iterator<T> - false, Rect<int, double> - true, Widget - true
-
-private:
-    InheritanceNode(const parser::Collection& collection,
-                    parser::const_class_item_t item,
-                    const std::string& actualTypeName,
-                    bool instantiated = true);
-
-    std::optional<parser::const_abstract_item_t> getItem(const parser::Collection& collection,
-                                                         const std::string& path) const;
-    std::string getType(const clang::CXXBaseSpecifier& it) const;
-    std::vector<clang::CXXBaseSpecifier> getBases(const clang::CXXRecordDecl* decl) const;
-
-    std::string getTemplateName(const std::string& actualTypeName) const;
-
-public:
-    InheritanceNode(const InheritanceNode& other);
-    InheritanceNode& operator=(const InheritanceNode& other);
-
-    static InheritanceNode make(const parser::Collection& collection, parser::const_class_item_t item);
-
-    parser::const_class_item_t item() const;
-    std::string actualTypeName() const;
-    std::vector<InheritanceNode> bases() const;
-};
-
-struct ClassCollection
-{
+    std::string extends;
     std::vector<generator::ts::method_block_t> methods;
     std::vector<generator::ts::generic_method_block_t> generic_methods;
     std::vector<generator::ts::closure_block_t> closures;
@@ -83,35 +50,27 @@ private:
     const TypeMapper& m_typeMapper;
 
 private:
-    ClassCollection(parser::const_class_item_t item,
-                    const parser::Collection& collection,
-                    const TypeMapper& typeMapper);
+    ClassDetails(parser::const_class_item_t item, const parser::Collection& collection, const TypeMapper& typeMapper);
 
-    std::vector<parser::const_class_item_t> getBases() const;
+    std::vector<parser::const_class_item_t> getRetainedBases() const;
 
-    generator::ts::abstract_method_block_t makeMethod(const parser::MethodItem& item,
+    generator::ts::abstract_method_block_t makeMethod(parser::const_method_item_t item,
                                                       const std::string& className,
                                                       const std::string& classPrefix);
 
-    void check() const;
-    void extract();
-    void extract(parser::const_class_item_t item);
-    void collect(const parser::MethodItem& item);
+    void generateExtends();
+    void generateAllMethods();
+    void generateMethods(parser::const_class_item_t item);
+    void generateMethod(parser::const_method_item_t item);
     void generateFields();
 
 public:
-    static ClassCollection make(parser::const_class_item_t item,
-                                const parser::Collection& collection,
-                                const TypeMapper& typeMapper);
-};
+    static ClassDetails make(parser::const_class_item_t item,
+                             const parser::Collection& collection,
+                             const TypeMapper& typeMapper);
 
-class Extends
-{
-private:
-    static std::vector<std::string> exportedBases(parser::const_class_item_t item);
-
-public:
-    static std::string get(parser::const_class_item_t item, const TypeMapper& typeMapper);
+    parser::const_class_item_t item() const;
+    const parser::Collection& collection() const;
 };
 
 } // namespace analyzer

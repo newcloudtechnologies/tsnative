@@ -12,9 +12,10 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 #include "details/inheritance5_include.h"
 
-class TS_EXPORT Entity
+class TS_EXPORT Entity : public Object
 {
 public:
     TS_METHOD void entity();

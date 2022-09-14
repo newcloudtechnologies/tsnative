@@ -19,11 +19,13 @@
 namespace parser
 {
 
-AbstractItem::AbstractItem(Type type, const std::string& name, const std::string& prefix, bool isLocal)
+AbstractItem::AbstractItem(
+    Type type, const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl)
     : m_type(type)
     , m_name(name)
     , m_prefix(prefix)
     , m_isLocal(isLocal)
+    , m_isCompletedDecl(isCompletedDecl)
 {
 }
 
@@ -50,6 +52,11 @@ bool AbstractItem::isLocal() const
 void AbstractItem::setLocal(bool isLocal)
 {
     m_isLocal = isLocal;
+}
+
+bool AbstractItem::isCompletedDecl() const
+{
+    return m_isCompletedDecl;
 }
 
 bool AbstractItem::isContainer(const_abstract_item_t item)
@@ -86,6 +93,7 @@ std::string typeToString(AbstractItem::Type type)
         {AbstractItem::Type::NAMESPACE, "Namespace"},
         {AbstractItem::Type::CLASS, "Class"},
         {AbstractItem::Type::CLASS_TEMPLATE, "ClassTemplate"},
+        {AbstractItem::Type::CLASS_TEMPLATE_SPECIALIZATION, "ClassTemplateSpecialization"},
         {AbstractItem::Type::ENUM, "Enum"},
         {AbstractItem::Type::FUNCTION, "Function"},
         {AbstractItem::Type::FUNCTION_TEMPLATE, "FunctionTemplate"},

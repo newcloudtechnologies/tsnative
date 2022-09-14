@@ -27,7 +27,8 @@ CodeBlockItem::CodeBlockItem(const std::string& name,
                              const std::string& prefix,
                              bool isLocal,
                              const clang::CXXRecordDecl* decl)
-    : ClassItem(AbstractItem::Type::CODE_BLOCK, name, prefix, isLocal, decl)
+    : ClassItem(
+          AbstractItem::Type::CODE_BLOCK, name, prefix, isLocal, true, decl) // CodeBlock always has completed decl
 {
 }
 

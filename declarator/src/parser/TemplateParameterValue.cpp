@@ -31,6 +31,18 @@ bool TemplateParameterValue::isParameterPack() const
     return m_decl->isParameterPack();
 }
 
+bool TemplateParameterValue::isPointerType() const
+{
+    bool result = false;
+
+    if (m_decl->getKind() == clang::Decl::Kind::TemplateTypeParm)
+    {
+        result = m_decl->getTypeForDecl()->isAnyPointerType();
+    }
+
+    return result;
+}
+
 const clang::TemplateTypeParmDecl* TemplateParameterValue::decl() const
 {
     return m_decl;

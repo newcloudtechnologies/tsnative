@@ -28,11 +28,11 @@ Number* Date::now()
 
 Number* Date::UTC(Number* year,
                   Number* month_index,
-                  MaybeNumber* day,
-                  MaybeNumber* hours,
-                  MaybeNumber* minutes,
-                  MaybeNumber* seconds,
-                  MaybeNumber* milliseconds)
+                  Union* day,
+                  Union* hours,
+                  Union* minutes,
+                  Union* seconds,
+                  Union* milliseconds)
 {
     double unboxedYear = year->unboxed();
     double unboxedMonthIndex = month_index->unboxed();
@@ -64,11 +64,11 @@ Date::Date()
 
 Date::Date(Number* year,
            Number* month_index,
-           MaybeNumber* day,
-           MaybeNumber* hours,
-           MaybeNumber* minutes,
-           MaybeNumber* seconds,
-           MaybeNumber* milliseconds)
+           Union* day,
+           Union* hours,
+           Union* minutes,
+           Union* seconds,
+           Union* milliseconds)
 {
     double unboxedYear = year->unboxed();
     double unboxedMonthIndex = month_index->unboxed();
@@ -210,7 +210,7 @@ Number* Date::getUTCSeconds() const noexcept
     return new Number(utcSeconds);
 }
 
-Number* Date::setFullYear(Number* new_year, MaybeNumber* new_month, MaybeNumber* new_day)
+Number* Date::setFullYear(Number* new_year, Union* new_month, Union* new_day)
 {
     double newYearUnboxed = new_year->unboxed();
     double newMonthUnboxed = new_month->hasValue() ? new_month->getValue<Number*>()->unboxed() : 0;
@@ -221,7 +221,7 @@ Number* Date::setFullYear(Number* new_year, MaybeNumber* new_month, MaybeNumber*
     return new Number(date);
 }
 
-Number* Date::setMonth(Number* new_month, MaybeNumber* new_day)
+Number* Date::setMonth(Number* new_month, Union* new_day)
 {
     double newMonthUnboxed = new_month->unboxed();
     double newDayUnboxed = new_day->hasValue() ? new_day->getValue<Number*>()->unboxed() : 0;
@@ -239,9 +239,9 @@ Number* Date::setDate(Number* new_date)
 }
 
 Number* Date::setHours(Number* new_hours,
-                       MaybeNumber* new_minutes,
-                       MaybeNumber* new_seconds,
-                       MaybeNumber* new_milliseconds)
+                       Union* new_minutes,
+                       Union* new_seconds,
+                       Union* new_milliseconds)
 {
     double newHoursUnboxed = new_hours->unboxed();
     double newMinutesUnboxed = new_minutes->hasValue() ? new_minutes->getValue<Number*>()->unboxed() : 0;
@@ -253,7 +253,7 @@ Number* Date::setHours(Number* new_hours,
     return new Number(date);
 }
 
-Number* Date::setMinutes(Number* new_minutes, MaybeNumber* new_seconds, MaybeNumber* new_milliseconds)
+Number* Date::setMinutes(Number* new_minutes, Union* new_seconds, Union* new_milliseconds)
 {
     double newMinutesUnboxed = new_minutes->unboxed();
     double newSecondsUnboxed = new_seconds->hasValue() ? new_seconds->getValue<Number*>()->unboxed() : 0;
@@ -264,7 +264,7 @@ Number* Date::setMinutes(Number* new_minutes, MaybeNumber* new_seconds, MaybeNum
     return new Number(date);
 }
 
-Number* Date::setSeconds(Number* new_seconds, MaybeNumber* new_milliseconds)
+Number* Date::setSeconds(Number* new_seconds, Union* new_milliseconds)
 {
     double newSecondsUnboxed = new_seconds->unboxed();
     double newMillisecondsUnboxed = new_milliseconds->hasValue() ? new_milliseconds->getValue<Number*>()->unboxed() : 0;
@@ -292,7 +292,7 @@ Number* Date::setTime(Number* milliseconds_epoch_time)
     return new Number(date);
 }
 
-Number* Date::setUTCFullYear(Number* new_utc_year, MaybeNumber* new_utc_month, MaybeNumber* new_utc_days)
+Number* Date::setUTCFullYear(Number* new_utc_year, Union* new_utc_month, Union* new_utc_days)
 {
     double newUTCYearUnboxed = new_utc_year->unboxed();
     double newUTCMonthUnboxed = new_utc_month->hasValue() ? new_utc_month->getValue<Number*>()->unboxed() : 0;
@@ -303,7 +303,7 @@ Number* Date::setUTCFullYear(Number* new_utc_year, MaybeNumber* new_utc_month, M
     return new Number(date);
 }
 
-Number* Date::setUTCMonth(Number* new_utc_month, MaybeNumber* new_utc_days)
+Number* Date::setUTCMonth(Number* new_utc_month, Union* new_utc_days)
 {
     double newUTCMonthUnboxed = new_utc_month->unboxed();
     double newUTCDaysUnboxed = new_utc_days->hasValue() ? new_utc_days->getValue<Number*>()->unboxed() : 0;
@@ -323,9 +323,9 @@ Number* Date::setUTCDate(Number* new_utc_date)
 }
 
 Number* Date::setUTCHours(Number* new_utc_hours,
-                          MaybeNumber* new_utc_minutes,
-                          MaybeNumber* new_utc_seconds,
-                          MaybeNumber* new_utc_milliseconds)
+                          Union* new_utc_minutes,
+                          Union* new_utc_seconds,
+                          Union* new_utc_milliseconds)
 {
     double newUTCHoursUnboxed = new_utc_hours->unboxed();
     double newUTCMinutesUnboxed = new_utc_minutes->hasValue() ? new_utc_minutes->getValue<Number*>()->unboxed() : 0;
@@ -339,7 +339,7 @@ Number* Date::setUTCHours(Number* new_utc_hours,
     return new Number(date);
 }
 
-Number* Date::setUTCMinutes(Number* new_utc_minutes, MaybeNumber* new_utc_seconds, MaybeNumber* new_utc_milliseconds)
+Number* Date::setUTCMinutes(Number* new_utc_minutes, Union* new_utc_seconds, Union* new_utc_milliseconds)
 {
     double newUTCMinutesUnboxed = new_utc_minutes->unboxed();
     double newUTCSecondsUnboxed = new_utc_seconds->hasValue() ? new_utc_seconds->getValue<Number*>()->unboxed() : 0;
@@ -351,7 +351,7 @@ Number* Date::setUTCMinutes(Number* new_utc_minutes, MaybeNumber* new_utc_second
     return new Number(date);
 }
 
-Number* Date::setUTCSeconds(Number* new_utc_seconds, MaybeNumber* new_utc_milliseconds)
+Number* Date::setUTCSeconds(Number* new_utc_seconds, Union* new_utc_milliseconds)
 {
     double newUTCSecondsUnboxed = new_utc_seconds->unboxed();
     double newUTCMillisecondsUnboxed =

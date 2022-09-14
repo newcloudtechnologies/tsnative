@@ -12,8 +12,9 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
-class TS_EXPORT TS_IGNORE Entity
+class TS_EXPORT TS_IGNORE Entity : public Object
 {
 public:
     TS_METHOD Entity() = default;

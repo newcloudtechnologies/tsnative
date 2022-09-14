@@ -12,6 +12,7 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 namespace global IS_TS_MODULE
 {
@@ -19,7 +20,7 @@ namespace global IS_TS_MODULE
 namespace stuffs IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Entity
+class TS_EXPORT Entity : public Object
 {
 public:
     TS_METHOD Entity() = default;

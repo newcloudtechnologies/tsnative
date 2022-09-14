@@ -25,7 +25,7 @@
 template class TS_DECLARE Iterable<Tuple*>;
 
 template <typename K, typename V>
-class TS_DECLARE Map : public Object, public Iterable<Tuple*>
+class TS_DECLARE Map : public Iterable<Tuple*>
 {
     static_assert(std::is_pointer<K>::value && std::is_pointer<V>::value,
                   "TS Map keys/values expected to be of pointer type");

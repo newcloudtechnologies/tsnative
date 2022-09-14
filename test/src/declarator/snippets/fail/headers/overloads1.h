@@ -12,17 +12,16 @@
 #pragma once
 
 #include "TS.h"
+#include "std/tsnumber.h"
 
 #include <string>
 #include <vector>
-
-using number = double;
 
 class TS_EXPORT Collection
 {
 public:
     TS_METHOD Collection() = default;
 
-    TS_METHOD number capacity();
-    TS_METHOD void capacity(number value);
+    TS_METHOD Number* capacity();
+    TS_METHOD void capacity(Number* value);
 };

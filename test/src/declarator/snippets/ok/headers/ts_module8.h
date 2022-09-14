@@ -12,6 +12,7 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 #include "details/ts_module8_include.h"
 

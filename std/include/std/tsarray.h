@@ -25,7 +25,7 @@ template <typename T>
 class ArrayPrivate;
 
 template <typename T>
-class TS_DECLARE Array : public Object, public Iterable<T>
+class TS_DECLARE Array : public Iterable<T>
 {
     static_assert(std::is_pointer<T>::value, "TS Array elements expected to be of pointer type");
 

@@ -11,6 +11,7 @@
 
 #include "MakeFunction.h"
 #include "TsUtils.h"
+#include "Checkers.h"
 
 #include "generator/FunctionBlock.h"
 
@@ -36,21 +37,6 @@ void makeFunction(parser::const_function_item_t item,
     using namespace parser;
     using namespace analyzer;
 
-    auto check_overloads = [block, prefix = item->prefix()](const std::string& name)
-    {
-        auto children = block->children();
-
-        auto it = std::find_if(children.begin(), children.end(), [name](const auto& it) { return it->name() == name; });
-
-        if (it != children.end())
-        {
-            throw utils::Exception(
-                R"(function with name "%s" is already exist in scope "%s". TypeScrips doesn't support functions overload)",
-                name.c_str(),
-                prefix.c_str());
-        }
-    };
-
     AnnotationList annotations(getAnnotations(item->decl()));
 
     function_block_t functionBlock;
@@ -61,7 +47,7 @@ void makeFunction(parser::const_function_item_t item,
 
         if (signature.type() == TsSignature::Type::FUNCTION || signature.type() == TsSignature::Type::GENERIC_FUNCTION)
         {
-            check_overloads(signature.name());
+            FunctionChecker::check(item, signature.name());
 
             functionBlock = AbstractBlock::make<FunctionBlock>(signature.name(), signature.retType(), true);
 
@@ -92,7 +78,7 @@ void makeFunction(parser::const_function_item_t item,
     {
         std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item->name();
 
-        check_overloads(name);
+        FunctionChecker::check(item, name);
 
         std::string retType = annotations.exist(TS_RETURN_TYPE)
                                   ? annotations.values(TS_RETURN_TYPE).at(0)

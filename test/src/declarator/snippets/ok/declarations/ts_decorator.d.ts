@@ -15,8 +15,14 @@
 @NoFields
 //@ts-ignore
 @MapsTo("Pi", 3.14)
+//@ts-ignore
+@VTableSize(8)
+//@ts-ignore
+@VirtualDestructor
 export class Entity {
-    private p0_Entity: boolean;
+    private p0_Entity: number;
+    private p1_Entity: number;
+    private p2_Entity: number;
 
     constructor();
     //@ts-ignore

@@ -14,6 +14,7 @@
 #include <TS.h>
 #include <std/tsarray.h>
 #include <std/tsnumber.h>
+#include <std/tsobject.h>
 
 namespace test IS_TS_MODULE
 {
@@ -21,7 +22,7 @@ namespace test IS_TS_MODULE
 namespace snippets IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Color
+class TS_EXPORT Color : public Object
 {
     Color* createARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
 
@@ -33,7 +34,7 @@ public:
     TS_METHOD Color* createARGB(Number* a, Number* r, Number* g, Number* b);
 };
 
-class TS_EXPORT Palette
+class TS_EXPORT Palette : public Object
 {
 public:
     TS_METHOD Palette() = default;

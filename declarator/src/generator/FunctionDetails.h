@@ -20,12 +20,12 @@ namespace generator
 namespace ts
 {
 
-class ArgumentValue
+struct ArgumentValue
 {
-    std::string m_name;
-    std::string m_type;
-    bool m_isSpread = false;
-    bool m_isOptional = false;
+    std::string name;
+    std::string type;
+    bool isSpread = false;
+    bool isOptional = false;
 
 public:
     ArgumentValue();

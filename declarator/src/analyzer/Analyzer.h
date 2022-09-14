@@ -26,7 +26,7 @@
 namespace analyzer
 {
 
-parser::item_list_t getSuitableItems(const parser::Collection& collection);
+parser::const_item_list_t getSuitableItems(const parser::Collection& collection);
 
 analyzer::TypeMapper makeTypeMapper(const parser::Collection& collection);
 

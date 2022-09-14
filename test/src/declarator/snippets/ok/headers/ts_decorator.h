@@ -12,8 +12,9 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
-class TS_EXPORT TS_DECORATOR("NoFields") TS_DECORATOR("MapsTo('Pi', 3.14)") Entity
+class TS_EXPORT TS_DECORATOR("NoFields") TS_DECORATOR("MapsTo('Pi', 3.14)") Entity : public Object
 {
 public:
     TS_METHOD Entity() = default;

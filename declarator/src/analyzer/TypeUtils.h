@@ -61,4 +61,12 @@ public:
     std::string convertToTSType(const std::string& prefix, const clang::QualType& type) const;
 };
 
+bool isPointer(const clang::QualType& type);
+clang::QualType removeCVPR(const clang::QualType& type);
+std::string typeToString(const clang::QualType& type);
+std::string typeToString(const clang::QualType& type, const clang::ASTContext& context);
+std::string canonicalTypeToString(const clang::QualType& type);
+std::string getFullTypeName(const std::string& prefix, const std::string& name);
+std::string getPartTypeName(const std::string& full);
+
 } // namespace analyzer

@@ -13,6 +13,7 @@
 
 #include <TS.h>
 #include <std/tsnumber.h>
+#include <std/tsobject.h>
 
 namespace test IS_TS_MODULE
 {
@@ -20,7 +21,7 @@ namespace test IS_TS_MODULE
 namespace snippets IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Color
+class TS_EXPORT Color : public Object
 {
     static Color* createARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
     

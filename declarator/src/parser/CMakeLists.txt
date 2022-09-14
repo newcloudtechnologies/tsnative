@@ -25,6 +25,7 @@ set(INCLUDES
     TemplateParameterValue.h
     ClassItem.h
     ClassTemplateItem.h
+    ClassTemplateSpecializationItem.h
     EnumItem.h
     FunctionItem.h
     FunctionTemplateItem.h
@@ -49,6 +50,7 @@ set(SOURCES
     TemplateParameterValue.cpp
     ClassItem.cpp
     ClassTemplateItem.cpp
+    ClassTemplateSpecializationItem.cpp
     EnumItem.cpp
     FunctionItem.cpp
     FunctionTemplateItem.cpp

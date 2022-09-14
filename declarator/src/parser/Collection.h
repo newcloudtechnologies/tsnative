@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "AbstractItem.h"
 #include "TranslationUnit.h"
 #include "Visitor.h"
 
@@ -18,6 +19,7 @@
 
 #include <clang/AST/Decl.h>
 #include <clang/AST/DeclCXX.h>
+#include <clang/AST/DeclTemplate.h>
 
 #include <functional>
 #include <string>
@@ -35,47 +37,88 @@ private:
     item_t<TranslationUnitItem> m_root;
 
 private:
+    template <typename Callable>
+    void add(const std::string& name, const std::string& prefix, Callable createHandler);
+
     void addNamespace(const std::string& name,
                       const std::string& prefix,
                       bool isLocal,
                       const clang::NamespaceDecl* decl);
 
-    void addClass(const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl);
+    void addClass(const std::string& name,
+                  const std::string& prefix,
+                  bool isLocal,
+                  bool isCompletedDecl,
+                  const clang::CXXRecordDecl* decl);
 
     void addClassTemplate(const std::string& name,
                           const std::string& prefix,
                           bool isLocal,
+                          bool isCompletedDecl,
                           const clang::ClassTemplateDecl* decl);
 
-    void addEnum(const std::string& name, const std::string& prefix, bool isLocal, const clang::EnumDecl* decl);
+    void addClassTemplateSpecialization(const std::string& name,
+                                        const std::string& prefix,
+                                        bool isLocal,
+                                        bool isCompletedDecl,
+                                        const clang::ClassTemplateSpecializationDecl* decl);
 
-    void addFunction(const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl);
+    void addEnum(const std::string& name,
+                 const std::string& prefix,
+                 bool isLocal,
+                 bool isCompletedDecl,
+                 const clang::EnumDecl* decl);
+
+    void addFunction(const std::string& name,
+                     const std::string& prefix,
+                     bool isLocal,
+                     bool isCompletedDecl,
+                     const clang::FunctionDecl* decl);
 
     void addFunctionTemplate(const std::string& name,
                              const std::string& prefix,
                              bool isLocal,
+                             bool isCompletedDecl,
                              const clang::FunctionTemplateDecl* decl);
 
 private:
     Collection();
-    static Collection& do_get();
+    static Collection& do_ref();
     static Collection& do_init(CXTranslationUnit tu);
     void populate();
 
 public:
     static void init(CXTranslationUnit tu);
-    static Collection& get();
+    static Collection& ref();
 
-    bool existItem(const std::string& path) const;
-    bool existItem(const std::string& parentPath, const std::string& name) const;
+    bool exists(const std::string& path, bool isCompletedDecl = true) const;
+    bool exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
 
-    const_item_list_t getItems(const std::string& path) const;
-    item_list_t getItems(const std::string& path);
+    template <typename T>
+    bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true) const;
 
-    const_item_list_t getItems(const std::string& parentPath, const std::string& name) const;
-    item_list_t getItems(const std::string& parentPath, const std::string& name);
+    template <typename T>
+    bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true);
 
-    void visit(std::function<void(const abstract_item_t item)> handler) const;
+    template <typename T>
+    bool get(typename parser::item_t<T>& item,
+             const std::string& parentPath,
+             const std::string& name,
+             bool isCompletedDecl = true) const;
+
+    template <typename T>
+    bool get(typename parser::item_t<T>& item,
+             const std::string& parentPath,
+             const std::string& name,
+             bool isCompletedDecl = true);
+
+    const_abstract_item_t get(const std::string& path) const;
+    abstract_item_t get(const std::string& path);
+
+    const_abstract_item_t get(const std::string& parentPath, const std::string& name) const;
+    abstract_item_t get(const std::string& parentPath, const std::string& name);
+
+    void visit(std::function<void(const_abstract_item_t item)> handler) const;
 };
 
 } //  namespace parser

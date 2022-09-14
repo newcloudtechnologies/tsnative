@@ -25,7 +25,7 @@ template <typename T>
 class SetPrivate;
 
 template <typename T>
-class TS_DECLARE Set : public Object, public Iterable<T>
+class TS_DECLARE Set : public Iterable<T>
 {
     static_assert(std::is_pointer<T>::value, "TS Set elements expected to be of pointer type");
 

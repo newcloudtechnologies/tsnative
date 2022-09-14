@@ -10,6 +10,7 @@
  */
 
 #include "MakeClass.h"
+#include "Checkers.h"
 #include "ClassDetails.h"
 
 #include "generator/AbstractBlock.h"
@@ -35,7 +36,11 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
     using namespace parser;
     using namespace utils;
 
-    auto classCollection = ClassCollection::make(item, Collection::get(), typeMapper);
+    auto classDetails = ClassDetails::make(item, Collection::ref(), typeMapper);
+
+    // Checking
+    ClassChecker::check(classDetails.item());
+    InheritanceChecker::check(classDetails.item());
 
     AnnotationList annotations(getAnnotations(item->decl()));
 
@@ -61,13 +66,12 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     auto classBlock = AbstractBlock::make<ClassBlock>(name, isExport, isDeclare);
 
-    classBlock->addExtends(Extends::get(item, typeMapper));
-
-    classBlock->addFields(classCollection.fields);
-    classBlock->addMethods(classCollection.methods);
-    classBlock->addGenericMethods(classCollection.generic_methods);
-    classBlock->addClosures(classCollection.closures);
-    classBlock->addOperators(classCollection.operators);
+    classBlock->addExtends(classDetails.extends);
+    classBlock->addFields(classDetails.fields);
+    classBlock->addMethods(classDetails.methods);
+    classBlock->addGenericMethods(classDetails.generic_methods);
+    classBlock->addClosures(classDetails.closures);
+    classBlock->addOperators(classDetails.operators);
 
     if (annotations.exist(TS_DECORATOR))
     {

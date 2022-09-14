@@ -14,6 +14,7 @@ project(analyzer LANGUAGES CXX)
 set(INCLUDES
     Analyzer.h
     Annotation.h
+    InheritanceNode.h
     ClassDetails.h
     MakeNamespace.h
     MakeClass.h
@@ -23,11 +24,13 @@ set(INCLUDES
     MakeCodeBlock.h
     TypeUtils.h
     TsUtils.h
+    Checkers.h
 )
 
 set(SOURCES
     Analyzer.cpp
     Annotation.cpp
+    InheritanceNode.cpp
     ClassDetails.cpp
     MakeNamespace.cpp
     MakeClass.cpp
@@ -37,6 +40,7 @@ set(SOURCES
     MakeCodeBlock.cpp
     TypeUtils.cpp
     TsUtils.cpp
+    Checkers.cpp
 )
 
 add_library(${PROJECT_NAME} OBJECT

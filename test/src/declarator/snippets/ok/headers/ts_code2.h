@@ -12,11 +12,12 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 namespace TS_MODULE(global)
 {
 
-    class TS_EXPORT Entity
+    class TS_EXPORT Entity : public Object
     {
     public:
         Entity() = default;

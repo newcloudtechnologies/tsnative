@@ -21,6 +21,7 @@ constexpr const char* TS_MODULE = "TS_MODULE";
 constexpr const char* TS_NAMESPACE = "TS_NAMESPACE";
 constexpr const char* TS_EXPORT = "TS_EXPORT";
 constexpr const char* TS_DECLARE = "TS_DECLARE";
+constexpr const char* TS_NO_CHECK = "TS_NO_CHECK";
 constexpr const char* TS_METHOD = "TS_METHOD";
 constexpr const char* TS_CLOSURE = "TS_CLOSURE";
 constexpr const char* TS_NAME = "TS_NAME";

@@ -31,7 +31,7 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
-    TS_METHOD TS_RETURN_TYPE("number") bool unboxed() const;
+    TS_METHOD TS_NO_CHECK TS_RETURN_TYPE("number") bool unboxed() const;
 
 private:
     BooleanPrivate* _d = nullptr;

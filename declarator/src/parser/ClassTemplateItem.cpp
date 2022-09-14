@@ -22,8 +22,9 @@ namespace parser
 ClassTemplateItem::ClassTemplateItem(const std::string& name,
                                      const std::string& prefix,
                                      bool isLocal,
+                                     bool isCompletedDecl,
                                      const clang::ClassTemplateDecl* decl)
-    : ClassItem(AbstractItem::Type::CLASS_TEMPLATE, name, prefix, isLocal, decl->getTemplatedDecl())
+    : ClassItem(AbstractItem::Type::CLASS_TEMPLATE, name, prefix, isLocal, isCompletedDecl, decl->getTemplatedDecl())
     , m_decl(decl)
 {
 }

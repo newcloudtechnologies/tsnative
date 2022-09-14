@@ -16,6 +16,8 @@
 
 #include <clang/AST/Decl.h>
 
+#include <vector>
+
 namespace parser
 {
 
@@ -26,16 +28,23 @@ class FunctionItem : public AbstractItem
     const clang::FunctionDecl* m_decl;
 
 private:
-    FunctionItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl);
+    FunctionItem(const std::string& name,
+                 const std::string& prefix,
+                 bool isLocal,
+                 bool isCompletedDecl,
+                 const clang::FunctionDecl* decl);
 
 protected:
-    FunctionItem(
-        Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl);
+    FunctionItem(Type type,
+                 const std::string& name,
+                 const std::string& prefix,
+                 bool isLocal,
+                 bool isCompletedDecl,
+                 const clang::FunctionDecl* decl);
 
 public:
     virtual ~FunctionItem() = default;
 
-    std::string name() const;
     bool isStatic() const;
     clang::QualType returnType() const;
     std::vector<ParameterValue> parameters() const;
@@ -44,5 +53,8 @@ public:
 
 using function_item_t = item_t<FunctionItem>;
 using const_function_item_t = item_t<const FunctionItem>;
+
+using function_item_list_t = std::vector<function_item_t>;
+using const_function_item_list_t = std::vector<const_function_item_t>;
 
 } //  namespace parser

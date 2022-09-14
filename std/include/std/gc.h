@@ -19,8 +19,8 @@ public:
     GC(IGCImpl* gcImpl, Allocator* allocator);
 
     // TODO Should be removed. Allocator should allocate, not GC
-    TS_METHOD TS_SIGNATURE("allocate(numBytes: any): void") void* allocate(double numBytes);
-    TS_METHOD TS_SIGNATURE("allocateObject(numBytes: any): void") void* allocateObject(double numBytes);
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("allocate(numBytes: any): void") void* allocate(double numBytes);
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("allocateObject(numBytes: any): void") void* allocateObject(double numBytes);
     TS_METHOD TS_SIGNATURE("deallocate(): void") void deallocate(void*);
     TS_METHOD void collect();
 

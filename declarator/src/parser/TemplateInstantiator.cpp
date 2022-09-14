@@ -84,9 +84,15 @@ private:
 
             _ASSERT(classTemplateSpecializationDecl->getTemplateInstantiationPattern());
 
+            bool isCompletedDecl = classTemplateSpecializationDecl->isThisDeclarationADefinition();
+
             // prefix is always empty because instance located in root scope
-            parser::class_item_t item = AbstractItem::make<ClassItem>(
-                classTemplateSpecializationDecl->getNameAsString(), "", isLocal, classTemplateSpecializationDecl);
+            parser::class_item_t item =
+                AbstractItem::make<ClassItem>(classTemplateSpecializationDecl->getNameAsString(),
+                                              "",
+                                              isLocal,
+                                              isCompletedDecl,
+                                              classTemplateSpecializationDecl);
 
             m_owner.addInstance(item);
 

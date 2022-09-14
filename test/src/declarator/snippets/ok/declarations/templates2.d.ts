@@ -12,15 +12,15 @@
 */
 
 declare module "global" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace snippets {
         export class MultiparamClassTemplate<X, Y, Z> {
             private p0_MultiparamClassTemplate: number;
             private p1_MultiparamClassTemplate: number;
             private p2_MultiparamClassTemplate: number;
+            private p3_MultiparamClassTemplate: number;
+            private p4_MultiparamClassTemplate: number;
+            private p5_MultiparamClassTemplate: number;
 
             constructor();
         }

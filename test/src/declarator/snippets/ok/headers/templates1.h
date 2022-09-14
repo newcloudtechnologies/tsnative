@@ -12,29 +12,22 @@
 #pragma once
 
 #include <TS.h>
-
-namespace global IS_TS_MODULE
-{
-
-namespace snippets IS_TS_NAMESPACE
-{
+#include <std/tsobject.h>
 
 template <typename T>
-class TS_EXPORT BasicRect
+class TS_EXPORT BasicRect : public Object
 {
-    T m_width;
-    T m_height;
+    T* m_width;
+    T* m_height;
 
 public:
-    TS_METHOD BasicRect(T width, T height)
+    TS_METHOD BasicRect(T* width, T* height)
         : m_width(width)
         , m_height(height)
     {
     }
 
-    TS_METHOD T width() const;
-    TS_METHOD T height() const;
+    TS_METHOD T* width() const;
+    TS_METHOD T* height() const;
 };
 
-} // namespace IS_TS_NAMESPACE
-} // namespace IS_TS_MODULE
