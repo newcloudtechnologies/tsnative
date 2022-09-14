@@ -29,7 +29,7 @@ void File::printBody(generator::print::printer_t printer) const
 
 void File::printChildImpl(int index, int size, const_abstract_block_t child, generator::print::printer_t printer) const
 {
-    if (child->type() != AbstractBlock::Type::IMPORT)
+    if (child->type() != AbstractBlock::Type::IMPORT && child->type() != AbstractBlock::Type::COMMENT)
     {
         printer->enter();
     }

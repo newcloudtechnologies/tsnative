@@ -12,13 +12,14 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 namespace global IS_TS_MODULE
 {
 
 namespace not_exported
 {
-class TS_EXPORT Hidden
+class TS_EXPORT Hidden : public Object
 {
 public:
     Hidden() = default;
@@ -30,7 +31,7 @@ public:
 namespace stuffs1 IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Entity1
+class TS_EXPORT Entity1 : public Object
 {
 public:
     TS_METHOD Entity1() = default;
@@ -42,7 +43,7 @@ public:
 namespace stuffs2 IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Entity2
+class TS_EXPORT Entity2 : public Object
 {
 public:
     TS_METHOD Entity2() = default;

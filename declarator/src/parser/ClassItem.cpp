@@ -19,16 +19,24 @@
 namespace parser
 {
 
-ClassItem::ClassItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl)
-    : ContainerItem(AbstractItem::Type::CLASS, name, prefix, isLocal)
+ClassItem::ClassItem(const std::string& name,
+                     const std::string& prefix,
+                     bool isLocal,
+                     bool isCompletedDecl,
+                     const clang::CXXRecordDecl* decl)
+    : ContainerItem(AbstractItem::Type::CLASS, name, prefix, isLocal, isCompletedDecl)
     , m_decl(decl)
 {
     _ASSERT(m_decl);
 }
 
-ClassItem::ClassItem(
-    Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::CXXRecordDecl* decl)
-    : ContainerItem(type, name, prefix, isLocal)
+ClassItem::ClassItem(Type type,
+                     const std::string& name,
+                     const std::string& prefix,
+                     bool isLocal,
+                     bool isCompletedDecl,
+                     const clang::CXXRecordDecl* decl)
+    : ContainerItem(type, name, prefix, isLocal, isCompletedDecl)
     , m_decl(decl)
 {
     _ASSERT(m_decl);
@@ -57,24 +65,24 @@ int ClassItem::size() const
     return result;
 }
 
-std::vector<MethodItem> ClassItem::methods() const
+method_item_list_t ClassItem::methods() const
 {
-    std::vector<MethodItem> result;
+    method_item_list_t result;
 
     if (m_decl && m_decl->hasDefinition())
     {
         for (const auto& it : m_decl->methods())
         {
-            result.push_back(it);
+            result.push_back(MethodItem::make(it));
         }
     }
 
     return result;
 }
 
-std::vector<TemplateMethodItem> ClassItem::templateMethods() const
+template_method_item_list_t ClassItem::templateMethods() const
 {
-    std::vector<TemplateMethodItem> result;
+    template_method_item_list_t result;
 
     visit(
         [&result](const clang::Decl* decl)
@@ -84,22 +92,22 @@ std::vector<TemplateMethodItem> ClassItem::templateMethods() const
                 const auto* functionTemplateDecl = clang::dyn_cast_or_null<const clang::FunctionTemplateDecl>(decl);
                 _ASSERT(functionTemplateDecl);
 
-                result.push_back(functionTemplateDecl);
+                result.push_back(TemplateMethodItem::make(functionTemplateDecl));
             }
         });
 
     return result;
 }
 
-std::vector<FieldItem> ClassItem::fields() const
+field_item_list_t ClassItem::fields() const
 {
-    std::vector<FieldItem> result;
+    field_item_list_t result;
 
     if (m_decl && m_decl->hasDefinition())
     {
         for (const auto& it : m_decl->fields())
         {
-            result.push_back(it);
+            result.push_back(FieldItem::make(it));
         }
     }
 
@@ -127,7 +135,7 @@ bool ClassItem::hasVirtualDestructor() const
 
     for (const auto& it : methods())
     {
-        if (it.isDestructor() && it.isVirtual())
+        if (it->isDestructor() && it->isVirtual())
         {
             result = true;
             break;
@@ -143,7 +151,7 @@ bool ClassItem::hasVTable() const
 
     for (const auto& it : methods())
     {
-        if (it.isVirtual())
+        if (it->isVirtual())
         {
             result = true;
             break;

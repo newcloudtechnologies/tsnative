@@ -12,12 +12,9 @@
 */
 
 declare module "test" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace snippets {
-        export namespace Object {
+        export namespace EnumHolder {
             enum Types {
                 PLANT = 0,
                 ANIMAL = 1,
@@ -25,11 +22,17 @@ declare module "test" {
             }
         }
 
-        export class Object {
-            private p0_Object: boolean;
+        //@ts-ignore
+        @VTableSize(8)
+        //@ts-ignore
+        @VirtualDestructor
+        export class EnumHolder {
+            private p0_EnumHolder: number;
+            private p1_EnumHolder: number;
+            private p2_EnumHolder: number;
 
             constructor();
-            getType(): Object.Types;
+            getType(): EnumHolder.Types;
         }
     }
 }

@@ -11,18 +11,27 @@
  * Don't edit this file.
 */
 
+//@ts-ignore
+@VTableSize(8)
+//@ts-ignore
+@VirtualDestructor
 export class Entity {
-    private p0_Entity: boolean;
+    private p0_Entity: number;
+    private p1_Entity: number;
+    private p2_Entity: number;
 
     entity(): void;
 }
 
+//@ts-ignore
+@VTableSize(8)
+//@ts-ignore
+@VirtualDestructor
 export class Derived extends Entity {
     private p0_Derived: number;
-    private p1_Derived: boolean;
-    private p2_Derived: boolean;
-    private p3_Derived: boolean;
-    private p4_Derived: boolean;
+    private p1_Derived: number;
+    private p2_Derived: number;
+    private p3_Derived: number;
 
     templateBase(): void;
     derived(): void;

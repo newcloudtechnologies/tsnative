@@ -12,18 +12,18 @@
 #pragma once
 
 #include <TS.h>
-
+#include <std/tsobject.h>
 #include <std/tsarray.h>
 #include <std/tsstring.h>
 
-class TS_EXPORT FileInfo_t
+class TS_EXPORT FileInfo_t : public Object
 {
     int m_counter;
 };
 
 class TSClosure;
 
-class TS_EXPORT AnyWidget
+class TS_EXPORT AnyWidget : public Object
 {
     TS_METHOD TS_SIGNATURE("readResponse0(fInfos: data.FileInfo_t): void") void readResponse0(
         const Array<const FileInfo_t*>* fInfo) const;
@@ -55,18 +55,18 @@ template <typename U>
 TS_EXPORT TS_SIGNATURE("function mapWidget2<U>(callbackfn: (value: U, index: number, array: readonly U[]) => U): data.U[]")
     Array<U>* mapWidget2(TSClosure* closure);
 
-TS_EXPORT TS_SIGNATURE("function someFunc(n: number, m: number): number") int someFunc(int n,
-                                                                                       int m,
-                                                                                       int x = -1,
-                                                                                       int y = -1);
+TS_EXPORT TS_SIGNATURE("function someFunc(n: number, m: number): number") Number* someFunc(Number* n,
+                                                                                       Number* m,
+                                                                                       Number* x ,
+                                                                                       Number* y);
                                                                                        
                                                                                        
-TS_EXPORT TS_SIGNATURE("function someFunc2(n: number, m: number): data.FileInfo_t[]") FileInfo_t* someFunc2(int n,
-                                                                                       int m,
-                                                                                       int x = -1,
-                                                                                       int y = -1);
+TS_EXPORT TS_SIGNATURE("function someFunc2(n: number, m: number): data.FileInfo_t[]") FileInfo_t* someFunc2(Number* n,
+                                                                                       Number* m,
+                                                                                       Number* x,
+                                                                                       Number* y);
 
-class TS_EXPORT Multiline
+class TS_EXPORT Multiline : public Object
 {
     TS_METHOD TS_SIGNATURE("multiline(arg1: number,"
     "arg2: number, arg3: "
@@ -74,7 +74,7 @@ class TS_EXPORT Multiline
     "arg4: number,"
     "arg5: number, arg6:          "
     "number, arg7: number): number")
-    static Number* multiline(int* arg1, int* arg2, int* arg3, int* arg4, int* arg5, int* arg6, int* arg7);
+    static Number* multiline(Number* arg1, Number* arg2, Number* arg3, Number* arg4, Number* arg5, Number* arg6, Number* arg7);
 };
 
 TS_EXPORT TS_SIGNATURE("function multiline(arg1: number,"
@@ -83,5 +83,5 @@ TS_EXPORT TS_SIGNATURE("function multiline(arg1: number,"
 "arg4: number,"
 "arg5: number, arg6:          "
 "number, arg7: number): number")
-Number* multiline(int* arg1, int* arg2, int* arg3, int* arg4, int* arg5, int* arg6, int* arg7);
+Number* multiline(Number* arg1, Number* arg2, Number* arg3, Number* arg4, Number* arg5, Number* arg6, Number* arg7);
 

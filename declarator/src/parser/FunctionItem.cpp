@@ -17,22 +17,22 @@ namespace parser
 FunctionItem::FunctionItem(const std::string& name,
                            const std::string& prefix,
                            bool isLocal,
+                           bool isCompletedDecl,
                            const clang::FunctionDecl* decl)
-    : AbstractItem(AbstractItem::Type::FUNCTION, name, prefix, isLocal)
+    : AbstractItem(AbstractItem::Type::FUNCTION, name, prefix, isLocal, isCompletedDecl)
     , m_decl(decl)
 {
 }
 
-FunctionItem::FunctionItem(
-    Type type, const std::string& name, const std::string& prefix, bool isLocal, const clang::FunctionDecl* decl)
-    : AbstractItem(type, name, prefix, isLocal)
+FunctionItem::FunctionItem(Type type,
+                           const std::string& name,
+                           const std::string& prefix,
+                           bool isLocal,
+                           bool isCompletedDecl,
+                           const clang::FunctionDecl* decl)
+    : AbstractItem(type, name, prefix, isLocal, isCompletedDecl)
     , m_decl(decl)
 {
-}
-
-std::string FunctionItem::name() const
-{
-    return m_decl->getNameAsString();
 }
 
 bool FunctionItem::isStatic() const

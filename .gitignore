@@ -4,6 +4,11 @@ declarator/build/
 *.log
 .idea/
 .vscode/
+.settings/
+.project
+.cproject
+.settings
+.pydevproject
 
 cxx_node_extensions/llvm_ir_eh_generator/build/
 

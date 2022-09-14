@@ -14,6 +14,7 @@
 #include "Annotation.h"
 #include "ClassItem.h"
 #include "ClassTemplateItem.h"
+#include "ClassTemplateSpecializationItem.h"
 #include "CodeBlockItem.h"
 #include "EnumItem.h"
 #include "FunctionItem.h"
@@ -25,13 +26,15 @@
 
 #include "utils/Exception.h"
 #include "utils/Strings.h"
+#include "utils/lambda_traits.h"
 
 #include <clang/AST/ASTContext.h>
 
 #include <algorithm>
-#include <deque>
 #include <functional>
 #include <iterator>
+#include <regex>
+#include <set>
 #include <vector>
 
 namespace
@@ -39,27 +42,93 @@ namespace
 
 using namespace parser;
 
-int sizeOf(const CXCursor& cursor)
+class SelectItems
 {
-    int result = -1;
-
-    if (cursor.kind == CXCursorKind::CXCursor_ClassDecl)
+    static bool is_template(parser::const_abstract_item_t item)
     {
-        auto type = clang_getCursorType(cursor);
-        result = clang_Type_getSizeOf(type);
+        auto type = item->type();
+        return type == AbstractItem::Type::CLASS_TEMPLATE || type == AbstractItem::Type::CLASS_TEMPLATE_SPECIALIZATION;
     }
 
-    return result;
-}
+    static bool parse_template(const std::string& s, std::string& name, std::vector<std::string>& params)
+    {
+        bool result = false;
 
-template <typename T>
-inline typename T::value_type _expectedOne(T&& container)
-{
-    _ASSERT(container.size() == 1);
-    return container.at(0);
-}
+        static std::set<std::string> cache;
 
-} // namespace
+        if (cache.find(s) == cache.end())
+        {
+            std::regex regexp{R"(^([\<\>\:\w]+)(\<(.+)\>)$)"}; // ml<S>::ClassName<T*, A<R::T>>
+            std::smatch match;
+
+            result = std::regex_search(s.begin(), s.end(), match, regexp);
+
+            if (result)
+            {
+                name = match[1];
+                std::string s_params = match[3];
+
+                if (!s_params.empty())
+                {
+                    regexp = R"(([^,^\s]+))"; // T*, A<R::T>
+                    auto _begin = std::sregex_iterator(s_params.begin(), s_params.end(), regexp);
+                    auto _end = std::sregex_iterator();
+
+                    std::transform(_begin, _end, std::back_inserter(params), [](auto it) { return it.str(); });
+                }
+            }
+            else
+            {
+                cache.insert(s);
+            }
+        }
+
+        return result;
+    }
+
+    static bool predicate(const std::string& name, parser::const_abstract_item_t item)
+    {
+        bool result = false;
+        std::string actual_name = name;
+
+        auto matched = [item](const std::string& name) { return item->name() == name; };
+
+        result = matched(actual_name);
+
+        if (!result)
+        {
+            if (is_template(item))
+            {
+                std::vector<std::string> params;
+                result = parse_template(actual_name, actual_name, params);
+
+                if (result)
+                {
+                    // TODO: match template parameters
+                    result = matched(actual_name);
+                }
+            }
+        }
+
+        return result;
+    }
+
+public:
+    // Returns all items with the same name, e.g. MyTemplate, MyTemplate<int>, MyTemplate<string>, etc
+    // i.e template and template specializations
+    static item_list_t all(const item_list_t& items, const std::string& name)
+    {
+        item_list_t result;
+        std::copy_if(items.begin(),
+                     items.end(),
+                     std::back_inserter(result),
+                     [name](parser::const_abstract_item_t item) { return predicate(name, item); });
+
+        return result;
+    }
+};
+
+} //  namespace
 
 namespace parser
 {
@@ -81,6 +150,10 @@ private:
         using namespace clang;
 
         auto kind = decl->getKind();
+
+#ifndef NDEBUG
+        std::string name = decl->getNameAsString();
+#endif
 
         switch (kind)
         {
@@ -170,9 +243,7 @@ private:
         const auto* recordDecl = clang::dyn_cast_or_null<const clang::CXXRecordDecl>(decl);
         _ASSERT(recordDecl);
 
-        // completed definition only
-        if (!recordDecl->isThisDeclarationADefinition())
-            return;
+        bool isCompletedDecl = recordDecl->isThisDeclarationADefinition();
 
         // filter specializations
         if (!recordDecl->getTemplateInstantiationPattern())
@@ -181,7 +252,7 @@ private:
             std::string qualifiedName = recordDecl->getQualifiedNameAsString();
             getPrefixAndName(qualifiedName, prefix, name);
 
-            m_collection.addClass(name, prefix, isLocal, recordDecl);
+            m_collection.addClass(name, prefix, isLocal, isCompletedDecl, recordDecl);
         }
     }
 
@@ -192,15 +263,13 @@ private:
         const auto* classTemplateDecl = clang::dyn_cast_or_null<const clang::ClassTemplateDecl>(decl);
         _ASSERT(classTemplateDecl);
 
-        // completed definition only
-        if (!classTemplateDecl->isThisDeclarationADefinition())
-            return;
+        bool isCompletedDecl = classTemplateDecl->isThisDeclarationADefinition();
 
         std::string prefix, name;
         std::string qualifiedName = classTemplateDecl->getQualifiedNameAsString();
         getPrefixAndName(qualifiedName, prefix, name);
 
-        m_collection.addClassTemplate(name, prefix, isLocal, classTemplateDecl);
+        m_collection.addClassTemplate(name, prefix, isLocal, isCompletedDecl, classTemplateDecl);
 
         clang::LangOptions lo;
         clang::PrintingPolicy pp(lo);
@@ -268,7 +337,9 @@ private:
                 setAnnotations(it, instantiationAnnotations.toString());
             }
 
-            m_collection.addClass(specName, prefix, isLocal, it);
+            bool isCompletedDecl = it->isThisDeclarationADefinition();
+
+            m_collection.addClassTemplateSpecialization(specName, prefix, isLocal, isCompletedDecl, it);
         }
     }
 
@@ -277,15 +348,13 @@ private:
         const auto* enumDecl = clang::dyn_cast_or_null<const clang::EnumDecl>(decl);
         _ASSERT(enumDecl);
 
-        // completed definition only
-        if (!enumDecl->isThisDeclarationADefinition())
-            return;
+        bool isCompletedDecl = enumDecl->isThisDeclarationADefinition();
 
         std::string prefix, name;
         std::string qualifiedName = enumDecl->getQualifiedNameAsString();
         getPrefixAndName(qualifiedName, prefix, name);
 
-        m_collection.addEnum(name, prefix, isLocal, enumDecl);
+        m_collection.addEnum(name, prefix, isLocal, isCompletedDecl, enumDecl);
     }
 
     void addFunction(const clang::NamedDecl* decl, bool isLocal)
@@ -297,11 +366,13 @@ private:
         if (!isLocal)
             return;
 
+        bool isCompletedDecl = funcDecl->isThisDeclarationADefinition();
+
         std::string prefix, name;
         std::string qualifiedName = funcDecl->getQualifiedNameAsString();
         getPrefixAndName(qualifiedName, prefix, name);
 
-        m_collection.addFunction(name, prefix, isLocal, funcDecl);
+        m_collection.addFunction(name, prefix, isLocal, isCompletedDecl, funcDecl);
     }
 
     void addFunctionTemplate(const clang::NamedDecl* decl, bool isLocal)
@@ -313,11 +384,13 @@ private:
         if (!isLocal)
             return;
 
+        bool isCompletedDecl = funcTemplateDecl->isThisDeclarationADefinition();
+
         std::string prefix, name;
         std::string qualifiedName = funcTemplateDecl->getQualifiedNameAsString();
         getPrefixAndName(qualifiedName, prefix, name);
 
-        m_collection.addFunctionTemplate(name, prefix, isLocal, funcTemplateDecl);
+        m_collection.addFunctionTemplate(name, prefix, isLocal, isCompletedDecl, funcTemplateDecl);
     }
 };
 
@@ -328,7 +401,7 @@ Collection::Collection()
     m_root = AbstractItem::make<TranslationUnitItem>();
 }
 
-Collection& Collection::do_get()
+Collection& Collection::do_ref()
 {
     static Collection inst;
     return inst;
@@ -336,7 +409,7 @@ Collection& Collection::do_get()
 
 Collection& Collection::do_init(CXTranslationUnit tu)
 {
-    auto& instance = Collection::do_get();
+    auto& instance = Collection::do_ref();
     instance.m_tu = tu;
     return instance;
 }
@@ -347,9 +420,9 @@ void Collection::init(CXTranslationUnit tu)
     instance.populate();
 }
 
-Collection& Collection::get()
+Collection& Collection::ref()
 {
-    return Collection::do_get();
+    return Collection::do_ref();
 }
 
 void Collection::populate()
@@ -359,40 +432,100 @@ void Collection::populate()
     finder.start();
 }
 
-bool Collection::existItem(const std::string& path) const
+bool Collection::exists(const std::string& path, bool isCompletedDecl) const
 {
-    const_item_list_t items = getItems(path);
+    bool result = false;
 
-    return !items.empty();
-}
-
-bool Collection::existItem(const std::string& parentPath, const std::string& name) const
-{
-    const_item_list_t items = getItems(parentPath, name);
-
-    return !items.empty();
-}
-
-const_item_list_t Collection::getItems(const std::string& path) const
-{
-    auto items = const_cast<Collection*>(this)->getItems(path);
-    return {items.begin(), items.end()};
-}
-
-item_list_t Collection::getItems(const std::string& path)
-{
-    item_list_t result;
-
-    auto find_all = [path](const item_list_t& items, const std::string& name) -> item_list_t
+    try
     {
-        item_list_t result;
-        std::copy_if(items.begin(),
-                     items.end(),
-                     std::back_inserter(result),
-                     [name](const auto& it) { return it->name() == name; });
+        auto item = get(path);
+        result = isCompletedDecl ? item->isCompletedDecl() : true;
+    }
+    catch (std::exception&)
+    {
+    }
 
-        return result;
-    };
+    return result;
+}
+
+bool Collection::exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl) const
+{
+    bool result = false;
+
+    try
+    {
+        auto item = get(parentPath, name);
+        result = isCompletedDecl ? item->isCompletedDecl() : true;
+    }
+    catch (std::exception&)
+    {
+    }
+
+    return result;
+}
+
+template <typename T>
+bool Collection::get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl) const
+{
+    return const_cast<Collection*>(this)->get<T>(item, path, isCompletedDecl);
+}
+
+template <typename T>
+bool Collection::get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl)
+{
+    bool result = false;
+
+    try
+    {
+        item = std::dynamic_pointer_cast<T>(get(path));
+        _ASSERT(item);
+        result = isCompletedDecl ? item->isCompletedDecl() : true;
+    }
+    catch (std::exception&)
+    {
+    }
+
+    return result;
+}
+
+template <typename T>
+bool Collection::get(typename parser::item_t<T>& item,
+                     const std::string& parentPath,
+                     const std::string& name,
+                     bool isCompletedDecl) const
+{
+    return const_cast<Collection*>(this)->get<T>(item, parentPath, name, isCompletedDecl);
+}
+
+template <typename T>
+bool Collection::get(typename parser::item_t<T>& item,
+                     const std::string& parentPath,
+                     const std::string& name,
+                     bool isCompletedDecl)
+{
+    bool result = false;
+
+    try
+    {
+        item = std::dynamic_pointer_cast<T>(get(parentPath, name));
+        _ASSERT(item);
+        result = isCompletedDecl ? item->isCompletedDecl() : true;
+    }
+    catch (std::exception&)
+    {
+    }
+
+    return result;
+}
+
+const_abstract_item_t Collection::get(const std::string& path) const
+{
+    return const_cast<Collection*>(this)->get(path);
+}
+
+abstract_item_t Collection::get(const std::string& path)
+{
+    abstract_item_t result;
 
     if (path.empty())
     {
@@ -410,21 +543,21 @@ item_list_t Collection::getItems(const std::string& path)
         // not last element
         if (i < names.size() - 1)
         {
-            item_list_t items = find_all(children, name);
+            item_list_t all = SelectItems::all(children, name);
 
-            if (items.empty())
+            if (all.empty())
             {
                 throw utils::Exception(
                     R"(path "%s" is not correct: no any item "%s" found)", path.c_str(), name.c_str());
             }
 
-            if (items.size() != 1)
+            if (all.size() != 1)
             {
                 throw utils::Exception(
                     R"(path "%s" is not correct: many items "%s" found)", path.c_str(), name.c_str());
             }
 
-            abstract_item_t item = items.at(0);
+            abstract_item_t item = all.at(0);
 
             if (!AbstractItem::isContainer(item))
             {
@@ -438,55 +571,67 @@ item_list_t Collection::getItems(const std::string& path)
         }
         else
         {
-            result = find_all(children, name);
+            // get all items with similar names, such MyTemplate, MyTemplate<int>, MyTemplate<string>, etc
+            auto all = SelectItems::all(children, name);
+
+            item_list_t found;
+
+            // find full match: e.g MyTemplate<int> or MyClass
+            std::copy_if(
+                all.begin(), all.end(), std::back_inserter(found), [name](auto it) { return it->name() == name; });
+
+            if (found.empty())
+            {
+                // MyTemplate<T> - is not specialization, this is template MyTemplate
+                std::copy_if(all.begin(),
+                             all.end(),
+                             std::back_inserter(found),
+                             [](auto it) { return it->type() == AbstractItem::Type::CLASS_TEMPLATE; });
+            }
+
+            _ASSERT(found.size() == 1);
+
+            result = found.at(0);
         }
     }
 
     return result;
 }
 
-const_item_list_t Collection::getItems(const std::string& parentPath, const std::string& name) const
+const_abstract_item_t Collection::get(const std::string& parentPath, const std::string& name) const
 {
-    auto items = const_cast<Collection*>(this)->getItems(parentPath, name);
-    return {items.begin(), items.end()};
+    return const_cast<Collection*>(this)->get(parentPath, name);
 }
 
-item_list_t Collection::getItems(const std::string& parentPath, const std::string& name)
+abstract_item_t Collection::get(const std::string& parentPath, const std::string& name)
 {
-    item_list_t result;
+    abstract_item_t result;
 
     if (name.empty())
         return result;
 
-    item_list_t items = getItems(parentPath);
-
-    if (items.empty())
-    {
-        throw utils::Exception(R"(no any item found with this path: "%s")", parentPath.c_str());
-    }
-
-    if (items.size() > 1)
-    {
-        throw utils::Exception(R"(many items found with this path: "%s")", parentPath.c_str());
-    }
-
-    abstract_item_t item = items.at(0);
+    auto item = get(parentPath);
 
     if (AbstractItem::isContainer(item))
     {
         auto parent = std::static_pointer_cast<const ContainerItem>(item);
         item_list_t children = parent->children();
 
+        item_list_t found;
         std::copy_if(children.begin(),
                      children.end(),
-                     std::back_inserter(result),
+                     std::back_inserter(found),
                      [name](const auto& it) { return it->name() == name; });
+
+        _ASSERT(found.size() == 1);
+
+        result = found.at(0);
     }
 
     return result;
 }
 
-void Collection::visit(std::function<void(const abstract_item_t item)> handler) const
+void Collection::visit(std::function<void(const_abstract_item_t item)> handler) const
 {
     std::function<void(abstract_item_t item)> do_visit = [&do_visit, handler](abstract_item_t item)
     {
@@ -509,6 +654,31 @@ void Collection::visit(std::function<void(const abstract_item_t item)> handler) 
     }
 }
 
+template <typename Callable>
+void Collection::add(const std::string& name, const std::string& prefix, Callable createHandler)
+{
+    using return_type_t = typename utils::lambda_traits<Callable>::return_type_t;
+    using T = typename return_type_t::element_type;
+
+    if (!exists(prefix, name, false)) // no any item (completed or incompleted)
+    {
+        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+        auto item = createHandler();
+        parent->addItem(item);
+    }
+    else // any item exist
+    {
+        typename parser::item_t<T> item;
+        if (get<T>(item, prefix, name, false) && !item->isCompletedDecl())
+        {
+            auto new_item = createHandler();
+
+            // replace incompleted item
+            *item = *new_item;
+        }
+    }
+}
+
 void Collection::addNamespace(const std::string& name,
                               const std::string& prefix,
                               bool isLocal,
@@ -521,10 +691,10 @@ void Collection::addNamespace(const std::string& name,
     // Local namespace declaration needs to handle annotations (do not forget, processed header is local)
     // Non-local namespace declarations needs to build hierarchy of entities (namespace -> classes and functions, etc)
     // Local entities refer to non-local
-    if (existItem(prefix, name))
+    if (exists(prefix, name))
     {
         // Replace existed namespace declaration by "local"
-        abstract_item_t item = _expectedOne(getItems(prefix, name));
+        abstract_item_t item = get(prefix, name);
         _ASSERT(item->type() == AbstractItem::Type::NAMESPACE);
         auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
 
@@ -574,7 +744,7 @@ void Collection::addNamespace(const std::string& name,
     else
     {
         // Put to collection first namespace declaration
-        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
+        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
         auto item = AbstractItem::make<NamespaceItem>(name, prefix, isLocal, decl);
         parent->addItem(item);
     }
@@ -583,63 +753,77 @@ void Collection::addNamespace(const std::string& name,
 void Collection::addClass(const std::string& name,
                           const std::string& prefix,
                           bool isLocal,
+                          bool isCompletedDecl,
                           const clang::CXXRecordDecl* decl)
 {
-    using namespace global::annotations;
-
-    if (!existItem(prefix, name))
-    {
-        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-        parser::class_item_t item;
-
-        AnnotationList annotations(getAnnotations(decl));
-
-        if (annotations.exist(TS_CODE))
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
         {
-            item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
-        }
-        else
-        {
-            item = AbstractItem::make<ClassItem>(name, prefix, isLocal, decl);
-        }
+            using namespace global::annotations;
 
-        parent->addItem(item);
-    }
+            parser::class_item_t item;
+
+            AnnotationList annotations(getAnnotations(decl));
+
+            if (annotations.exist(TS_CODE))
+            {
+                item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
+            }
+            else
+            {
+                item = AbstractItem::make<ClassItem>(name, prefix, isLocal, isCompletedDecl, decl);
+            }
+
+            return item;
+        });
 }
 
 void Collection::addClassTemplate(const std::string& name,
                                   const std::string& prefix,
                                   bool isLocal,
+                                  bool isCompletedDecl,
                                   const clang::ClassTemplateDecl* decl)
 {
-    if (!existItem(prefix, name))
-    {
-        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-        auto item = AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, decl);
-        parent->addItem(item);
-    }
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
-void Collection::addEnum(const std::string& name, const std::string& prefix, bool isLocal, const clang::EnumDecl* decl)
+void Collection::addClassTemplateSpecialization(const std::string& name,
+                                                const std::string& prefix,
+                                                bool isLocal,
+                                                bool isCompletedDecl,
+                                                const clang::ClassTemplateSpecializationDecl* decl)
 {
-    if (!existItem(prefix, name))
-    {
-        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-        auto item = AbstractItem::make<EnumItem>(name, prefix, isLocal, decl);
-        parent->addItem(item);
-    }
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<ClassTemplateSpecializationItem>(name, prefix, isLocal, isCompletedDecl, decl); });
+}
+
+void Collection::addEnum(
+    const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::EnumDecl* decl)
+{
+
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<EnumItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 void Collection::addFunction(const std::string& name,
                              const std::string& prefix,
                              bool isLocal,
+                             bool isCompletedDecl,
                              const clang::FunctionDecl* decl)
 {
     // get first declaration of function
     if (decl->isFirstDecl())
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-        auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, decl);
+        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+        auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, true, decl);
         parent->addItem(item);
     }
 }
@@ -647,13 +831,14 @@ void Collection::addFunction(const std::string& name,
 void Collection::addFunctionTemplate(const std::string& name,
                                      const std::string& prefix,
                                      bool isLocal,
+                                     bool isCompletedDecl,
                                      const clang::FunctionTemplateDecl* decl)
 {
     // get first declaration of function
     if (decl->isFirstDecl())
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(_expectedOne(getItems(prefix)));
-        auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, decl);
+        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+        auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, true, decl);
         parent->addItem(item);
     }
 }

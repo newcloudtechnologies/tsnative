@@ -23,9 +23,15 @@ class ContainerItem : public AbstractItem
     item_list_t m_items;
 
 protected:
-    ContainerItem(Type type, const std::string& name, const std::string& prefix, bool isLocal = false);
+    ContainerItem(Type type,
+                  const std::string& name,
+                  const std::string& prefix,
+                  bool isLocal = false,
+                  bool isCompletedDecl = true);
 
 public:
+    virtual ~ContainerItem() = default;
+
     void addItem(abstract_item_t item);
 
     item_list_t children() const;

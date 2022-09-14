@@ -26,11 +26,11 @@ ArgumentValue::ArgumentValue()
 {
 }
 
-ArgumentValue::ArgumentValue(const std::string& name, const std::string& type, bool isSpread, bool isOptional)
-    : m_name(name)
-    , m_type(type)
-    , m_isSpread(isSpread)
-    , m_isOptional(isOptional)
+ArgumentValue::ArgumentValue(const std::string& _name, const std::string& _type, bool _isSpread, bool _isOptional)
+    : name(_name)
+    , type(_type)
+    , isSpread(_isSpread)
+    , isOptional(_isOptional)
 {
 }
 
@@ -39,7 +39,7 @@ std::string ArgumentValue::toString() const
     using namespace utils;
 
     std::string img =
-        strprintf(R"(%s%s%s: %s)", m_isSpread ? "..." : "", m_name.c_str(), m_isOptional ? "?" : "", m_type.c_str());
+        strprintf(R"(%s%s%s: %s)", isSpread ? "..." : "", name.c_str(), isOptional ? "?" : "", type.c_str());
 
     return img;
 }

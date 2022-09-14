@@ -31,6 +31,7 @@ private:
     FunctionTemplateItem(const std::string& name,
                          const std::string& prefix,
                          bool isLocal,
+                         bool isCompletedDecl,
                          const clang::FunctionTemplateDecl* decl);
 
 public:

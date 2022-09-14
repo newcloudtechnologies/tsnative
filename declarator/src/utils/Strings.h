@@ -61,6 +61,34 @@ std::string stringify(const T& first, const Ts&... rest)
     return os.str();
 }
 
+// TODO: add other specializations except std::vector, std::list
+template <template <typename, typename> class C, class T, class A>
+std::string print(const C<T, A>& elements)
+{
+    std::ostringstream os;
+
+    auto container = elements;
+
+    os << "[";
+
+    if (!container.empty())
+    {
+        auto front = std::move(container.front());
+        container.erase(container.begin());
+
+        os << front;
+
+        for (const auto& it : container)
+        {
+            os << ", " << it;
+        }
+    }
+
+    os << "]";
+
+    return os.str();
+}
+
 template <typename T>
 std::string toString(T value)
 {

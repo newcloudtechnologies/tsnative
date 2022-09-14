@@ -18,7 +18,7 @@ class NumberPrivate;
 class TS_DECLARE Number : public Object
 {
 public:
-    TS_METHOD TS_SIGNATURE("constructor(_: any)") Number(double v);
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(_: any)") Number(double v);
     Number(Number* v);
 
     ~Number() override;
@@ -64,7 +64,7 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
-    TS_METHOD TS_RETURN_TYPE("number") double unboxed() const;
+    TS_METHOD TS_NO_CHECK TS_RETURN_TYPE("number") double unboxed() const;
 
     TS_METHOD Number* clone() const;
 

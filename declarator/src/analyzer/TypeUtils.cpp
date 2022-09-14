@@ -23,6 +23,7 @@
 #include <clang/AST/Decl.h>
 #include <clang/AST/DeclCXX.h>
 #include <clang/AST/PrettyPrinter.h>
+#include <clang/AST/QualTypeNames.h>
 
 #include <exception>
 #include <regex>
@@ -67,14 +68,11 @@ bool getModuleName(const std::string& path, std::string& moduleName)
     {
         moduleName = parts.at(0);
 
-        auto& collection = Collection::get();
+        auto& collection = Collection::ref();
 
-        if (collection.existItem("", moduleName))
+        if (collection.exists("", moduleName))
         {
-            item_list_t items = collection.getItems(moduleName);
-            _ASSERT(items.size() == 1);
-
-            abstract_item_t item = items.at(0);
+            auto item = collection.get(moduleName);
 
             if (item->type() == AbstractItem::Type::NAMESPACE)
             {
@@ -315,20 +313,99 @@ std::string TypeMapper::convertToTSType(const std::string& prefix, const clang::
 {
     using namespace utils;
 
+    std::string cppType = canonicalTypeToString(type);
+
+    if (!includes(cppType))
+    {
+        cppType = typeToString(type);
+    }
+
+    return convertToTSType(prefix, cppType);
+}
+
+bool isPointer(const clang::QualType& type)
+{
+    return !type.getTypePtr()->getPointeeType().isNull();
+}
+
+clang::QualType removeCVPR(const clang::QualType& type)
+{
+    clang::QualType qt = type;
+    // remove reference
+    qt = qt.getNonReferenceType();
+
+    // remove pointer
+    if (!qt.getTypePtr()->getPointeeType().isNull())
+    {
+        qt = qt.getTypePtr()->getPointeeType();
+    }
+
+    // remove pointer (if double pointers)
+    if (!qt.getTypePtr()->getPointeeType().isNull())
+    {
+        qt = qt.getTypePtr()->getPointeeType();
+    }
+
+    // remove qualifiers
+    qt.removeLocalConst();
+    qt.removeLocalVolatile();
+
+    return qt;
+}
+
+std::string typeToString(const clang::QualType& type)
+{
     clang::LangOptions lo;
     clang::PrintingPolicy pp(lo);
     pp.adjustForCPlusPlus();
 
+    std::string result = type.getAsString(pp);
+    return result;
+}
+
+std::string typeToString(const clang::QualType& type, const clang::ASTContext& context)
+{
     std::string result;
 
-    std::string cppType = type.getCanonicalType().getAsString(pp);
+    clang::LangOptions lo;
+    clang::PrintingPolicy pp(lo);
+    pp.adjustForCPlusPlus();
 
-    if (!includes(cppType))
+    clang::QualType qt = type;
+
+    result = clang::TypeName::getFullyQualifiedName(qt, context, pp);
+
+    return result;
+}
+
+std::string canonicalTypeToString(const clang::QualType& type)
+{
+    clang::LangOptions lo;
+    clang::PrintingPolicy pp(lo);
+    pp.adjustForCPlusPlus();
+
+    std::string result = type.getCanonicalType().getAsString(pp);
+    return result;
+}
+
+std::string getFullTypeName(const std::string& prefix, const std::string& name)
+{
+    return !prefix.empty() ? prefix + "::" + name : name;
+}
+
+std::string getPartTypeName(const std::string& full)
+{
+    std::string result = full;
+    std::regex regexp(R"(([\w\:\<\>]+)::([\w\:\<\>]+))");
+    std::smatch match;
+
+    // A<T>::B<R>::C => C
+    if (std::regex_search(full.begin(), full.end(), match, regexp))
     {
-        cppType = type.getAsString(pp);
+        result = match[2];
     }
 
-    return convertToTSType(prefix, cppType);
+    return result;
 }
 
 } // namespace analyzer

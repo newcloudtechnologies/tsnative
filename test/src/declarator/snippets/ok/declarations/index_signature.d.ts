@@ -12,13 +12,12 @@
 */
 
 declare module "global" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace snippets {
         export class IndexableEntity<T> {
-            private p0_IndexableEntity: boolean;
+            private p0_IndexableEntity: number;
+            private p1_IndexableEntity: number;
+            private p2_IndexableEntity: number;
 
             constructor();
 

@@ -11,28 +11,41 @@
  * Don't edit this file.
 */
 
-export class IteratorResult<T> {
-    private p0_IteratorResult: boolean;
-}
+declare module "global" {
 
-export class Iterator<T> {
-    private p0_Iterator: number;
+    export namespace snippets {
+        export class IteratorResult<T> {
+            private p0_IteratorResult: number;
+            private p1_IteratorResult: number;
+            private p2_IteratorResult: number;
+        }
 
-    next(): IteratorResult<T>;
-}
+        export class Iterator<T> {
+            private p0_Iterator: number;
+            private p1_Iterator: number;
+            private p2_Iterator: number;
 
-export class Iterable<T> {
-    private p0_Iterable: number;
+            next(): IteratorResult<T>;
+        }
 
-    iterator(): Iterator<T>;
-}
+        export class Iterable<T> {
+            private p0_Iterable: number;
+            private p1_Iterable: number;
+            private p2_Iterable: number;
 
-export class Entity<T> extends Iterable<T> {
-    private p0_Entity: number;
+            iterator(): Iterator<T>;
+        }
 
-    constructor();
+        export class Entity<T> extends Iterable<T> {
+            private p0_Entity: number;
+            private p1_Entity: number;
+            private p2_Entity: number;
 
-    //@ts-ignore
-    @MapsTo("iterator")
-    [Symbol.iterator](): EntityIterator<T>;
+            constructor();
+
+            //@ts-ignore
+            @MapsTo("iterator")
+            [Symbol.iterator](): EntityIterator<T>;
+        }
+    }
 }

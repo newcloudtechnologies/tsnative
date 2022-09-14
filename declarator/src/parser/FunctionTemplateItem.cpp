@@ -19,8 +19,9 @@ namespace parser
 FunctionTemplateItem::FunctionTemplateItem(const std::string& name,
                                            const std::string& prefix,
                                            bool isLocal,
+                                           bool isCompletedDecl,
                                            const clang::FunctionTemplateDecl* decl)
-    : FunctionItem(AbstractItem::Type::FUNCTION_TEMPLATE, name, prefix, isLocal, decl->getAsFunction())
+    : FunctionItem(AbstractItem::Type::FUNCTION_TEMPLATE, name, prefix, isLocal, isCompletedDecl, decl->getAsFunction())
     , m_decl(decl)
 {
 }

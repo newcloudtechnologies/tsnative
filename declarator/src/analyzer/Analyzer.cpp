@@ -196,15 +196,15 @@ void do_create(parser::const_abstract_item_t item,
 namespace analyzer
 {
 
-parser::item_list_t getSuitableItems(const parser::Collection& collection)
+parser::const_item_list_t getSuitableItems(const parser::Collection& collection)
 {
     using namespace global::annotations;
     using namespace parser;
 
-    parser::item_list_t result;
+    parser::const_item_list_t result;
 
     collection.visit(
-        [&result](const parser::abstract_item_t item)
+        [&result](parser::const_abstract_item_t item)
         {
             AnnotationList anotations(getItemAnnotations(item));
 
@@ -231,7 +231,7 @@ analyzer::TypeMapper makeTypeMapper(const parser::Collection& collection)
     std::map<std::string, std::string> table;
 
     collection.visit(
-        [&table, getClassFullName](const parser::abstract_item_t item)
+        [&table, getClassFullName](parser::const_abstract_item_t item)
         {
             AnnotationList anotations(getItemAnnotations(item));
 

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 namespace mgtts IS_TS_MODULE
 {
@@ -20,13 +21,13 @@ namespace mgtts IS_TS_MODULE
 namespace ui2 IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Entity_t
+class TS_EXPORT Entity_t : public Object
 {
 public:
     TS_METHOD void entity_base();
 };
 
-class TS_EXPORT Base2_t
+class TS_EXPORT Base2_t : public Object
 {
 public:
     TS_METHOD void base();

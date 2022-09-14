@@ -28,6 +28,7 @@
 #define IS_TS_DECLARED_NAMESPACE __attribute__((annotate("TS_NAMESPACE;;TS_DECLARE")))
 #define TS_EXPORT __attribute__((annotate("TS_EXPORT")))
 #define TS_DECLARE __attribute__((annotate("TS_DECLARE")))
+#define TS_NO_CHECK __attribute__((annotate("TS_NO_CHECK")))
 #define TS_METHOD __attribute__((annotate("TS_METHOD")))
 #define TS_CLOSURE __attribute__((annotate("TS_CLOSURE")))
 #define TS_SIGNATURE(sig) __attribute__((annotate(MK_ANNOTATION(TS_SIGNATURE, sig))))
@@ -37,7 +38,10 @@
 #define TS_GETTER __attribute__((annotate("TS_GETTER")))
 #define TS_SETTER __attribute__((annotate("TS_SETTER")))
 #define TS_IGNORE __attribute__((annotate("TS_IGNORE")))
-#define TS_CODE(code) class MK_TS_CODE(code) UNIQUE_NAME(TS_CODE) {};
+#define TS_CODE(code)                           \
+    class MK_TS_CODE(code) UNIQUE_NAME(TS_CODE) \
+    {                                           \
+    };
 
 #else
 #define TS_MODULE(name) name
@@ -47,6 +51,7 @@
 #define IS_TS_DECLARED_NAMESPACE
 #define TS_EXPORT
 #define TS_DECLARE
+#define TS_NO_CHECK
 #define TS_METHOD
 #define TS_CLOSURE
 #define TS_SIGNATURE(sig)

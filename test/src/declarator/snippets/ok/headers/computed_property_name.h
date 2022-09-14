@@ -12,33 +12,30 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
-// FIXME: can't find Iterable<T> in collection if Iterable located inside namespace
-
-/*
 namespace global IS_TS_MODULE
 {
 
 namespace snippets IS_TS_NAMESPACE
 {
-*/
 
 template <typename T>
-class TS_EXPORT IteratorResult
+class TS_EXPORT IteratorResult : public Object
 {
 public:
     IteratorResult(bool done, T value);
 };
 
 template <typename T>
-class TS_EXPORT Iterator
+class TS_EXPORT Iterator : public Object
 {
 public:
     TS_METHOD virtual IteratorResult<T>* next() = 0;
 };
 
 template <typename T>
-class TS_EXPORT Iterable
+class TS_EXPORT Iterable : public Object
 {
     TS_METHOD virtual Iterator<T>* iterator() = 0;
 };
@@ -54,7 +51,5 @@ public:
         TS_DECORATOR("MapsTo('iterator')") Iterator<T>* iterator() override;
 };
 
-/*
 }   // namespace snippets
 }   // namespace global
-*/

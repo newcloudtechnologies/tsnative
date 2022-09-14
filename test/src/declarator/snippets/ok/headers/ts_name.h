@@ -13,10 +13,11 @@
 
 #include <TS.h>
 #include <std/tsnumber.h>
+#include <std/tsobject.h>
 
 enum TS_EXPORT TS_NAME("Types") TypesEnum{PLANT, ANIMAL, INSECT};
 
-class TS_EXPORT TS_NAME("Collection") CollectionClass
+class TS_EXPORT TS_NAME("Collection") CollectionClass : public Object
 {
 public:
     /*
@@ -32,7 +33,7 @@ public:
 public:
     TS_METHOD CollectionClass() = default;
 
-    TS_METHOD TS_NAME("size") Number getSize();
+    TS_METHOD TS_NAME("size") Number* getSize();
 };
 
-TS_EXPORT TS_NAME("getNumber") Number getNum();
+TS_EXPORT TS_NAME("getNumber") Number* getNum();

@@ -27,8 +27,10 @@ const output_dir = path.join(current_dir, "out", "declarator", "declarations");
 const platform = os.platform();
 console.log(`Platform detected: ${platform}`);
 
+const declarator_bin = process.env.DECLARATOR_BIN as string;
 const compiler_abi = process.env.COMPILER_ABI as string;
 const declarator_include_dirs = process.env.DECLARATOR_INCLUDE_DIRS!.split(";") as string[];
+const declarator_no_import_std = process.env.DECLARATOR_NO_IMPORT_STD as string;
 
 if (compiler_abi == undefined || compiler_abi == "") {
     console.error("Compiler ABI cannot be empty. Please provide one with COMPILER_ABI env variable");
@@ -110,8 +112,6 @@ class Declarator extends Process {
     public static async run(headerFilePath: string, compiler_abi: string): Promise<Declarator> {
         let declarator: Declarator;
 
-        const declarator_bin = process.env.DECLARATOR_BIN
-
         let include_list: string[] = [];
 
         const DECLARATOR_INCLUDE_DIRS = process.env.DECLARATOR_INCLUDE_DIRS;
@@ -134,7 +134,7 @@ class Declarator extends Process {
             }
 
             let { stdout, stderr } = await exec(`${declarator_bin} -nobuiltininc -x c++ --target=${compiler_abi} -D TS ${headerFilePath} ${includes}`,
-                { env: { 'DECLARATOR_OUTPUT_DIR': output_dir } });
+                { env: { 'DECLARATOR_OUTPUT_DIR': output_dir , 'DECLARATOR_NO_IMPORT_STD': declarator_no_import_std} });
 
             declarator = new Declarator(stdout, stderr, headerFilePath);
         }

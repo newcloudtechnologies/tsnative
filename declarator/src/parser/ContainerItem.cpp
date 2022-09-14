@@ -14,8 +14,9 @@
 namespace parser
 {
 
-ContainerItem::ContainerItem(Type type, const std::string& name, const std::string& prefix, bool isLocal)
-    : AbstractItem(type, name, prefix, isLocal)
+ContainerItem::ContainerItem(
+    Type type, const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl)
+    : AbstractItem(type, name, prefix, isLocal, isCompletedDecl)
 {
 }
 

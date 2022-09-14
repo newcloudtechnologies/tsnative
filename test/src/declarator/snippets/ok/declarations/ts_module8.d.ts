@@ -12,13 +12,16 @@
 */
 
 declare module "poc" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace exts {
+        //@ts-ignore
+        @VTableSize(8)
+        //@ts-ignore
+        @VirtualDestructor
         export class MyWidget extends ts.Widget {
-            private p0_MyWidget: boolean;
+            private p0_MyWidget: number;
+            private p1_MyWidget: number;
+            private p2_MyWidget: number;
 
             constructor(parent: ts.Widget);
         }

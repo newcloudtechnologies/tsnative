@@ -12,13 +12,16 @@
 */
 
 declare module "mgt" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace widgets {
+        //@ts-ignore
+        @VTableSize(8)
+        //@ts-ignore
+        @VirtualDestructor
         export class WidgetFramework {
-            private p0_WidgetFramework: boolean;
+            private p0_WidgetFramework: number;
+            private p1_WidgetFramework: number;
+            private p2_WidgetFramework: number;
 
             constructor();
         }

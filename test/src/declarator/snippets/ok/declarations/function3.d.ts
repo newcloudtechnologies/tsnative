@@ -11,8 +11,14 @@
  * Don't edit this file.
 */
 
+//@ts-ignore
+@VTableSize(8)
+//@ts-ignore
+@VirtualDestructor
 export class Color {
-    private p0_Color: boolean;
+    private p0_Color: number;
+    private p1_Color: number;
+    private p2_Color: number;
 }
 
 export function createRGB(r: number, g: number, b: number): Color;

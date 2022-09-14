@@ -30,6 +30,7 @@ public:
 
     std::string name() const;
     bool isParameterPack() const;
+    bool isPointerType() const;
     const clang::TemplateTypeParmDecl* decl() const;
 };
 

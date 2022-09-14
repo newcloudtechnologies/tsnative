@@ -63,17 +63,14 @@ export class ReturnHandler extends AbstractNodeHandler {
           const retTypeUnwrapped = ret.type.unwrapPointer();
           if (currentFunctionReturnType.isUnion()) {
             ret = this.generator.ts.union.create(ret);
+          } else if (ret.type.isUnion()) {
+            ret = this.generator.ts.union.get(ret);
+            ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
           } else if (
             (retTypeUnwrapped.isStructType() &&
               retTypeUnwrapped.isSameStructs(currentFunctionReturnType.unwrapPointer())) ||
             (ret.type.isPointer() && retTypeUnwrapped.isIntegerType(8))
           ) {
-            ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
-          } else {
-            if (ret.type.isUnion()) {
-              ret = this.generator.ts.union.get(ret);
-            }
-
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
           }
         }

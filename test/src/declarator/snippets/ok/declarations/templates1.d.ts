@@ -11,19 +11,14 @@
  * Don't edit this file.
 */
 
-declare module "global" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
+export class BasicRect<T> {
+    private p0_BasicRect: number;
+    private p1_BasicRect: number;
+    private p2_BasicRect: number;
+    private p3_BasicRect: number;
+    private p4_BasicRect: number;
 
-    export namespace snippets {
-        export class BasicRect<T> {
-            private p0_BasicRect: number;
-            private p1_BasicRect: number;
-
-            constructor(width: T, height: T);
-            width(): T;
-            height(): T;
-        }
-    }
+    constructor(width: T, height: T);
+    width(): T;
+    height(): T;
 }

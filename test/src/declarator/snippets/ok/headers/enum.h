@@ -12,6 +12,7 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 namespace test IS_TS_MODULE
 {
@@ -19,7 +20,7 @@ namespace test IS_TS_MODULE
 namespace snippets IS_TS_NAMESPACE
 {
 
-class TS_EXPORT Object
+class TS_EXPORT EnumHolder : public Object
 {
 public:
     enum TS_EXPORT Types
@@ -30,8 +31,8 @@ public:
     };
 
 public:
-    TS_METHOD Object() = default;
-    ~Object() = default;
+    TS_METHOD EnumHolder() = default;
+    ~EnumHolder() = default;
 
     TS_METHOD Types getType();
 };

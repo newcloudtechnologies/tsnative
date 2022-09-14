@@ -12,8 +12,9 @@
 #pragma once
 
 #include "TS.h"
+#include "std/tsnumber.h"
 
-TS_EXPORT double getNumber();
+TS_EXPORT Number* getNumber();
 
-TS_EXPORT double capacity();
-TS_EXPORT void capacity(double d);
+TS_EXPORT TS_NAME("capacity") Number* getCapacity();
+TS_EXPORT TS_NAME("capacity") void setCapacity(Number* value);

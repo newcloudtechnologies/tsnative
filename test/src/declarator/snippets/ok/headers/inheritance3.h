@@ -12,6 +12,7 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsobject.h>
 
 class Entity
 {
@@ -21,14 +22,32 @@ public:
     TS_METHOD void entity();
 };
 
-class TS_EXPORT Event : public Entity
+class TS_EXPORT Event : public Object, public Entity
 {
 public:
     Event() = default;
     TS_METHOD void event();
 };
 
-class A
+class Ak
+{
+public:
+    TS_METHOD void ak();
+};
+
+class Al
+{
+public:
+    TS_METHOD void al();
+};
+
+class Am
+{
+public:
+    TS_METHOD void am();
+};
+
+class A : public Ak, public Al, public Am
 {
     int m_iA;
 
@@ -38,7 +57,13 @@ public:
     TS_METHOD void a();
 };
 
-class B
+class Bk
+{
+public:
+    TS_METHOD void bk();
+};
+
+class B : public Bk
 {
 public:
     B() = default;
@@ -46,7 +71,19 @@ public:
     TS_METHOD void b();
 };
 
-class C
+class Ck
+{
+public:
+    TS_METHOD void ck();
+};
+
+class Cl
+{
+public:
+    TS_METHOD void cl();
+};
+
+class C : public Ck, public Cl
 {
 public:
     C() = default;
@@ -62,7 +99,27 @@ public:
     TS_METHOD void abc();
 };
 
-class TS_EXPORT CustomEvent : public Event, public Abc
+class D
+{
+public:
+    TS_METHOD void d();
+};
+
+class E
+{
+public:
+    TS_METHOD void e();
+};
+
+class De : public D, public E
+{
+public:
+    De() = default;
+    ~De() = default;
+    TS_METHOD void de();
+};
+
+class TS_EXPORT CustomEvent : public Event, public Abc, public De
 {
 public:
     ~CustomEvent() = default;

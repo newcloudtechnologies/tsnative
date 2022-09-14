@@ -64,6 +64,12 @@
     }
 
     {
+    
+    type RxText_args2 = {
+        text: string,
+        color: number,
+        font: (string | undefined)
+    }
         function RxText(args: RxText_args2) {
             if (args.font) {
                 return args.font;
@@ -169,3 +175,5 @@
 
     console.assert(!!checkResult, "Type with optional field value in function args");
 }
+
+

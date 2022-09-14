@@ -29,6 +29,8 @@ public:
     std::string name() const;
     clang::QualType type() const;
     bool isParameterPack() const;
+    bool isPointerType() const;
+    bool isTemplated() const;
     const clang::ParmVarDecl* decl() const;
 };
 

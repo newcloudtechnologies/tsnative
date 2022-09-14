@@ -21,7 +21,7 @@ class StringPrivate;
 // add TS_DECLARE to template specialization
 template class TS_DECLARE Iterable<String*>;
 
-class TS_DECLARE String : public Object, public Iterable<String*>
+class TS_DECLARE String : public Iterable<String*>
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") String();

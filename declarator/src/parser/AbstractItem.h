@@ -36,6 +36,7 @@ struct AbstractItem
         NAMESPACE,
         CLASS,
         CLASS_TEMPLATE,
+        CLASS_TEMPLATE_SPECIALIZATION,
         ENUM,
         FUNCTION,
         FUNCTION_TEMPLATE,
@@ -47,9 +48,16 @@ private:
     std::string m_name;
     std::string m_prefix;
     bool m_isLocal;
+    bool m_isCompletedDecl;
 
 protected:
-    AbstractItem(Type type, const std::string& name, const std::string& prefix, bool isLocal = false);
+    AbstractItem(Type type,
+                 const std::string& name,
+                 const std::string& prefix,
+                 bool isLocal = false,
+                 bool isCompletedDecl = true);
+
+    virtual ~AbstractItem() = default;
 
 public:
     Type type() const;
@@ -57,6 +65,7 @@ public:
     std::string prefix() const;
     bool isLocal() const;
     void setLocal(bool isLocal);
+    bool isCompletedDecl() const;
 
     static bool isContainer(const_abstract_item_t item);
     static std::string getParentName(const_abstract_item_t item);

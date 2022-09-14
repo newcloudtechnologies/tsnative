@@ -41,7 +41,11 @@ private:
     const clang::EnumDecl* m_decl;
 
 private:
-    EnumItem(const std::string& name, const std::string& prefix, bool isLocal, const clang::EnumDecl* decl);
+    EnumItem(const std::string& name,
+             const std::string& prefix,
+             bool isLocal,
+             bool isCompletedDecl,
+             const clang::EnumDecl* decl);
 
 public:
     std::vector<Enumerator> enumerators() const;

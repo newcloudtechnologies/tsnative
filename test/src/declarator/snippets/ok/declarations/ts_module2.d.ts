@@ -12,13 +12,16 @@
 */
 
 declare module "global" {
-    import { pointer } from "tsnative/std/definitions/lib.std.numeric"
-    import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators"
-    import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
     export namespace stuffs1 {
+        //@ts-ignore
+        @VTableSize(8)
+        //@ts-ignore
+        @VirtualDestructor
         export class Entity1 {
-            private p0_Entity1: boolean;
+            private p0_Entity1: number;
+            private p1_Entity1: number;
+            private p2_Entity1: number;
 
             constructor();
             entity1(): void;
@@ -26,8 +29,14 @@ declare module "global" {
     }
 
     export namespace stuffs2 {
+        //@ts-ignore
+        @VTableSize(8)
+        //@ts-ignore
+        @VirtualDestructor
         export class Entity2 {
-            private p0_Entity2: boolean;
+            private p0_Entity2: number;
+            private p1_Entity2: number;
+            private p2_Entity2: number;
 
             constructor();
             entity2(): void;
