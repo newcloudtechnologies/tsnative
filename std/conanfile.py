@@ -71,13 +71,38 @@ class TSNativeStdConan(ConanFile):
         del self.info.options.build_tests
         del self.info.options.enable_logs
 
+    @property
+    def base_cmake_module_path(self: ConanFile):
+        return os.path.join(self.package_folder, "lib", "cmake")
+
     def package_info(self):
-        self.cpp_info.name = self.name
-        self.cpp_info.libs = ["tsnative-std"]
-        self.cpp_info.libdirs = ['lib']
-        self.cpp_info.includedirs = ['include']
+        pkg_name = self.name
+
+        self.cpp_info.name = pkg_name
         self.cpp_info.defines = ['USE_STD_ARRAY_BACKEND']
-        self.cpp_info.set_property("cmake_target_name", self.name)
-        self.cpp_info.set_property("cmake_target_aliases", ["tsnative-std::tsnative-std"])
+
+        # CMakeDeps
+
+        build_dir = self.package_folder
+        cmake_config = os.path.join(self.base_cmake_module_path, pkg_name, pkg_name + "Config.cmake")
+
+        self.cpp_info.set_property("cmake_file_name", pkg_name)
+        self.cpp_info.set_property("cmake_target_name", pkg_name)
+        self.cpp_info.set_property("cmake_build_modules", [cmake_config])
+
+        if build_dir not in self.cpp_info.builddirs:
+            self.cpp_info.builddirs.append(build_dir)
+        self.cpp_info.builddirs.append(os.path.join(self.base_cmake_module_path))
+
+        # cmake_find_package
+
+        self.cpp_info.libs = [pkg_name]
+        self.cpp_info.names["cmake_find_package"] = pkg_name
+        self.cpp_info.names["cmake_find_package_multi"] = pkg_name
+
+        # self.cpp_info.libs property does the job for old generators but this should work too. Not tested.
+        # self.cpp_info.build_modules["cmake_find_package"].append(cmake_config)
+        # self.cpp_info.build_modules["cmake_find_package_multi"].append(cmake_config)
+
         self.user_info.NODE_PATH = os.path.join(
             self.package_folder, "declarations/tsnative")
