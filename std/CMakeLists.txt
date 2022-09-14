@@ -168,15 +168,22 @@ install(
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+install(
+    EXPORT      ${PROJECT_NAME}_export
+    FILE        ${PROJECT_NAME}Targets.cmake
+    NAMESPACE   tsnative-std::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
+install(
+    FILES       ${PROJECT_NAME}Config.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
 # keep this path for now to mimic structure hardcoded into declarator
 install(
     DIRECTORY   decorators
     DESTINATION "declarations/tsnative/std"
-)
-
-install(
-    FILES       ${PROJECT_NAME}-config.cmake
-    DESTINATION "cmake"
 )
 
 if (BUILD_TEST)
@@ -210,4 +217,5 @@ if (BUILD_TEST)
                             GTest::gmock)
 
     gtest_add_tests(TARGET ${PROJECT_NAME}_GTEST)
-endif()        
+endif()
+
