@@ -169,7 +169,7 @@ endmacro()
 function (_add_ts_command ARG_SRC ...)
     set(options )
     set(oneValueArgs OUTPUT)
-    set(multiValueArgs MANGLED DEMANGLED FLAGS DEPENDS)
+    set(multiValueArgs MANGLED DEMANGLED INCLUDE_DIRS FLAGS DEPENDS)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
@@ -187,6 +187,11 @@ function (_add_ts_command ARG_SRC ...)
     set(mangledTable ${ARG_MANGLED})
     set(demangledTable ${ARG_DEMANGLED})
     set(dependencies ${ARG_DEPENDS})
+    set(includeDirs ${ARG_INCLUDE_DIRS})
+    # XXX: We have to use comma-space separator bc of WinApi CommandLineToArgvW function that
+    # cmake uses to parse command line arguments. It adds a strange prefix 'C;' to paths if we
+    # use only comma to separate paths.
+    set(commaSep "$<COMMA> ")
 
     get_filename_component(outputDir ${outputFile} DIRECTORY)
 
@@ -201,8 +206,9 @@ function (_add_ts_command ARG_SRC ...)
         #COMMAND ${CMAKE_COMMAND} -E env "${tsCompilerEnv}" ${tsCompiler}
         ARGS ${inputFile}
             --build ${outputDir}
-            --mangledTables "$<JOIN:${mangledTable},$<COMMA>>"
-            --demangledTables "$<JOIN:${demangledTable},$<COMMA>>"
+            --mangledTables "$<JOIN:${mangledTable},${commaSep}>"
+            --demangledTables "$<JOIN:${demangledTable},${commaSep}>"
+            "$<$<BOOL:${includeDirs}>:--includeDirs>" "$<JOIN:${includeDirs},${commaSep}>"
             "${flags}"
         COMMENT "[TS2] ${tsCompiler}: ${outputFile}"
         COMMAND_EXPAND_LISTS
@@ -340,16 +346,14 @@ macro (_collectIncludeDirs)
 
         # XXX: This is a hack due to some broken headers in mgt. Also it filter out redundant include directories
         # from third parties. Just filter out broken?
-        set(_filterRegex /usr|mgt_graphics|mgt_pal|mgt_bpl|mgt_ui|abseil|rapidjson)
+        set(_filterRegex libuv|/usr|mgt_graphics|mgt_pal|mgt_bpl|mgt_ui|abseil|rapidjson)
         set(_includeDirs $<FILTER:$<REMOVE_DUPLICATES:${_includeDirs}>,EXCLUDE,${_filterRegex}>)
     else()
         # If the include directories are defined in caller context, trust that they know what they're doing.
         set(_includeDirs ${ARG_INCLUDE_DIRS})
     endif()
 
-    # Use semicolon to separate key and value otherwise it will be quoted "--key value"
-    set(_commaSeparated $<JOIN:${_includeDirs},$<COMMA>>)
-    set(includeDirs $<$<BOOL:${_includeDirs}>:--includeDirs;${_commaSeparated}>)
+    set(includeDirs ${_includeDirs})
 endmacro()
 
 macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FLAG)
@@ -363,7 +367,8 @@ macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FLAG)
         OUTPUT ${cppFile}
         MANGLED ${mangledTables}
         DEMANGLED ${demangledTables}
-        FLAGS ${baseFlags};${ARG_FLAG};--templatesOutputDir;${outputDir};${includeDirs}
+        INCLUDE_DIRS ${includeDirs}
+        FLAGS ${baseFlags};${ARG_FLAG};--templatesOutputDir;${outputDir}
         DEPENDS ${ARG_DEPENDS} ${watchSources}
     )
 
