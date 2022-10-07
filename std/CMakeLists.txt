@@ -9,7 +9,6 @@ option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)
 find_package(absl)
 find_package(libuv)
 find_package(tsnative-declarator)
-find_program(TS_DECLARATOR tsnative-declarator) # TODO: autodetect during find_package
 
 include(TsDeclaratorUtils)
 

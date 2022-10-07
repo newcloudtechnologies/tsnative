@@ -15,12 +15,15 @@ set(INCLUDES
     Exception.h
     Strings.h
     Env.h
-    lambda_traits.h
+    Paths.h
+    LambdaTraits.h
 )
 
 set(SOURCES
+    Exception.cpp
     Strings.cpp
     Env.cpp
+    Paths.cpp
 )
 
 add_library(${PROJECT_NAME} OBJECT

@@ -12,12 +12,7 @@
 #pragma once
 
 #include <exception>
-#include <iostream>
-#include <sstream>
-#include <stdarg.h>
 #include <string>
-#include <utility>
-#include <vector>
 
 namespace utils
 {
@@ -27,47 +22,27 @@ class Exception : public std::exception
     std::string m_what;
 
 public:
-    Exception(const char* format, ...)
-    {
-        va_list argptr, argptr2;
-        std::vector<char> buffer;
+    Exception(const char* message, const char* function, const char* file, unsigned int line);
+    Exception(const char* format, ...);
 
-        va_start(argptr, format);
-        va_copy(argptr2, argptr);
-
-        std::size_t length = vsnprintf(NULL, 0, format, argptr) + 1;
-        va_end(argptr);
-        buffer.resize(length, 0);
-
-        vsnprintf(&buffer[0], buffer.size(), format, argptr2);
-        va_end(argptr2);
-
-        m_what.assign(buffer.begin(), buffer.end());
-    }
+    const char* what() const noexcept override;
 
     template <typename T>
-    Exception& operator<<(const T& t)
-    {
-        std::ostringstream oss;
-        oss << t;
-        m_what += oss.str();
-
-        return *this;
-    }
-
-    virtual const char* what() const noexcept
-    {
-        return m_what.c_str();
-    }
+    Exception& operator<<(const T& t);
 };
+
+std::string make_stamp(const char* function, const char* file, unsigned int line);
 
 } // namespace utils
 
-#define _ASSERT(exp)                   \
-    ((exp) ? ((void)0)                 \
-           : throw ::utils::Exception( \
-                 "Assert: \"%s:\", func: %s, file: %s, line: %d", #exp, __FUNCTION__, __FILE__, __LINE__))
-#define _THROW(msg) \
-    throw ::utils::Exception("Message: %s, func: %s, file: %s, line: %d", #msg, __FUNCTION__, __FILE__, __LINE__)
+#define _ASSERT(exp)                                           \
+    ((exp) ? ((void)0)                                         \
+           : throw ::utils::Exception("Assertion \"" #exp "\"" \
+                                      "failed",                \
+                                      __FUNCTION__,            \
+                                      __FILE__,                \
+                                      __LINE__))
 
-#define _STAMP() ::utils::Exception("func: %s, file: %s, line: %d", __FUNCTION__, __FILE__, __LINE__).what()
+#define _THROW(msg) throw ::utils::Exception(#msg, __FUNCTION__, __FILE__, __LINE__)
+
+#define _STAMP() ::utils::make_stamp(__FUNCTION__, __FILE__, __LINE__).c_str()

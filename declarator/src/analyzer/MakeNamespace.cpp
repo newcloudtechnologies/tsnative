@@ -68,9 +68,10 @@ generator::ts::namespace_block_t makeNamespace(parser::const_namespace_item_t it
     }
     else
     {
-        throw utils::Exception(R"(namespace couldn't be TS_MODULE and TS_NAMESPACE at the same time: "%s", %s)",
-                               item->name().c_str(),
-                               _STAMP());
+        throw utils::Exception(
+            R"(namespace must be annotated completely in the same way (TS_MODULE or TS_NAMESPACE): "%s", %s)",
+            item->name().c_str(),
+            _STAMP());
     }
 
     parentBlock->add(namespaceBlock);

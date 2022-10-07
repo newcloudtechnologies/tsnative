@@ -139,13 +139,18 @@ generator::ts::block_t<generator::ts::File> makeFile()
     std::tm* now = std::localtime(&t);
     int current_year = now->tm_year + 1900;
 
-    std::string head = strprintf(file_head.c_str(), current_year);
-
     auto file = AbstractBlock::make<File>();
 
-    auto comment = AbstractBlock::make<CommentBlock>(head);
+    std::string DECLARATOR_NO_HEAD = utils::toUpperCase(utils::getEnv("DECLARATOR_NO_HEAD"));
 
-    file->add(comment);
+    if (!(DECLARATOR_NO_HEAD == "TRUE" || DECLARATOR_NO_HEAD == "ON" || DECLARATOR_NO_HEAD == "YES"))
+    {
+        std::string head = strprintf(file_head.c_str(), current_year);
+
+        auto comment = AbstractBlock::make<CommentBlock>(head);
+
+        file->add(comment);
+    }
 
     return file;
 }

@@ -1,0 +1,2 @@
+Declarator failed:
+module should be a root namespace "stuffs", {func: makeNamespace, file: src/analyzer/MakeNamespace.cpp:42}

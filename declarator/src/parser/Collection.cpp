@@ -25,8 +25,8 @@
 #include "global/Annotations.h"
 
 #include "utils/Exception.h"
+#include "utils/LambdaTraits.h"
 #include "utils/Strings.h"
-#include "utils/lambda_traits.h"
 
 #include <clang/AST/ASTContext.h>
 
