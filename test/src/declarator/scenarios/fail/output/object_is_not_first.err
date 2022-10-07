@@ -1,0 +1,2 @@
+Declarator failed:
+class: "test::snippets::Entity" must be inherited "Object" first

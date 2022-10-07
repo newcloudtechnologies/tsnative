@@ -325,7 +325,7 @@ std::string TypeMapper::convertToTSType(const std::string& prefix, const clang::
 
 bool isPointer(const clang::QualType& type)
 {
-    return !type.getTypePtr()->getPointeeType().isNull();
+    return type.getTypePtr()->isPointerType();
 }
 
 clang::QualType removeCVPR(const clang::QualType& type)

@@ -40,6 +40,11 @@ define_property(TARGET PROPERTY TS_MODULE_NAME
     FULL_DOCS "e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}'"
 )
 
+find_program(TS_DECLARATOR tsnative-declarator)
+find_program(TS_INDEXER tsnative-indexer.py)
+
+message(STATUS "Found TS_DECLARATOR: ${TS_DECLARATOR}")
+message(STATUS "Found TS_INDEXER: ${TS_INDEXER}")
 
 ### Recursively populates c++ include directories from target
 ### Args:
@@ -86,12 +91,15 @@ endfunction()
 # NO_IMPORT_STD - declarator doesn't add standard imports by default [true/false]
 # TEMP_DIR - absolute path to temporary directory
 # OUTPUT_DIR - absolute path to output directory
-# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
+# IGNORE_ERROR - cmake script ignores declarator errors [true/false]
+# NO_HEAD - declarator doesn't print head in the top of file-declaration
 # [OUT] OUT_DECLARATION - generated file-declarations
+# DEFINITIONS - declarator gives additional definitions
+# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
 function(run_declarator NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "SOURCE;TARGET_COMPILER_ABI;IMPORT;NO_IMPORT_STD;TEMP_DIR;OUTPUT_DIR;OUT_DECLARATION"
+        "SOURCE;TARGET_COMPILER_ABI;IMPORT;NO_IMPORT_STD;TEMP_DIR;OUTPUT_DIR;IGNORE_ERROR;NO_HEAD;OUT_DECLARATION"
         "DEFINITIONS;INCLUDE_DIRECTORIES;"
     )
 
@@ -139,9 +147,6 @@ function(run_declarator NAME ...)
     list(TRANSFORM INCLUDE_DIRECTORIES PREPEND "-I")
     string(REPLACE ";" " " INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}")
 
-    set(OUTPUT_DIR "${ARG_OUTPUT_DIR}")
-    set(OUTPUT_FILE "${OUTPUT_DIR}/${OUTPUT_FN}")
-
     if (NOT "$ENV{SYSROOT_DIR}" STREQUAL "")
         set(SYSROOT "--sysroot=$ENV{SYSROOT_DIR}")
         message(STATUS "SYSROOT=$ENV{SYSROOT_DIR}")
@@ -156,16 +161,37 @@ function(run_declarator NAME ...)
     list(FILTER DEFINITIONS EXCLUDE REGEX "^$") # remove empty strings
     string(REPLACE ";" " " DEFINITIONS "${DEFINITIONS}")
 
-    set(variables "DECLARATOR_OUTPUT_DIR=\"${OUTPUT_DIR}\" DECLARATOR_IMPORT=\"${ARG_IMPORT}\" DECLARATOR_NO_IMPORT_STD=\"${ARG_NO_IMPORT_STD}\"  DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\"")
+    set(variables 
+        "DECLARATOR_OUTPUT_DIR=\"${ARG_OUTPUT_DIR}\" \
+        DECLARATOR_IMPORT=\"${ARG_IMPORT}\" \
+        DECLARATOR_NO_IMPORT_STD=\"${ARG_NO_IMPORT_STD}\" \
+        DECLARATOR_TEMP_DIR=\"${ARG_TEMP_DIR}\" \
+        DECLARATOR_NO_HEAD=\"${ARG_NO_HEAD}\"")
     set(command "${variables} ${TS_DECLARATOR} -nobuiltininc -x c++ --target=${ARG_TARGET_COMPILER_ABI} ${SYSROOT} ${DEFINITIONS} ${ARG_SOURCE} ${INCLUDE_DIRECTORIES}")
 
-    add_custom_command(
-        OUTPUT ${OUTPUT_FILE}
-        DEPENDS ${ARG_SOURCE}
-        COMMAND echo "Run declarator..."
-        COMMAND sh -c "mkdir -p ${OUTPUT_DIR}"
-        VERBATIM COMMAND sh -c "${command}"
-    )
+    if (NOT ARG_IGNORE_ERROR OR ARG_IGNORE_ERROR STREQUAL "" OR ARG_IGNORE_ERROR STREQUAL "false")
+        string(REPLACE ".h" ".d.ts" OUTPUT_FN "${source_fn}")
+        set(OUTPUT_FILE "${ARG_OUTPUT_DIR}/${OUTPUT_FN}")
+
+        add_custom_command(
+            OUTPUT ${OUTPUT_FILE}
+            DEPENDS ${ARG_SOURCE}
+            COMMAND echo "Run declarator..."
+            COMMAND sh -c "mkdir -p ${ARG_OUTPUT_DIR}"
+            VERBATIM COMMAND sh -c "${command}"
+        )
+    else()
+        string(REPLACE ".h" ".err" OUTPUT_FN "${source_fn}")
+        set(OUTPUT_FILE "${ARG_OUTPUT_DIR}/${OUTPUT_FN}")
+
+        add_custom_command(
+            OUTPUT ${OUTPUT_FILE}
+            DEPENDS ${ARG_SOURCE}
+            COMMAND echo "Run declarator..."
+            COMMAND sh -c "mkdir -p ${ARG_OUTPUT_DIR}"
+            VERBATIM COMMAND sh -c "${command} || (exit 0)" 2> ${OUTPUT_FILE}
+        )
+    endif()
 
     # generate target
     string(MD5 TARGET "${OUTPUT_FILE}")
@@ -188,13 +214,16 @@ endfunction()
 # NO_IMPORT_STD - declarator doesn't add standard imports by default [true/false]
 # TEMP_DIR - absolute path to temporary directory
 # OUTPUT_DIR - absolute path to output directory
-# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
+# IGNORE_ERROR - cmake script ignores declarator errors [true/false]
+# NO_HEAD - declarator doesn't print head in the top of file-declaration
+# DEFINITIONS - declarator gives additional definitions
 # SOURCES - list of c++ sources (i.e. headers) to generate declarations (with absolute paths)
+# INCLUDE_DIRECTORIES - list of include directories needed to execute declarator (absolute paths)
 # [OUT] OUT_DECLARATIONS - generated files-declarations
 function(generate_declarations_ex NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "TARGET_COMPILER_ABI;IMPORT;NO_IMPORT_STD;TEMP_DIR;OUTPUT_DIR"
+        "TARGET_COMPILER_ABI;IMPORT;NO_IMPORT_STD;TEMP_DIR;OUTPUT_DIR;IGNORE_ERROR;NO_HEAD"
         "DEFINITIONS;SOURCES;INCLUDE_DIRECTORIES;OUT_DECLARATIONS"
     )
 
@@ -235,6 +264,8 @@ function(generate_declarations_ex NAME ...)
             NO_IMPORT_STD "${ARG_NO_IMPORT_STD}"
             TEMP_DIR "${ARG_TEMP_DIR}"
             OUTPUT_DIR "${ARG_OUTPUT_DIR}"
+            IGNORE_ERROR "${ARG_IGNORE_ERROR}"
+            NO_HEAD "${ARG_NO_HEAD}"
             OUT_DECLARATION output
         )
 
@@ -251,11 +282,13 @@ endfunction()
 # NAME - target name
 # TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
 # OUTPUT_DIR - absolute path to output directory
+# IGNORE_ERROR - cmake script ignores declarator errors [true/false]
+# NO_HEAD - declarator doesn't print head in the top of file-declaration
 # [OUT] OUT_DECLARATIONS - generated files-declarations
 function(ts_generate_declarations NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "TARGET_COMPILER_ABI;OUTPUT_DIR"
+        "TARGET_COMPILER_ABI;OUTPUT_DIR;IGNORE_ERROR;NO_HEAD"
         "DEFINITIONS;OUT_DECLARATIONS"
     )
 
@@ -290,6 +323,8 @@ function(ts_generate_declarations NAME ...)
         INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
         OUTPUT_DIR "${ARG_OUTPUT_DIR}"
         TEMP_DIR "${ARG_OUTPUT_DIR}/temp"
+        IGNORE_ERROR "${ARG_IGNORE_ERROR}"
+        NO_HEAD "${ARG_NO_HEAD}"
         OUT_DECLARATIONS DECLARATIONS
     )
 
@@ -304,11 +339,12 @@ endfunction()
 # MODULE_NAME - module name from export signature
 #   (e.g. export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}')
 # DECLARATIONS - list of declaration files
+# NO_HEAD - disable head printing in index-file
 # OUT_DIRECTORY - directory with generated index.ts file
 function(ts_generate_index_ex NAME ...)
     cmake_parse_arguments(PARSE_ARGV 1 "ARG"
         ""
-        "EXPORTED_NAME;MODULE_NAME;OUT_DIRECTORY;"
+        "EXPORTED_NAME;MODULE_NAME;NO_HEAD;OUT_DIRECTORY;"
         "DECLARATIONS;"
     )
 
@@ -341,24 +377,25 @@ function(ts_generate_index_ex NAME ...)
         list(APPEND declarations "${declaration}")
     endforeach()
 
-    # prepare content of file
-    set(content_list )
-    foreach(declaration ${declarations})
-        set(s "/// <reference path='${declaration}' />")
-        list(APPEND content_list "${s}")
-    endforeach()
+    if (ARG_NO_HEAD AND NOT ARG_NO_HEAD STREQUAL "" AND NOT ARG_NO_HEAD STREQUAL "false")
+        set(no_head "true")
+    else()
+        set(no_head "false")
+    endif()
 
-    list(APPEND content_list "export { ${ARG_EXPORTED_NAME} } from '${ARG_MODULE_NAME}';")
+    set(command "${TS_INDEXER} \
+        --outputFolder ${ARG_OUT_DIRECTORY} \
+        --exported \"${ARG_EXPORTED_NAME}\" \
+        --module ${ARG_MODULE_NAME} \
+        --files \"${declarations}\" \
+        --no_head ${no_head}"
+    )
 
-    # out to file semicolon separated list and then replace all semicolons to "\n"
-    # and replace "'" to """
     add_custom_command(
         OUTPUT ${output_file}
-        COMMAND echo "Generate index.ts ..."
-        COMMAND mkdir -p "${ARG_OUT_DIRECTORY}"
-        VERBATIM COMMAND sh -c "echo \"${content_list}\" >> \"${output_file}\""
-        VERBATIM COMMAND sh -c "sed -i 's/;/\\n/g' ${output_file}"
-        VERBATIM COMMAND sh -c "sed -i \"s/\'/\\\"/g\" ${output_file}"
+        COMMAND echo "Generate index.ts..."
+        VERBATIM COMMAND sh -c "mkdir -p ${ARG_OUT_DIRECTORY}"
+        VERBATIM COMMAND sh -c "${command}"
     )
 
     string(MD5 TARGET "${output_file}")

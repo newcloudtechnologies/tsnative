@@ -40,6 +40,7 @@ class TSNativeDeclaratorConan(ConanFile):
             libclang_path = os.path.join(self.dependencies["llvm"].cpp_info.libdirs[0], "libclang.so.11.1")
 
         shutil.copy2(libclang_path, os.path.join(self.package_folder, "bin"))
+        shutil.copy2("scripts/tsnative-indexer.py", os.path.join(self.package_folder, "bin"))
 
     def package_id(self):
         # Ignore compiler and build_type settings when generatings package id
@@ -55,5 +56,3 @@ class TSNativeDeclaratorConan(ConanFile):
         # override default cmake target name to be tsnative-declarator instead of tsnative-declarator::tsnative-declarator
         self.cpp_info.set_property("cmake_target_name", self.name)
         self.env_info.path.append(os.path.join(self.package_folder, "bin"))
-
-

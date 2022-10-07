@@ -507,7 +507,7 @@ function(add_antiq_executable target ...)
     # verify_ts(verify_ts_${binary_name} makeOutputDir_${binary_name} "${ARG_PROJECT_ROOT}" "${ARG_ENTRY}" "${ARG_BASE_URL}" "${sources}" "${output_dir}")
 
     extractSymbols(
-        extract_std_symbols_${binary_name}
+        extr_std_smbs_${binary_name}
         makeOutputDir_${binary_name}
         "${DEPENDENCIES}"
         "${output_dir}"
@@ -516,8 +516,8 @@ function(add_antiq_executable target ...)
     )
 
     instantiate_classes(
-        instantiate_classes_${binary_name}
-        extract_std_symbols_${binary_name}
+        inst_cls_${binary_name}
+        extr_std_smbs_${binary_name}
         "${ARG_PROJECT_ROOT}"
         "${ARG_ENTRY}"
         "${ARG_TS_CONFIG}"
@@ -532,8 +532,8 @@ function(add_antiq_executable target ...)
     )
 
     compile_cpp(
-        compile_classes_${binary_name}
-        instantiate_classes_${binary_name}
+        cmpl_cls_${binary_name}
+        inst_cls_${binary_name}
         "${ARG_INCLUDES}"
         "${ARG_DEFINITIONS}"
         "${CLASSES_SRC}"
@@ -542,8 +542,8 @@ function(add_antiq_executable target ...)
     )
 
     extractSymbols(
-        extract_classes_symbols_${binary_name}
-        compile_classes_${binary_name}
+        extr_cls_smbs_${binary_name}
+        cmpl_cls_${binary_name}
         "${COMPILED_CLASSES}"
         "${output_dir}"
         COMPILED_CLASSES_DEMANGLED_NAMES
@@ -554,8 +554,8 @@ function(add_antiq_executable target ...)
     list(APPEND DEPENDENCIES_MANGLED_NAMES "${COMPILED_CLASSES_MANGLED_NAMES}")
 
     instantiate_functions(
-        instantiate_functions_${binary_name}
-        extract_classes_symbols_${binary_name}
+        inst_func_${binary_name}
+        extr_cls_smbs_${binary_name}
         "${ARG_PROJECT_ROOT}"
         "${ARG_ENTRY}"
         "${ARG_TS_CONFIG}"
@@ -570,8 +570,8 @@ function(add_antiq_executable target ...)
     )
 
     compile_cpp(
-        compile_functions_${binary_name}
-        instantiate_functions_${binary_name}
+        cmpl_func_${binary_name}
+        inst_func_${binary_name}
         "${ARG_INCLUDES}"
         "${ARG_DEFINITIONS}"
         "${FUNCTIONS_SRC}"
@@ -582,8 +582,8 @@ function(add_antiq_executable target ...)
     list(PREPEND DEPENDENCIES ${COMPILED_CLASSES} ${COMPILED_FUNCTIONS})
 
     extractSymbols(
-        extract_symbols_${binary_name}
-        compile_functions_${binary_name}
+        extr_smbs_${binary_name}
+        cmpl_func_${binary_name}
         "${DEPENDENCIES}"
         "${output_dir}"
         DEMANGLED_NAMES
@@ -592,7 +592,7 @@ function(add_antiq_executable target ...)
 
     compile_ts(
         compile_ts_${binary_name}
-        extract_symbols_${binary_name}
+        extr_smbs_${binary_name}
         "${ARG_PROJECT_ROOT}"
         "${ARG_ENTRY}"
         "${ARG_TS_CONFIG}"

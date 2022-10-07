@@ -1,4 +1,4 @@
-from conans import ConanFile
+from conans import ConanFile, CMake
 from conan.tools.cmake import CMakeDeps
 from conans.tools import load, save
 
@@ -49,6 +49,40 @@ class TSNativeTestsConan(ConanFile):
         self.init_npm_env()
         self.run('npm install')
 
+    def buildRuntimeTests(self):
+        self.setup_npm()
+        self.run("npx ts-node src/compiler/runtime_test.ts")
+
+    def buildDeclaratorTests(self):
+        cmake = CMake(self)
+
+        if self.settings.target_abi is None:
+            self.output.error(
+                "Target ABI is not specified. Please provide settings.target_abi value")
+        else:
+            self.output.info("Target ABI is %s" % self.settings.target_abi)
+            cmake.definitions["CMAKE_CXX_COMPILER_TARGET"] = self.settings.target_abi
+
+        # declarator include dir
+        for require, dependency in self.dependencies.items():
+            if "tsnative-declarator" in dependency.ref:
+                cmake.definitions["TSNATIVE_DECLARATOR_INCLUDE_DIR"] = ''.join(
+                    dependency.cpp_info.includedirs)
+                break
+
+        cmake.definitions["SOURCE_DIR"] = self.source_folder
+
+        cmake.configure(source_folder="src/declarator")
+        cmake.build()
+
+    def buildCompiledTests(self):
+        args = ""
+
+        if "ARGS" in os.environ:
+            args = os.environ["ARGS"]
+
+        self.run("bash src/compiler/compiled_tests.sh %s" % args)
+
     def build(self):
         if self.settings.target_abi is None:
             self.output.error(
@@ -59,71 +93,20 @@ class TSNativeTestsConan(ConanFile):
         os.environ["NODE_PATH"] = self.deps_user_info["tsnative-std"].NODE_PATH
 
         if self.options.run_mode == "runtime" or self.options.run_mode == "all":
-            self.setup_npm()
             self.output.info("======== RUNTIME TESTS ========")
-            self.run("npx ts-node runtime_test.ts")
+            self.buildRuntimeTests()
 
-        # TODO: AN-858
-        '''
         if self.options.run_mode == "declarator" or self.options.run_mode == "all":
-            self.setup_npm()
             self.output.info("======== DECLARATOR TESTS ========")
-
-            DECLARATOR_INCLUDE_DIRS = []
-
-            # FIXME: Big crutch: retrieve gcc builtin includes
-            ps = subprocess.Popen(
-                ('gcc', '-xc++', '/dev/null', '-E', '-Wp,-v'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-            output = ps.stderr.read().decode('utf8')
-
-            ps.wait()
-
-            for line in output.splitlines():
-                line = line.strip()
-                match = re.match(r"^[A-Z]\:\/.*", line)
-
-                if not match:
-                    match = re.match(r"^\/.*", line)
-
-                if match:
-                    DECLARATOR_INCLUDE_DIRS.append(line)
-
-            # std includes
-            DECLARATOR_INCLUDE_DIRS.append(''.join(
-                self.dependencies["tsnative-std"].cpp_info.includedirs))
-
-            os.environ["COMPILER_ABI"] = str(self.settings.target_abi)
-
-            # TODO: why tf declarator cannot be referenced through key like std?!
-            for require, dependency in self.dependencies.items():
-                if "tsnative-declarator" in dependency.ref:
-                    # declarator includes
-                    DECLARATOR_INCLUDE_DIRS.append(''.join(
-                        dependency.cpp_info.includedirs))
-                    # declarator binary
-                    os.environ["DECLARATOR_BIN"] = os.path.join(
-                        ''.join(dependency.cpp_info.bindirs), "tsnative-declarator")
-
-            os.environ["DECLARATOR_INCLUDE_DIRS"] = ';'.join(
-                DECLARATOR_INCLUDE_DIRS)
-
-            self.run("npx ts-node declarator_test.ts")
-            self.output.warn("disabled!")
-        '''
+            self.buildDeclaratorTests()
 
         if self.options.run_mode == "compile" or self.options.run_mode == "all":
             self.output.info("======== COMPILED TESTS ========")
-            args = ""
-
-            if "ARGS" in os.environ:
-                args = os.environ["ARGS"]
-
-            self.run("./testrunner.sh %s" % args)
+            self.buildCompiledTests()
 
     def package(self):
         if self.options.run_mode == "all":
-            ctestfile = load("out/CTestTestfile.cmake")
+            ctestfile = load("src/compiler/out/CTestTestfile.cmake")
             raw_lines = [l for l in ctestfile.splitlines() if "add_test(" in l]
             pkg_bin_dir = os.path.join(self.folders.base_package, "bin")
             ctestfile_out = ""

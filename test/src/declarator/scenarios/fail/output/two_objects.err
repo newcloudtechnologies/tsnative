@@ -1,0 +1,2 @@
+Declarator failed:
+class: "test::snippets::Entity", multiple inherits class "Object". Inheritors: [test::snippets::WithObject1, test::snippets::WithObject2]

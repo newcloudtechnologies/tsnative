@@ -117,7 +117,7 @@ pipeline {
                             string(name: 'PKG_CONAN_VERSION', value: version),
                             string(name: 'PKG_CONAN_USER', value: user),
                             string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                            string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*'),
+                            string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|.*mingw.*'),
                             booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                         ]
                 }
