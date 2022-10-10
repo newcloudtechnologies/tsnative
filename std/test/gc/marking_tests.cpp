@@ -75,32 +75,6 @@ TEST_F(MarkingTestFixture, boolean)
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
 }
 
-TEST_F(MarkingTestFixture, null)
-{
-    auto null = new test::Null();
-
-    const auto& allObjects = getActualAllocatedObjects();
-    EXPECT_EQ(1u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
-
-    null->mark();
-
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
-}
-
-TEST_F(MarkingTestFixture, undefined)
-{
-    auto undefined = new test::Undefined();
-
-    const auto& allObjects = getActualAllocatedObjects();
-    EXPECT_EQ(1u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
-
-    undefined->mark();
-
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
-}
-
 TEST_F(MarkingTestFixture, string)
 {
     auto string = new test::String("Abacaba");

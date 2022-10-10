@@ -260,6 +260,12 @@ generator::ts::abstract_method_block_t ClassDetails::makeMethod(parser::const_me
         {
             result->setIgnore();
         }
+
+        int vtableIndex = item->getVTableIndex();
+        if (vtableIndex > -1)
+        {
+            result->addDecorator(Decorator::make("VTableIndex", vtableIndex));
+        }
     }
     else if (annotations.exist(TS_CLOSURE))
     {

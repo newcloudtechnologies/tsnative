@@ -5,8 +5,16 @@
 #include "std/private/logger.h"
 
 Undefined::Undefined()
+    : Object(TSTypeID::Undefined)
 {
     LOG_ADDRESS("Calling Undefined ctor ", this);
+}
+
+Undefined* Undefined::instance()
+{
+    static Undefined inst;
+
+    return &inst;
 }
 
 String* Undefined::toString() const

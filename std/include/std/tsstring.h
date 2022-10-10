@@ -63,7 +63,7 @@ public:
     TS_METHOD TS_SIGNATURE("lastIndexOf(pattern: string, start?: number): number") Number* lastIndexOf(
         String* pattern, Union* maybeStartIndex) const;
 
-    TS_METHOD Boolean* equals(String* other) const;
+    TS_METHOD Boolean* equals(Object* other) const override;
 
     String* operator[](Number* index) const;
     String* operator[](size_t index) const;

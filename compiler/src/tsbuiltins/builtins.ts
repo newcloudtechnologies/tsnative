@@ -580,7 +580,6 @@ export class BuiltinBoolean extends Builtin {
   private readonly classDeclaration: Declaration;
 
   private readonly unboxFn: LLVMValue;
-  private readonly equalsFn: LLVMValue;
   private readonly constructorFn: LLVMValue;
   private readonly negateFn: LLVMValue;
   private readonly cloneFn: LLVMValue;
@@ -593,7 +592,6 @@ export class BuiltinBoolean extends Builtin {
     this.llvmType = this.classDeclaration.getLLVMStructType("boolean");
 
     this.unboxFn = this.initUnboxFn();
-    this.equalsFn = this.initEqualsFn();
     this.constructorFn = this.initConstructorFn();
     this.negateFn = this.initNegateFn();
     this.cloneFn = this.initCloneFn();
@@ -643,32 +641,6 @@ export class BuiltinBoolean extends Builtin {
     const { fn: unboxFn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return unboxFn;
-  }
-
-  private initEqualsFn() {
-    const declaration = this.getDeclaration();
-    const thisType = this.getTSType();
-    const llvmThisType = this.llvmType;
-
-    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "equals");
-
-    if (!equalsDeclaration) {
-      throw new Error(`Unable to find 'equals' method at '${declaration.getText()}'`);
-    }
-
-    const { qualifiedName } = FunctionMangler.mangle(
-      equalsDeclaration,
-      undefined,
-      thisType,
-      [thisType],
-      this.generator
-    );
-
-    const llvmReturnType = llvmThisType;
-    const llvmArgumentTypes = [llvmThisType, llvmThisType];
-    const { fn: equals } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return equals;
   }
 
   private initConstructorFn() {
@@ -806,10 +778,6 @@ export class BuiltinBoolean extends Builtin {
 
   getUnboxed(value: LLVMValue) {
     return this.generator.builder.createSafeCall(this.unboxFn, [value]);
-  }
-
-  getLLVMEquals() {
-    return this.equalsFn;
   }
 
   create(value: LLVMValue) {

@@ -228,3 +228,37 @@ import createStore2 from "./union_type_imports"
 
     console.assert(w.title === "test - MyOffice", "Constructor with optional union parameter must be handled correctly");
 }
+
+{
+    function myFunc(arg?: string) {
+        if (arg !== undefined) {
+            console.assert(false, "Never");
+        } else {
+            console.assert(true, "Comparison with not provided optional argument");
+        }
+    }
+
+    myFunc();
+}
+
+{
+    function myFunc1(arg: string | undefined) {
+        if (arg !== undefined) {
+            console.assert(false, "Never");
+        } else {
+            console.assert(true, "Comparison T | undefined argument");
+        }
+    }
+
+    myFunc1(undefined)
+}
+
+{
+    let qqq: string | undefined;
+
+    if (qqq !== undefined) {
+        console.assert(false, "Never");
+    } else {
+        console.assert(true, "Comparison T | undefined");
+    }
+}

@@ -2,7 +2,7 @@ declare module "global" {
 
     export namespace stuffs1 {
         //@ts-ignore
-        @VTableSize(8)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Entity1 {
@@ -17,7 +17,7 @@ declare module "global" {
 
     export namespace stuffs2 {
         //@ts-ignore
-        @VTableSize(8)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Entity2 {

@@ -27,7 +27,6 @@ export class TSString {
   private readonly constructorFns = new Map<string, LLVMValue>();
   private lengthFn: LLVMValue | undefined;
   private concatFn: LLVMValue | undefined;
-  private equalsFn: LLVMValue | undefined;
   private cloneFn: LLVMValue | undefined;
 
   constructor(generator: LLVMGenerator) {
@@ -91,35 +90,6 @@ export class TSString {
     const { fn: length } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return length;
-  }
-
-  private initEqualsFn() {
-    const declaration = this.getDeclaration();
-    const thisType = declaration.type;
-    const llvmThisType = this.getLLVMType();
-
-    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "equals");
-    if (!equalsDeclaration) {
-      throw new Error(`Unable to find 'equals' at '${declaration.getText()}'`);
-    }
-
-    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
-      equalsDeclaration,
-      undefined,
-      thisType,
-      [thisType],
-      this.generator
-    );
-
-    if (!isExternalSymbol) {
-      throw new Error("Unable to find external symbol for 'String.equals'");
-    }
-
-    const llvmReturnType = this.generator.builtinBoolean.getLLVMType();
-    const llvmArgumentTypes = [llvmThisType, llvmThisType];
-    const { fn: equals } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
-
-    return equals;
   }
 
   private initCloneFn() {
@@ -209,14 +179,6 @@ export class TSString {
     }
 
     return this.lengthFn;
-  }
-
-  getLLVMEquals() {
-    if (!this.equalsFn) {
-      this.equalsFn = this.initEqualsFn();
-    }
-
-    return this.equalsFn;
   }
 
   create(value: string) {

@@ -47,14 +47,14 @@ export class TSNull {
   }
 
   init() {
-    const undefinedCtorDeclaration = this.declaration.members.find((m) => m.isConstructor());
+    const nullInstanceDeclaration = this.declaration.members.find((m) => m.name?.getText() === "instance");
 
-    if (!undefinedCtorDeclaration) {
-      throw new Error(`Unable to find constructor at '${this.declaration.getText()}'`);
+    if (!nullInstanceDeclaration) {
+      throw new Error(`Unable to find 'instance' at '${this.declaration.getText()}'`);
     }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
-      undefinedCtorDeclaration,
+      nullInstanceDeclaration,
       undefined,
       this.declaration.type,
       [],
@@ -62,23 +62,20 @@ export class TSNull {
     );
 
     if (!isExternalSymbol) {
-      throw new Error(`Unable to find cxx constructor for 'Null'`);
+      throw new Error(`Unable to find cxx 'instance' for 'Null'`);
     }
 
-    const llvmReturnType = LLVMType.getVoidType(this.generator);
-    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
+    const llvmReturnType = this.getLLVMType();
+    const llvmArgumentTypes: LLVMType[] = [];
 
-    const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+    const { fn: instanceFn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
-    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
-    const thisUntyped = this.generator.builder.asVoidStar(allocated);
-
-    this.generator.builder.createSafeCall(ctor, [thisUntyped]);
+    const instance = this.generator.builder.createSafeCall(instanceFn, []);
 
     const nullValue = LLVMConstant.createNullValue(this.llvmType, this.generator);
     const globalNull = LLVMGlobalVariable.make(this.generator, this.llvmType, false, nullValue, "null_constant");
 
-    this.generator.builder.createSafeStore(allocated, globalNull);
+    this.generator.builder.createSafeStore(instance, globalNull);
 
     this.generator.symbolTable.globalScope.set("null", globalNull);
   }

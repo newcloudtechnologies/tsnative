@@ -2,7 +2,7 @@ declare module "test" {
 
     export namespace snippets {
         //@ts-ignore
-        @VTableSize(8)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Entity {
@@ -14,7 +14,7 @@ declare module "test" {
         }
 
         //@ts-ignore
-        @VTableSize(8)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Base extends Entity {
@@ -27,7 +27,7 @@ declare module "test" {
         }
 
         //@ts-ignore
-        @VTableSize(8)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Derived extends Base {

@@ -13,6 +13,9 @@
 
 #include "utils/Exception.h"
 
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/VTableBuilder.h>
+
 namespace parser
 {
 
@@ -81,6 +84,36 @@ std::vector<ParameterValue> MethodItem::parameters() const
 const clang::CXXMethodDecl* MethodItem::decl() const
 {
     return m_decl;
+}
+
+int MethodItem::getVTableIndex() const
+{
+    int result = -1;
+
+    if (!isVirtual())
+    {
+        return result;
+    }
+
+    auto* VTableContext = m_decl->getASTContext().getVTableContext();
+    _ASSERT(VTableContext);
+
+    if (VTableContext->isMicrosoft())
+    {
+        auto* microsoftVTableContext = clang::dyn_cast_or_null<clang::MicrosoftVTableContext>(VTableContext);
+        _ASSERT(microsoftVTableContext);
+
+        result = microsoftVTableContext->getMethodVFTableLocation(m_decl).Index;
+    }
+    else
+    {
+        auto* itaniumVTableContext = clang::dyn_cast_or_null<clang::ItaniumVTableContext>(VTableContext);
+        _ASSERT(itaniumVTableContext);
+
+        result = itaniumVTableContext->getMethodVTableIndex(m_decl);
+    }
+
+    return result;
 }
 
 } //  namespace parser

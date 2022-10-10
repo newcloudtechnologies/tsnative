@@ -11,8 +11,9 @@
 #include <sstream>
 
 Number::Number(double v)
+    : Object(TSTypeID::Number)
 #ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
-    : _d(new NumberCXXBuiltinPrivate(v))
+    , _d(new NumberCXXBuiltinPrivate(v))
 #endif
 {
     LOG_INFO("Calling number ctor from double: v = " + std::to_string(v));
@@ -20,9 +21,7 @@ Number::Number(double v)
 }
 
 Number::Number(Number* v)
-#ifdef USE_NUMBER_CXX_BUILTIN_BACKEND
-    : _d(new NumberCXXBuiltinPrivate(v->unboxed()))
-#endif
+    : Number(v->unboxed())
 {
     LOG_INFO("Calling number ctor from Number*: v = " + std::to_string(v->unboxed()));
     LOG_ADDRESS("This: ", this);
@@ -177,9 +176,15 @@ Number* Number::bitwiseRightShiftInplace(Number* other)
     return this;
 }
 
-Boolean* Number::equals(Number* other) const
+Boolean* Number::equals(Object* other) const
 {
-    bool result = _d->equals(other->unboxed());
+    if (!other->isNumber()) {
+        return new Boolean(false);
+    }
+
+    auto asNumber = static_cast<Number*>(other);
+    bool result = _d->equals(asNumber->unboxed());
+
     return new Boolean(result);
 }
 
