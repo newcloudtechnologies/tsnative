@@ -6,12 +6,14 @@
 #include "std/private/logger.h"
 
 Union::Union()
+    : Object(TSTypeID::Union)
 {
     LOG_ADDRESS("Calling Union default ctor this = ", this);
 }
 
 Union::Union(Object* value)
-    : _value(value)
+    : Object(TSTypeID::Union)
+    , _value(value)
 {
     LOG_ADDRESS("Calling Union default ctor this = ", this);
 }

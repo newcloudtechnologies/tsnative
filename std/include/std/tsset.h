@@ -60,8 +60,9 @@ private:
 
 template <typename T>
 Set<T>::Set()
+    : Iterable<T>(TSTypeID::Set)
 #ifdef USE_SET_STD_BACKEND
-    : _d(new SetStdPrivate<T>())
+    , _d(new SetStdPrivate<T>())
 #endif
 {
 }

@@ -24,22 +24,6 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       let left = this.generator.handleExpression(expression.left, env);
       let right = this.generator.handleExpression(expression.right, env);
 
-      if (left.type.isUnion() && ts.isIdentifier(expression.left)) {
-        left = this.generator.ts.union.get(left);
-        left = this.generator.builder.createBitCast(
-          left,
-          this.generator.ts.checker.getTypeAtLocation(expression.left).getLLVMType()
-        );
-      }
-
-      if (right.type.isUnion() && ts.isIdentifier(expression.right)) {
-        right = this.generator.ts.union.get(right);
-        right = this.generator.builder.createBitCast(
-          right,
-          this.generator.ts.checker.getTypeAtLocation(expression.right).getLLVMType()
-        );
-      }
-
       switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsToken:
         case ts.SyntaxKind.ExclamationEqualsToken:

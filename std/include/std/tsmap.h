@@ -65,8 +65,9 @@ private:
 
 template <typename K, typename V>
 Map<K, V>::Map()
+    : Iterable<Tuple *>(TSTypeID::Map)
 #ifdef USE_MAP_STD_BACKEND
-    : _d(new MapStdPrivate<K, V>())
+    , _d(new MapStdPrivate<K, V>())
 #endif
 {
 }

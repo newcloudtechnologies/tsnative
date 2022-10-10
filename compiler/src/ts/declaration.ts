@@ -626,14 +626,7 @@ export class Declaration {
   }
 
   withVTable() {
-    const withVTableDecorator = "VTable";
-    const declaredWithVTable = Boolean(
-      this.declaration.decorators?.some((decorator) => decorator.expression.getText() === withVTableDecorator)
-    );
-
-    const haveVirtualBase = this.getBases().some((classDeclaration) => classDeclaration.withVTable());
-
-    return declaredWithVTable || haveVirtualBase;
+    return Boolean(this.vtableSize);
   }
 
   get mapping() {
@@ -681,6 +674,32 @@ export class Declaration {
     }
 
     return 0;
+  }
+
+  get vtableIndex() {
+    const vtableIndexDecorator = "VTableIndex";
+    const vtableIndex = this.declaration.decorators?.find((decorator) =>
+      decorator.expression.getText().startsWith(vtableIndexDecorator)
+    );
+
+    if (!vtableIndex) {
+      throw new Error(`No known vtable index for ${this.getText()}`);
+    }
+
+    const pattern = new RegExp(`(?<=${vtableIndexDecorator}\\().*(?=\\))`);
+    const decoratorText = vtableIndex.expression.getText();
+    const indexMatch = decoratorText.match(pattern);
+
+    if (!indexMatch) {
+      throw new Error(`@VTableIndex in wrong format: ${vtableIndex.getText()}, expected @VTableIndex(<number>)`);
+    }
+
+    const size = parseInt(indexMatch[0], 10);
+    if (isNaN(size)) {
+      throw new Error(`@VTableIndex in wrong format: ${vtableIndex.getText()}, cannot parse numeric value`);
+    }
+
+    return size;
   }
 
   get withVirtualDestructor() {

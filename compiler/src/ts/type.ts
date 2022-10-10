@@ -454,27 +454,6 @@ export class TSType {
     return this.checker.getPropertyOfType(this.type, name);
   }
 
-  indexOfProperty(name: string): number {
-    let index = this.getProperties().findIndex((property) => property.name === name);
-    if (index < 0) {
-      throw new Error(`No property '${name}' on type '${this.toString()}'`);
-    }
-
-    if (this.isClass()) {
-      const symbol = this.getSymbol();
-      const declaration = symbol.valueDeclaration;
-      if (!declaration) {
-        throw new Error(`Unable to find value declaration for type '${this.toString()}'`);
-      }
-
-      if (declaration.withVTable()) {
-        index += 1;
-      }
-    }
-
-    return index;
-  }
-
   getApparentType() {
     return TSType.create(this.checker.unwrap().getApparentType(this.type), this.checker);
   }

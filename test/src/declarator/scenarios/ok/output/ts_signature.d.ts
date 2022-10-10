@@ -1,15 +1,16 @@
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class FileInfo_t {
     private p0_FileInfo_t: number;
     private p1_FileInfo_t: number;
     private p2_FileInfo_t: number;
+    private p3_FileInfo_t: number;
 }
 
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class AnyWidget {
@@ -37,7 +38,7 @@ export function someFunc(n: number, m: number): number;
 export function someFunc2(n: number, m: number): data.FileInfo_t[];
 
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Multiline {

@@ -59,6 +59,8 @@ public:
         result.reset(new MethodItem(std::forward<Args>(args)...));
         return result;
     }
+
+    int getVTableIndex() const;
 };
 
 } //  namespace parser

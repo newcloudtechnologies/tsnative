@@ -19,24 +19,95 @@ static String* parentKey = new String("parent");
 
 Object::Object()
 #ifdef USE_MAP_STD_BACKEND
-    : _props(new MapStdPrivate<String*, void*>()),
-    _isMarked{false}
+    : _props(new MapStdPrivate<String*, void*>())
 #endif
 {
     LOG_ADDRESS("Calling default object ctor ", this);
 }
 
 Object::Object(Map<String*, void*>* props)
-    : _props(props->_d),
-    _isMarked{false}
+    : _props(props->_d)
 {
     LOG_ADDRESS("Calling object ctor with props ", this);
+}
+
+Object::Object(TSTypeID typeId)
+    : Object()
+{
+    _typeid = typeId;
+
+    LOG_ADDRESS("Calling object ctor with TypeID ", this);
 }
 
 Object::~Object()
 {
     LOG_ADDRESS("Calling object dtor ", this);
     delete _props;
+}
+
+bool Object::isObject() const
+{
+    return _typeid == TSTypeID::Object;
+}
+
+bool Object::isUnion() const
+{
+    return _typeid == TSTypeID::Union;
+}
+
+bool Object::isBoolean() const
+{
+    return _typeid == TSTypeID::Boolean;
+}
+
+bool Object::isNumber() const
+{
+    return _typeid == TSTypeID::Number;
+}
+
+bool Object::isString() const
+{
+    return _typeid == TSTypeID::String;
+}
+
+bool Object::isUndefined() const
+{
+    return _typeid == TSTypeID::Undefined;
+}
+
+bool Object::isNull() const
+{
+    return _typeid == TSTypeID::Null;
+}
+
+bool Object::isArray() const
+{
+    return _typeid == TSTypeID::Array;
+}
+
+bool Object::isTuple() const
+{
+    return _typeid == TSTypeID::Tuple;
+}
+
+bool Object::isSet() const
+{
+    return _typeid == TSTypeID::Set;
+}
+
+bool Object::isMap() const
+{
+    return _typeid == TSTypeID::Map;
+}
+
+bool Object::isClosure() const
+{
+    return _typeid == TSTypeID::Closure;
+}
+
+bool Object::isDate() const
+{
+    return _typeid == TSTypeID::Date;
 }
 
 bool Object::has(String* key) const
@@ -216,6 +287,11 @@ String* Object::toString() const
 Boolean* Object::toBool() const
 {
     return new Boolean(true);
+}
+
+Boolean* Object::equals(Object* other) const
+{
+    return new Boolean(other == this);
 }
 
 Array<String*>* Object::keys(Object* entity)

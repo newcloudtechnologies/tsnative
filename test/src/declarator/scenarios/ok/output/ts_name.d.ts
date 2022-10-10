@@ -5,7 +5,7 @@ enum Types {
 }
 
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Collection {

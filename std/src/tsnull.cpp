@@ -6,8 +6,16 @@
 #include "std/private/logger.h"
 
 Null::Null()
+    : Object(TSTypeID::Null)
 {
     LOG_ADDRESS("Calling Null ctor ", this);
+}
+
+Null* Null::instance()
+{
+    static Null inst;
+
+    return &inst;
 }
 
 String* Null::toString() const

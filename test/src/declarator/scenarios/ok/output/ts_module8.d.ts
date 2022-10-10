@@ -2,7 +2,7 @@ declare module "poc" {
 
     export namespace exts {
         //@ts-ignore
-        @VTableSize(8)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class MyWidget extends ts.Widget {

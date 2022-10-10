@@ -1,5 +1,5 @@
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 declare class MyOuterClass {
@@ -11,7 +11,7 @@ declare class MyOuterClass {
 }
 
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export declare class ExportAndDeclareClass {
@@ -24,7 +24,7 @@ export declare class ExportAndDeclareClass {
 
 declare namespace exts {
     //@ts-ignore
-    @VTableSize(8)
+    @VTableSize(9)
     //@ts-ignore
     @VirtualDestructor
     declare class MyInnerClass {

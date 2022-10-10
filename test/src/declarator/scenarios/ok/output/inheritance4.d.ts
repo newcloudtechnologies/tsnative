@@ -1,5 +1,5 @@
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Entity {
@@ -11,7 +11,7 @@ export class Entity {
 }
 
 //@ts-ignore
-@VTableSize(8)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Derived extends Entity {
@@ -19,6 +19,7 @@ export class Derived extends Entity {
     private p1_Derived: number;
     private p2_Derived: number;
     private p3_Derived: number;
+    private p4_Derived: number;
 
     templateBase(): void;
     derived(): void;

@@ -16,14 +16,16 @@
 #include <limits>
 
 String::String()
+    : Iterable<String *>(TSTypeID::String)
 #ifdef USE_STD_STRING_BACKEND
-    : _d(new StdStringBackend())
+    , _d(new StdStringBackend())
 #endif
 {
     LOG_ADDRESS("Calling string default ctor ", this);
 }
 
 String::String(Number* d)
+    : Iterable<String *>(TSTypeID::String)
 {
     std::ostringstream oss;
     oss << std::setprecision(std::numeric_limits<double>::max_digits10) << std::noshowpoint << d->unboxed();
@@ -37,18 +39,19 @@ String::String(Number* d)
 }
 
 String::String(const std::string& s)
+    : Iterable<String *>(TSTypeID::String)
 #ifdef USE_STD_STRING_BACKEND
-    : _d(new StdStringBackend(s))
+    , _d(new StdStringBackend(s))
 #endif
 {
-
     LOG_INFO("Calling string ctor from const string& " + s);
     LOG_ADDRESS("This address: ", this);
 }
 
 String::String(const char* s)
+    : Iterable<String *>(TSTypeID::String)
 #ifdef USE_STD_STRING_BACKEND
-    : _d(new StdStringBackend(s))
+    , _d(new StdStringBackend(s))
 #endif
 {
     LOG_INFO("Calling string ctor from const char* " + std::string{s});
@@ -238,9 +241,14 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
     return new Number(static_cast<double>(index));
 }
 
-Boolean* String::equals(String* other) const
+Boolean* String::equals(Object* other) const
 {
-    bool result = _d->equals(other->cpp_str());
+    if (!other->isString()) {
+        return new Boolean(false);
+    }
+
+    auto asString = static_cast<String*>(other);
+    bool result = _d->equals(asString->cpp_str());
     return new Boolean(result);
 }
 

@@ -12,6 +12,8 @@ declare module "global" {
             private p1_Iterator: number;
             private p2_Iterator: number;
 
+            //@ts-ignore
+            @VTableIndex(7)
             next(): IteratorResult<T>;
         }
 
@@ -20,6 +22,8 @@ declare module "global" {
             private p1_Iterable: number;
             private p2_Iterable: number;
 
+            //@ts-ignore
+            @VTableIndex(7)
             iterator(): Iterator<T>;
         }
 

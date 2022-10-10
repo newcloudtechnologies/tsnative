@@ -131,8 +131,9 @@ private:
 // to create explicit instantiations using only include of this header.
 template <typename T>
 Array<T>::Array()
+    : Iterable<T>(TSTypeID::Array)
 #ifdef USE_STD_ARRAY_BACKEND
-    : _d(new DequeueBackend<T>())
+    , _d(new DequeueBackend<T>())
 #endif
 {
 }

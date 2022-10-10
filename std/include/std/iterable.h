@@ -58,6 +58,10 @@ class TS_DECLARE Iterable : public Object
     static_assert(std::is_pointer<T>::value, "Expected Iterable's 'T' to be of pointer type");
 
 public:
+    Iterable(TSTypeID typeId)
+        : Object(typeId)
+    {}
+
     TS_METHOD virtual Iterator<T>* iterator() = 0;
 };
 

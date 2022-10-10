@@ -7,8 +7,9 @@
 #include "std/private/logger.h"
 
 Tuple::Tuple()
+    : Object(TSTypeID::Tuple)
 #ifdef USE_STD_ARRAY_BACKEND
-    : _d(new DequeueBackend<Object*>())
+    , _d(new DequeueBackend<Object*>())
 #endif // USE_STD_ARRAY_BACKEND
 {
     LOG_ADDRESS("Calling tuple ctor this= ", this);

@@ -6,7 +6,8 @@
 #include "std/private/logger.h"
 
 TSClosure::TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals)
-    : _fn(fn)
+    : Object(TSTypeID::Closure)
+    , _fn(fn)
     , _env(env)
     , _envLength(envLength)
     , _numArgs(numArgs)
