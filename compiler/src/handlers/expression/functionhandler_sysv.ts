@@ -132,35 +132,7 @@ export class SysVFunctionHandler {
       }
     }
 
-    const args = expression.arguments.map((argument, index) => {
-      if (ts.isSpreadElement(argument)) {
-        return this.generator.handleExpression(argument.expression, env);
-      }
-
-      const arg = this.generator.handleExpression(argument, env);
-
-      // there may be no parameter declared at argument's index in case of rest arguments
-      const parameterAtIndex = valueDeclaration.parameters[index];
-      if (parameterAtIndex) {
-        const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
-
-        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
-          return this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
-        }
-
-        if (parameterDeclaration.type.isEnum()) {
-          return arg.asLLVMInteger();
-        }
-
-        if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-          return this.generator.ts.union.create(arg);
-        }
-      }
-
-      return this.generator.builder.asVoidStar(arg);
-    });
-
-    this.populateOptionals(args, valueDeclaration);
+    const args = this.handleCallArguments(expression.arguments, valueDeclaration, env);
 
     const llvmArgumentTypes = args.map((arg) => arg.type);
 
@@ -263,36 +235,7 @@ export class SysVFunctionHandler {
     const llvmThisType = parentScope.thisData!.llvmType;
 
     const args =
-      expression.arguments?.map((argument, index) => {
-        const arg = this.generator.handleExpression(argument, outerEnv);
-
-        // there may be no parameter declared at argument's index in case of rest arguments
-        const parameterAtIndex = constructorDeclaration.parameters[index];
-        if (parameterAtIndex) {
-          const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
-
-          if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
-            return this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
-          }
-
-          if (parameterDeclaration.type.isEnum()) {
-            return arg.asLLVMInteger();
-          }
-
-          if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-            return this.generator.ts.union.create(arg);
-          }
-        }
-
-        const tsType = this.generator.ts.checker.getTypeAtLocation(argument);
-        if (tsType.isObject() || tsType.isFunction()) {
-          return this.generator.builder.asVoidStar(arg);
-        }
-
-        return arg;
-      }) || [];
-
-    this.populateOptionals(args, constructorDeclaration);
+      expression.arguments ? this.handleCallArguments(expression.arguments, constructorDeclaration, outerEnv) : []
 
     const llvmArgumentTypes = args.map((arg) => arg.type);
     llvmArgumentTypes.unshift(LLVMType.getInt8Type(this.generator).getPointer());
@@ -330,6 +273,47 @@ export class SysVFunctionHandler {
     this.initVTable(valueDeclaration, thisValue);
 
     return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
+  }
+
+  private handleCallArguments(tsArgs: ts.NodeArray<ts.Expression>, declaration: Declaration, outerEnv?: Environment) {
+    const llvmArgs = tsArgs.map((argument, index) => {
+      if (ts.isSpreadElement(argument)) {
+        return this.generator.handleExpression(argument.expression, outerEnv);
+      }
+
+      const arg = this.generator.handleExpression(argument, outerEnv);
+
+      // there may be no parameter declared at argument's index in case of rest arguments
+      const parameterAtIndex = declaration.parameters[index];
+      if (parameterAtIndex) {
+        const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+
+        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
+          let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+
+          if (parameterDeclaration.type.isEnum()) {
+            value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
+            return value.asLLVMInteger();
+          }
+
+          return value;
+        }
+
+        if (parameterDeclaration.type.isEnum()) {
+          return arg.asLLVMInteger();
+        }
+
+        if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
+          return this.generator.ts.union.create(arg);
+        }
+      }
+
+      return this.generator.builder.asVoidStar(arg);
+    });
+
+    this.populateOptionals(llvmArgs, declaration);
+
+    return llvmArgs;
   }
 
   private initVTable(valueDeclaration: Declaration, thisValue: LLVMValue) {
