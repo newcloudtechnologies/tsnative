@@ -12,7 +12,7 @@ class TSNativeDeclaratorConan(ConanFile):
 
     def requirements(self):
         # Mark llvm as a private dependency
-        self.requires("llvm/11.1.0", private=True)
+        self.requires("llvm/11.1.0#0", private=True)
 
     def build(self):
         cmake = CMake(self)
