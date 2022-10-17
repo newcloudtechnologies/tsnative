@@ -37,10 +37,10 @@ set(HEADERS
     include/std/igc_impl.h
     include/std/diagnostics.h
     include/std/memory_diagnostics.h
-
     include/std/set_timeout.h
     include/std/set_interval.h
     include/std/event_loop.h
+    include/std/tspromise.h
 
     include/std/private/ievent_loop.h
     include/std/private/itimer.h
@@ -67,12 +67,12 @@ set(SOURCES
     src/set_timeout.cpp
     src/set_interval.cpp
     src/event_loop.cpp
+    src/tspromise.cpp
 
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
     src/private/libuv_wrapper/timer_event_handler.cpp
     src/private/libuv_wrapper/async_event_handler.cpp
-
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
