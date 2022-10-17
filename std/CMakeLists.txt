@@ -84,7 +84,7 @@ set(SOURCES
     src/private/uv_loop_adapter.cpp
     src/private/uv_timer_adapter.cpp
     src/private/timers_storage.cpp
-    src/private/promise.cpp
+    src/private/promise_p.cpp
     src/private/internal_state.cpp
     src/private/task.cpp)
 
