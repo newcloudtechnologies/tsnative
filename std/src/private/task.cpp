@@ -5,7 +5,7 @@
 #include "std/tsobject.h"
 #include "std/tsstring.h"
 
-Task::Task(Object* onFulfilled, Object* onRejected, Promise nextPromise)
+Task::Task(Object* onFulfilled, Object* onRejected, PromisePrivate nextPromise)
     : _onFulfilled{onFulfilled}
     , _onRejected{onRejected}
     , _nextPromise{nextPromise}
@@ -75,7 +75,8 @@ void Task::callClosure(TSClosure* closure, InternalState::Result&& arg)
     }
 }
 
-void Task::transferResult(InternalState::Result&& arg) {
+void Task::transferResult(InternalState::Result&& arg)
+{
     if (arg)
     {
         _nextPromise.resolve(arg.get());

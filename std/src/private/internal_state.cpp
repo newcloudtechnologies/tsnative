@@ -1,7 +1,7 @@
 #include "std/private/internal_state.h"
 #include "std/private/task.h"
 
-void InternalState::attach(Promise next, Object* onResolved, Object* onRejected)
+void InternalState::attach(PromisePrivate next, Object* onResolved, Object* onRejected)
 {
     auto task = std::make_shared<Task>(onResolved, onRejected, std::move(next));
 
@@ -18,7 +18,8 @@ void InternalState::attach(Promise next, Object* onResolved, Object* onRejected)
             }
         });
 
-    if (ready()) {
+    if (ready())
+    {
         emit(ReadyEvent{});
     }
 }

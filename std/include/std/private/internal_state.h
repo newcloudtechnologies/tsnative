@@ -3,14 +3,13 @@
 #include "std/private/emitter.h"
 #include "std/private/expected.h"
 #include "std/private/promise_state.h"
-#include "std/tsobject.h"
-
 
 struct ReadyEvent
 {
 };
 
-class Promise;
+class PromisePrivate;
+class Object;
 
 class InternalState : public EmitterBase<InternalState, ReadyEvent>
 {
@@ -19,7 +18,7 @@ public:
     using Result = Expected<Object*, Object*>;
     using MayBeResult = absl::optional<Result>;
 
-    void attach(Promise next, Object* onResolved, Object* onRejected);
+    void attach(PromisePrivate next, Object* onResolved, Object* onRejected);
 
     bool resolve(Result&& resolved);
 
