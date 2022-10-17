@@ -85,7 +85,7 @@ export class CXXSymbolExtractor {
       }
 
       const symbolType = symbolTypeMatches[0];
-      if (symbolType === "V" || symbolType === "R" || symbolType === "S") {
+      if (symbolType === "V" || symbolType === "R" || symbolType === "S" || symbolType === "D") {
         let symbol = trimmed.split(` ${symbolType} `)[1];
         if (isServiceLine(line)) {
           symbol = "#" + symbol;

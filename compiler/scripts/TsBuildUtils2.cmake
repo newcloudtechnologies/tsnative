@@ -128,6 +128,7 @@ function (add_ts_library ARG_NAME ...)
         ${optimizationLevel}
         -relocation-model=pic
         -filetype=obj
+        -mtriple ${CMAKE_CXX_COMPILER_TARGET}
         -o ${objFile}
         ${llFile}
     )
@@ -144,7 +145,7 @@ function (add_ts_library ARG_NAME ...)
     set(seedSrc ${CACHED_CMAKE_CURRENT_LIST_DIR}/seed/seed.cpp)
     set(seedIncludeDir ${CACHED_CMAKE_CURRENT_LIST_DIR}/seed)
 
-    add_library(${targetName}_main STATIC ${seedSrc})
+    add_library(${targetName}_main OBJECT ${seedSrc})
 
     target_include_directories(${targetName}_main PUBLIC ${seedIncludeDir})
     target_link_libraries(${targetName}_main PUBLIC tsnative-std::tsnative-std)

@@ -1,20 +1,19 @@
-import os
+from conan import ConanFile
+
+from conan.tools.cmake import CMake
 from conan.tools.cmake import CMakeDeps
-from conans import ConanFile, CMake
+from conan.tools.cmake import CMakeToolchain
+from conans.client.tools.env import environment_append
 
+import os
 
-# required_conan_version = ">=1.33.0"
+required_conan_version = "==1.50"
 
 
 class TSNativeStdConan(ConanFile):
     name = "tsnative-std"
-    testSuffix = "_GTEST"
-
     description = "Typescript standard library implementation"
     settings = "os", "compiler", "build_type", "arch", "target_abi"
-
-    generators = "cmake", "CMakeDeps", "cmake_find_package"
-
     exports_sources = "*"
 
     options = {
@@ -33,7 +32,7 @@ class TSNativeStdConan(ConanFile):
         self.requires("libuv/1.43.0#0")
 
     def build_requirements(self):
-        # 'if self.user and seld.channel:' ends up in exception when no user and channel values are provided
+        # 'if self.user and self.channel:' ends up in exception when no user and channel values are provided
         if self._conan_user and self._conan_channel:
             self.build_requires("tsnative-declarator/%s@%s/%s" %
                                 (self.version, self.user, self.channel))
@@ -41,28 +40,38 @@ class TSNativeStdConan(ConanFile):
             self.build_requires("tsnative-declarator/%s" % self.version)
 
     def generate(self):
-        cmake = CMakeDeps(self)
-        # forces cmake scripts generation for "tools"
-        cmake.build_context_activated = ["tsnative-declarator"]
-        cmake.generate()
-
-    def build(self):
-        cmake = CMake(self)
+        tc = CMakeToolchain(self)
         if self.settings.target_abi is None:
             self.output.error(
                 "Target ABI is not specified. Please provide settings.target_abi value")
         else:
             self.output.info("Target ABI is %s" % self.settings.target_abi)
-            cmake.definitions["CMAKE_CXX_COMPILER_TARGET"] = self.settings.target_abi
-            cmake.definitions["GENERATE_DECLARATIONS"] = 'ON'
+            tc.variables["CMAKE_CXX_COMPILER_TARGET"] = self.settings.target_abi
 
-        cmake.definitions["BUILD_TEST"] = 'ON' if self.options.build_tests else 'OFF'
-        cmake.definitions["ENABLE_LOGS"] = 'ON' if self.options.enable_logs else 'OFF'
+        tc.variables["GENERATE_DECLARATIONS"] = True
+        tc.variables["BUILD_TEST"] = self.options.build_tests
+        tc.variables["ENABLE_LOGS"] = self.options.enable_logs
+        # tc.variables["CMAKE_VERBOSE_MAKEFILE"]="ON"
+
+        print("TOOLCHAIN VARIABLES:\n\t" +
+              "\n\t".join(f"{k}={v}" for k, v in tc.variables.items()))
+
+        tc.generate()
+
+        cmake = CMakeDeps(self)
+        cmake.build_context_activated = ["tsnative-declarator"]
+        cmake.generate()
+
+    def build(self):
+        cmake = CMake(self)
 
         cmake.configure()
         cmake.build()
         cmake.install()
-        cmake.test(output_on_failure=True)
+
+        if self.options.build_tests and self.settings.os != "Android":
+            with environment_append({'CTEST_OUTPUT_ON_FAILURE': '1'}):
+                cmake.test()
 
     def package(self):
         self.copy("constants.*", "declarations/tsnative/std")
