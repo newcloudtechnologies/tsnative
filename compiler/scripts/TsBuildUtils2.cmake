@@ -71,9 +71,9 @@ function (add_ts_library ARG_NAME ...)
 
     # These top-level targets will be created.
 
-    set(stage0 "extract_symbols")
-    set(stage1 "instantiated_classes")
-    set(stage2 "instantiated_functions")
+    set(stage0 "${targetName}_extract_symbols")
+    set(stage1 "${targetName}_instantiated_classes")
+    set(stage2 "${targetName}_instantiated_functions")
 
     set(mangledTables )
     set(demangledTables )
@@ -100,8 +100,8 @@ function (add_ts_library ARG_NAME ...)
     # - If defined, do nothing.
     _collectWatchSources()
 
-    _addStage(${stage1} ${stage0} --processTemplateClasses)
-    _addStage(${stage2} ${stage1} --processTemplateFunctions)
+    _addStage(${stage1} ${stage0} "instantiated_classes.cpp" --processTemplateClasses)
+    _addStage(${stage2} ${stage1} "instantiated_functions.cpp" --processTemplateFunctions)
 
     # Stage 3
 
@@ -200,11 +200,15 @@ function (_add_ts_command ARG_SRC ...)
     set(tsCompiler tsnative-compiler)
     set(tsCompilerEnv ${TS_COMPILER_ENV})
 
+    if (DEFINED TS_COMPILER)
+        set(tsCompiler ${TS_COMPILER})
+    endif()
+
     add_custom_command(
         OUTPUT ${outputFile}
         DEPENDS ${inputFile} ${dependencies}
-        COMMAND ${CMAKE_COMMAND} -E time ${tsCompiler}
-        #COMMAND ${CMAKE_COMMAND} -E env "${tsCompilerEnv}" ${tsCompiler}
+        #COMMAND ${CMAKE_COMMAND} -E time ${tsCompiler}
+        COMMAND ${CMAKE_COMMAND} -E env "${tsCompilerEnv}" ${tsCompiler}
         ARGS ${inputFile}
             --build ${outputDir}
             --mangledTables "$<JOIN:${mangledTable},${commaSep}>"
@@ -357,8 +361,8 @@ macro (_collectIncludeDirs)
     set(includeDirs ${_includeDirs})
 endmacro()
 
-macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FLAG)
-    set(cppFile ${outputDir}/${ARG_STAGE}.cpp)
+macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FILENAME ARG_FLAG)
+    set(cppFile ${outputDir}/${ARG_FILENAME})
     set(cppTarget ${ARG_STAGE})
 
     # Generating .cpp file
