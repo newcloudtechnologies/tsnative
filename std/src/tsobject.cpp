@@ -110,6 +110,10 @@ bool Object::isDate() const
     return _typeid == TSTypeID::Date;
 }
 
+bool Object::isPromise() const {
+    return _typeid == TSTypeID::Promise;
+}
+
 bool Object::has(String* key) const
 {
     return _props->has(key);

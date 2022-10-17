@@ -33,6 +33,7 @@ enum class TSTypeID
     Map = 1 << 13,
     Closure = 1 << 14,
     Date = 1 << 15,
+    Promise = 1 << 16,
 };
 
 class TS_DECLARE Object
@@ -57,6 +58,7 @@ public:
     bool isMap() const;
     bool isClosure() const;
     bool isDate() const;
+    bool isPromise() const;
 
 protected:
     bool has(String* key) const;
