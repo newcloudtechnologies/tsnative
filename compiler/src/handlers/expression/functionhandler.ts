@@ -201,6 +201,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     let llvmReturnType;
     if (tsReturnType.isSupported()) {
       llvmReturnType = tsReturnType.getLLVMType();
+    } else if (tsReturnType.isThisType()) {
+      llvmReturnType = this.generator.ts.obj.getLLVMType();
     } else {
       if (!typeMapper) {
         throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);

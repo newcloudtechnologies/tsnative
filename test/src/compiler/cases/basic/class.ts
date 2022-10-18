@@ -1569,3 +1569,24 @@
 
   new C;
 }
+
+{
+  class MyClass {
+    private tag = "MyClass"
+
+    constructor() {
+      const o = this.foo();
+      console.assert(o.bar() === this.tag, "Calling method that returns 'this' inside constructor");
+    }
+
+    foo() {
+      return this;
+    }
+
+    bar() {
+      return this.tag;
+    }
+  }
+
+  new MyClass();
+}
