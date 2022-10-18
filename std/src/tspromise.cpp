@@ -64,6 +64,19 @@ void Promise::reject(Object* rejected)
     _d->reject(rejected);
 }
 
+Boolean* Promise::equals(Object* other) const
+{
+    if (!other->isPromise())
+    {
+        return new Boolean(false);
+    }
+
+    auto* otherPromise = dynamic_cast<Promise*>(other);
+    bool result = (*_d == *otherPromise->_d);
+
+    return new Boolean(result);
+}
+
 String* Promise::toString() const
 {
     std::stringstream ss;
