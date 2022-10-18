@@ -4,6 +4,7 @@
 #include "std/tsclosure.h"
 #include "std/tsobject.h"
 #include "std/tsstring.h"
+#include "std/tsundefined.h"
 
 Task::Task(Object* onFulfilled, Object* onRejected, PromisePrivate nextPromise)
     : _onFulfilled{onFulfilled}
@@ -31,7 +32,7 @@ Task::Task(Object* onFulfilled, Object* onRejected, PromisePrivate nextPromise)
     }
 }
 
-void Task::invoke(Object* object, InternalState::Result&& arg)
+void Task::invoke(Object* object, InternalState::Result&& arg) noexcept
 {
     using Result = InternalState::Result;
     if (!object)
@@ -49,7 +50,7 @@ void Task::invoke(Object* object, InternalState::Result&& arg)
     callClosure(closure, std::move(arg));
 }
 
-void Task::callClosure(TSClosure* closure, InternalState::Result&& arg)
+void Task::callClosure(TSClosure* closure, InternalState::Result&& arg) noexcept
 {
     try
     {
@@ -65,17 +66,17 @@ void Task::callClosure(TSClosure* closure, InternalState::Result&& arg)
             transferResult(std::move(arg));
         }
     }
-    catch (const std::exception& e)
-    {
-        _nextPromise.reject(new String{e.what()});
+    catch (void * e) {
+        auto * reason = reinterpret_cast<Object *>(e);
+        _nextPromise.reject(reason);
     }
     catch (...)
     {
-        _nextPromise.reject(new String{"Unknown exception"});
+        _nextPromise.reject(Undefined::instance());
     }
 }
 
-void Task::transferResult(InternalState::Result&& arg)
+void Task::transferResult(InternalState::Result&& arg) noexcept
 {
     if (arg)
     {
