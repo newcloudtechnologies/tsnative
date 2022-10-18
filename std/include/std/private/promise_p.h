@@ -17,10 +17,6 @@ public:
 
     PromisePrivate then(Object* onResolved, Object* onRejected);
 
-    PromisePrivate then(Object* onResolved);
-
-    PromisePrivate then();
-
     PromisePrivate fail(Object* onRejected);
 
     PromisePrivate finally(Object* onFinally);
@@ -34,6 +30,8 @@ public:
     bool isFulfilled() const;
 
     bool isRejected() const;
+
+    friend bool operator == (const PromisePrivate & lhs, const PromisePrivate & rhs);
 
 private:
     std::shared_ptr<InternalState> _internalState;

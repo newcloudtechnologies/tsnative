@@ -18,16 +18,6 @@ PromisePrivate PromisePrivate::then(Object* onResolved, Object* onRejected)
     return next;
 }
 
-PromisePrivate PromisePrivate::then(Object* onResolved)
-{
-    return then(onResolved, nullptr);
-}
-
-PromisePrivate PromisePrivate::then()
-{
-    return then(nullptr, nullptr);
-}
-
 PromisePrivate PromisePrivate::fail(Object* onRejected)
 {
     return then(nullptr, onRejected);
@@ -61,4 +51,9 @@ bool PromisePrivate::isFulfilled() const
 bool PromisePrivate::isRejected() const
 {
     return _internalState->isRejected();
+}
+
+bool operator==(const PromisePrivate& lhs, const PromisePrivate& rhs)
+{
+    return lhs._internalState == rhs._internalState;
 }
