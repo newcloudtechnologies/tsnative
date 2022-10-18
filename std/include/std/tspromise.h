@@ -29,6 +29,8 @@ public:
 
     TS_METHOD TS_SIGNATURE("finally(onFinally?: TSClosure): Promise") Promise* finally(Union* onFinally);
 
+    TS_METHOD Boolean* equals(Object* other) const override;
+
     TS_METHOD String* toString() const override;
 
     TS_METHOD Boolean* toBool() const override;
