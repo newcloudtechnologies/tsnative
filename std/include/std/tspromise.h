@@ -25,7 +25,7 @@ public:
         Union* onFulfilled, Union* onRejected);
 
     TS_METHOD TS_NAME("catch") TS_DECORATOR("MapsTo('fail')")
-    TS_METHOD TS_SIGNATURE("catch(onrejected?: TSClosure): Promise") Promise* fail(Union* onRejected);
+    TS_SIGNATURE("catch(onrejected?: TSClosure): Promise") Promise* fail(Union* onRejected);
 
     TS_METHOD TS_SIGNATURE("finally(onFinally?: TSClosure): Promise") Promise* finally(Union* onFinally);
 

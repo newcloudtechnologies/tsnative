@@ -9,13 +9,13 @@
 #include <sstream>
 
 Promise::Promise(std::unique_ptr<PromisePrivate> promisePrivate)
-    : _d{std::move(promisePrivate)}
+    : Object{TSTypeID::Promise}
+    , _d{std::move(promisePrivate)}
 {
 }
 
 Promise::Promise(TSClosure* executor)
-    : Object{TSTypeID::Promise}
-    , _d{std::make_unique<PromisePrivate>()}
+    : Promise{std::make_unique<PromisePrivate>()}
 {
     LOG_METHOD_CALL;
     LOG_ADDRESS("Promise adress with: ", this);
