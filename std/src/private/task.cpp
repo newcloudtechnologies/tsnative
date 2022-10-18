@@ -6,6 +6,8 @@
 #include "std/tsstring.h"
 #include "std/tsundefined.h"
 
+#include <cassert>
+
 Task::Task(Object* onFulfilled, Object* onRejected, PromisePrivate nextPromise)
     : _onFulfilled{onFulfilled}
     , _onRejected{onRejected}
@@ -34,20 +36,16 @@ Task::Task(Object* onFulfilled, Object* onRejected, PromisePrivate nextPromise)
 
 void Task::invoke(Object* object, InternalState::Result&& arg) noexcept
 {
-    using Result = InternalState::Result;
-    if (!object)
-    {
-        transferResult(std::move(arg));
-        return;
-    }
+    assert(object && "Invalid object");
 
-    if (!(object->isClosure()))
+    using Result = InternalState::Result;
+
+    if (object->isClosure())
     {
-        _nextPromise.resolve(arg.get());
-        return;
+        auto* closure = dynamic_cast<TSClosure*>(object);
+        return callClosure(closure, std::move(arg));
     }
-    auto* closure = dynamic_cast<TSClosure*>(object);
-    callClosure(closure, std::move(arg));
+    return transferResult(std::move(arg));
 }
 
 void Task::callClosure(TSClosure* closure, InternalState::Result&& arg) noexcept
@@ -66,8 +64,9 @@ void Task::callClosure(TSClosure* closure, InternalState::Result&& arg) noexcept
             transferResult(std::move(arg));
         }
     }
-    catch (void * e) {
-        auto * reason = reinterpret_cast<Object *>(e);
+    catch (void* e)
+    {
+        auto* reason = reinterpret_cast<Object*>(e);
         _nextPromise.reject(reason);
     }
     catch (...)
