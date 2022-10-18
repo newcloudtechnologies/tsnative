@@ -23,11 +23,11 @@ public:
     Task(Object* onFulfilled, Object* onRejected, PromisePrivate nextPromise);
 
 private:
-    void invoke(Object* object, InternalState::Result&& arg);
+    void invoke(Object* object, InternalState::Result&& arg) noexcept;
 
-    void callClosure(TSClosure* closure, InternalState::Result&& arg);
+    void callClosure(TSClosure* closure, InternalState::Result&& arg) noexcept;
 
-    void transferResult(InternalState::Result&& arg);
+    void transferResult(InternalState::Result&& arg) noexcept;
 
 private:
     Object* _onFulfilled{nullptr};
