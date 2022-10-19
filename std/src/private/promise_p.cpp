@@ -18,16 +18,6 @@ PromisePrivate PromisePrivate::then(Object* onResolved, Object* onRejected)
     return next;
 }
 
-PromisePrivate PromisePrivate::fail(Object* onRejected)
-{
-    return then(nullptr, onRejected);
-}
-
-PromisePrivate PromisePrivate::finally(Object* onFinally)
-{
-    return then(onFinally, onFinally);
-}
-
 void PromisePrivate::resolve(Object* resolved)
 {
     _internalState->resolve(InternalState::Result::makeValue(resolved));
