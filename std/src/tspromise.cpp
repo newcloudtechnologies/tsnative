@@ -8,6 +8,20 @@
 
 #include <sstream>
 
+Promise* Promise::resolve(Union* resolved)
+{
+    auto* promise = new Promise{std::make_unique<PromisePrivate>()};
+    promise->success(resolved->getValue());
+    return promise;
+}
+
+Promise* Promise::reject(Union* rejected)
+{
+    auto* promise = new Promise{std::make_unique<PromisePrivate>()};
+    promise->failure(rejected->getValue());
+    return promise;
+}
+
 Promise::Promise(std::unique_ptr<PromisePrivate> promisePrivate)
     : Object{TSTypeID::Promise}
     , _d{std::move(promisePrivate)}
@@ -41,24 +55,24 @@ Promise* Promise::then(Union* onFulfilled, Union* onRejected)
 Promise* Promise::fail(Union* onRejected)
 {
     LOG_METHOD_CALL;
-    auto next = std::make_unique<PromisePrivate>(_d->fail(onRejected->getValue()));
+    auto next = std::make_unique<PromisePrivate>(_d->then(Undefined::instance(), onRejected->getValue()));
     return new Promise{std::move(next)};
 }
 
 Promise* Promise::finally(Union* onFinally)
 {
     LOG_METHOD_CALL;
-    auto next = std::make_unique<PromisePrivate>(_d->finally(onFinally->getValue()));
+    auto next = std::make_unique<PromisePrivate>(_d->then(onFinally->getValue(), onFinally->getValue()));
     return new Promise{std::move(next)};
 }
 
-void Promise::resolve(Object* resolved)
+void Promise::success(Object* resolved)
 {
     LOG_METHOD_CALL;
     _d->resolve(resolved);
 }
 
-void Promise::reject(Object* rejected)
+void Promise::failure(Object* rejected)
 {
     LOG_METHOD_CALL;
     _d->reject(rejected);

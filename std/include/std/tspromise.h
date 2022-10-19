@@ -17,6 +17,10 @@ class TS_DECLARE Promise : public Object
 protected:
     Promise(std::unique_ptr<PromisePrivate> promisePrivate);
 public:
+    TS_METHOD TS_SIGNATURE("resolve(resolved?: Object): Promise") static Promise * resolve(Union * resolved);
+
+    TS_METHOD TS_SIGNATURE("reject(rejected?: Object): Promise") static Promise * reject(Union * resolved);
+
     TS_METHOD explicit Promise(TSClosure * executor);
 
     ~Promise() override;
@@ -36,9 +40,9 @@ public:
     TS_METHOD Boolean* toBool() const override;
 
 private:
-    TS_METHOD TS_SIGNATURE("resolve(resolved: Object): void") void resolve(Object * resolved);
+    TS_METHOD TS_SIGNATURE("success(resolved: Object): void") void success(Object * resolved);
 
-    TS_METHOD TS_SIGNATURE("reject(rejected: Object): void") void reject(Object * rejected);
+    TS_METHOD TS_SIGNATURE("failure(rejected: Object): void") void failure(Object * rejected);
 
 private:
     std::unique_ptr<PromisePrivate> _d;
