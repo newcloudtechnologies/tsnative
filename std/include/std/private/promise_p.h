@@ -17,10 +17,6 @@ public:
 
     PromisePrivate then(Object* onResolved, Object* onRejected);
 
-    PromisePrivate fail(Object* onRejected);
-
-    PromisePrivate finally(Object* onFinally);
-
     void resolve(Object* resolved);
 
     void reject(Object* rejected);
