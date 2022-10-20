@@ -151,7 +151,7 @@ build_test() {
         --build ${build_dir} \
         --baseUrl ${PROJECT_ROOT_DIR}/declarations \
         --test \
-        # --run_event_loop \
+         --run_event_loop \
         # --debug \
         # --jobs "4" \
 }
