@@ -4,6 +4,7 @@
 import com.ncloudtech.emb.devops.pipeline.gitUtils
 import com.ncloudtech.emb.devops.pipeline.notificationUtils
 import com.ncloudtech.emb.devops.pipeline.VersioningUtils
+import com.ncloudtech.git.Gitea
 
 def gitUtils = new gitUtils()
 def versioning = new VersioningUtils(this)
@@ -18,6 +19,9 @@ if (branch != "master") {
     user = "ci"
     channel = branch.replaceAll("/",'_')
 }
+
+String owner = 'antiq'
+String projectName = 'tsnative'
 
 pipeline {
     parameters {
@@ -52,7 +56,7 @@ pipeline {
                 script {
                     echo "Build compiler"
                     build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
-                            string(name: 'PKG_REPO', value: "tsnative"),
+                            string(name: 'PKG_REPO', value: projectName),
                             string(name: 'PKG_BRANCH_OR_TAG', value: branch),
                             string(name: 'PKG_CONAN_NAME', value: "tsnative-compiler"),
                             string(name: 'PKG_CONANFILE_PATH', value: "compiler"),
@@ -71,7 +75,7 @@ pipeline {
                 script {
                     echo "Build declarator"
                     build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
-                            string(name: 'PKG_REPO', value: "tsnative"),
+                            string(name: 'PKG_REPO', value: projectName),
                             string(name: 'PKG_BRANCH_OR_TAG', value: branch),
                             string(name: 'PKG_CONAN_NAME', value: "tsnative-declarator"),
                             string(name: 'PKG_CONANFILE_PATH', value: "declarator"),
@@ -90,7 +94,7 @@ pipeline {
                 script {
                     echo "Build std"
                     build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
-                            string(name: 'PKG_REPO', value: "tsnative"),
+                            string(name: 'PKG_REPO', value: projectName),
                             string(name: 'PKG_BRANCH_OR_TAG', value: branch),
                             string(name: 'PKG_CONAN_NAME', value: "tsnative-std"),
                             string(name: 'PKG_CONANFILE_PATH', value: "std"),
@@ -110,7 +114,7 @@ pipeline {
                 script {
                     echo "Build tests"
                     build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
-                            string(name: 'PKG_REPO', value: "tsnative"),
+                            string(name: 'PKG_REPO', value: projectName),
                             string(name: 'PKG_BRANCH_OR_TAG', value: branch),
                             string(name: 'PKG_CONAN_NAME', value: "tsnative-tests"),
                             string(name: 'PKG_CONANFILE_PATH', value: "test"),
@@ -131,6 +135,16 @@ pipeline {
             steps {
                 script {
                     versioning.publishVersionTag()
+
+                    Gitea.createRelease(
+                        script: this,
+                        giteaHost: global.SHARED_LIB_GIT_REPOSITORY_HTTP_URL,
+                        creds: env.GIT_CREDENTIALS_HTTP,
+                        owner: owner,
+                        project: projectName,
+                        tagName: "v${this.version}",
+                        name: "release v${this.version}"
+                    )
                 }
             }
         }
