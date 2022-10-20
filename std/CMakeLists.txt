@@ -12,6 +12,8 @@ find_package(tsnative-declarator)
 
 include(TsDeclaratorUtils)
 
+# Declarator generates *.d.ts files from these headers
+# Don't put headers from private folder there!
 set(HEADERS
     include/std/tsobject.h
     include/std/tsundefined.h
@@ -37,13 +39,9 @@ set(HEADERS
     include/std/igc_impl.h
     include/std/diagnostics.h
     include/std/memory_diagnostics.h
-
     include/std/set_timeout.h
     include/std/set_interval.h
     include/std/event_loop.h
-
-    include/std/private/ievent_loop.h
-    include/std/private/itimer.h
 )
 
 set(SOURCES

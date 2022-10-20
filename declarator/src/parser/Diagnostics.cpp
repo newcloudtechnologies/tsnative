@@ -11,7 +11,6 @@
 
 #include "Diagnostics.h"
 
-#include <cstring>
 #include <iostream>
 #include <sstream>
 
@@ -81,24 +80,6 @@ Diagnostics Diagnostics::get(CXTranslationUnit unit)
 
         clang_disposeString(diag_msg);
         clang_disposeDiagnostic(diag);
-    }
-
-#pragma message "Diagnostic checks are disabled for Android targets"
-    // Nasty hack for Android - treat any errors as warnings
-    if (!result.check())
-    {
-        CXTargetInfo info = clang_getTranslationUnitTargetInfo(unit);
-        CXString triple = clang_TargetInfo_getTriple(info);
-        const char* triple_str = clang_getCString(triple);
-        if (strstr(triple_str, "android"))
-        {
-            std::cerr << "WARNING: [" << triple_str << "] ignoring diagnostics errors:" << std::endl << result.print();
-            result.warnings.insert(result.warnings.end(), result.errors.begin(), result.errors.end());
-            result.warnings.insert(result.warnings.end(), result.fatal_errors.begin(), result.fatal_errors.end());
-            result.fatal_errors.clear();
-            result.errors.clear();
-        }
-        clang_disposeString(triple);
     }
 
     return result;

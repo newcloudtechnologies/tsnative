@@ -43,6 +43,9 @@
     {                                           \
     };
 
+// disable attributes:
+#define __nomerge__
+
 #else
 #define TS_MODULE(name) name
 #define TS_NAMESPACE(name) name
