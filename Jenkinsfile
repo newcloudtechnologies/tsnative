@@ -142,8 +142,8 @@ pipeline {
                         creds: env.GIT_CREDENTIALS_HTTP,
                         owner: owner,
                         project: projectName,
-                        tagName: "v${this.version}",
-                        name: "release v${this.version}"
+                        tagName: "v${version}",
+                        name: "release v${version}"
                     )
                 }
             }
