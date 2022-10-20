@@ -1,5 +1,7 @@
-#include "std/tsobject.h"
+#pragma once
+
 #include <TS.h>
+#include "std/tsobject.h"
 
 #include <memory>
 
