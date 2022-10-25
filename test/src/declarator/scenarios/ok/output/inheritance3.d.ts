@@ -1,26 +1,21 @@
 //@ts-ignore
+@Size(3)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Event {
-    private p0_Event: number;
-    private p1_Event: number;
-    private p2_Event: number;
-
     entity(): void;
     event(): void;
 }
 
 //@ts-ignore
+@Size(4)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class CustomEvent extends Event {
-    private p0_CustomEvent: number;
-    private p1_CustomEvent: number;
-    private p2_CustomEvent: number;
-    private p3_CustomEvent: number;
-
     abc(): void;
     a(): void;
     ak(): void;

@@ -1,37 +1,30 @@
 declare module "global" {
 
     export namespace snippets {
+        //@ts-ignore
+        @Size(3)
         export class IteratorResult<T> {
-            private p0_IteratorResult: number;
-            private p1_IteratorResult: number;
-            private p2_IteratorResult: number;
         }
 
+        //@ts-ignore
+        @Size(3)
         export class Iterator<T> {
-            private p0_Iterator: number;
-            private p1_Iterator: number;
-            private p2_Iterator: number;
-
             //@ts-ignore
             @VTableIndex(7)
             next(): IteratorResult<T>;
         }
 
+        //@ts-ignore
+        @Size(3)
         export class Iterable<T> {
-            private p0_Iterable: number;
-            private p1_Iterable: number;
-            private p2_Iterable: number;
-
             //@ts-ignore
             @VTableIndex(7)
             iterator(): Iterator<T>;
         }
 
+        //@ts-ignore
+        @Size(3)
         export class Entity<T> extends Iterable<T> {
-            private p0_Entity: number;
-            private p1_Entity: number;
-            private p2_Entity: number;
-
             constructor();
 
             //@ts-ignore

@@ -6,6 +6,8 @@ declare module "cpp" {
     import { Base } from "test";
 
     @VTable
+    //@ts-ignore
+    @Size(4)
     export class VirtualBase {
         constructor();
 
@@ -13,13 +15,11 @@ declare module "cpp" {
         pureVirtualMethodToOverride(): number;
 
         private _s: string;
-
-        private p0: number;
-        private p1: number;
-        private p2: number;
     }
 
     @VTable
+    //@ts-ignore
+    @Size(5)
     export class DerivedFromVirtualBase extends VirtualBase {
         constructor();
 
@@ -28,25 +28,20 @@ declare module "cpp" {
         private _i: number;
     }
 
+    //@ts-ignore
+    @Size(3)
     export class DerivedFromBaseInOtherNamespace implements Base {
         constructor();
 
         test(): void;
-        
-        private p0: number;
-        private p1: number;
     }
 
+    //@ts-ignore
+    @Size(5)
     export class CXXBase {
         constructor();
 
         getNumber(): number;
         callMemberClosure(): string;
-
-        private p0: number;
-        private p1: number;
-        private p2: number;
-        private p3: number;
-        private p4: number;
     }
 }

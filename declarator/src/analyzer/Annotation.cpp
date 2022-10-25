@@ -20,6 +20,7 @@
 #include "parser/FunctionItem.h"
 #include "parser/FunctionTemplateItem.h"
 #include "parser/NamespaceItem.h"
+#include "parser/VariableItem.h"
 
 #include "utils/Exception.h"
 
@@ -72,6 +73,11 @@ std::string getItemAnnotations(parser::const_abstract_item_t item)
         case AbstractItem::Type::FUNCTION_TEMPLATE:
         {
             result = parser::getAnnotations(AbstractItem::decl<const FunctionTemplateItem>(item));
+            break;
+        }
+        case AbstractItem::Type::VARIABLE:
+        {
+            result = parser::getAnnotations(AbstractItem::decl<const VariableItem>(item));
             break;
         }
         default:

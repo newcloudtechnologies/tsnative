@@ -14,6 +14,7 @@
 #include "parser/Annotation.h"
 #include "parser/Collection.h"
 #include "parser/NamespaceItem.h"
+#include "parser/VariableItem.h"
 
 #include "global/Annotations.h"
 
@@ -27,6 +28,7 @@
 
 #include <exception>
 #include <regex>
+#include <tuple>
 
 namespace
 {
@@ -403,6 +405,64 @@ std::string getPartTypeName(const std::string& full)
     if (std::regex_search(full.begin(), full.end(), match, regexp))
     {
         result = match[2];
+    }
+
+    return result;
+}
+
+int getPointerSize()
+{
+    using namespace parser;
+
+    // snippet variable from TS.h
+    const std::string void_pointer = "__snippets__::void_pointer";
+
+    auto& collection = Collection::ref();
+
+    if (!collection.exists(void_pointer))
+    {
+        throw utils::Exception(R"(snippet %s is not found, file TS.h is not correct)", void_pointer.c_str());
+    }
+
+    auto item = collection.get(void_pointer);
+
+    if (item->type() != AbstractItem::Type::VARIABLE)
+    {
+        throw utils::Exception(R"(%s is not a variable, file TS.h is not correct)", void_pointer.c_str());
+    }
+
+    auto varItem = std::static_pointer_cast<parser::VariableItem>(item);
+    _ASSERT(varItem);
+
+    return varItem->size();
+}
+
+int sizeInPointers(int sizeInBytes)
+{
+    auto divider = [](int x, int y)
+    {
+        int result = x / y;
+        int rest = x % y;
+
+        return std::tuple<int, int>{result, rest};
+    };
+
+    int result = 0;
+
+    _ASSERT(sizeInBytes > 0);
+
+    int sizeOfPtr = getPointerSize();
+
+    auto division = divider(sizeInBytes, sizeOfPtr);
+
+    if (std::get<1>(division) > 0)
+    {
+        // round up if rest is not a zero
+        result = std::get<0>(division) + 1;
+    }
+    else
+    {
+        result = std::get<0>(division);
     }
 
     return result;

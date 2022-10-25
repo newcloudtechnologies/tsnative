@@ -5,14 +5,12 @@ enum Types {
 }
 
 //@ts-ignore
+@Size(3)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Collection {
-    private p0_CollectionClass: number;
-    private p1_CollectionClass: number;
-    private p2_CollectionClass: number;
-
     constructor();
     size(): number;
 }

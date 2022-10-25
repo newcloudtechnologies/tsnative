@@ -81,6 +81,12 @@ private:
                              bool isCompletedDecl,
                              const clang::FunctionTemplateDecl* decl);
 
+    void addVariable(const std::string& name,
+                     const std::string& prefix,
+                     bool isLocal,
+                     bool isCompletedDecl,
+                     const clang::VarDecl* decl);
+
 private:
     Collection();
     static Collection& do_ref();

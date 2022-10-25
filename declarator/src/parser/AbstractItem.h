@@ -40,7 +40,8 @@ struct AbstractItem
         ENUM,
         FUNCTION,
         FUNCTION_TEMPLATE,
-        CODE_BLOCK
+        CODE_BLOCK,
+        VARIABLE
     } Type;
 
 private:

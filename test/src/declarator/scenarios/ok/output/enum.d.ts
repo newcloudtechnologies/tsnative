@@ -10,14 +10,12 @@ declare module "test" {
         }
 
         //@ts-ignore
+        @Size(3)
+        //@ts-ignore
         @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class EnumHolder {
-            private p0_EnumHolder: number;
-            private p1_EnumHolder: number;
-            private p2_EnumHolder: number;
-
             constructor();
             getType(): EnumHolder.Types;
         }

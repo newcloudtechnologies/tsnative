@@ -1,23 +1,19 @@
 //@ts-ignore
+@Size(4)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class FileInfo_t {
-    private p0_FileInfo_t: number;
-    private p1_FileInfo_t: number;
-    private p2_FileInfo_t: number;
-    private p3_FileInfo_t: number;
 }
 
+//@ts-ignore
+@Size(3)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class AnyWidget {
-    private p0_AnyWidget: number;
-    private p1_AnyWidget: number;
-    private p2_AnyWidget: number;
-
     readResponse0(fInfos: data.FileInfo_t): void;
     readResponse1(fInfos: readonly data.FileInfo_t[]): void;
     readResponse2(fInfos: Array<data.FileInfo_t>): void;
@@ -38,14 +34,12 @@ export function someFunc(n: number, m: number): number;
 export function someFunc2(n: number, m: number): data.FileInfo_t[];
 
 //@ts-ignore
+@Size(3)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Multiline {
-    private p0_Multiline: number;
-    private p1_Multiline: number;
-    private p2_Multiline: number;
-
     static multiline(arg1: number, arg2: number, arg3: number, arg4: number, arg5: number, arg6: number, arg7: number): number;
 }
 
