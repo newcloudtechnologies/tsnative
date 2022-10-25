@@ -98,6 +98,7 @@ std::string typeToString(AbstractItem::Type type)
         {AbstractItem::Type::FUNCTION, "Function"},
         {AbstractItem::Type::FUNCTION_TEMPLATE, "FunctionTemplate"},
         {AbstractItem::Type::CODE_BLOCK, "CodeBlock"},
+        {AbstractItem::Type::VARIABLE, "Variable"},
     };
 
     _ASSERT(types.find(type) != types.end());

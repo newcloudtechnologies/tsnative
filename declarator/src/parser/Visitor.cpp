@@ -12,6 +12,7 @@
 #include "Visitor.h"
 
 #include "utils/Exception.h"
+#include "utils/Strings.h"
 
 #include <clang/AST/ASTContext.h>
 
@@ -161,7 +162,9 @@ CXChildVisitResult Visitor::visit(CXCursor current, CXCursor parent, CXClientDat
             std::string current_file = toStdString(clang_getFileName(file));
             std::string main_file = toStdString(clang_getTranslationUnitSpelling(context->m_tu));
 
-            isLocal = (current_file == main_file);
+            // included standard file TS.h is local too
+            isLocal = (current_file == main_file) || utils::ends_with(current_file, "include/TS.h") ||
+                      utils::ends_with(current_file, "include\\TS.h");
         }
 
         if (context->onVisit(namedDecl, isLocal) == Result::RECURSE)

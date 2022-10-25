@@ -12,6 +12,7 @@
 #include "MakeClass.h"
 #include "Checkers.h"
 #include "ClassDetails.h"
+#include "TypeUtils.h"
 
 #include "generator/AbstractBlock.h"
 #include "generator/ClassBlock.h"
@@ -67,7 +68,6 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
     auto classBlock = AbstractBlock::make<ClassBlock>(name, isExport, isDeclare);
 
     classBlock->addExtends(classDetails.extends);
-    classBlock->addFields(classDetails.fields);
     classBlock->addMethods(classDetails.methods);
     classBlock->addGenericMethods(classDetails.generic_methods);
     classBlock->addClosures(classDetails.closures);
@@ -81,6 +81,8 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
             classBlock->addDecorator(decorator);
         }
     }
+
+    classBlock->addDecorator(Decorator::make("Size", sizeInPointers(item->size())));
 
     if (item->hasVTable())
     {

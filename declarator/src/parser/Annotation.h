@@ -28,6 +28,7 @@ std::string getAnnotations(const clang::EnumDecl* decl);
 std::string getAnnotations(const clang::FunctionDecl* decl);
 std::string getAnnotations(const clang::ClassTemplateDecl* decl);
 std::string getAnnotations(const clang::FunctionTemplateDecl* decl);
+std::string getAnnotations(const clang::VarDecl* decl);
 std::string getAnnotations(const clang::NamespaceDecl* decl);
 
 bool setAnnotations(clang::CXXRecordDecl* decl, const std::string& annotations);

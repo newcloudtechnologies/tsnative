@@ -12,6 +12,7 @@
 #include "MakeGenericClass.h"
 #include "Checkers.h"
 #include "ClassDetails.h"
+#include "TypeUtils.h"
 
 #include "generator/AbstractBlock.h"
 #include "generator/GenericClassBlock.h"
@@ -73,7 +74,6 @@ void makeGenericClass(parser::const_class_template_item_t item,
     }
 
     genericClassBlock->addExtends(classDetails.extends);
-    genericClassBlock->addFields(classDetails.fields);
     genericClassBlock->addMethods(classDetails.methods);
     genericClassBlock->addGenericMethods(classDetails.generic_methods);
     genericClassBlock->addClosures(classDetails.closures);
@@ -87,6 +87,8 @@ void makeGenericClass(parser::const_class_template_item_t item,
             genericClassBlock->addDecorator(decorator);
         }
     }
+
+    genericClassBlock->addDecorator(Decorator::make("Size", sizeInPointers(item->size())));
 
     if (annotations.exist(TS_IGNORE))
     {

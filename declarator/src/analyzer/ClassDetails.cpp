@@ -402,7 +402,6 @@ ClassDetails ClassDetails::make(parser::const_class_item_t item,
     ClassDetails result(item, collection, typeMapper);
     result.generateExtends();
     result.generateAllMethods();
-    result.generateFields();
 
     return result;
 }
@@ -415,44 +414,6 @@ parser::const_class_item_t ClassDetails::item() const
 const parser::Collection& ClassDetails::collection() const
 {
     return m_collection;
-}
-
-void ClassDetails::generateFields()
-{
-    using namespace global::annotations;
-    using namespace generator::ts;
-    using namespace utils;
-    using namespace parser;
-
-    auto divider = [](int size, int& reminder, int d) -> int
-    {
-        reminder = size % d;
-        return size / d;
-    };
-
-    int size = m_item->size();
-
-    _ASSERT(size >= 0);
-
-    const std::vector<std::pair<std::string, int>> denominators = {{"number", sizeof(double)},
-                                                                   {"boolean", sizeof(bool)}};
-
-    int n = 0;
-    for (const auto& it : denominators)
-    {
-        int reminder = 0;
-        int N = divider(size, reminder, it.second);
-
-        for (auto i = 0; i < N; i++)
-        {
-            std::string name = strprintf("p%d_%s", n, m_item->name().c_str());
-            fields.push_back(AbstractBlock::make<FieldBlock>(name, it.first, true));
-
-            ++n;
-        }
-
-        size -= N * it.second;
-    }
 }
 
 } // namespace analyzer

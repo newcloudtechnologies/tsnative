@@ -21,6 +21,7 @@
 #include "FunctionTemplateItem.h"
 #include "NamespaceItem.h"
 #include "Utils.h"
+#include "VariableItem.h"
 
 #include "global/Annotations.h"
 
@@ -185,6 +186,11 @@ private:
             case Decl::Kind::FunctionTemplate:
             {
                 addFunctionTemplate(decl, isLocal);
+                return Result::CONTINUE;
+            }
+            case Decl::Kind::Var:
+            {
+                addVariable(decl, isLocal);
                 return Result::CONTINUE;
             }
             default:
@@ -391,6 +397,22 @@ private:
         getPrefixAndName(qualifiedName, prefix, name);
 
         m_collection.addFunctionTemplate(name, prefix, isLocal, isCompletedDecl, funcTemplateDecl);
+    }
+
+    void addVariable(const clang::NamedDecl* decl, bool isLocal)
+    {
+        const auto* varDecl = clang::dyn_cast_or_null<const clang::VarDecl>(decl);
+        _ASSERT(varDecl);
+
+        // variables from local file only
+        if (!isLocal)
+            return;
+
+        std::string prefix, name;
+        std::string qualifiedName = varDecl->getQualifiedNameAsString();
+        getPrefixAndName(qualifiedName, prefix, name);
+
+        m_collection.addVariable(name, prefix, isLocal, true, varDecl);
     }
 };
 
@@ -841,6 +863,15 @@ void Collection::addFunctionTemplate(const std::string& name,
         auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, true, decl);
         parent->addItem(item);
     }
+}
+
+void Collection::addVariable(
+    const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::VarDecl* decl)
+{
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<VariableItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 } //  namespace parser

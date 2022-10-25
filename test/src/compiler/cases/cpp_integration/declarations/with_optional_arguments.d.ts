@@ -1,4 +1,6 @@
 declare module "cpp" {
+    //@ts-ignore
+    @Size(3)
     export class WithOptionalArgs {
         constructor(n: number, s?: string);
 
@@ -9,9 +11,5 @@ declare module "cpp" {
 
         getDefaultNumber(): number;
         getDefaultString(): string;
-
-        private p0: number;
-        private p1: number;
-        private p2: number;
     }
 }

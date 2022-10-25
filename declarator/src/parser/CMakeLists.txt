@@ -33,6 +33,7 @@ set(INCLUDES
     FieldItem.h
     TemplateMethodItem.h
     CodeBlockItem.h
+    VariableItem.h
     Utils.h
 )
 
@@ -58,6 +59,7 @@ set(SOURCES
     FieldItem.cpp
     TemplateMethodItem.cpp
     CodeBlockItem.cpp
+    VariableItem.cpp
     Utils.cpp
 )
 

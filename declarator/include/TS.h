@@ -46,6 +46,14 @@
 // disable attributes:
 #define __nomerge__
 
+namespace __snippets__
+{
+
+// needs for size measuring
+void* void_pointer;
+
+} // namespace __snippets__
+
 #else
 #define TS_MODULE(name) name
 #define TS_NAMESPACE(name) name

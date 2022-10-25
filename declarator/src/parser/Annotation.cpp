@@ -133,6 +133,11 @@ std::string getAnnotations(const clang::FunctionTemplateDecl* decl)
     return result;
 }
 
+std::string getAnnotations(const clang::VarDecl* decl)
+{
+    return ::getAnnotations(static_cast<const clang::Decl*>(decl));
+}
+
 std::string getAnnotations(const clang::NamespaceDecl* decl)
 {
     std::string result;

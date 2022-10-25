@@ -42,7 +42,6 @@ struct ClassDetails
     std::vector<generator::ts::generic_method_block_t> generic_methods;
     std::vector<generator::ts::closure_block_t> closures;
     std::vector<generator::ts::operator_block_t> operators;
-    std::vector<generator::ts::field_block_t> fields;
 
 private:
     parser::const_class_item_t m_item;
@@ -62,7 +61,6 @@ private:
     void generateAllMethods();
     void generateMethods(parser::const_class_item_t item);
     void generateMethod(parser::const_method_item_t item);
-    void generateFields();
 
 public:
     static ClassDetails make(parser::const_class_item_t item,

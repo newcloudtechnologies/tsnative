@@ -3,14 +3,12 @@
 //@ts-ignore
 @MapsTo("Pi", 3.14)
 //@ts-ignore
+@Size(3)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Entity {
-    private p0_Entity: number;
-    private p1_Entity: number;
-    private p2_Entity: number;
-
     constructor();
     //@ts-ignore
     @Function(1, 2, "str", 3.14)

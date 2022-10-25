@@ -68,5 +68,7 @@ std::string typeToString(const clang::QualType& type, const clang::ASTContext& c
 std::string canonicalTypeToString(const clang::QualType& type);
 std::string getFullTypeName(const std::string& prefix, const std::string& name);
 std::string getPartTypeName(const std::string& full);
+int getPointerSize();
+int sizeInPointers(int sizeInBytes);
 
 } // namespace analyzer

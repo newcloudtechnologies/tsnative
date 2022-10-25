@@ -1,12 +1,10 @@
 //@ts-ignore
+@Size(3)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Collection {
-    private p0_Collection: number;
-    private p1_Collection: number;
-    private p2_Collection: number;
-
     constructor();
     get capacity(): number;
     set capacity(value: number);
@@ -15,14 +13,12 @@ export class Collection {
 }
 
 //@ts-ignore
+@Size(3)
+//@ts-ignore
 @VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Rope {
-    private p0_Rope: number;
-    private p1_Rope: number;
-    private p2_Rope: number;
-
     constructor();
     get length(): number;
     set length(value: number);

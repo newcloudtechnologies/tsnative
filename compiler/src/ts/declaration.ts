@@ -285,9 +285,7 @@ export class Declaration {
   }
 
   getLLVMStructType(name?: string) {
-    const sizeProperties = this.ownProperties.filter((prop) => prop.isPrivate());
-
-    const propTypes: LLVMType[] = new Array(sizeProperties.length).fill(
+    const propTypes: LLVMType[] = new Array(this.size).fill(
       LLVMType.getInt8Type(this.generator).getPointer()
     );
 
@@ -648,6 +646,32 @@ export class Declaration {
     }
 
     return;
+  }
+
+  get size() {
+    const decoratorName = "Size";
+    const decoratorValue = this.declaration.decorators?.find((decorator) =>
+      decorator.expression.getText().startsWith(decoratorName + "(")
+    );
+
+    if (decoratorValue) {
+      const pattern = new RegExp(`(?<=${decoratorName}\\().*(?=\\))`);
+      const decoratorText = decoratorValue.expression.getText();
+      const sizeMatch = decoratorText.match(pattern);
+
+      if (!sizeMatch) {
+        throw new Error(`@Size in wrong format: ${decoratorValue.getText()}, expected @Size(<number>)`);
+      }
+
+      const value = parseInt(sizeMatch[0], 10);
+      if (isNaN(value)) {
+        throw new Error(`@Size in wrong format: ${decoratorValue.getText()}, cannot parse numeric value`);
+      }
+
+      return value;
+    }
+
+    return 0;
   }
 
   get vtableSize() {
