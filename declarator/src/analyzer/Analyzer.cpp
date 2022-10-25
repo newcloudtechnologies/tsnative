@@ -184,6 +184,8 @@ void do_create(parser::const_abstract_item_t item,
             makeCodeBlock(std::static_pointer_cast<const CodeBlockItem>(item), typeMapper, block);
             break;
         }
+        case AbstractItem::Type::VARIABLE:
+            break;
         default:
         {
             throw utils::Exception(R"(type of item "%s" is not supported)", typeToString(item->type()).c_str());
