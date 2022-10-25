@@ -27,15 +27,15 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 #  LIBRARIES Targets for libraries that has cpp extensions code. See MGT::ts library for example.
 #
 # Optional args:
-#  DEBUG         Compiler in debug mode.
+#  TS_DEBUG      Compile user code in the debug mode
 #  PRINT_IR      Print IR code to console.
 #  WATCH_SOURCES List of files, because of changes in which, it is necessary to rebuild the project.
 #                If not provided, the all sources from the directory containing main ts file will be used as
 #                the files from TS_HEADERS property defined in LIBRARIES targets.
 #
 function (add_ts_library ARG_NAME ...)
-    set(options PRINT_IR TS_DEBUG)
-    set(oneValueArgs SRC TS_CONFIG BASE_URL)
+    set(options PRINT_IR)
+    set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG)
     set(multiValueArgs DEFINES INCLUDE_DIRS LIBRARIES WATCH_SOURCES)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")

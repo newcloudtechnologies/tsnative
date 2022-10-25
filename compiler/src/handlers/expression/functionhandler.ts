@@ -1536,8 +1536,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
               const entryBlock = llvm.BasicBlock.create(generator.context, "entry", fn.unwrapped as llvm.Function);
               generator.builder.setInsertionPoint(entryBlock);
 
-              bodyScope.initializeVariablesAndFunctionDeclarations(declaration.body!, generator);
-
               if (dbg) {
                 dbg.emitProcedure(
                   declaration.unwrapped,
@@ -1547,6 +1545,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
                 );
                 dbg.emitLocation(declaration?.body);
               }
+
+              bodyScope.initializeVariablesAndFunctionDeclarations(declaration.body!, generator);
 
               if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
                 declaration.body.forEachChild((node) => {
