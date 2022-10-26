@@ -13,25 +13,24 @@
 
 #include <TS.h>
 
-#include <std/tsnumber.h>
 #include <std/tsobject.h>
+
+class TSClosure;
 
 namespace cpp_integration IS_TS_MODULE
 {
+class Point;
 
-class TS_EXPORT Point : public Object
+class TS_EXPORT Button : public Object
 {
 public:
-    TS_METHOD Point(Number* x, Number* y);
-    Point(const Point& other);
+    TS_METHOD Button();
 
-    TS_METHOD Number* x() const;
-    TS_METHOD Number* y() const;
+    TS_METHOD void onClicked(TSClosure* closure);
+    TS_METHOD void onClickedWithPoint(TSClosure* closure);
 
-    TS_METHOD void setX(Number* x);
-    TS_METHOD void setY(Number* y);
-
-    TS_METHOD Point* clone() const;
+    TS_METHOD void click() const;
+    TS_METHOD void clickWithPoint(Point* point) const;
 };
 
 } // namespace IS_TS_MODULE

@@ -1,34 +1,21 @@
-#include <iostream>
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
 
-#include <std/tsobject.h>
-#include <std/gc.h>
+#include "component.h"
+
 #include <std/tsnumber.h>
 
-class Component : public Object
-{
-public:
-    Component();
-    virtual ~Component() = default;
+#include <iostream>
 
-    virtual void draw() = 0;
-    virtual void render();
-
-    void test();
-};
-
-class AnotherWidget
-{
-public:
-    AnotherWidget();
-};
-
-class Handler
-{
-public:
-    Handler();
-
-    void handle(Component *c);
-};
+using namespace cpp_integration;
 
 Component::Component()
 {
@@ -54,7 +41,7 @@ Handler::Handler()
 {
 }
 
-void Handler::handle(Component *c)
+void Handler::handle(Component* c)
 {
     c->render();
     c->draw();

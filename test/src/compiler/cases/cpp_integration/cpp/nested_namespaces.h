@@ -9,19 +9,22 @@
  *
  */
 
-#include "fileinfo.h"
+#include <TS.h>
 
-namespace cpp_integration
+#include <std/tsobject.h>
+
+namespace cpp_integration IS_TS_MODULE
 {
-namespace exts
+namespace N2 IS_TS_NAMESPACE
 {
 
-FileInfo_t::FileInfo_t(String* path, String* name, Boolean* isFolder)
-    : _path(path->cpp_str())
-    , _name(name->cpp_str())
-    , _isFolder(false)
+class TS_EXPORT Clazz : public Object
 {
-}
+public:
+    TS_METHOD Clazz();
+};
 
-} // namespace exts
-} // namespace cpp_integration
+TS_EXPORT void takesClazz(Clazz* c);
+
+} // namespace IS_TS_NAMESPACE
+} // namespace IS_TS_MODULE

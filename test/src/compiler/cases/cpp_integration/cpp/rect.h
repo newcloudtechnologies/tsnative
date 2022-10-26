@@ -1,4 +1,17 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
+
+#include <TS.h>
 
 #include "point.h"
 
@@ -7,18 +20,18 @@
 
 class Number;
 
-namespace cpp
+namespace cpp_integration IS_TS_MODULE
 {
-  class Rect : public Object
-  {
-  public:
-    Rect(Point *topLeft, Point *bottomRight);
+class TS_EXPORT Rect : public Object
+{
+public:
+    TS_METHOD Rect(Point* topLeft, Point* bottomRight);
 
-    Point *topLeft() const;
-    Point *bottomRight() const;
+    TS_METHOD Point* topLeft() const;
+    TS_METHOD Point* bottomRight() const;
 
-    Number *getSquare();
+    TS_METHOD Number* getSquare();
 
-    Array<Point *> *getDiagonal() const;
-  };
-} // namespace cpp
+    TS_METHOD Array<Point*>* getDiagonal() const;
+};
+} // namespace IS_TS_MODULE

@@ -13,7 +13,7 @@
 // Test buildabily, non-crashing. Use it as a reference.
 
 import { Override } from "tsnative/std/decorators/decorators"
-import { Component, AnotherWidget, Handler } from "./declarations/component"
+import { Component, AnotherWidget, Handler } from "cpp_integration_exts"
 
 const i = 2;
 

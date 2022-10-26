@@ -1,4 +1,17 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
+
+#include <TS.h>
 
 #include <std/tsobject.h>
 
@@ -6,19 +19,19 @@ class Number;
 class String;
 class Union;
 
-namespace cpp
+namespace cpp_integration IS_TS_MODULE
 {
-    class WithOptionalArgs : public Object
-    {
-    public:
-        WithOptionalArgs(Number *n, Union *s);
+class TS_EXPORT WithOptionalArgs : public Object
+{
+public:
+    TS_METHOD TS_SIGNATURE("constructor(n: number, s?: string)") WithOptionalArgs(Number* n, Union* s);
 
-        void setValues(Union *n, Union *s);
+    TS_METHOD TS_SIGNATURE("setValues(n?: number, s?: string): void") void setValues(Union* n, Union* s);
 
-        Number *getNumber() const;
-        String *getString() const;
+    TS_METHOD Number* getNumber() const;
+    TS_METHOD String* getString() const;
 
-        Number *getDefaultNumber() const;
-        String *getDefaultString() const;
-    };
-} // namespace cpp
+    TS_METHOD Number* getDefaultNumber() const;
+    TS_METHOD String* getDefaultString() const;
+};
+} // namespace IS_TS_MODULE

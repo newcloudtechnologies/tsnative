@@ -1,7 +1,7 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
 import { Declaration } from "../ts/declaration";
-import { LLVMConstantFP, LLVMValue } from "../llvm/value";
+import { LLVMConstantInt, LLVMValue } from "../llvm/value";
 import { LLVMType } from "../llvm/type";
 
 import { Runtime } from "../tsbuiltins/runtime";
@@ -32,11 +32,16 @@ export class EventLoop {
     return this.eventLoopType;
   }
 
-  run(name?: string) {
+  run(name?: string, lock: boolean = true) {
     const eventLoopAddress = this.runtime.getEventLoopAddress();
     return this.generator.builder.createSafeCall(
       this.runLoopFn,
-      [eventLoopAddress],
+      [
+        eventLoopAddress, 
+        this.generator.builtinBoolean.create(
+          lock ? LLVMConstantInt.getTrue(this.generator) 
+               : LLVMConstantInt.getFalse(this.generator)) 
+      ],
       name
     );
   }
@@ -63,7 +68,7 @@ export class EventLoop {
     );
 
     const returnType = LLVMType.getInt32Type(this.generator);
-    const llvmArgumentTypes = [thisType.getLLVMType()];
+    const llvmArgumentTypes = [thisType.getLLVMType(), this.generator.builtinBoolean.getLLVMType()];
 
     const { fn: runFN } = this.generator.llvm.function.create(
       this.generator.builtinNumber.getLLVMType(),

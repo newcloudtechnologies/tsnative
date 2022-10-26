@@ -1,19 +1,23 @@
-#include <std/tsobject.h>
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
 
-namespace N1
+#include "nested_namespaces.h"
+
+using namespace cpp_integration;
+
+N2::Clazz::Clazz()
 {
-  namespace N2
-  {
+}
 
-    class Clazz : public Object
-    {
-    public:
-      Clazz();
-    };
-
-    void takesClazz(Clazz c) { (void)c; };
-
-  } // namespace N2
-} // namespace N1
-
-N1::N2::Clazz::Clazz() {}
+void N2::takesClazz(Clazz* c)
+{
+    (void)c;
+};

@@ -1,19 +1,25 @@
-#include "std/tsobject.h"
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
+#include "union_narrowing.h"
+
 #include "std/tsnumber.h"
 
-namespace cpp
+using namespace cpp_integration;
+
+UnionTest::UnionTest()
 {
-    class UnionTest : public Object
-    {
-        UnionTest();
+}
 
-        Number *bypass(Number *n) const;
-    };
-
-    UnionTest::UnionTest() {}
-
-    Number *UnionTest::bypass(Number *n) const
-    {
-        return n;
-    }
+Number* UnionTest::bypass(Number* n) const
+{
+    return n;
 }

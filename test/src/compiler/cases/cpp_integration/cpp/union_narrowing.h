@@ -9,19 +9,18 @@
  *
  */
 
-#include "fileinfo.h"
+#include <TS.h>
 
-namespace cpp_integration
-{
-namespace exts
-{
+#include "std/tsobject.h"
 
-FileInfo_t::FileInfo_t(String* path, String* name, Boolean* isFolder)
-    : _path(path->cpp_str())
-    , _name(name->cpp_str())
-    , _isFolder(false)
-{
-}
+class Number;
 
-} // namespace exts
-} // namespace cpp_integration
+namespace cpp_integration IS_TS_MODULE
+{
+class TS_EXPORT UnionTest : public Object
+{
+    TS_METHOD UnionTest();
+
+    TS_METHOD Number* bypass(Number* n) const;
+};
+} // namespace IS_TS_MODULE

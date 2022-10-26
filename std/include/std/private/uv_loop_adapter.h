@@ -26,20 +26,21 @@ public:
     UVLoopAdapter(UVLoopAdapter&&) = delete;
     UVLoopAdapter& operator=(UVLoopAdapter&&) = delete;
 
-    int run() override;
+    int run(bool lock = true) override;
 
     bool isRunning() const override;
 
     void stop() override;
 
-    void enqueue(Callback && callback) override;
+    void enqueue(Callback&& callback) override;
 
     void processEvents() override;
 
     bool hasEventHandlers() const;
 
     template <typename R, typename... Args>
-    std::shared_ptr<R> getUVEventHandler(Args... args) const {
+    std::shared_ptr<R> getUVEventHandler(Args... args) const
+    {
         return _loop.get<R>(args...);
     }
 

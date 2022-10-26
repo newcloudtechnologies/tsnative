@@ -1,3 +1,11 @@
+// sanity check
+let stdlib: any;
+try {
+  stdlib = require('std/constants');
+} catch (e) {
+  throw new Error('Failed to load std: missing NODE_PATH env var?\n' + e);
+}
+
 import { LLVMGenerator } from "./generator";
 import * as argv from "commander";
 import * as fs from "fs";
@@ -10,8 +18,6 @@ import { initCXXSymbols } from "./mangling";
 
 var pjson = require('../package.json');
 var version_string = pjson.version + ' (Based on Node.js ' + process.version + ")"
-
-const stdlib = require("std/constants");
 
 argv
   .name('compiler') // TODO: get binary name from env?
@@ -41,7 +47,7 @@ argv
     }
   )
   .option("--debug", "Generate debug information")
-  .option("--run_event_loop", "Run event loop")
+  .option("--runEventLoop <[lock|oneshot]>", "Run event loop and lock execution (lock) or exit immediately (oneshot)")
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -202,7 +208,7 @@ async function main() {
 
   let llvmModule;
   try {
-    llvmModule = new LLVMGenerator(program, argv.run_event_loop, argv.debug).init().createModule();
+    llvmModule = new LLVMGenerator(program, argv.runEventLoop, argv.debug).init().createModule();
   } catch (e) {
     console.log(files);
     console.log(e);

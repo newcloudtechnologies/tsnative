@@ -8,46 +8,82 @@
 # at http://ncloudtech.com/contact.html
 #
 
-# TODO: Create intermediate lib that acts as an extesion and links this one.
-# This way we won't need to recompile this lib for every cpp_integration test
+project(cpp_integration_exts LANGUAGES CXX)
 
-set (EXTS_TARGET cpp)
+find_package(tsnative-declarator REQUIRED)
+find_package(tsnative-std REQUIRED)
 
 include(TsDeclaratorUtils)
 
-find_package(tsnative-std REQUIRED)
-find_package(tsnative-declarator REQUIRED)
-
 set(INCLUDES
     aggregate.h
-    rect.h
+    button.h
+    component.h
+    dummy_base.h
+    enum.h
+    fileinfo.h
+    generics.h # TODO: header-only implementation doesn't work for now
+    inheritance.h
+    nested_namespaces.h
+    optional_arguments.h
     point.h
     printable.h
-    dummy_base.h
-    inheritance.h
-    optional_arguments.h
+    rect.h
+    union_narrowing.h
 )
 
 set(SOURCES
     aggregate.cpp
-    nested_namespaces.cpp
-    point.cpp
-    rect.cpp
-    generics.cpp
-    printable.cpp
-    dummy_base.cpp
-    inheritance.cpp
+    button.cpp
     component.cpp
-    optional_arguments.cpp
+    dummy_base.cpp
     enum.cpp
-    union_narrowing.cpp
     fileinfo.cpp
+    generics.cpp
+    inheritance.cpp
+    nested_namespaces.cpp
+    optional_arguments.cpp
+    point.cpp
+    printable.cpp
+    rect.cpp
+    union_narrowing.cpp
 )
 
 list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 list(TRANSFORM INCLUDES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 
-ts_build_extension(${EXTS_TARGET}
-    SOURCES ${SOURCES} ${INCLUDES}
-    INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR} ${tsnative-std_INCLUDE_DIRS} ${tsnative-declarator_INCLUDE_DIRS}
+# Should be installed from Conan
+get_filename_component(PROJECT_BASE_URL ${PROJECT_BASE_URL} ABSOLUTE)
+
+add_library(${PROJECT_NAME} STATIC ${INCLUDES} ${SOURCES})
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        tsnative-std::tsnative-std
+)
+
+set(TS_DECLARATIONS )
+
+# FIXME: we dont need these properties any more, should be refatored
+# to pass these values as arguments to ts_generate_* calls
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    TS_HEADERS "${INCLUDES}"
+    TS_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}"
+    TS_IMPORT ""
+    TS_EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod"
+    TS_MODULE_NAME "cpp_integration"
+    TS_DECLARATIONS_OUT_DIR "${PROJECT_BASE_URL}/{PROJECT_NAME}"
+)
+
+ts_generate_declarations(${PROJECT_NAME}
+    TARGET_COMPILER_ABI ${CMAKE_CXX_COMPILER_TARGET}
+    OUTPUT_DIR ${PROJECT_BASE_URL}/${PROJECT_NAME}
+    OUT_DECLARATIONS TS_DECLARATIONS
+)
+
+# FIXME: do we really need two separate ts_generate_* functions?
+# generate index.ts file
+ts_generate_index(${PROJECT_NAME}
+        DECLARATIONS ${TS_DECLARATIONS}
+        OUT_DIRECTORY ${PROJECT_BASE_URL}/${PROJECT_NAME}
 )
