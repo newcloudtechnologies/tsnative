@@ -18,110 +18,51 @@ endmacro()
 
 # include(CMakePrintSystemInformation)
 
-if(IS_TEST)
-    enable_testing()
-endif()
-
-# Convert provided paths into absolute
-get_filename_component(TSNATIVE_ROOT ${TSNATIVE_ROOT} ABSOLUTE)
-get_filename_component(PROJECT_ROOT ${PROJECT_ROOT} ABSOLUTE)
-get_filename_component(PROJECT_BUILD_DIR ${PROJECT_BUILD_DIR} ABSOLUTE)
-get_filename_component(PROJECT_OUTPUT_BINARY ${PROJECT_OUTPUT_BINARY} ABSOLUTE)
 get_filename_component(PROJECT_ENTRY_NAME ${PROJECT_ENTRY_NAME} ABSOLUTE)
+get_filename_component(PROJECT_NAME ${PROJECT_ENTRY_NAME} NAME_WLE)
 get_filename_component(PROJECT_BASE_URL ${PROJECT_BASE_URL} ABSOLUTE)
 
-printvar(TSNATIVE_ROOT)
-printvar(PROJECT_ROOT)
-printvar(PROJECT_BUILD_DIR)
-printvar(PROJECT_OUTPUT_BINARY)
 printvar(PROJECT_ENTRY_NAME)
+printvar(PROJECT_NAME)
 printvar(PROJECT_BASE_URL)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
-list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}")
-
+find_package(tsnative-declarator REQUIRED)
 find_package(tsnative-std REQUIRED)
-find_package(tsnative-declarator CONFIG REQUIRED)
-
-set (TS_COMPILER tsnative-compiler)
-set (TS_DECLARATOR tsnative-declarator)
 
 if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 14)
 endif()
 
-include(TsBuildUtils)
+include(TsBuildUtils2.cmake)
 include(TsDeclaratorUtils)
 
-add_custom_target(build_anyway ALL)
+# TODO: extensions?
+# TODO: TRACE_IMPORT
+# TODO: PRINT_IR 
+# TODO: TS_PROFILE_BUILD
+# TODO: optimization level
 
-# TODO: support multiple extensions
-if (NOT ${PROJECT_TS_EXTENSION_DIR} STREQUAL "")
-    message(STATUS "Loading extension from ${PROJECT_TS_EXTENSION_DIR}")
+# We can create add_ts_executable function that abstracts all the following code
+# in TsBuildUtils2 and call it here but it's not clear if it would really be useful.
+add_ts_library(ts
+    SRC ${PROJECT_ENTRY_NAME}
+    BASE_URL ${PROJECT_BASE_URL}
+    TS_CONFIG ${TS_CONFIG}
+    LIBRARIES ""
+    INCLUDE_DIRS ${tsnative-std_INCLUDE_DIR}
+    TS_DEBUG ${TS_DEBUG}
+    RUN_EVENT_LOOP ${RUN_EVENT_LOOP}
 
-    # get last directory name which is extension's target
-    get_filename_component(TS_EXTENSION_TARGET "${PROJECT_TS_EXTENSION_DIR}" NAME)
-    add_subdirectory(${PROJECT_TS_EXTENSION_DIR} ${TS_EXTENSION_TARGET})
-
-    get_target_property(TS_HEADERS ${TS_EXTENSION_TARGET} TS_HEADERS)
-    get_target_property(TS_DECLARATIONS_OUT_DIR ${TS_EXTENSION_TARGET} TS_DECLARATIONS_OUT_DIR)
-
-    # generate TS declarations
-    if (TS_HEADERS)
-        set(TS_DECLARATIONS )
-        ts_generate_declarations(${TS_EXTENSION_TARGET}
-            TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
-            OUTPUT_DIR "${TS_DECLARATIONS_OUT_DIR}"
-            OUT_DECLARATIONS TS_DECLARATIONS
-        )
-
-        get_target_property(TS_EXPORTED_NAME ${TS_EXTENSION_TARGET} TS_EXPORTED_NAME)
-        get_target_property(TS_MODULE_NAME ${TS_EXTENSION_TARGET} TS_MODULE_NAME)
-
-        # generate index.ts file
-        if (TS_EXPORTED_NAME AND TS_MODULE_NAME)
-            ts_generate_index(${TS_EXTENSION_TARGET}
-                DECLARATIONS ${TS_DECLARATIONS}
-                OUT_DIRECTORY "${TS_DECLARATIONS_OUT_DIR}"
-            )
-        endif()
-    endif()
-
-    # load properties from extession
-    get_target_property(exts_INCLUDES ${TS_EXTENSION_TARGET} INCLUDE_PATHS)
-    get_target_property(exts_LIBRARY ${TS_EXTENSION_TARGET} OUTPUT)
-    get_target_property(exts_LIBRARY_DEPENDENCIES ${TS_EXTENSION_TARGET} LIBRARY_DEPENDENCIES)
-    get_target_property(exts_DEFINITIONS ${TS_EXTENSION_TARGET} DEFINITIONS)
-
-    printvar(exts_INCLUDES)
-    printvar(exts_LIBRARY)
-    printvar(exts_LIBRARY_DEPENDENCIES)
-    printvar(exts_DEFINITIONS)
-
-    list (APPEND include_paths ${exts_INCLUDES})
-else()
-    set(TS_EXTENSION_TARGET fake)
-    add_custom_target(${TS_EXTENSION_TARGET})
-endif()
-
-list(APPEND include_paths "${tsnative-std_INCLUDE_DIRS}")
-
-list(APPEND DEPENDENCIES
-    "${exts_LIBRARY}"
-    "${exts_LIBRARY_DEPENDENCIES}"
-    "${tsnative-std_LIBS}"
+    #PRINT_IR
 )
 
-build(binary_target ${TS_EXTENSION_TARGET} 
-    "${PROJECT_ENTRY_NAME}"
-    "${include_paths}"
-    "${DEPENDENCIES}"
-    "${exts_DEFINITIONS}"
-    "-O3"
-    "${IS_TEST}"
-    "${PRINT_IR}"
-    "${TRACE_IMPORT}"
-    "${TS_DEBUG}"
-    "${TS_RUN_EVENT_LOOP}")
+add_executable(${PROJECT_NAME} WIN32 ${PROJECT_ENTRY_NAME})
+target_link_libraries(${PROJECT_NAME} PRIVATE ts_main ts)
 
-add_dependencies(build_anyway ${binary_target})
+if (IS_TEST)
+    enable_testing()
+    add_test(
+        NAME ${PROJECT_NAME}
+        COMMAND ${PROJECT_NAME}
+    )
+endif()

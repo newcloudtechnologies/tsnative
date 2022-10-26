@@ -25,14 +25,18 @@ UVLoopAdapter::~UVLoopAdapter()
     _pendingCallbacks.clear();
 }
 
-int UVLoopAdapter::run()
+int UVLoopAdapter::run(bool lock)
 {
     LOG_METHOD_CALL;
     int res = 0;
     if (!isRunning())
     {
         _isRunning = true;
-        res = _loop.run(uv::UVRunMode::DEFAULT);
+        res = _loop.run(lock ? uv::UVRunMode::DEFAULT : uv::UVRunMode::NOWAIT);
+        if (!lock)
+        {
+            return 0;
+        }
     }
     return res;
 }

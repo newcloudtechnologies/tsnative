@@ -17,10 +17,10 @@ EventLoop::~EventLoop()
     LOG_ADDRESS("EventLoop::~EventLoop() address: ", this);
 }
 
-Number* EventLoop::run()
+Number* EventLoop::run(Boolean* lock)
 {
     LOG_METHOD_CALL;
-    auto ret = _eventLoop.run();
+    auto ret = _eventLoop.run(lock->unboxed());
     return new Number(ret);
 }
 
@@ -36,7 +36,8 @@ void EventLoop::processEvents()
     _eventLoop.processEvents();
 }
 
-void EventLoop::enqueue(IEventLoop::Callback && callback) {
+void EventLoop::enqueue(IEventLoop::Callback&& callback)
+{
     LOG_METHOD_CALL;
     _eventLoop.enqueue(std::move(callback));
 }

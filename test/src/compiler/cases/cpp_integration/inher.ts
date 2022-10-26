@@ -1,6 +1,17 @@
-import { CXXBase } from "./declarations/cpp";
-import { DerivedFromBaseInOtherNamespace } from "./declarations/cpp";
-import { DerivedFromVirtualBase } from "./declarations/cpp";
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
+import { CXXBase } from "cpp_integration_exts";
+import { DerivedFromBaseInOtherNamespace } from "cpp_integration_exts";
+import { DerivedFromVirtualBase } from "cpp_integration_exts";
 
 const derivedFromVirtualBase = new DerivedFromVirtualBase();
 console.assert(derivedFromVirtualBase.virtualMethod() === "base virtual method", "'DerivedFromVirtualBase.virtualMethod' test failed");

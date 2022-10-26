@@ -1,4 +1,4 @@
-import { Point, Rect } from "./declarations/cpp";
+import { Point, Rect } from "cpp_integration_exts";
 
 const p1 = new Point(1, 1);
 console.assert(p1.x() === 1, "Point 'x' test failed");

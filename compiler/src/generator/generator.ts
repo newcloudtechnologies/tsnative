@@ -67,9 +67,9 @@ export class LLVMGenerator {
 
   private initialized = false;
 
-  private runEventLoop = false;
+  private runEventLoop: string | undefined;
 
-  constructor(program: ts.Program, runEventLoop: boolean, generateDebugInfo = false) {
+  constructor(program: ts.Program, runEventLoop?: string, generateDebugInfo = false) {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
@@ -120,9 +120,10 @@ export class LLVMGenerator {
 
     this.handleSources(this.program.getSourceFiles());
 
-    const result = this.runEventLoop
-      ? this.runtime.getLoop().run().asLLVMInteger()
-      : LLVMConstantInt.get(this, 0);
+    let result = LLVMConstantInt.get(this, 0);
+    if (this.runEventLoop) {
+      result = this.runtime.getLoop().run(undefined, this.runEventLoop != "oneshot").asLLVMInteger()
+    }
 
     this.builder.createSafeRet(result);
 

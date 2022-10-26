@@ -9,19 +9,23 @@
  *
  */
 
-#include "fileinfo.h"
+#include <TS.h>
 
-namespace cpp_integration
-{
-namespace exts
-{
+#include "std/tsobject.h"
 
-FileInfo_t::FileInfo_t(String* path, String* name, Boolean* isFolder)
-    : _path(path->cpp_str())
-    , _name(name->cpp_str())
-    , _isFolder(false)
+namespace cpp_integration IS_TS_MODULE
 {
-}
+enum TS_EXPORT E
+{
+    Auto = 0,
+    Manual
+};
 
-} // namespace exts
-} // namespace cpp_integration
+class TS_EXPORT EnumArgs : public Object
+{
+    TS_METHOD EnumArgs(E e);
+
+    TS_METHOD E test(E e) const;
+};
+
+} // namespace IS_TS_MODULE

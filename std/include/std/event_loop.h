@@ -17,7 +17,7 @@ public:
 
     ~EventLoop();
 
-    TS_METHOD TS_SIGNATURE("run(): number") Number* run();
+    TS_METHOD Number* run(Boolean* lock);
 
     void stop();
 

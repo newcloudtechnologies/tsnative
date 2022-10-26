@@ -39,7 +39,7 @@ export class TemplateInstantiator {
 
     this.sources = sources.filter((source) => !source.isDeclarationFile);
 
-    this.generator = new LLVMGenerator(program, false).init();
+    this.generator = new LLVMGenerator(program).init();
 
     // handle declarations to put all declared symbols into symbol table
     {

@@ -1,58 +1,72 @@
-#pragma once
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
 
-#include <cstdint>
+#pragma once
 
 #include "dummy_base.h"
 
-#include <std/tsstring.h>
 #include <std/tsnumber.h>
 #include <std/tsobject.h>
+#include <std/tsstring.h>
 
-namespace cpp
+#include <cstdint>
+
+namespace cpp_integration IS_TS_MODULE
 {
-  class VirtualBase : public Object
-  {
-  public:
-    VirtualBase();
+
+TS_CODE("import { Base } from 'test'")
+
+class TS_EXPORT VirtualBase : public Object
+{
+public:
+    TS_METHOD VirtualBase();
     virtual ~VirtualBase() = default;
 
-    virtual const String *virtualMethod() const;
-    virtual const Number *pureVirtualMethodToOverride() const = 0;
+    TS_METHOD virtual const String* virtualMethod() const;
+    TS_METHOD virtual const Number* pureVirtualMethodToOverride() const = 0;
 
-  private:
-    String *s = new String{"base virtual method"};
-  };
+private:
+    String* s = new String{"base virtual method"};
+};
 
-  class DerivedFromVirtualBase : public VirtualBase
-  {
-  public:
-    DerivedFromVirtualBase();
+class TS_EXPORT DerivedFromVirtualBase : public VirtualBase
+{
+public:
+    TS_METHOD DerivedFromVirtualBase();
     ~DerivedFromVirtualBase() override = default;
 
-    const Number *pureVirtualMethodToOverride() const override;
+    TS_METHOD const Number* pureVirtualMethodToOverride() const override;
 
-  private:
+private:
     Number i{324};
-  };
+};
 
-  class DerivedFromBaseInOtherNamespace : public test::Base
-  {
-  public:
-    DerivedFromBaseInOtherNamespace();
-  };
+class TS_EXPORT DerivedFromBaseInOtherNamespace : public test::Base
+{
+public:
+    TS_METHOD DerivedFromBaseInOtherNamespace();
+};
 
-  class CXXBase : public Object
-  {
-  public:
-    CXXBase();
+class TS_EXPORT CXXBase : public Object
+{
+public:
+    TS_METHOD CXXBase();
     ~CXXBase();
 
-    Number *getNumber() const;
-    String *callMemberClosure() const;
+    TS_METHOD Number* getNumber() const;
+    TS_METHOD String* callMemberClosure() const;
 
-  private:
+private:
     int* dummyField1 = new int(1);
     int* dummyField2 = new int(2);
-  };
+};
 
-} // namespace cpp
+} // namespace IS_TS_MODULE

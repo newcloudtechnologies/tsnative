@@ -1,24 +1,23 @@
-#include "std/tsobject.h"
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
 
-namespace cpp
+#include "enum.h"
+
+using namespace cpp_integration;
+
+EnumArgs::EnumArgs(E e)
 {
-    enum E
-    {
-        Auto = 0,
-        Manual
-    };
+}
 
-    class EnumArgs : public Object
-    {
-        EnumArgs(E e);
-
-        E test(E e) const;
-    };
-
-    EnumArgs::EnumArgs(E e) {}
-
-    E EnumArgs::test(E e) const
-    {
-        return e;
-    }
+E EnumArgs::test(E e) const
+{
+    return e;
 }
