@@ -183,3 +183,71 @@
         console.assert(qqq.n === propValue1 && qqq.a.n1 === propValue2, "Number value reassigned to object property properly");
     }
 }
+
+{
+    const value = 'Edit111';
+
+    {
+        const dict = {
+            'Edit1': value
+        }
+
+        console.assert(dict.Edit1 === value, "Plain object explicit string key (single quote)");
+    }
+
+    {
+        const dict = {
+            "Edit1": value
+        }
+
+        console.assert(dict.Edit1 === value, "Plain object explicit string key (double quote)");
+    }
+
+    {
+        const dict = {
+            'Edit1': value
+        }
+
+        console.assert(dict["Edit1"] === value, "Plain object explicit string key (single quote) access (double quote) by element access expression");
+    }
+
+    {
+        const dict = {
+            'Edit1': value
+        }
+
+        console.assert(dict['Edit1'] === value, "Plain object explicit string key (single quote) access (single quote) by element access expression");
+    }
+
+    {
+        const dict = {
+            "Edit1": value
+        }
+
+        console.assert(dict['Edit1'] === value, "Plain object explicit string key (double quote) access (single quote) by element access expression");
+    }
+
+    {
+        const dict = {
+            "Edit1": value
+        }
+
+        console.assert(dict["Edit1"] === value, "Plain object explicit string key (double quote) access (double quote) by element access expression");
+    }
+
+    {
+        const dict = {
+            Edit1: value
+        }
+
+        console.assert(dict['Edit1'] === value, "Plain object with non-explicit string key access by element access expression (single quote)");
+    }
+
+    {
+        const dict = {
+            Edit1: value
+        }
+
+        console.assert(dict["Edit1"] === value, "Plain object with non-explicit string key access by element access expression (double quote)");
+    }
+}
