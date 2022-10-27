@@ -137,3 +137,49 @@
 
     console.assert(state.name === "updated" && state.num === 444, "Return spreaded object from function");
 }
+
+{
+    enum State {
+        Small = (1 << 0),
+        Normal = (1 << 1),
+        Large = (1 << 2),
+    }
+
+    type MyType = {
+        n1: State
+    }
+
+    type MyType1 = {
+        n: State,
+        a: MyType
+    }
+
+    {
+        const qqq = {
+            n: State.Large,
+            a: {
+                n1: State.Large
+            }
+        } as MyType1
+
+        console.assert(qqq.n === State.Large && qqq.a.n1 === State.Large, "Enum value assigned to object property properly");
+        qqq.a.n1 = State.Normal;
+        console.assert(qqq.n === State.Large && qqq.a.n1 === State.Normal, "Enum value reassigned to object property properly");
+    }
+
+    {
+        const propValue1 = 22;
+        const propValue2 = 33;
+
+        const qqq = {
+            n: propValue1,
+            a: {
+                n1: propValue1
+            }
+        } as MyType1
+
+        console.assert(qqq.n === propValue1 && qqq.a.n1 === propValue1, "Number assigned to object property properly");
+        qqq.a.n1 = propValue2;
+        console.assert(qqq.n === propValue1 && qqq.a.n1 === propValue2, "Number value reassigned to object property properly");
+    }
+}
