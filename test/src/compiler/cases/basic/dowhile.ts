@@ -124,3 +124,11 @@
         ;
     } while(false);
 }
+
+// Test conditionless 'break'
+{
+    do
+    {
+        break;
+    } while(false);
+}

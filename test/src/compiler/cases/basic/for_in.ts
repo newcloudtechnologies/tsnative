@@ -374,3 +374,12 @@
         console.assert(outerCounter === outerArray.length, "For in: Iterate over simple arrays + break outerCounter value check failed");
     }
 }
+
+// Test conditionless 'break'
+{
+    const qqq = [1, 2, 3, 4, 5];
+
+    for (const _ in qqq) {
+        break;
+    }
+}

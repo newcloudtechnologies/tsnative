@@ -85,3 +85,12 @@
     console.assert(i === COUNT, "for: scoped continue failed");
 
 }
+
+// Test conditionless 'break'
+{
+    const qqq = [1, 2, 3, 4, 5];
+
+    for (let i = 0; i < qqq.length; ++i) {
+        break;
+    }
+}
