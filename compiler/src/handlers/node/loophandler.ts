@@ -17,6 +17,7 @@ import { Scope, Environment } from "../../scope";
 import { last } from "lodash";
 import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 import { LoopHelper } from "./loophelper";
+import { ExitingBlocks } from "../../llvm/exiting_blocks";
 
 export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -65,6 +66,8 @@ export class LoopHandler extends AbstractNodeHandler {
     const exiting = BasicBlock.create(context, "while.exiting");
     const end = BasicBlock.create(context, "while.end");
 
+    ExitingBlocks.push(exiting);
+
     builder.createBr(condition);
     builder.setInsertionPoint(condition);
     const conditionValue = this.generator.handleExpression(statement.expression, env);
@@ -90,6 +93,8 @@ export class LoopHandler extends AbstractNodeHandler {
 
     currentFunction.addBasicBlock(end);
     builder.setInsertionPoint(end);
+
+    ExitingBlocks.pop();
   }
 
   private handleDoWhileStatement(statement: ts.DoStatement, env?: Environment): void {
@@ -100,6 +105,8 @@ export class LoopHandler extends AbstractNodeHandler {
     const bodyLatch = BasicBlock.create(context, "do.body.latch");
     const exiting = BasicBlock.create(context, "do.exiting");
     const end = BasicBlock.create(context, "do.end");
+
+    ExitingBlocks.push(exiting);
 
     currentFunction.addBasicBlock(body);
     currentFunction.addBasicBlock(bodyLatch);
@@ -127,6 +134,8 @@ export class LoopHandler extends AbstractNodeHandler {
     builder.createBr(end);
 
     builder.setInsertionPoint(end);
+
+    ExitingBlocks.pop();
   }
 
   private handleForStatement(statement: ts.ForStatement, env?: Environment): void {
@@ -139,6 +148,8 @@ export class LoopHandler extends AbstractNodeHandler {
       const incrementor = BasicBlock.create(context, "for.incrementor");
       const exiting = BasicBlock.create(context, "for.exiting");
       const end = BasicBlock.create(context, "for.end");
+
+      ExitingBlocks.push(exiting);
 
       if (statement.condition) {
         builder.createBr(condition);
@@ -182,6 +193,8 @@ export class LoopHandler extends AbstractNodeHandler {
 
       currentFunction.addBasicBlock(end);
       builder.setInsertionPoint(end);
+
+      ExitingBlocks.pop();
     };
 
     if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
@@ -283,6 +296,8 @@ export class LoopHandler extends AbstractNodeHandler {
         const exiting = BasicBlock.create(context, "for_of.exiting");
         const end = BasicBlock.create(context, "for_of.end");
 
+        ExitingBlocks.push(exiting);
+
         currentFunction.addBasicBlock(condition);
         currentFunction.addBasicBlock(incrementor);
         currentFunction.addBasicBlock(body);
@@ -335,6 +350,8 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(end);
 
         builder.setInsertionPoint(end);
+
+        ExitingBlocks.pop();
       };
 
       this.generator.symbolTable.withLocalScope(forOfHandlerImpl, this.generator.symbolTable.currentScope);
@@ -388,6 +405,8 @@ export class LoopHandler extends AbstractNodeHandler {
         currentFunction.addBasicBlock(exiting);
         currentFunction.addBasicBlock(end);
 
+        ExitingBlocks.push(exiting);
+
         const arrayDeclaration = this.generator.ts.array.getDeclaration();
 
         const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(
@@ -428,6 +447,8 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(end);
 
         builder.setInsertionPoint(end);
+
+        ExitingBlocks.pop();
       };
 
       this.generator.symbolTable.withLocalScope(forInHandlerImpl, this.generator.symbolTable.currentScope);

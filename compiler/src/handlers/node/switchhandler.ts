@@ -13,6 +13,7 @@ import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
+import { ExitingBlocks } from "../../llvm/exiting_blocks";
 
 export class SwitchHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -53,6 +54,8 @@ export class SwitchHandler extends AbstractNodeHandler {
       `switch.${node.expression.getText()}.exiting`,
       this.generator.currentFunction
     );
+
+    ExitingBlocks.push(exiting);
 
     this.generator.withInsertBlockKeeping(() => {
       this.generator.builder.setInsertionPoint(exiting);
