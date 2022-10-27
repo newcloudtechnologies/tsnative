@@ -86,7 +86,12 @@ export class LiteralHandler extends AbstractExpressionHandler {
     expression.properties.forEach((property) => {
       switch (property.kind) {
         case ts.SyntaxKind.PropertyAssignment:
-          llvmValues.set(property.name.getText(), this.generator.handleExpression(property.initializer, env));
+          let propVal = this.generator.handleExpression(property.initializer, env);
+          if (propVal.isTSPrimitivePtr()) {
+            // mimics 'value' semantic for primitives
+            propVal = propVal.clone();
+          }
+          llvmValues.set(property.name.getText(), propVal);
           break;
         case ts.SyntaxKind.ShorthandPropertyAssignment:
           llvmValues.set(property.name.getText(), this.generator.handleExpression(property.name, env));
