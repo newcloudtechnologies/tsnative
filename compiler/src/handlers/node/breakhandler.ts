@@ -9,13 +9,11 @@
  *
  */
 
-import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
-import { last } from "lodash";
-import { LoopHelper } from "./loophelper";
+import { ExitingBlocks } from "../../llvm/exiting_blocks";
 
 export class BreakHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -33,24 +31,12 @@ export class BreakHandler extends AbstractNodeHandler {
   }
 
   private handleBreakStatement(): void {
-    const basicBlocks = this.generator.currentFunction.getBasicBlocks();
-    const blocks = basicBlocks.filter((block) => LoopHelper.isLoopBlock(block) || this.isSwitchBlock(block));
-
-    if (!blocks.length) {
-      return;
-    }
-
-    const exitingBlocks = blocks.filter((block) => block.name.includes(".exiting"));
-    const currentExitingBlock = last(exitingBlocks);
+    const currentExitingBlock = ExitingBlocks.last();
 
     if (!currentExitingBlock) {
       throw new Error(`Unable to find exiting block`);
     }
 
     this.generator.builder.createBr(currentExitingBlock);
-  }
-
-  private isSwitchBlock(block: BasicBlock): boolean {
-    return block.name.startsWith("switch.");
   }
 }
