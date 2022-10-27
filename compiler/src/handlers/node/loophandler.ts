@@ -178,7 +178,10 @@ export class LoopHandler extends AbstractNodeHandler {
       currentFunction.addBasicBlock(body);
       builder.setInsertionPoint(body);
       this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
-      builder.createBr(bodyLatch);
+
+      if (!this.generator.isCurrentBlockTerminated) {
+        builder.createBr(bodyLatch);
+      }
 
       if (statement.incrementor) {
         currentFunction.addBasicBlock(incrementor);
@@ -344,7 +347,10 @@ export class LoopHandler extends AbstractNodeHandler {
 
         builder.setInsertionPoint(body);
         this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
-        builder.createBr(bodyLatch);
+
+        if (!this.generator.isCurrentBlockTerminated) {
+          builder.createBr(bodyLatch);
+        }
 
         builder.setInsertionPoint(exiting);
         builder.createBr(end);
@@ -441,7 +447,10 @@ export class LoopHandler extends AbstractNodeHandler {
 
         builder.setInsertionPoint(body);
         this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
-        builder.createBr(bodyLatch);
+
+        if (!this.generator.isCurrentBlockTerminated) {
+          builder.createBr(bodyLatch);
+        }
 
         builder.setInsertionPoint(exiting);
         builder.createBr(end);

@@ -70,3 +70,10 @@ console.assert(i === 1, "while: break failed");
 
   console.assert(counter === 3, "'break' must works correctly if there is a nested loop");
 }
+
+// Test conditionless 'break'
+{
+  while (true) {
+      break;
+  }
+}
