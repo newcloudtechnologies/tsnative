@@ -145,6 +145,8 @@ export class AccessHandler extends AbstractExpressionHandler {
       return this.handleArrayElementAccess(expression, env);
     } else if (type.isTuple()) {
       return this.handleTupleElementAccess(expression, env);
+    } else if (type.isObject()) {
+      return this.handlePropertyAccessGEP(expression, env);
     } else {
       throw new Error(`Unsupported element access for type: ${type.toString()}`);
     }
@@ -192,9 +194,9 @@ export class AccessHandler extends AbstractExpressionHandler {
     return this.generator.builder.createBitCast(element, elementType.getLLVMType());
   }
 
-  private handlePropertyAccessGEP(expression: ts.PropertyAccessExpression, env?: Environment): LLVMValue {
+  private handlePropertyAccessGEP(expression: ts.PropertyAccessExpression | ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const left = expression.expression;
-    let propertyName = expression.name.text;
+    let propertyName = ts.isPropertyAccessExpression(expression) ? expression.name.text : expression.argumentExpression.getText().replace(/['"]+/g, '');
 
     let llvmValue = this.generator.handleExpression(left, env);
 
