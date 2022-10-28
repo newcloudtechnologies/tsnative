@@ -126,7 +126,6 @@ std::string typeToString(AbstractBlock::Type type)
         {AbstractBlock::Type::IMPORT, "Import"},
         {AbstractBlock::Type::METHOD, "Method"},
         {AbstractBlock::Type::GENERIC_METHOD, "GenericMethod"},
-        {AbstractBlock::Type::CLOSURE, "Closure"},
         {AbstractBlock::Type::COMPUTED_PROPERTY_NAME, "ComputedPropertyName"},
         {AbstractBlock::Type::INDEX_SIGNATURE, "IndexSignature"},
         {AbstractBlock::Type::FUNCTION, "Function"},

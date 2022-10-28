@@ -76,7 +76,6 @@ void makeGenericClass(parser::const_class_template_item_t item,
     genericClassBlock->addExtends(classDetails.extends);
     genericClassBlock->addMethods(classDetails.methods);
     genericClassBlock->addGenericMethods(classDetails.generic_methods);
-    genericClassBlock->addClosures(classDetails.closures);
     genericClassBlock->addOperators(classDetails.operators);
 
     if (annotations.exist(TS_DECORATOR))

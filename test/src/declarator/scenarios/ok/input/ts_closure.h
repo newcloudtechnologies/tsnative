@@ -12,6 +12,7 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsclosure.h>
 #include <std/tsobject.h>
 
 #include <functional>
@@ -36,7 +37,7 @@ public:
 public:
     TS_METHOD Button(Widget* parent);
 
-    TS_CLOSURE void onClicked(ClickedSlot slot) const;
+    TS_METHOD void onClicked(TSClosure* closure) const;
 };
 
 } // namespace IS_TS_NAMESPACE

@@ -19,6 +19,10 @@
 #include "parser/NamespaceItem.h"
 #include "parser/Utils.h"
 
+#include "generator/AbstractBlock.h"
+#include "generator/ComputedPropertyNameBlock.h"
+#include "generator/IndexSignatureBlock.h"
+
 #include "global/Annotations.h"
 
 #include "utils/Exception.h"
@@ -267,19 +271,6 @@ generator::ts::abstract_method_block_t ClassDetails::makeMethod(parser::const_me
             result->addDecorator(Decorator::make("VTableIndex", vtableIndex));
         }
     }
-    else if (annotations.exist(TS_CLOSURE))
-    {
-        std::string name = annotations.exist(TS_NAME) ? annotations.values(TS_NAME).at(0) : item->name();
-
-        auto block = AbstractBlock::make<ClosureBlock>(name);
-
-        for (const auto& it : item->parameters())
-        {
-            block->addArgument({it.name(), "TSClosure"});
-        }
-
-        result = block;
-    }
 
     return result;
 }
@@ -370,12 +361,6 @@ void ClassDetails::generateMethod(parser::const_method_item_t item)
             {
                 auto genericMethodBlock = std::static_pointer_cast<GenericMethodBlock>(abstractMethodBlock);
                 pushBlock(generic_methods, genericMethodBlock);
-                break;
-            }
-            case AbstractBlock::Type::CLOSURE:
-            {
-                auto closureBlock = std::static_pointer_cast<ClosureBlock>(abstractMethodBlock);
-                pushBlock(closures, closureBlock);
                 break;
             }
             case AbstractBlock::Type::COMPUTED_PROPERTY_NAME:

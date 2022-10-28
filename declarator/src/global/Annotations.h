@@ -23,7 +23,6 @@ constexpr const char* TS_EXPORT = "TS_EXPORT";
 constexpr const char* TS_DECLARE = "TS_DECLARE";
 constexpr const char* TS_NO_CHECK = "TS_NO_CHECK";
 constexpr const char* TS_METHOD = "TS_METHOD";
-constexpr const char* TS_CLOSURE = "TS_CLOSURE";
 constexpr const char* TS_NAME = "TS_NAME";
 constexpr const char* TS_SIGNATURE = "TS_SIGNATURE";
 constexpr const char* TS_DECORATOR = "TS_DECORATOR";

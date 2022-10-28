@@ -13,7 +13,6 @@
 
 #include "AbstractBlock.h"
 #include "ClassDetails.h"
-#include "ClosureBlock.h"
 #include "CodeBlock.h"
 #include "FieldBlock.h"
 #include "GenericMethodBlock.h"
@@ -39,7 +38,6 @@ protected:
     std::vector<generator::ts::field_block_t> m_fields;
     std::vector<generator::ts::method_block_t> m_methods;
     std::vector<generator::ts::generic_method_block_t> m_genericMethods;
-    std::vector<generator::ts::closure_block_t> m_closures;
     std::vector<generator::ts::operator_block_t> m_operators;
     std::vector<code_block_t> m_codeBlocks;
     bool m_isExport;
@@ -63,7 +61,6 @@ public:
     void addFields(const field_list_block_t& fields);
     void addMethods(const method_list_block_t& methods);
     void addGenericMethods(const generic_method_list_block_t& methods);
-    void addClosures(const closure_list_block_t& closures);
     void addOperators(const operator_list_block_t& operators);
     void addExtends(const std::string& extends);
     void addImplements(const std::vector<std::string>& implements);

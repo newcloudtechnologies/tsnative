@@ -53,7 +53,6 @@ struct AbstractBlock
         IMPORT,
         METHOD,
         GENERIC_METHOD,
-        CLOSURE,
         COMPUTED_PROPERTY_NAME,
         INDEX_SIGNATURE,
         FUNCTION,
