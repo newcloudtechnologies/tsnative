@@ -392,7 +392,6 @@ void ClassChecker::overloads(parser::const_class_item_t item)
 
     method_item_list_t methods;
     method_item_list_t generic_methods;
-    method_item_list_t closures;
 
     // sort method items
     for (const auto& it : item->methods())
@@ -410,10 +409,6 @@ void ClassChecker::overloads(parser::const_class_item_t item)
                 methods.push_back(it);
             }
         }
-        else if (annotations.exist(TS_CLOSURE))
-        {
-            closures.push_back(it);
-        }
     }
 
     std::vector<std::string> method_overloads = OverloadDetector::get(methods, is_accessors_pair);
@@ -430,15 +425,6 @@ void ClassChecker::overloads(parser::const_class_item_t item)
     {
         throw Exception(R"(overloaded generic methods detected: "%s",  class: "%s", scope: "%s")",
                         join(generic_method_overloads).c_str(),
-                        item->name().c_str(),
-                        item->prefix().c_str());
-    }
-
-    std::vector<std::string> closures_overloads = OverloadDetector::get(closures, is_accessors_pair);
-    if (!closures_overloads.empty())
-    {
-        throw Exception(R"(overloaded closures detected: "%s",  class: "%s", scope: "%s")",
-                        join(closures_overloads).c_str(),
                         item->name().c_str(),
                         item->prefix().c_str());
     }

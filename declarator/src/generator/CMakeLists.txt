@@ -28,7 +28,6 @@ set(INCLUDES
     MethodBlock.h
     GenericMethodBlock.h
     OperatorBlock.h
-    ClosureBlock.h
     ComputedPropertyNameBlock.h
     IndexSignatureBlock.h
     CommentBlock.h
@@ -57,7 +56,6 @@ set(SOURCES
     MethodBlock.cpp
     GenericMethodBlock.cpp
     OperatorBlock.cpp
-    ClosureBlock.cpp
     ComputedPropertyNameBlock.cpp
     IndexSignatureBlock.cpp
     CommentBlock.cpp

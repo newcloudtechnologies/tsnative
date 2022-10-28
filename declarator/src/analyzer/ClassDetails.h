@@ -13,14 +13,7 @@
 
 #include "TypeUtils.h"
 
-#include "generator/AbstractBlock.h"
-#include "generator/AbstractMethodBlock.h"
-#include "generator/ClassBlock.h"
-#include "generator/ClosureBlock.h"
-#include "generator/ComputedPropertyNameBlock.h"
-#include "generator/FieldBlock.h"
 #include "generator/GenericMethodBlock.h"
-#include "generator/IndexSignatureBlock.h"
 #include "generator/MethodBlock.h"
 #include "generator/OperatorBlock.h"
 
@@ -40,7 +33,6 @@ struct ClassDetails
     std::string extends;
     std::vector<generator::ts::method_block_t> methods;
     std::vector<generator::ts::generic_method_block_t> generic_methods;
-    std::vector<generator::ts::closure_block_t> closures;
     std::vector<generator::ts::operator_block_t> operators;
 
 private:

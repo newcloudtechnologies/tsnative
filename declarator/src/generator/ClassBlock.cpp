@@ -75,11 +75,6 @@ void ClassBlock::addGenericMethods(const generic_method_list_block_t& methods)
     m_genericMethods.insert(m_genericMethods.end(), methods.begin(), methods.end());
 }
 
-void ClassBlock::addClosures(const closure_list_block_t& closures)
-{
-    m_closures.insert(m_closures.end(), closures.begin(), closures.end());
-}
-
 void ClassBlock::addOperators(const operator_list_block_t& operators)
 {
     m_operators.insert(m_operators.end(), operators.begin(), operators.end());
@@ -129,7 +124,6 @@ void ClassBlock::printBody(generator::print::printer_t printer) const
     print_blocks(m_fields, printer);
     print_blocks(m_methods, printer);
     print_blocks(m_genericMethods, printer);
-    print_blocks(m_closures, printer);
     print_blocks(m_operators, printer);
     print_blocks(m_codeBlocks, printer);
 

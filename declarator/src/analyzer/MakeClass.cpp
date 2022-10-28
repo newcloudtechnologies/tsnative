@@ -70,7 +70,6 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
     classBlock->addExtends(classDetails.extends);
     classBlock->addMethods(classDetails.methods);
     classBlock->addGenericMethods(classDetails.generic_methods);
-    classBlock->addClosures(classDetails.closures);
     classBlock->addOperators(classDetails.operators);
 
     if (annotations.exist(TS_DECORATOR))

@@ -30,7 +30,6 @@
 #define TS_DECLARE __attribute__((annotate("TS_DECLARE")))
 #define TS_NO_CHECK __attribute__((annotate("TS_NO_CHECK")))
 #define TS_METHOD __attribute__((annotate("TS_METHOD")))
-#define TS_CLOSURE __attribute__((annotate("TS_CLOSURE")))
 #define TS_SIGNATURE(sig) __attribute__((annotate(MK_ANNOTATION(TS_SIGNATURE, sig))))
 #define TS_DECORATOR(sig) __attribute__((annotate(MK_ANNOTATION(TS_DECORATOR, sig))))
 #define TS_NAME(name) __attribute__((annotate(MK_ANNOTATION(TS_NAME, name))))
@@ -64,7 +63,6 @@ void* void_pointer;
 #define TS_DECLARE
 #define TS_NO_CHECK
 #define TS_METHOD
-#define TS_CLOSURE
 #define TS_SIGNATURE(sig)
 #define TS_DECORATOR(sig)
 #define TS_NAME(name)

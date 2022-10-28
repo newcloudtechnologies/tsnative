@@ -19,8 +19,7 @@ declare module "global" {
         @VirtualDestructor
         export class Button {
             constructor(parent: Widget);
-
-            onClicked(slot: TSClosure): void;
+            onClicked(closure: TSClosure): void;
         }
     }
 }
