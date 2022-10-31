@@ -231,8 +231,7 @@ export class SysVFunctionHandler {
        Make sure there is no class '${valueDeclaration.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
-    const parentScope = valueDeclaration.getScope(thisType);
-    const llvmThisType = parentScope.thisData!.llvmType;
+    const llvmThisType = valueDeclaration.type.getLLVMType();
 
     const args =
       expression.arguments ? this.handleCallArguments(expression.arguments, constructorDeclaration, outerEnv) : []

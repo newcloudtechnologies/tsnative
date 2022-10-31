@@ -25,13 +25,13 @@ const classWTemplateMethod = new ClassWithTemplateMethod();
 console.assert(classWTemplateMethod.getWithAdditionOfTwo<number>(3) === 5, "'ClassWTemplateMethod.getWithAdditionOfTwo<number>' test failed");
 console.assert(classWTemplateMethod.getWithAdditionOfTwo<string>("3") === "3_2", "'ClassWTemplateMethod.getWithAdditionOfTwo<string>' test failed");
 
-// const classWNumberStringMembers = new ClassWithTemplateMembers<number, string>(42);
-// console.assert(classWNumberStringMembers.getFirst() === 42, "'ClassWithTemplateMembers<number, string>.get' test failed");
+const classWNumberStringMembers = new ClassWithTemplateMembers<number, string>(42);
+console.assert(classWNumberStringMembers.getFirst() === 42, "'ClassWithTemplateMembers<number, string>.get' test failed");
 
-// const classWStringStringMembers = new ClassWithTemplateMembers<string, string>("twenty two");
-// console.assert(classWStringStringMembers.getFirst() === "twenty two", "'ClassWithTemplateMembers<string, string>.get' test failed");
+const classWStringStringMembers = new ClassWithTemplateMembers<string, string>("twenty two");
+console.assert(classWStringStringMembers.getFirst() === "twenty two", "'ClassWithTemplateMembers<string, string>.get' test failed");
 
-// const templateClassWithTemplateMethod = new TemplateClassWithTemplateMethod(2);
-// console.assert(templateClassWithTemplateMethod.transform<number>(10) === 12, "'TemplateClassWithTemplateMethod.transform<number>' test failed");
-// // transformation result actually is "102.000000"; test with `startsWith` just in case
-// console.assert(templateClassWithTemplateMethod.transform<string>("10").startsWith("102"), "'TemplateClassWithTemplateMethod.transform<string>' test failed");
+const templateClassWithTemplateMethod = new TemplateClassWithTemplateMethod(2);
+console.assert(templateClassWithTemplateMethod.transform<number>(10) === 12, "'TemplateClassWithTemplateMethod.transform<number>' test failed");
+// transformation result actually is "102.000000"; test with `startsWith` just in case
+console.assert(templateClassWithTemplateMethod.transform<string>("10").startsWith("102"), "'TemplateClassWithTemplateMethod.transform<string>' test failed");
