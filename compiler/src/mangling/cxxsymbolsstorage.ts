@@ -90,7 +90,7 @@ class CXXSymbolsStorage {
     private getSignatureMeaningPart(line: string) {
         const OPEN_BRACKET = "(";
 
-        const openBracketIndex = line.indexOf(OPEN_BRACKET);
+        const openBracketIndex = line.lastIndexOf(OPEN_BRACKET);
         if (openBracketIndex === -1) {
             return line;
         }
@@ -105,12 +105,11 @@ class CXXSymbolsStorage {
 
         let result = "";
 
-        const signaturePart = this.getSignatureMeaningPart(line);
         const stack: number[] = [];
 
         const isInTemplate = () => stack.length > 0;
 
-        for (const char of signaturePart) {
+        for (const char of line) {
             if (char === OPEN_ANGLE_BRACKET) {
                 stack.push(0);
             } else if (char === CLOSE_ANGLE_BRACKET) {
