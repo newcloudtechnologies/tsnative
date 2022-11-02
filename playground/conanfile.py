@@ -8,18 +8,19 @@
 # at http://ncloudtech.com/contact.html
 #
 
-from conans import ConanFile, tools
+from conans import ConanFile
+from conan.tools.cmake import CMake
+from conan.tools.cmake import CMakeToolchain
 from conan.tools.cmake import CMakeDeps
+from conan.tools.files import copy
 
 import os
-
 
 def pkg_suffix(self):
     if self._conan_user and self._conan_channel:
         return "%s@%s/%s" % (self.version, self.user, self.channel)
     else:
         return "%s" % self.version
-
 
 class TSNativePlayground(ConanFile):
     name = "tsnative-playground"
@@ -36,41 +37,50 @@ class TSNativePlayground(ConanFile):
     def export_sources(self):
         self.copy("*.ts")
 
+    def import_ts(self):
+        ts_std_dep = self.dependencies["tsnative-std"]
+        copy(self, "*.ts", ts_std_dep.cpp_info.builddirs[0], os.path.join(self.build_folder, "imports"))
+
     def generate(self):
+        self.import_ts()
+
+        # TODO: check if os.path.as_posix() works
+        to_unix = lambda path: path.replace("\\", "/") #tools.unix_path(path, path_flavor="MSYS2")
+
+        # By default, the generator is 'MinGW Makefiles' on windows but it breaks some paths
+        tc = CMakeToolchain(self, generator="Unix Makefiles")
+        tc.variables["CMAKE_CXX_COMPILER_TARGET"] = str(self.settings.target_abi)
+        tc.variables["CMAKE_VERBOSE_MAKEFILE"]="ON"
+
+        # Variables for compiled tests
+        tc.variables["PROJECT_BASE_URL"] = to_unix(os.path.join(self.build_folder, "imports/declarations"))
+        tc.variables["IS_TEST"] = True
+        tc.variables["RUN_EVENT_LOOP"] = "oneshot"
+        tc.variables["PRINT_IR"] = False
+        tc.variables["TRACE_IMPORT"] = False
+
+        if self.settings.get_safe("build_type") == "Debug":
+            tc.variables["TS_DEBUG"] = True
+
+        tc.generate()
+
         cmake = CMakeDeps(self)
         cmake.build_context_activated = ["tsnative-declarator"]
         cmake.generate()
 
-    def imports(self):
-        self.keep_imports = True  # keep copied declarations in build folder
-        self.copy("*.ts", ignore_case=True)
-
     def build(self):
         os.environ["NODE_PATH"] = self.deps_user_info["tsnative-std"].NODE_PATH
+        for require, dependency in self.dependencies.items():
+            if "tsnative-compiler" in dependency.ref:
+                compiler_pkg_dir = dependency.package_folder
+                break
 
-        source_folder = self.source_folder
-        build_folder = self.build_folder
-        install_folder = self.install_folder
-        win_bash = False
+        cmake = CMake(self)
+        cmake.configure(
+            variables={
+                "PROJECT_ENTRY_NAME": os.path.join(self.build_folder, "playground.ts"),
+                "TS_CONFIG" : os.path.join(compiler_pkg_dir, "tsconfig.json")
+            },
+            build_script_folder=compiler_pkg_dir)
+        cmake.build()
 
-        # TODO: AN-932 - it's possible to generate declarations only on linux for now
-        if self.settings.os == "Windows":
-            source_folder = tools.unix_path(self.source_folder)
-            build_folder = tools.unix_path(self.build_folder)
-            install_folder = tools.unix_path(self.install_folder)
-            win_bash = True
-
-        # TODO: control cmake directly here without tsnative.sh
-        self.run("tsnative.sh \
-                    --project_root {src} \
-                    --source {src}/playground.ts \
-                    --output {build}/playground \
-                    --build {build} \
-                    --conan_install {install} \
-                    --baseUrl {install}/declarations \
-                    --target_abi {abi} \
-                    --print_ir"
-                 .format(src=source_folder, build=build_folder, install=install_folder, abi=self.settings.target_abi),
-                 win_bash=win_bash)
-        # --extension {src}/extensions \
-        # --trace")

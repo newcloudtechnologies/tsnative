@@ -21,6 +21,8 @@ const testDir = path.join(__dirname, "/cases/basic");
 
 argv
   .option("--source [value]", "specify source to execute")
+  .option("--test_filter [value]", "specify regexp to filter list of tests")
+  .option("--exclude [value]", "specify regexp to exclude matching tests")
   .parse(process.argv);
 
 class Runner {
@@ -72,8 +74,22 @@ class Runner {
 class Tester {
   private files: string[];
 
-  constructor(testDir: string) {
+  constructor(testDir: string, filter: string, excludes: string[]) {
     this.files = this.getFiles(testDir);
+    if (filter) {
+      const regex = new RegExp(filter);
+      this.files = this.files.filter((value: string): boolean => {
+        const m = value.search(regex);
+        return m > 0;
+      });
+    }
+
+    excludes.forEach((ex, i) => {
+      console.log("Excluding " + ex)
+      this.files = this.files.filter((value: string): boolean => {
+        return !value.includes(ex);
+      });
+    })
   }
 
   private getFiles(dir: string): string[] {
@@ -154,7 +170,11 @@ const entry = async function () {
     }
   }
   else {
-    const tester = new Tester(testDir);
+    let exclude: string[] = []
+    if (argv.exclude) {
+      exclude = argv.exclude.split(":")
+    }
+    const tester = new Tester(testDir, argv.test_filter, exclude);
     const status = await tester.test();
     if (!status) {
       process.exit(1);

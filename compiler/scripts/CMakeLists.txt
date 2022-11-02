@@ -36,12 +36,6 @@ endif()
 include(TsBuildUtils2.cmake)
 include(TsDeclaratorUtils)
 
-# TODO: extensions?
-# TODO: TRACE_IMPORT
-# TODO: PRINT_IR 
-# TODO: TS_PROFILE_BUILD
-# TODO: optimization level
-
 # We can create add_ts_executable function that abstracts all the following code
 # in TsBuildUtils2 and call it here but it's not clear if it would really be useful.
 add_ts_library(ts
@@ -52,8 +46,9 @@ add_ts_library(ts
     INCLUDE_DIRS ${tsnative-std_INCLUDE_DIR}
     TS_DEBUG ${TS_DEBUG}
     RUN_EVENT_LOOP ${RUN_EVENT_LOOP}
-
-    #PRINT_IR
+    PRINT_IR ${PRINT_IR}
+    TRACE_IMPORT ${TRACE_IMPORT}
+    OPT_LEVEL ${OPT_LEVEL}
 )
 
 add_executable(${PROJECT_NAME} WIN32 ${PROJECT_ENTRY_NAME})

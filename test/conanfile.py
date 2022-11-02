@@ -21,13 +21,21 @@ class TSNativeTestsConan(ConanFile):
     options = {
         "run_mode": ["compile", "runtime", "declarator", "all"],
         "test_filter": 'ANY',
-        "verbose" : [True, False]
+        "opt_level" : [0, 1 , 2, 3],
+        "verbose" : [True, False],
+        "print_ir" : [True, False],
+        "trace_import" : [True, False],
+        "profile_build" : [True, False],
     }
 
     default_options = {
         "run_mode": "all",
         "test_filter": ".*",
-        "verbose": False
+        "opt_level" : 2,
+        "verbose": False,
+        "print_ir" : False,
+        "trace_import" : False,
+        "profile_build" : False,
     }
 
     def requirements(self):
@@ -58,15 +66,19 @@ class TSNativeTestsConan(ConanFile):
             tc.variables["CMAKE_VERBOSE_MAKEFILE"]="ON"
 
         # Variables for compiled tests
-        tc.variables["PROJECT_BASE_URL"] = to_unix(os.path.join(self.build_folder, "imports/declarations"))
-        tc.variables["TRACE_IMPORT"] = False
-        tc.variables["PRINT_IR"] = False
+        tc.variables["PROJECT_BASE_URL"] = to_unix(os.path.join(self.build_folder, "imports", "declarations"))
         tc.variables["IS_TEST"] = True
         tc.variables["RUN_EVENT_LOOP"] = "oneshot"
+
         if self.settings.get_safe("build_type") == "Debug":
             tc.variables["TS_DEBUG"] = True
 
-        # Variables for compiled tests
+        tc.variables["PRINT_IR"] = bool(self.options.print_ir)
+        tc.variables["TRACE_IMPORT"] = bool(self.options.trace_import)
+        tc.variables["TS_PROFILE_BUILD"] = bool(self.options.profile_build)
+        tc.variables["OPT_LEVEL"] = "-O%s" % self.options.opt_level
+
+        # Variables for declarator tests
         tc.variables["SOURCE_DIR"] = to_unix(self.source_folder)
 
         print("TOOLCHAIN VARIABLES:\n\t" +
@@ -81,14 +93,26 @@ class TSNativeTestsConan(ConanFile):
     # TODO: filter for runtime tests
     def buildRuntimeTests(self):
         self.setup_npm()
-        self.run("npx ts-node src/compiler/runtime_test.ts")
+        filter_opt=""
+        if self.options.test_filter != self.default_options["test_filter"]:
+            filter_opt="--test_filter %s" % self.options.test_filter
+
+        # excludes
+
+        excludes = [] # nothing to exclude for now
+        excludes_opt=""
+        if (excludes):
+            excludes_opt="--exclude "
+            for e in excludes: excludes_opt += "%s:" % e
+            excludes_opt=excludes_opt[:-1]
+        print(excludes_opt)
+        self.run("npx ts-node src/compiler/runtime_test.ts {}{}".format(filter_opt, excludes_opt))
 
     def buildDeclaratorTests(self):
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join("src", "declarator"))
         cmake.build()
 
-    # TODO: restore some features from TsBuildUtils
     def buildCompiledTests(self):
         src_path = Path("src/compiler/cases")
         out_dir = "compiler_tests"
@@ -218,6 +242,10 @@ class TSNativeTestsConan(ConanFile):
         del self.info.options.run_mode
         del self.info.options.test_filter
         del self.info.options.verbose
+        del self.info.options.opt_level
+        del self.info.options.trace_import
+        del self.info.options.print_ir
+        del self.info.options.profile_build
 
     def setup_npm(self):
         self.init_npm_env()
