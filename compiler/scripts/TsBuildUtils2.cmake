@@ -11,6 +11,20 @@
 find_package(LLVM REQUIRED CONFIG)
 find_package(tsnative-std REQUIRED)
 
+if (${TS_PROFILE_BUILD})
+    message(STATUS "Enable TsBuildUtils2 profiler")
+    find_package(Python)
+    # Cmake's subcommand 'env' looks strange here but gives more portable.
+    # Semicolons to avoid quoting.
+    set(BUILD_TIME_PROFILER_CMD "env;${Python_EXECUTABLE};${CMAKE_CURRENT_LIST_DIR}/build_time_profiler.py")
+endif()
+
+set(_noop               true)
+set(_isProfiling        $<BOOL:${TS_PROFILE_BUILD}>)
+set(PROFILER_CMD_START  $<IF:${_isProfiling},${BUILD_TIME_PROFILER_CMD} --start --tag,${_noop}>)
+set(PROFILER_CMD_END    $<IF:${_isProfiling},${BUILD_TIME_PROFILER_CMD} --end --tag,${_noop}>)
+set(PROFILER_CMD_RESULT $<IF:${_isProfiling},${BUILD_TIME_PROFILER_CMD} --calculate --tag,${_noop}>)
+
 # CMake return wrong value for this inside the function and do not
 # point to this file.
 set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
@@ -29,14 +43,16 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 # Optional args:
 #  TS_DEBUG       Compile user code in the debug mode
 #  PRINT_IR       Print IR code to console.
+#  TRACE_IMPORT   Enable ts module resolution tracing
+#  OPT_LEVEL      Optimization level that will be passed to llc "as is"
 #  RUN_EVENT_LOOP <lock|oneshot> Make compiler embed code that starts internal event loop automatically.
 #  WATCH_SOURCES  List of files, because of changes in which, it is necessary to rebuild the project.
 #                 If not provided, the all sources from the directory containing main ts file will be used as
 #                 the files from TS_HEADERS property defined in LIBRARIES targets.
 #
 function (add_ts_library ARG_NAME ...)
-    set(options PRINT_IR)
-    set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG RUN_EVENT_LOOP)
+    set(options )
+    set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG PRINT_IR TRACE_IMPORT OPT_LEVEL RUN_EVENT_LOOP)
     set(multiValueArgs DEFINES INCLUDE_DIRS LIBRARIES WATCH_SOURCES)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
@@ -58,6 +74,7 @@ function (add_ts_library ARG_NAME ...)
     set(extraFlags 
         $<$<BOOL:${ARG_PRINT_IR}>:--printIR;>
         $<$<BOOL:${ARG_TS_DEBUG}>:--debug;>
+        $<$<BOOL:${ARG_TRACE_IMPORT}>:--trace;>
         $<$<BOOL:${ARG_RUN_EVENT_LOOP}>:--runEventLoop ${ARG_RUN_EVENT_LOOP};>
     )
     set(watchSources ${ARG_WATCH_SOURCES})
@@ -124,18 +141,21 @@ function (add_ts_library ARG_NAME ...)
     # Stage 4
 
     string(REPLACE ".ll" ".cpp.o" objFile "${llFile}")
-
+    set(llcBin ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX})
     add_custom_command(
         OUTPUT ${objFile}
         DEPENDS ${llFile}
-        COMMAND echo "Running llc..."
-        COMMAND ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX}
-        ${optimizationLevel}
-        -relocation-model=pic
-        -filetype=obj
-        -mtriple ${CMAKE_CXX_COMPILER_TARGET}
-        -o ${objFile}
-        ${llFile}
+        COMMENT "[TS2] ${llcBin}: ${llFile}"
+        COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_START}" ${objFile}
+        COMMAND ${llcBin}
+            ${llFile}
+            ${ARG_OPT_LEVEL}
+            -relocation-model=pic
+            -filetype=obj
+            -mtriple ${CMAKE_CXX_COMPILER_TARGET}
+            -o ${objFile}
+        COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_END}" ${objFile}
+        COMMAND_EXPAND_LISTS
     )
 
     # Stage 5
@@ -154,6 +174,13 @@ function (add_ts_library ARG_NAME ...)
 
     target_include_directories(${targetName}_main PUBLIC ${seedIncludeDir})
     target_link_libraries(${targetName}_main PUBLIC tsnative-std::tsnative-std)
+
+    add_custom_command(
+        TARGET ${targetName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_RESULT}" ${targetName}
+        COMMAND_EXPAND_LISTS
+        VERBATIM
+    )
 
 endfunction() # add_ts_library
 
@@ -212,7 +239,8 @@ function (_add_ts_command ARG_SRC ...)
     add_custom_command(
         OUTPUT ${outputFile}
         DEPENDS ${inputFile} ${dependencies}
-        #COMMAND ${CMAKE_COMMAND} -E time ${tsCompiler}
+        COMMENT "[TS2] ${tsCompiler}: ${outputFile}"
+        COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_START}" ${ARG_OUTPUT}
         COMMAND ${CMAKE_COMMAND} -E env "${tsCompilerEnv}" ${tsCompiler}
         ARGS ${inputFile}
             --build ${outputDir}
@@ -220,7 +248,7 @@ function (_add_ts_command ARG_SRC ...)
             --demangledTables "$<JOIN:${demangledTable},${commaSep}>"
             "$<$<BOOL:${includeDirs}>:--includeDirs>" "$<JOIN:${includeDirs},${commaSep}>"
             "${flags}"
-        COMMENT "[TS2] ${tsCompiler}: ${outputFile}"
+        COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_END}" ${ARG_OUTPUT}
         COMMAND_EXPAND_LISTS
         VERBATIM
     )

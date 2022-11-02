@@ -11,6 +11,8 @@
 if (NOT __ts_build_utils_cmake_guard)
 set (__ts_build_utils_cmake_guard 1)
 
+message(DEPRECATION "TsBuildUtils is deprecated! Use TsBuildUtils2 instead")
+
 # TODO: fill the info
 # Required non-empty variables:
 # * PROJECT_ROOT

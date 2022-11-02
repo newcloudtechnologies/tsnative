@@ -11,8 +11,8 @@
 import argparse
 import time
 import json
-
 import os
+import tempfile
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
@@ -25,8 +25,9 @@ group.add_argument("--calculate", action="store_true")
 
 args = parser.parse_args()
 
-MEASURES_FILEPATH = os.getenv(
-    'TS_PROFILE_BUILD_OUTPUT', Path.home().joinpath("tsnative_profile_build.json"))
+MEASURES_FILEPATH = os.getenv('TS_PROFILE_BUILD_OUTPUT', os.path.join(tempfile.gettempdir(), "tsnative_profile_build.json"))
+
+print("Profiler data: %s" % MEASURES_FILEPATH)
 
 measures_file = Path(MEASURES_FILEPATH)
 measures_file.touch(exist_ok=True)
@@ -39,6 +40,7 @@ else:
         measures = json.load(file)
 
 if args.calculate:
+    print("Build profiler results: %s" % args.tag)
     for tag in measures:
         start = measures[tag]["start"]
         end = measures[tag]["end"]

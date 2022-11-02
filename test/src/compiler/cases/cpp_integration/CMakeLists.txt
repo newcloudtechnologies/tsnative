@@ -42,6 +42,7 @@ set(TESTS
 )
 foreach(TEST IN LISTS TESTS)
     get_filename_component(TEST_NAME ${TEST} NAME_WLE)
+    get_filename_component(TEST_FILENAME ${TEST} NAME)
     set (TS_TARGET ${TEST_NAME}_ts)
     add_ts_library(${TS_TARGET}
         SRC ${TEST}
@@ -51,10 +52,11 @@ foreach(TEST IN LISTS TESTS)
         INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/cpp
         TS_DEBUG ${TS_DEBUG}
         RUN_EVENT_LOOP ${RUN_EVENT_LOOP}
-        #PRINT_IR
+        PRINT_IR ${PRINT_IR}
+        TRACE_IMPORT ${TRACE_IMPORT}
     )
 
-    add_executable(${TEST_NAME} WIN32 dummy.cpp)
+    add_executable(${TEST_NAME} WIN32 ${TEST_FILENAME})
     target_link_libraries(${TEST_NAME} PRIVATE ${TS_TARGET}_main ${TS_TARGET} ${extTarget})
 
     add_test(
