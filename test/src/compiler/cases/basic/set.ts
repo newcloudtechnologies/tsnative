@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -29,10 +29,10 @@ const third = new A(3, "3");
 
 // test `add` chaining
 set.add(first)
-   .add(second)
-   .add(third);
+    .add(second)
+    .add(third);
 
- 
+
 // test size
 console.assert(set.size === 3, "Set size");
 

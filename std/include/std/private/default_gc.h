@@ -1,12 +1,23 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
 
 #include "std/igc_impl.h"
 
-#include <unordered_set>
 #include <functional>
 #include <mutex>
+#include <unordered_set>
 
 class Object;
 class IMemoryDiagnosticsImpl;
@@ -16,17 +27,17 @@ class DefaultGC : public IGCImpl
 public:
     struct Callbacks final
     {
-        std::function<void(const Object&)> beforeDeleted = [](const Object&){};
-        std::function<void(const void*)> afterDeleted = [](const void*){};
+        std::function<void(const Object&)> beforeDeleted = [](const Object&) {};
+        std::function<void(const void*)> afterDeleted = [](const void*) {};
     };
 
     DefaultGC(Callbacks&& callbacks);
     ~DefaultGC();
-    
+
     void addObject(Object* o);
 
     std::size_t getAliveObjectsCount() const override;
-    
+
     void addRoot(Object* object) override;
     void removeRoot(Object* object) override;
 

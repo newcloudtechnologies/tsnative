@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -148,16 +148,14 @@ void ClassTemplateInstantiator::addInstance(parser::const_class_item_t item)
 std::string ClassTemplateInstantiator::createInstance(parser::const_class_template_item_t item,
                                                       const std::vector<std::string>& includes)
 {
-    auto formatName = [item]()
-    {
+    auto formatName = [item]() {
         std::string prefix = item->prefix();
         std::string name = item->name();
 
         return prefix.empty() ? name : utils::strprintf("%s::%s", prefix.c_str(), name.c_str());
     };
 
-    auto formatParameters = [item]()
-    {
+    auto formatParameters = [item]() {
         std::string result;
 
         auto size = item->templateParameters().size();

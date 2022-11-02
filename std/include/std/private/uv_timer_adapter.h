@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include "itimer.h"
@@ -8,13 +19,13 @@ class UVLoopAdapter;
 class UVTimerAdapter : public ITimer
 {
 public:
-    explicit UVTimerAdapter(const UVLoopAdapter & uvLoopAdapter, std::size_t timerID);
+    explicit UVTimerAdapter(const UVLoopAdapter& uvLoopAdapter, std::size_t timerID);
 
     UVTimerAdapter() = delete;
 
-    UVTimerAdapter(const UVTimerAdapter &) = delete;
+    UVTimerAdapter(const UVTimerAdapter&) = delete;
 
-    UVTimerAdapter &operator=(const UVTimerAdapter &) = delete;
+    UVTimerAdapter& operator=(const UVTimerAdapter&) = delete;
 
     ~UVTimerAdapter() override;
 
@@ -22,9 +33,9 @@ public:
 
     std::chrono::milliseconds due() const override;
 
-    void setInterval(std::chrono::milliseconds repeat, Callback && callback) override;
+    void setInterval(std::chrono::milliseconds repeat, Callback&& callback) override;
 
-    void setTimeout(std::chrono::milliseconds timeout, Callback && callback) override;
+    void setTimeout(std::chrono::milliseconds timeout, Callback&& callback) override;
 
     std::chrono::milliseconds getRepeat() const override;
 

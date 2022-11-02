@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/gc.h"
 
 #include "std/igc_impl.h"
@@ -8,8 +19,8 @@
 #include "std/private/logger.h"
 
 GC::GC(IGCImpl* gcImpl, Allocator* allocator)
-    : _gcImpl{gcImpl},
-    _allocator{allocator}
+    : _gcImpl{gcImpl}
+    , _allocator{allocator}
 {
     LOG_ADDRESS("Calling GC wrapper ctor ", this);
 
@@ -79,7 +90,7 @@ void GC::removeRoot(void* root)
     {
         throw std::runtime_error("GC cannot be nullptr");
     }
-    
+
     _gcImpl->removeRoot(static_cast<Object*>(root));
 }
 

@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -24,12 +35,10 @@ TEST_F(UVLoopAdapterTest, InitLoop)
     ASSERT_NO_THROW(loop.stop());
     ASSERT_FALSE(loop.isRunning());
 
-    loop.enqueue(
-        [this]
-        {
-            ASSERT_TRUE(loop.isRunning());
-            loop.stop();
-        });
+    loop.enqueue([this] {
+        ASSERT_TRUE(loop.isRunning());
+        loop.stop();
+    });
     ASSERT_NO_THROW(loop.run());
 }
 
@@ -44,18 +53,14 @@ TEST_F(UVLoopAdapterTest, CheckEmitEventForLoop)
 
     ASSERT_FALSE(emitter.has<MouseEvent>());
 
-    emitter.on<MouseEvent>(
-        [this, &emitter, mouse_event_x, mouse_event_y](const auto& event, auto& sender)
-        {
-            loop.enqueue(
-                [this, &sender, &emitter, mouse_event_x, mouse_event_y, event]
-                {
-                    ASSERT_TRUE(&sender == &emitter);
-                    ASSERT_TRUE(event.x == mouse_event_x);
-                    ASSERT_TRUE(event.y == mouse_event_y);
-                    loop.stop();
-                });
+    emitter.on<MouseEvent>([this, &emitter, mouse_event_x, mouse_event_y](const auto& event, auto& sender) {
+        loop.enqueue([this, &sender, &emitter, mouse_event_x, mouse_event_y, event] {
+            ASSERT_TRUE(&sender == &emitter);
+            ASSERT_TRUE(event.x == mouse_event_x);
+            ASSERT_TRUE(event.y == mouse_event_y);
+            loop.stop();
         });
+    });
 
     emitter.on<ErrorEvent>([](auto&&...) { FAIL(); });
 
@@ -96,8 +101,8 @@ public:
     template <typename Event, typename Func>
     void connect(Func&& f)
     {
-        on<Event>([f = std::forward<Func>(f)](Event& e, Emitter& h)
-                  { h._loop.enqueue([f = std::move(f), e] { f(e); }); });
+        on<Event>(
+            [f = std::forward<Func>(f)](Event& e, Emitter& h) { h._loop.enqueue([f = std::move(f), e] { f(e); }); });
     }
 
     template <typename Event>
@@ -129,20 +134,16 @@ TEST_F(UVLoopAdapterTest, CheckCancelSlots)
 
     emitter.connect<int>([event_val = event](int int_event) { FAIL(); });
 
-    emitter.connect<std::string>(
-        [&emitter](const std::string& s)
-        {
-            EXPECT_EQ("hello", s);
+    emitter.connect<std::string>([&emitter](const std::string& s) {
+        EXPECT_EQ("hello", s);
 
-            emitter.connect<int>(
-                [&emitter](int)
-                {
-                    EXPECT_FALSE(emitter.has<std::string>());
-                    emitter.notify(QuitEvent{});
-                });
-            emitter.reset<std::string>();
-            emitter.notify(int{});
+        emitter.connect<int>([&emitter](int) {
+            EXPECT_FALSE(emitter.has<std::string>());
+            emitter.notify(QuitEvent{});
         });
+        emitter.reset<std::string>();
+        emitter.notify(int{});
+    });
 
     emitter.reset<int>();
 
@@ -163,12 +164,10 @@ TEST_F(UVLoopAdapterTest, CheckOrdering)
 
         emitter.connect<int>([&val](int) { EXPECT_EQ(++val, 2); });
 
-        emitter.connect<std::string>(
-            [this, &val](std::string)
-            {
-                EXPECT_EQ(++val, 3);
-                loop.stop();
-            });
+        emitter.connect<std::string>([this, &val](std::string) {
+            EXPECT_EQ(++val, 3);
+            loop.stop();
+        });
 
         loop.enqueue([&] { emitter.notify(int{}, std::string{}); });
 
@@ -184,26 +183,20 @@ TEST_F(UVLoopAdapterTest, CheckPingPong)
 
     Emitter emitter_2{loop};
 
-    emitter_1.connect<std::string>(
-        [&, this](std::string msg)
-        {
-            EXPECT_EQ(msg, "PING");
-            emitter_1.reset();
-            emitter_1.connect<std::string>(
-                [this](std::string msg)
-                {
-                    EXPECT_EQ(msg, "PONG");
-                    loop.stop();
-                });
-            emitter_2.notify(std::string{"PING"});
+    emitter_1.connect<std::string>([&, this](std::string msg) {
+        EXPECT_EQ(msg, "PING");
+        emitter_1.reset();
+        emitter_1.connect<std::string>([this](std::string msg) {
+            EXPECT_EQ(msg, "PONG");
+            loop.stop();
         });
+        emitter_2.notify(std::string{"PING"});
+    });
 
-    emitter_2.connect<std::string>(
-        [this, &emitter_1](std::string msg)
-        {
-            EXPECT_EQ(msg, "PING");
-            emitter_1.notify(std::string{"PONG"});
-        });
+    emitter_2.connect<std::string>([this, &emitter_1](std::string msg) {
+        EXPECT_EQ(msg, "PING");
+        emitter_1.notify(std::string{"PONG"});
+    });
     emitter_1.notify(std::string{"PING"});
     loop.run();
 }

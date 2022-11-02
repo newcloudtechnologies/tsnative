@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -108,7 +108,7 @@
         if (counter === 0) {
             break;
         }
-        
+
         ++counter;
     }
 
@@ -120,7 +120,7 @@
     const outerArray = [1, 2, 3];
     const innerArray = ["MyStr1", "MyStr2"];
     let outerCounter = 0;
-    
+
     for (const outerValue of outerArray) {
         let innerCounter = 0;
         for (const innerValue of innerArray) {
@@ -139,7 +139,7 @@
     const outerArray = [1, 2, 3];
     const innerArray = ["MyStr1", "MyStr2"];
     let outerCounter = 0;
-    
+
     for (const outerValue of outerArray) {
         let innerCounter = 0;
         for (const innerValue of innerArray) {
@@ -162,7 +162,7 @@
     const outerArray = [1, 2, 3];
     const innerArray = ["MyStr1", "MyStr2"];
     let outerCounter = 0;
-    
+
     for (const outerValue of outerArray) {
         let innerCounter = 0;
         for (const innerValue of innerArray) {

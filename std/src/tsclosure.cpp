@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/tsclosure.h"
 
 #include "std/tsnumber.h"
@@ -61,7 +72,7 @@ void TSClosure::markChildren()
     }
 
     const auto argsCount = static_cast<std::size_t>(_envLength->unboxed());
-    for (std::size_t i = 0 ; i < argsCount ; ++i)
+    for (std::size_t i = 0; i < argsCount; ++i)
     {
         auto* o = static_cast<Object*>(_env[i]);
         if (o && !o->isMarked())

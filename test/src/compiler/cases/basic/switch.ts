@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -411,14 +411,14 @@
 
 {
   const f = (i: number) => {
-      switch (i) {
-          case 0:
-              return 1;
-          default:
-              console.log("default case triggered");
-      }
+    switch (i) {
+      case 0:
+        return 1;
+      default:
+        console.log("default case triggered");
+    }
 
-      return;
+    return;
   };
   console.assert(f(1) === undefined, "Unhadled switch-case value must return 'undefined'");
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -12,7 +12,7 @@
 {
     // Simple string iteration
     {
-        const s : String = "abacaba";
+        const s: String = "abacaba";
         let counter = 0;
         for (const i in s) {
             console.assert(counter.toString() === i, "For in: Simple string iteration counter check failed");
@@ -23,7 +23,7 @@
 
     // Empty string iteration
     {
-        const s : String = "";
+        const s: String = "";
         let counter = 0;
         for (const i in s) {
             ++counter;
@@ -33,7 +33,7 @@
 
     // String iteration + continue
     {
-        const s : String = "abcdefgh";
+        const s: String = "abcdefgh";
         let continueCounter = 0;
         let iterationsCounter = 0;
         for (const i in s) {
@@ -49,7 +49,7 @@
 
     // String iteration + break
     {
-        const s : String = "abcdefgh";
+        const s: String = "abcdefgh";
         let counter = 0;
         for (const i in s) {
             if (counter > 2) {
@@ -59,9 +59,8 @@
         }
         console.assert(counter === 3, "For in: String iteration + break counter check failed");
     }
-    
-    function makeSet(arr: string[])
-    {
+
+    function makeSet(arr: string[]) {
         let result = new Set<string>();
         for (const v of arr) {
             result.add(v);
@@ -72,10 +71,10 @@
 
     // Iterate over simple object
     {
-        const obj = { name: 10, 5 : 0};
+        const obj = { name: 10, 5: 0 };
         let counter = 0;
         const expected = makeSet(["name", "5"]);
-        
+
         for (const k in obj) {
             console.assert(expected.has(k), "For in: Iterate over simple object failed, key mismatch");
             ++counter;
@@ -86,7 +85,7 @@
 
     // Iterate over simple object + continue
     {
-        const obj = { name: 10, 5 : 0 };
+        const obj = { name: 10, 5: 0 };
         let continueCounter = 0;
         let iterationsCounter = 0;
         for (const i in obj) {
@@ -102,7 +101,7 @@
 
     // Iterate over simple object + break
     {
-        const obj = { name: 10, 5 : 0, id: "asdasda" };
+        const obj = { name: 10, 5: 0, id: "asdasda" };
         let counter = 0;
         for (const i in obj) {
             if (counter === 1) {
@@ -115,7 +114,7 @@
 
     // Iterate over empty object
     {
-        const obj = { };
+        const obj = {};
         let counter = 0;
         for (const k in obj) {
             ++counter;
@@ -125,8 +124,8 @@
 
     // Iterate over object with nested object
     {
-        const innerObject = { "innerKey" : 1};
-        const obj = { innerObject : "outerValue"};
+        const innerObject = { "innerKey": 1 };
+        const obj = { innerObject: "outerValue" };
         const expected = makeSet(["innerObject"]);
         let counter = 0;
         for (const k in obj) {
@@ -161,26 +160,26 @@
     // Iterate over class object
     {
         class A {
-            private prop1:number = 0;
-            protected prop2:number = 0;
-            public prop3:number = 0;
-        
+            private prop1: number = 0;
+            protected prop2: number = 0;
+            public prop3: number = 0;
+
             // TODO We add non static methods and non static getters to keys.
             // We should not do this, ts does not do this.
-            
+
             // constructor() {}
             // private get getter1() { return 0; }
             // protected get getter2() { return 0; }
             // public get getter3() { return 0; }
-        
+
             // private set setter1(a:number) {}
             // protected set setter2(a:number) {}
             // public set setter3(a:number) {}
-        
+
             // private method1() {}
             // protected method2() {}
             // public method3() {}
-        
+
             // private static staticMethod1() {}
             // protected static staticMethod2() {}
             // public static staticMethod3() {}
@@ -266,7 +265,7 @@
             if (counter === 1) {
                 break;
             }
-            
+
             ++counter;
         }
 
@@ -276,7 +275,7 @@
     // Iterate over array returned by a function
     {
         let counter = 0;
-        const arr = [1,2,3];
+        const arr = [1, 2, 3];
         function retArrayFunc() {
             return arr;
         }
@@ -308,7 +307,7 @@
         const outerArray = [1, 2, 3];
         const innerArray = ["MyStr1", "MyStr2"];
         let outerCounter = 0;
-        
+
         for (const outerValue in outerArray) {
             let innerCounter = 0;
             console.assert(outerCounter.toString() === outerValue, "For in: Iterate over simple arrays outer loop failed");
@@ -329,7 +328,7 @@
         const outerArray = [1, 2, 3];
         const innerArray = ["MyStr1", "MyStr2"];
         let outerCounter = 0;
-        
+
         for (const outerValue in outerArray) {
             let innerCounter = 0;
             for (const innerValue in innerArray) {
@@ -353,7 +352,7 @@
         const outerArray = [1, 2, 3];
         const innerArray = ["MyStr1", "MyStr2"];
         let outerCounter = 0;
-        
+
         for (const outerValue in outerArray) {
             let innerCounter = 0;
             console.assert(outerCounter.toString() === outerValue, "For in: Iterate over simple arrays outer loop + break failed");

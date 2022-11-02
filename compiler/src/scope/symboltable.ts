@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -12,7 +12,7 @@
 import { Scope, ScopeValue } from "../scope";
 import { LLVMGenerator } from "../generator/generator"
 
-export class IdentifierNotFound extends Error {}
+export class IdentifierNotFound extends Error { }
 
 export class SymbolTable {
   private readonly scopes: Scope[];
@@ -73,7 +73,7 @@ export class SymbolTable {
     this.scopes.push(scope);
     const result = body(scope);
     this.scopes.pop();
-    
+
     return result;
   }
 

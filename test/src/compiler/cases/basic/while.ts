@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -55,17 +55,17 @@ console.assert(i === 1, "while: break failed");
   let counter = 0;
 
   while (true) {
-      const flagB = true
+    const flagB = true
 
-      for (const _ of arr) {
-          ++counter;
-      }
-
+    for (const _ of arr) {
       ++counter;
+    }
 
-      if (flagB) {
-          break;
-      }
+    ++counter;
+
+    if (flagB) {
+      break;
+    }
   }
 
   console.assert(counter === 3, "'break' must works correctly if there is a nested loop");
@@ -74,6 +74,6 @@ console.assert(i === 1, "while: break failed");
 // Test conditionless 'break'
 {
   while (true) {
-      break;
+    break;
   }
 }

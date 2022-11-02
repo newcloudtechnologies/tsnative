@@ -1,12 +1,23 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
 
-#include "std/tsobject.h"
 #include "std/private/timers_storage.h"
+#include "std/tsobject.h"
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 TS_CODE("import { GC } from './gc' \n");
 TS_CODE("import { Diagnostics } from './diagnostics' \n");
@@ -15,7 +26,7 @@ TS_CODE("import { EventLoop } from './event_loop' \n");
 class GC;
 class Diagnostics;
 
-template<typename T>
+template <typename T>
 class Array;
 
 class String;
@@ -32,7 +43,6 @@ class ITimer;
 class TS_EXPORT TS_DECLARE Runtime final : public Object
 {
 public:
-
     using Timers = TimersStorage;
 
     static int init(int argc, char* argv[]);
@@ -43,9 +53,9 @@ public:
 
     static TS_METHOD Diagnostics* getDiagnostics();
 
-    static TS_METHOD EventLoop * getLoop();
+    static TS_METHOD EventLoop* getLoop();
 
-    static Timers * getTimersStorage();
+    static Timers* getTimersStorage();
 
     static TS_METHOD Array<String*>* getCmdArgs();
 

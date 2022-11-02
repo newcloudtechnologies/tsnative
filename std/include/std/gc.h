@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -5,8 +16,8 @@
 #include "std/tsobject.h"
 
 #include <cstdint>
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 
 class IGCImpl;
 class Allocator;
@@ -71,7 +82,8 @@ public:
     template <typename Destination, typename Source>
     static Destination* createHeapAllocated(Source value)
     {
-        static_assert(std::is_constructible<Destination, Source>::value, "DestinationT must be constructible from SourceT");
+        static_assert(std::is_constructible<Destination, Source>::value,
+                      "DestinationT must be constructible from SourceT");
 
         return GC::track(new Destination(value));
     }

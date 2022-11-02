@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/runtime.h"
 
 #include "std/diagnostics.h"
@@ -127,8 +138,9 @@ int Runtime::init(int ac, char* av[])
     _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
 
     DefaultGC::Callbacks gcCallbacks;
-    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o)
-    { memStorage->onDeleted(o); };
+    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o) {
+        memStorage->onDeleted(o);
+    };
     auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
     Allocator::Callbacks allocatorCallbacks;

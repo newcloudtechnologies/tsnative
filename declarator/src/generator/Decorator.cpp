@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -24,10 +24,11 @@ void addArgument(generator::ts::decorator_t decorator, const std::string& value)
     bool vBool = false;
     double vDbl = 0;
 
-    utils::is_type<int>(value, vInt)      ? decorator->addArgument(vInt)
-    : utils::is_type<bool>(value, vBool)  ? decorator->addArgument(vBool)
-    : utils::is_type<double>(value, vDbl) ? decorator->addArgument(vDbl)
-                                          : decorator->addArgument(value.c_str());
+    utils::is_type<int>(value, vInt) ? decorator->addArgument(vInt)
+                                     : utils::is_type<bool>(value, vBool) ? decorator->addArgument(vBool)
+                                                                          : utils::is_type<double>(value, vDbl)
+                                                                                ? decorator->addArgument(vDbl)
+                                                                                : decorator->addArgument(value.c_str());
 }
 
 } //  namespace

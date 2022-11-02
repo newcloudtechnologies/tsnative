@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -579,7 +579,7 @@ export class TemplateInstantiator {
     const includes = flatten(this.includeDirs.map((dir: string) => this.getIncludes(dir)));
 
     const finalIncludes = includes.filter((cxxPath: string) => {
-        return tsSources.indexOf(extractFilename(cxxPath)) >= 0;
+      return tsSources.indexOf(extractFilename(cxxPath)) >= 0;
     });
 
     for (const include of finalIncludes) {

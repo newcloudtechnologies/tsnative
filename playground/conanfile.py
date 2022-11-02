@@ -1,13 +1,25 @@
+#
+# Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+#
+# You can not use the contents of the file in any way without
+# New Cloud Technologies, Ltd. written permission.
+#
+# To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+# at http://ncloudtech.com/contact.html
+#
+
 from conans import ConanFile, tools
 from conan.tools.cmake import CMakeDeps
 
 import os
 
+
 def pkg_suffix(self):
     if self._conan_user and self._conan_channel:
         return "%s@%s/%s" % (self.version, self.user, self.channel)
     else:
-        return  "%s" % self.version
+        return "%s" % self.version
+
 
 class TSNativePlayground(ConanFile):
     name = "tsnative-playground"
@@ -30,16 +42,16 @@ class TSNativePlayground(ConanFile):
         cmake.generate()
 
     def imports(self):
-        self.keep_imports = True # keep copied declarations in build folder
+        self.keep_imports = True  # keep copied declarations in build folder
         self.copy("*.ts", ignore_case=True)
 
     def build(self):
         os.environ["NODE_PATH"] = self.deps_user_info["tsnative-std"].NODE_PATH
-        
+
         source_folder = self.source_folder
         build_folder = self.build_folder
         install_folder = self.install_folder
-        win_bash=False
+        win_bash = False
 
         # TODO: AN-932 - it's possible to generate declarations only on linux for now
         if self.settings.os == "Windows":
@@ -58,8 +70,7 @@ class TSNativePlayground(ConanFile):
                     --baseUrl {install}/declarations \
                     --target_abi {abi} \
                     --print_ir"
-                    .format(src=source_folder, build=build_folder, install=install_folder, abi=self.settings.target_abi),
-                    win_bash=win_bash)
-                    # --extension {src}/extensions \
-                    # --trace")
-
+                 .format(src=source_folder, build=build_folder, install=install_folder, abi=self.settings.target_abi),
+                 win_bash=win_bash)
+        # --extension {src}/extensions \
+        # --trace")

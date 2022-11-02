@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
 import { Declaration } from "../ts/declaration";
@@ -37,10 +48,10 @@ export class EventLoop {
     return this.generator.builder.createSafeCall(
       this.runLoopFn,
       [
-        eventLoopAddress, 
+        eventLoopAddress,
         this.generator.builtinBoolean.create(
-          lock ? LLVMConstantInt.getTrue(this.generator) 
-               : LLVMConstantInt.getFalse(this.generator)) 
+          lock ? LLVMConstantInt.getTrue(this.generator)
+            : LLVMConstantInt.getFalse(this.generator))
       ],
       name
     );

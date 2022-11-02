@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -12,8 +12,8 @@
 #pragma once
 
 #include <TS.h>
-#include <std/tsobject.h>
 #include <std/tsarray.h>
+#include <std/tsobject.h>
 #include <std/tsstring.h>
 
 class TS_EXPORT FileInfo_t : public Object
@@ -39,7 +39,7 @@ class TS_EXPORT AnyWidget : public Object
     template <typename U>
     TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]")
         Array<U>* map(TSClosure* closure);
-        
+
     template <typename U>
     TS_METHOD TS_SIGNATURE("map2<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): data.U[]")
         Array<U>* map2(TSClosure* closure);
@@ -50,38 +50,40 @@ class TS_EXPORT AnyWidget : public Object
 template <typename U>
 TS_EXPORT TS_SIGNATURE("function mapWidget<U>(callbackfn: (value: U, index: number, array: readonly U[]) => U): U[]")
     Array<U>* mapWidget(TSClosure* closure);
-    
+
 template <typename U>
-TS_EXPORT TS_SIGNATURE("function mapWidget2<U>(callbackfn: (value: U, index: number, array: readonly U[]) => U): data.U[]")
+TS_EXPORT TS_SIGNATURE(
+    "function mapWidget2<U>(callbackfn: (value: U, index: number, array: readonly U[]) => U): data.U[]")
     Array<U>* mapWidget2(TSClosure* closure);
 
 TS_EXPORT TS_SIGNATURE("function someFunc(n: number, m: number): number") Number* someFunc(Number* n,
-                                                                                       Number* m,
-                                                                                       Number* x ,
-                                                                                       Number* y);
-                                                                                       
-                                                                                       
-TS_EXPORT TS_SIGNATURE("function someFunc2(n: number, m: number): data.FileInfo_t[]") FileInfo_t* someFunc2(Number* n,
-                                                                                       Number* m,
-                                                                                       Number* x,
-                                                                                       Number* y);
+                                                                                           Number* m,
+                                                                                           Number* x,
+                                                                                           Number* y);
+
+TS_EXPORT TS_SIGNATURE("function someFunc2(n: number, m: number): data.FileInfo_t[]")
+    FileInfo_t* someFunc2(Number* n, Number* m, Number* x, Number* y);
 
 class TS_EXPORT Multiline : public Object
 {
     TS_METHOD TS_SIGNATURE("multiline(arg1: number,"
-    "arg2: number, arg3: "
-    "number,"
-    "arg4: number,"
-    "arg5: number, arg6:          "
-    "number, arg7: number): number")
-    static Number* multiline(Number* arg1, Number* arg2, Number* arg3, Number* arg4, Number* arg5, Number* arg6, Number* arg7);
+                           "arg2: number, arg3: "
+                           "number,"
+                           "arg4: number,"
+                           "arg5: number, arg6:          "
+                           "number, arg7: number): number") static Number* multiline(Number* arg1,
+                                                                                     Number* arg2,
+                                                                                     Number* arg3,
+                                                                                     Number* arg4,
+                                                                                     Number* arg5,
+                                                                                     Number* arg6,
+                                                                                     Number* arg7);
 };
 
 TS_EXPORT TS_SIGNATURE("function multiline(arg1: number,"
-"arg2: number, arg3: "
-"number,"
-"arg4: number,"
-"arg5: number, arg6:          "
-"number, arg7: number): number")
-Number* multiline(Number* arg1, Number* arg2, Number* arg3, Number* arg4, Number* arg5, Number* arg6, Number* arg7);
-
+                       "arg2: number, arg3: "
+                       "number,"
+                       "arg4: number,"
+                       "arg5: number, arg6:          "
+                       "number, arg7: number): number")
+    Number* multiline(Number* arg1, Number* arg2, Number* arg3, Number* arg4, Number* arg5, Number* arg6, Number* arg7);

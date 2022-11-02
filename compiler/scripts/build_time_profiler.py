@@ -1,3 +1,13 @@
+#
+# Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+#
+# You can not use the contents of the file in any way without
+# New Cloud Technologies, Ltd. written permission.
+#
+# To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+# at http://ncloudtech.com/contact.html
+#
+
 import argparse
 import time
 import json
@@ -15,7 +25,8 @@ group.add_argument("--calculate", action="store_true")
 
 args = parser.parse_args()
 
-MEASURES_FILEPATH = os.getenv('TS_PROFILE_BUILD_OUTPUT', Path.home().joinpath("tsnative_profile_build.json"))
+MEASURES_FILEPATH = os.getenv(
+    'TS_PROFILE_BUILD_OUTPUT', Path.home().joinpath("tsnative_profile_build.json"))
 
 measures_file = Path(MEASURES_FILEPATH)
 measures_file.touch(exist_ok=True)

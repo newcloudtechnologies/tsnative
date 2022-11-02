@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/tsboolean.h"
 
 #include <sstream>
@@ -54,7 +65,8 @@ Boolean* Boolean::negate() const
 
 Boolean* Boolean::equals(Object* other) const
 {
-    if (!other->isBoolean()) {
+    if (!other->isBoolean())
+    {
         return new Boolean(false);
     }
 

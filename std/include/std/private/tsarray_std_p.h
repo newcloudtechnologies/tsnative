@@ -1,7 +1,18 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
-#include "std/tsobject.h"
 #include "std/private/tsarray_p.h"
+#include "std/tsobject.h"
 
 #include <algorithm>
 #include <deque>
@@ -225,20 +236,17 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
     os << "[ ";
     if (!array->storage_.empty())
     {
-        std::for_each(array->storage_.cbegin(),
-                      array->storage_.cend() - 1,
-                      [&os](T value)
-                      {
-                          if (value)
-                          {
-                              os << static_cast<Object*>(value)->toString() << ", ";
-                          }
-                          else
-                          {
-                              os << "null"
-                                 << ", ";
-                          }
-                      });
+        std::for_each(array->storage_.cbegin(), array->storage_.cend() - 1, [&os](T value) {
+            if (value)
+            {
+                os << static_cast<Object*>(value)->toString() << ", ";
+            }
+            else
+            {
+                os << "null"
+                   << ", ";
+            }
+        });
 
         auto last = array->storage_.back();
         if (last)

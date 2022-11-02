@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -359,7 +370,7 @@ template <typename T>
 Array<String*>* Array<T>::getKeysArray() const
 {
     auto result = new Array<String*>{};
-    const auto keys =_d->keys();
+    const auto keys = _d->keys();
 
     for (const auto k : keys)
     {
@@ -373,7 +384,7 @@ Array<String*>* Array<T>::getKeysArray() const
 template <typename T>
 void Array<T>::markChildren()
 {
-     LOG_ADDRESS("Calling Array::markChildren on ", this);
+    LOG_ADDRESS("Calling Array::markChildren on ", this);
     auto elements = _d->toStdVector();
     for (auto& e : elements)
     {

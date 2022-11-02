@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -42,11 +53,11 @@ public:
     TS_METHOD static Number* fround(Number* x) noexcept;
 
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
-    // Support multiple arguments passing 
+    // Support multiple arguments passing
     TS_METHOD static Number* hypot(Number* x, Number* y) noexcept;
 
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
-    // Support multiple arguments passing 
+    // Support multiple arguments passing
     TS_METHOD static Number* imul(Number* x, Number* y) noexcept;
 
     TS_METHOD static Number* log(Number* x) noexcept;
@@ -55,7 +66,7 @@ public:
     TS_METHOD static Number* log2(Number* x) noexcept;
 
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
-    // Support multiple arguments passing 
+    // Support multiple arguments passing
 
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1064
     // Max without arguments should return INFINITY(==Number.PositiveInfinity) constant
@@ -64,7 +75,7 @@ public:
     TS_METHOD static Number* max(Number* a, Number* b) noexcept;
 
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
-    // Support multiple arguments passing 
+    // Support multiple arguments passing
 
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1064
     // Min without arguments should return INFINITY(==Number.PositiveInfinity) constant

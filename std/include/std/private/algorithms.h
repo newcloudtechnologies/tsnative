@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <tuple>
@@ -16,9 +27,7 @@ struct DoForEachInTuple
 };
 
 template <class Tuple, std::size_t I>
-struct DoForEachInTuple<Tuple,
-                              I,
-                              typename std::enable_if_t<I == std::tuple_size<typename std::decay_t<Tuple>>::value>>
+struct DoForEachInTuple<Tuple, I, typename std::enable_if_t<I == std::tuple_size<typename std::decay_t<Tuple>>::value>>
 {
     template <class UnaryFunction>
     static void apply(Tuple&&, UnaryFunction&)

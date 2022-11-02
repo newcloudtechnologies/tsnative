@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -14,25 +14,25 @@
 #include <TS.h>
 #include <std/tsobject.h>
 
-namespace TS_MODULE(global)
+namespace global IS_TS_MODULE
 {
 
-    class TS_EXPORT Entity : public Object
-    {
-    public:
-        Entity() = default;
-        ~Entity() = default;
-        TS_METHOD void entity();
+class TS_EXPORT Entity : public Object
+{
+public:
+    Entity() = default;
+    ~Entity() = default;
+    TS_METHOD void entity();
 
-        TS_CODE("toString(): string;\n"
-                "toNumber(): number;\n\n");
-
-        TS_CODE("// @ts-ignore\n"
-                "@MapsTo(\"operator==\")\n"
-                "private equals(string): boolean;\n");
-    };
+    TS_CODE("toString(): string;\n"
+            "toNumber(): number;\n\n");
 
     TS_CODE("// @ts-ignore\n"
-            "declare type string = String;\n");
+            "@MapsTo(\"operator==\")\n"
+            "private equals(string): boolean;\n");
+};
 
-} // namespace )
+TS_CODE("// @ts-ignore\n"
+        "declare type string = String;\n");
+
+} // namespace IS_TS_MODULE

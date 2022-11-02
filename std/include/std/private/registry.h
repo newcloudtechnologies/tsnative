@@ -1,12 +1,24 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
-#include <memory>
-#include <functional>
-#include <unordered_map>
 #include <cassert>
+#include <functional>
+#include <memory>
+#include <unordered_map>
 
-template<typename Base, typename Key, typename... Args>
-class FactoryFunctionsRegistry {
+template <typename Base, typename Key, typename... Args>
+class FactoryFunctionsRegistry
+{
 public:
     using FactoryFunc = std::function<std::unique_ptr<Base>(Args...)>;
 
@@ -14,27 +26,31 @@ public:
 
     ~FactoryFunctionsRegistry() = default;
 
-    template<typename Derived>
-    void registerClass(const Key &key) {
+    template <typename Derived>
+    void registerClass(const Key& key)
+    {
         assert(!_storage.count(key) && "The storage entry already exists");
         _storage[key] = &constructDerived<Derived>;
     }
 
-    void registerFactory(const Key &key, const FactoryFunc factory) {
+    void registerFactory(const Key& key, const FactoryFunc factory)
+    {
         assert(!_storage.count(key) && "The storage entry already exists");
         _storage[key] = factory;
     }
 
-    std::unique_ptr<Base> construct(const Key &key, Args... args) {
+    std::unique_ptr<Base> construct(const Key& key, Args... args)
+    {
         auto it = _storage.find(key);
         assert(it != _storage.end() && "The storage entry already exists");
-        const auto & factoryFn = it->second;
+        const auto& factoryFn = it->second;
         return factoryFn(args...);
     }
 
 private:
-    template<typename Derived>
-    static std::unique_ptr<Base> constructDerived(Args... args) {
+    template <typename Derived>
+    static std::unique_ptr<Base> constructDerived(Args... args)
+    {
         return std::make_unique<Derived>(std::forward<Args>(args)...);
     }
 

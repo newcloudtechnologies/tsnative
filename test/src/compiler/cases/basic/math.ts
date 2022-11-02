@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -9,7 +9,7 @@
  *
  */
 
-{  
+{
     // TODO https://jira.ncloudtech.ru:8090/browse/AN-1064
     // Remove after implementation
     const EPS = 1e-8;
@@ -17,7 +17,7 @@
     const equals = function (x: number, y: number): boolean {
         return Math.abs(x - y) < EPS;
     };
-    
+
     // TODO Add tests for infinities and overflows for all related methods
     console.assert(equals(Math.E, 2.718281828459045), "Math: E failed");
     console.assert(equals(Math.LOG2E, 1.44269504088896340736), "Math: LOG2E failed");
@@ -27,7 +27,7 @@
     console.assert(equals(Math.PI, 3.14159265358979323846), "Math: PI failed");
     console.assert(equals(Math.SQRT2, 1.41421356237309504880), "Math: SQRT2 failed");
     console.assert(equals(Math.SQRT1_2, 0.707106781186547524401), "Math: SQRT1_2 failed");
-    
+
     // TODO no arguments, INF, NaN
     console.assert(equals(Math.abs(-1), 1), "Math: abs(-1) failed");
     console.assert(equals(Math.abs(1), 1), "Math: abs(1) failed");
@@ -37,11 +37,11 @@
     // TODO no arguments, one argument, many arguments, INF, NaN
     console.assert(equals(Math.min(1, 15000), 1), "Math: min(1, 15000) failed");
     console.assert(equals(Math.min(1, -15000), -15000), "Math: min(1, -15000) failed");
-    console.assert(equals(Math.min(1-EPS*10, 1), 1-EPS*10), "Math: min(1-EPS*10, 1) failed");
+    console.assert(equals(Math.min(1 - EPS * 10, 1), 1 - EPS * 10), "Math: min(1-EPS*10, 1) failed");
     console.assert(equals(Math.min(-10, -10 - EPS), -10 - EPS), "Math: min(-10, -10 - EPS) failed");
     console.assert(equals(Math.max(1, 15000), 15000), "Math: max(1, 15000) failed");
     console.assert(equals(Math.max(1, -15000), 1), "Math: max(1, -15000) failed");
-    console.assert(equals(Math.max(1-EPS*10, 1), 1), "Math: max(1-EPS*10, 1) failed");
+    console.assert(equals(Math.max(1 - EPS * 10, 1), 1), "Math: max(1-EPS*10, 1) failed");
     console.assert(equals(Math.max(-10, -10 - EPS), -10), "Math: max(-10, -10 - EPS) failed");
 
     // TODO no arguments, overflow, INF, NaN
@@ -118,7 +118,7 @@
     console.assert(equals(Math.cos(Math.PI), -1), "Math.cos(pi) failed");
     console.assert(equals(Math.cos(Math.PI / 2), 0), "Math.cos(pi/2) failed");
     console.assert(equals(Math.cos(2 * Math.PI), 1), "Math.cos(2*pi) failed");
-    
+
     // TODO no arguments, overflow, INF, NaN
     console.assert(equals(Math.cosh(1), 1.5430806348152437), "Math cosh(1) failed");
     console.assert(equals(Math.cosh(-1), 1.5430806348152437), "Math cosh(-1) failed");
@@ -196,8 +196,7 @@
     let i = 0;
     let randoms: Set<Number> = new Set;
     const COUNT = 100;
-    for (i = 0; i < COUNT; ++i) 
-    {
+    for (i = 0; i < COUNT; ++i) {
         const nextRand = Math.random();
         console.assert(0 <= nextRand && nextRand < 1, "Math: random generated number outside [0, 1)");
         randoms.add(Math.random());

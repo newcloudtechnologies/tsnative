@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "tsdate_absl_p.h"
 
 #include "absl/time/clock.h"
@@ -63,8 +74,7 @@ double AbslDatePrivate::parse(const std::string& date_string)
     auto t = absl::Time{};
     auto err = std::string{};
 
-    auto parse = [&t, &err, &date_string](const format_t& fmt) -> bool
-    {
+    auto parse = [&t, &err, &date_string](const format_t& fmt) -> bool {
         if (fmt.second == Repr::Local)
             return absl::ParseTime(fmt.first, date_string, absl::LocalTimeZone(), &t, &err);
         return absl::ParseTime(fmt.first, date_string, absl::UTCTimeZone(), &t, &err);

@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <algorithm>
@@ -62,7 +73,9 @@ void MapStdPrivate<K, V>::forEachEntry(std::function<void(const std::pair<K, V>&
 template <typename K, typename V>
 void MapStdPrivate<K, V>::set(K key, V value)
 {
-    auto it = std::find_if(_hashmap.begin(), _hashmap.end(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
+    auto it = std::find_if(_hashmap.begin(), _hashmap.end(), [&key](const std::pair<K, V>& pair) {
+        return std::equal_to<K>()(pair.first, key);
+    });
     if (it != _hashmap.end())
     {
         it->second = value;
@@ -76,14 +89,18 @@ void MapStdPrivate<K, V>::set(K key, V value)
 template <typename K, typename V>
 bool MapStdPrivate<K, V>::has(K key) const
 {
-    auto it = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
+    auto it = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) {
+        return std::equal_to<K>()(pair.first, key);
+    });
     return it != _hashmap.end();
 }
 
 template <typename K, typename V>
 V MapStdPrivate<K, V>::get(K key) const
 {
-    auto it = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
+    auto it = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) {
+        return std::equal_to<K>()(pair.first, key);
+    });
 
     if (it == _hashmap.end())
     {
@@ -96,7 +113,9 @@ V MapStdPrivate<K, V>::get(K key) const
 template <typename K, typename V>
 bool MapStdPrivate<K, V>::remove(K key)
 {
-    auto mapIt = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) { return std::equal_to<K>()(pair.first, key); });
+    auto mapIt = std::find_if(_hashmap.cbegin(), _hashmap.cend(), [&key](const std::pair<K, V>& pair) {
+        return std::equal_to<K>()(pair.first, key);
+    });
 
     if (mapIt == _hashmap.end())
     {

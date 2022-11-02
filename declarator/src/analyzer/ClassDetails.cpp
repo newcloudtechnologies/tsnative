@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -37,8 +37,7 @@ namespace
 template <typename T>
 void pushBlock(typename std::vector<T>& container, T block)
 {
-    auto pred = [block](const T& it)
-    {
+    auto pred = [block](const T& it) {
         bool result = false;
 
         if (it->isConstructor())

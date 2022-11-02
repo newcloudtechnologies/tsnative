@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -64,12 +64,12 @@
     }
 
     {
-    
-    type RxText_args2 = {
-        text: string,
-        color: number,
-        font: (string | undefined)
-    }
+
+        type RxText_args2 = {
+            text: string,
+            color: number,
+            font: (string | undefined)
+        }
         function RxText(args: RxText_args2) {
             if (args.font) {
                 return args.font;
