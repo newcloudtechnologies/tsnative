@@ -1,9 +1,20 @@
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "infrastructure/equality_checkers.h"
 #include "std/runtime.h"
 #include "std/tsarray.h"
-#include "infrastructure/equality_checkers.h"
 
 class RuntimeTestFixture : public ::testing::Test
 {
@@ -14,7 +25,7 @@ public:
     }
 };
 
-TEST_F(RuntimeTestFixture, initRuntimeTwice) 
+TEST_F(RuntimeTestFixture, initRuntimeTwice)
 {
     const int ac = 0;
     char** av;
@@ -25,7 +36,7 @@ TEST_F(RuntimeTestFixture, initRuntimeTwice)
     ASSERT_THROW(Runtime::init(ac, av), std::runtime_error);
 }
 
-TEST_F(RuntimeTestFixture, emptyCmdArgs) 
+TEST_F(RuntimeTestFixture, emptyCmdArgs)
 {
     const int ac = 0;
     char** av;
@@ -40,12 +51,12 @@ TEST_F(RuntimeTestFixture, emptyCmdArgs)
     EXPECT_EQ(0u, arr->length()->unboxed());
 }
 
-TEST_F(RuntimeTestFixture, simpleCmdArgs) 
+TEST_F(RuntimeTestFixture, simpleCmdArgs)
 {
     const int ac = 2;
     char abacaba[] = {"abacaba"};
     char rama[] = {"rama"};
-    const std::vector<std::string> expected {abacaba, rama};
+    const std::vector<std::string> expected{abacaba, rama};
 
     // Avoid ISO C++ forbids converting a string constant to 'char*'
     char* av[] = {abacaba, rama};
@@ -61,15 +72,15 @@ TEST_F(RuntimeTestFixture, simpleCmdArgs)
     EXPECT_THAT(actual, ::testing::ElementsAreArray(expected));
 }
 
-TEST_F(RuntimeTestFixture, argvSizeLessThanArgs) 
+TEST_F(RuntimeTestFixture, argvSizeLessThanArgs)
 {
     const int ac = 1;
-    
+
     char abacaba[] = "abacaba";
     char rama[] = "rama";
 
-    const std::vector<std::string> expected {abacaba};
-    
+    const std::vector<std::string> expected{abacaba};
+
     // Avoid ISO C++ forbids converting a string constant to 'char*'
     char* av[] = {abacaba, rama};
 

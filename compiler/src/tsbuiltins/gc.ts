@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
 import { Declaration } from "../ts/declaration";
@@ -36,41 +47,41 @@ export class GC {
         this.gcType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped).getLLVMType();
     }
 
-    getGCType() : LLVMType {
+    getGCType(): LLVMType {
         return this.gcType;
     }
 
-    allocate(type: LLVMType, name?: string) : LLVMValue {
+    allocate(type: LLVMType, name?: string): LLVMValue {
         return this.doAllocate(this.allocateFn, type, name);
     }
 
-    allocateObject(type: LLVMType, name?: string) : LLVMValue {
+    allocateObject(type: LLVMType, name?: string): LLVMValue {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
-    deallocate(mem: LLVMValue) : LLVMValue {
+    deallocate(mem: LLVMValue): LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const voidStarMem = this.generator.builder.asVoidStar(mem);
 
-        return this.generator.builder.createSafeCall(this.deallocateFn, 
-        [
-            gcAddress,
-            voidStarMem
-        ]);
+        return this.generator.builder.createSafeCall(this.deallocateFn,
+            [
+                gcAddress,
+                voidStarMem
+            ]);
     }
 
-    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
+    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string): LLVMValue {
         if (type.isPointer()) {
             throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
         }
 
         const gcAddress = this.runtime.getGCAddress();
         const size = type.getTypeSize();
-        const returnValue = this.generator.builder.createSafeCall(callable, 
-        [
-            gcAddress,
-            LLVMConstantFP.get(this.generator, size || 1),
-        ]);
+        const returnValue = this.generator.builder.createSafeCall(callable,
+            [
+                gcAddress,
+                LLVMConstantFP.get(this.generator, size || 1),
+            ]);
 
         return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
     }
@@ -146,26 +157,26 @@ export class GC {
         return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }
 
-    private findGCDeclaration() : Declaration {
+    private findGCDeclaration(): Declaration {
         const garbageCollector = this.generator.program.getSourceFiles().find((sourceFile) => sourceFile.fileName === stdlib.GC_DEFINITION);
         if (!garbageCollector) {
             throw new Error("No std Garbage collector file found");
         }
-  
+
         let result: Declaration | null = null;
 
         garbageCollector.forEachChild((node) => {
-          if (ts.isClassDeclaration(node)) {
-              const clazz = Declaration.create(node as ts.ClassDeclaration, this.generator);
-              const clazzName = clazz.type.getSymbol().escapedName;
-              if (clazzName === "GC") {
-                result = clazz;
-              }
-          }
+            if (ts.isClassDeclaration(node)) {
+                const clazz = Declaration.create(node as ts.ClassDeclaration, this.generator);
+                const clazzName = clazz.type.getSymbol().escapedName;
+                if (clazzName === "GC") {
+                    result = clazz;
+                }
+            }
         });
-  
+
         if (!result) {
-          throw new Error("Garbage collector declaration not found");
+            throw new Error("Garbage collector declaration not found");
         }
 
         return result!;

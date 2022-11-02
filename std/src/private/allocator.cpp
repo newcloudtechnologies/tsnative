@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/private/allocator.h"
 
 #include "std/tsobject.h"
@@ -7,7 +18,6 @@
 Allocator::Allocator(Callbacks&& callbacks)
     : _callbacks{std::move(callbacks)}
 {
-
 }
 
 void* Allocator::allocate(std::size_t n)
@@ -42,5 +52,5 @@ void Allocator::deallocate(void* m)
     // TODO This causes SEGFAULT in case of running set.ts test
     // The crash is associated with closures, avoid for now
     // Jira: AN-1113
-    //free(m);
+    // free(m);
 }

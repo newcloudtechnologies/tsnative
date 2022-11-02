@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -149,11 +149,11 @@
 
 {
   const f = (i: number) => {
-      if (i === 10) {
-          return 0;
-      } else {
-          return 10;
-      }
+    if (i === 10) {
+      return 0;
+    } else {
+      return 10;
+    }
   }
   console.assert(f(1) === 10, "Function without explicit terminator must have implicit one");
 }

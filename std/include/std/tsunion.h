@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -26,7 +37,8 @@ public:
     template <typename T>
     T getValue() const
     {
-        static_assert(std::is_pointer<T>::value && std::is_base_of<Object, typename std::remove_pointer<T>::type>::value);
+        static_assert(std::is_pointer<T>::value &&
+                      std::is_base_of<Object, typename std::remove_pointer<T>::type>::value);
         return static_cast<T>(_value);
     }
 

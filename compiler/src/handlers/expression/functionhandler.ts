@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -77,7 +77,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         return this.generator.symbolTable.withLocalScope(
-          (localScope: Scope) => { 
+          (localScope: Scope) => {
             const result = this.handleCallExpression(call, env);
             localScope.deinitialize();
             return result;
@@ -214,17 +214,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const types = withRestParameters
       ? args.map((arg) => arg.type)
       : resolvedSignature.getParameters().map((p) => {
-          const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
-          if (tsType.isSupported()) {
-            return tsType.getLLVMType();
-          }
+        const tsType = this.generator.ts.checker.getTypeOfSymbolAtLocation(p, expression);
+        if (tsType.isSupported()) {
+          return tsType.getLLVMType();
+        }
 
-          if (!typeMapper) {
-            throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);
-          }
+        if (!typeMapper) {
+          throw new Error(`Expected generic class type mapper. Error at '${expression.getText()}'`);
+        }
 
-          return typeMapper.get(tsType.toString()).getLLVMType();
-        });
+        return typeMapper.get(tsType.toString()).getLLVMType();
+      });
 
     let adjustedArgs: LLVMValue[] = []
     if (withRestParameters) {
@@ -454,8 +454,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const tsArgumentTypes = !declaration.typeParameters
       ? parameters.map((parameter) => {
-          return this.generator.ts.checker.getTypeAtLocation(parameter);
-        })
+        return this.generator.ts.checker.getTypeAtLocation(parameter);
+      })
       : [];
 
     const llvmArgumentTypes = tsArgumentTypes.map((argType) => {
@@ -1579,8 +1579,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
               if (!generator.isCurrentBlockTerminated) {
                 const currentReturnType = LLVMType.make(
-                    generator.currentFunction.type.elementType.returnType,
-                    generator
+                  generator.currentFunction.type.elementType.returnType,
+                  generator
                 );
                 const returnsOptional = currentReturnType.isUnion();
 

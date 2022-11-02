@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -534,12 +534,12 @@ export class Scope {
   private generator: LLVMGenerator;
   private isHoisted = false;
 
-  constructor(name: string | undefined, 
-              mangledName: string | undefined, 
-              generator : LLVMGenerator,
-              isNamespace: boolean = false, 
-              parent?: Scope, 
-              data?: ThisData) {
+  constructor(name: string | undefined,
+    mangledName: string | undefined,
+    generator: LLVMGenerator,
+    isNamespace: boolean = false,
+    parent?: Scope,
+    data?: ThisData) {
     this.generator = generator;
     this.map = new Map<string, ScopeValue>();
     this.name = name;

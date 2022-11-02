@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -15,12 +15,11 @@
 #include <std/tsnumber.h>
 #include <std/tsobject.h>
 
-
 class TS_EXPORT Color : public Object
-{};
+{
+};
 
 Color* createARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
 
 TS_EXPORT Color* createRGB(Number* r, Number* g, Number* b);
 TS_EXPORT Color* createARGB(Number* a, Number* r, Number* g, Number* b);
-

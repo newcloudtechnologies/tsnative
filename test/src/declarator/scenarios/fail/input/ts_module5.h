@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -14,19 +14,19 @@
 #include "TS.h"
 #include "details/internal_include1.h"
 
-namespace TS_MODULE(global) IS_TS_NAMESPACE
+namespace global IS_TS_MODULE IS_TS_NAMESPACE
 {
 
-    namespace TS_NAMESPACE(stuffs)
-    {
+namespace stuffs IS_TS_NAMESPACE
+{
 
-        class TS_EXPORT Entity
-        {
-        public:
-            TS_METHOD Entity() = default;
-            TS_METHOD void entity();
-        };
+class TS_EXPORT Entity
+{
+public:
+    TS_METHOD Entity() = default;
+    TS_METHOD void entity();
+};
 
-    } // namespace )
+} // namespace IS_TS_NAMESPACE
 
 } // namespace IS_TS_NAMESPACE

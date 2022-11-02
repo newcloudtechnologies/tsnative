@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -112,7 +112,7 @@ export class LoopHandler extends AbstractNodeHandler {
     currentFunction.addBasicBlock(bodyLatch);
     currentFunction.addBasicBlock(exiting);
     currentFunction.addBasicBlock(end);
-    
+
     builder.createBr(body);
     builder.setInsertionPoint(body);
     symbolTable.withLocalScope((scope) => {
@@ -249,8 +249,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
             if (!ts.isIdentifier(element.name)) {
               throw new Error(
-                `Array destructuring is not support non-identifiers, got '${
-                  ts.SyntaxKind[element.kind]
+                `Array destructuring is not support non-identifiers, got '${ts.SyntaxKind[element.kind]
                 }' at '${element.getText()}'`
               );
             }
@@ -373,7 +372,7 @@ export class LoopHandler extends AbstractNodeHandler {
       if (statement.initializer.declarations.length > 1) {
         throw new Error(`Expected only variable declaration in for..in at '${statement.getText()}'`);
       }
-      
+
       const initializer = statement.initializer.declarations[0];
 
       if (!ts.isIdentifier(initializer.name)) {
@@ -384,13 +383,13 @@ export class LoopHandler extends AbstractNodeHandler {
         if (ts.isIdentifier(initializer.name)) {
           const name = initializer.name.getText();
           this.generator.symbolTable.currentScope.set(name, updated);
-        } 
+        }
         else {
           // Unreachable
           throw new Error(`Unexpected initializer in for..in: '${initializer.getText()}'`);
         }
       };
-      
+
       const variableType = this.generator.ts.str.getDeclaration().type;
       const iterable = this.generator.handleExpression(statement.expression, env);
       const indices = this.generator.ts.obj.getKeys(iterable);
@@ -416,8 +415,8 @@ export class LoopHandler extends AbstractNodeHandler {
         const arrayDeclaration = this.generator.ts.array.getDeclaration();
 
         const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(
-                                                                          arrayDeclaration,
-                                                                          ["String*"]);
+          arrayDeclaration,
+          ["String*"]);
         const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [indicesTypeLess])
         const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
         const iteratorNextMethod = this.generator.ts.iterator.getNext(arrayDeclaration, variableType);

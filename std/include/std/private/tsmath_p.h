@@ -1,8 +1,19 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
-#include <type_traits>
-#include <cstdint> // std::uint8_t
 #include <algorithm> // std::min, std::max
+#include <cstdint>   // std::uint8_t
+#include <type_traits>
 
 class MathPrivate
 {
@@ -43,16 +54,16 @@ public:
     static double log2(double x) noexcept;
 
     // Floating points cannot be template paramters according to c++ standard, so use typename and static_assertion
-    template<typename Arg, typename ... Args>
-    static Arg min(Arg first, Args ... tail) noexcept
+    template <typename Arg, typename... Args>
+    static Arg min(Arg first, Args... tail) noexcept
     {
         static_assert(std::is_floating_point<Arg>::value, "Expected Arg's 'T' to be of floating point type");
         return std::min(first, min(tail...));
     }
 
     // Floating points cannot be template paramters according to c++ standard, so use typename and static_assertion
-    template<typename Arg, typename ... Args>
-    static Arg max(Arg first, Args ... tail) noexcept
+    template <typename Arg, typename... Args>
+    static Arg max(Arg first, Args... tail) noexcept
     {
         static_assert(std::is_floating_point<Arg>::value, "Expected Arg's 'T' to be of floating point type");
         return std::max(first, max(tail...));
@@ -70,13 +81,13 @@ public:
     static double trunc(double x) noexcept;
 
 private:
-    template<typename Arg>
+    template <typename Arg>
     static Arg min(Arg arg) noexcept // variadic tail
     {
         return arg;
     }
 
-        template<typename Arg>
+    template <typename Arg>
     static Arg max(Arg arg) noexcept // variadic tail
     {
         return arg;

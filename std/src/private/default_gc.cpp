@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/private/default_gc.h"
 
 #include "std/tsobject.h"
@@ -6,13 +17,12 @@
 #include "std/private/logger.h"
 
 DefaultGC::DefaultGC(Callbacks&& callbacks)
-    : _rootsMutex{},
-    _heapMutex{},
-    _heap{},
-    _roots{},
-    _callbacks{std::move(callbacks)}
+    : _rootsMutex{}
+    , _heapMutex{}
+    , _heap{}
+    , _roots{}
+    , _callbacks{std::move(callbacks)}
 {
-
 }
 
 DefaultGC::~DefaultGC()
@@ -84,7 +94,7 @@ void DefaultGC::mark()
 {
     for (auto* r : _roots)
     {
-        if (r && !r->isMarked()) 
+        if (r && !r->isMarked())
         {
             LOG_ADDRESS("Marking root: ", r);
             r->mark();
@@ -95,12 +105,12 @@ void DefaultGC::mark()
 void DefaultGC::sweep()
 {
     auto it = _heap.cbegin();
-    while (it != _heap.cend()) 
+    while (it != _heap.cend())
     {
         auto* object = (*it);
         LOG_ADDRESS("Sweeping object ", object);
 
-        if (object->isMarked()) 
+        if (object->isMarked())
         {
             LOG_ADDRESS("Marked object, continue ", object);
             object->unmark();
@@ -123,7 +133,7 @@ void DefaultGC::untrackIfObject(void* mem)
     {
         return;
     }
-    
+
     std::lock(_heapMutex, _rootsMutex);
     std::lock_guard<std::mutex> heapLock(_heapMutex, std::adopt_lock);
     std::lock_guard<std::mutex> rootsLock(_rootsMutex, std::adopt_lock);

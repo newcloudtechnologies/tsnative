@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -65,7 +76,7 @@ private:
 
 template <typename K, typename V>
 Map<K, V>::Map()
-    : Iterable<Tuple *>(TSTypeID::Map)
+    : Iterable<Tuple*>(TSTypeID::Map)
 #ifdef USE_MAP_STD_BACKEND
     , _d(new MapStdPrivate<K, V>())
 #endif
@@ -195,8 +206,7 @@ template <typename K, typename V>
 void Map<K, V>::markChildren()
 {
     LOG_ADDRESS("Calling Map::markChildren on ", this);
-    const auto callable = [](std::pair<K, V>& entry)
-    {
+    const auto callable = [](std::pair<K, V>& entry) {
         auto* key = static_cast<Object*>(entry.first);
         auto* value = static_cast<Object*>(entry.second);
 

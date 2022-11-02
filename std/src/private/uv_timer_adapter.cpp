@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/private/uv_timer_adapter.h"
 #include "std/private/logger.h"
 #include "std/private/uv_loop_adapter.h"
@@ -36,27 +47,23 @@ std::chrono::milliseconds UVTimerAdapter::due() const
 void UVTimerAdapter::setInterval(std::chrono::milliseconds repeat, Callback&& callback)
 {
     LOG_METHOD_CALL;
-    _timerHandler->on<uv::TimerEvent>(
-        [callback = std::move(callback), repeat](auto&, auto& h)
+    _timerHandler->on<uv::TimerEvent>([callback = std::move(callback), repeat](auto&, auto& h) {
+        callback();
+        if (!repeat.count())
         {
-            callback();
-            if (!repeat.count())
-            {
-                h.start(0ms, repeat);
-            }
-        });
+            h.start(0ms, repeat);
+        }
+    });
     _timerHandler->start(0ms, repeat);
 }
 
 void UVTimerAdapter::setTimeout(std::chrono::milliseconds timeout, Callback&& callback)
 {
     LOG_METHOD_CALL;
-    _timerHandler->on<uv::TimerEvent>(
-        [callback = std::move(callback)](auto&, auto& h)
-        {
-            callback();
-            h.stop();
-        });
+    _timerHandler->on<uv::TimerEvent>([callback = std::move(callback)](auto&, auto& h) {
+        callback();
+        h.stop();
+    });
     _timerHandler->start(timeout, 0ms);
 }
 

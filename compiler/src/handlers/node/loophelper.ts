@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -19,7 +19,7 @@ export class LoopHelper {
   static isForLoopBlock(block: BasicBlock): boolean {
     return block.name.startsWith("for.");
   }
-  
+
   static isForOfLoopBlock(block: BasicBlock): boolean {
     return block.name.startsWith("for_of.");
   }
@@ -28,15 +28,15 @@ export class LoopHelper {
     return block.name.startsWith("for_in.");
   }
 
-  static isDoWhileLoopBlock(block: BasicBlock): boolean { 
+  static isDoWhileLoopBlock(block: BasicBlock): boolean {
     return block.name.startsWith("do.");
   }
-  
+
   static isLoopBlock(block: BasicBlock): boolean {
-    return this.isForLoopBlock(block) 
-          || this.isForOfLoopBlock(block)
-          || this.isForInLoopBlock(block)
-          || this.isWhileLoopBlock(block) 
-          || this.isDoWhileLoopBlock(block);
+    return this.isForLoopBlock(block)
+      || this.isForOfLoopBlock(block)
+      || this.isForInLoopBlock(block)
+      || this.isWhileLoopBlock(block)
+      || this.isDoWhileLoopBlock(block);
   }
 }

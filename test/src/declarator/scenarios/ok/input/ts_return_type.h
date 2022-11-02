@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -12,9 +12,9 @@
 #pragma once
 
 #include <TS.h>
+#include <std/tsarray.h>
 #include <std/tsobject.h>
 #include <std/tsstring.h>
-#include <std/tsarray.h>
 
 #include <string>
 #include <vector>

@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/tsstring.h"
 #include "std/tsarray.h"
 #include "std/tsnumber.h"
@@ -16,7 +27,7 @@
 #include <limits>
 
 String::String()
-    : Iterable<String *>(TSTypeID::String)
+    : Iterable<String*>(TSTypeID::String)
 #ifdef USE_STD_STRING_BACKEND
     , _d(new StdStringBackend())
 #endif
@@ -25,7 +36,7 @@ String::String()
 }
 
 String::String(Number* d)
-    : Iterable<String *>(TSTypeID::String)
+    : Iterable<String*>(TSTypeID::String)
 {
     std::ostringstream oss;
     oss << std::setprecision(std::numeric_limits<double>::max_digits10) << std::noshowpoint << d->unboxed();
@@ -39,7 +50,7 @@ String::String(Number* d)
 }
 
 String::String(const std::string& s)
-    : Iterable<String *>(TSTypeID::String)
+    : Iterable<String*>(TSTypeID::String)
 #ifdef USE_STD_STRING_BACKEND
     , _d(new StdStringBackend(s))
 #endif
@@ -49,7 +60,7 @@ String::String(const std::string& s)
 }
 
 String::String(const char* s)
-    : Iterable<String *>(TSTypeID::String)
+    : Iterable<String*>(TSTypeID::String)
 #ifdef USE_STD_STRING_BACKEND
     , _d(new StdStringBackend(s))
 #endif
@@ -65,7 +76,7 @@ String::~String()
 
     delete _d;
 
-    LOG_INFO("Finishing string dtor" );
+    LOG_INFO("Finishing string dtor");
 }
 
 Number* String::length() const
@@ -131,10 +142,9 @@ Array<String*>* String::split(String* pattern, Union* maybeLimit) const
     std::vector<String*> boxed;
     boxed.reserve(result.size());
 
-    std::transform(result.cbegin(),
-                   result.cend(),
-                   std::back_inserter(boxed),
-                   [](const std::string& value) { return new String(value); });
+    std::transform(result.cbegin(), result.cend(), std::back_inserter(boxed), [](const std::string& value) {
+        return new String(value);
+    });
 
     return Array<String*>::fromStdVector(boxed);
 }
@@ -243,7 +253,8 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
 
 Boolean* String::equals(Object* other) const
 {
-    if (!other->isString()) {
+    if (!other->isString())
+    {
         return new Boolean(false);
     }
 
@@ -293,7 +304,7 @@ String* String::clone() const
 Array<String*>* String::getKeysArray() const
 {
     auto result = new Array<String*>();
-    for (std::size_t i = 0 ; i < length()->unboxed() ; ++i)
+    for (std::size_t i = 0; i < length()->unboxed(); ++i)
     {
         auto n = new Number(i);
         result->push(n->toString());

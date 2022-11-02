@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/tsmath.h"
 
 #include "std/private/tsmath_p.h"
@@ -5,22 +16,22 @@
 #include "std/tsnumber.h"
 #include "std/tsstring.h"
 
-#define DEFINE_MATH_METHOD0(name)                                       \
-    Number* Math::name() noexcept                                       \
-    {                                                                   \
-        return new Number(MathPrivate::name());              \
+#define DEFINE_MATH_METHOD0(name)               \
+    Number* Math::name() noexcept               \
+    {                                           \
+        return new Number(MathPrivate::name()); \
     }
 
-#define DEFINE_MATH_METHOD1(name)                                       \
-    Number* Math::name(Number* x) noexcept                        \
-    {                                                                   \
-        return new Number(MathPrivate::name(x->unboxed()));  \
+#define DEFINE_MATH_METHOD1(name)                           \
+    Number* Math::name(Number* x) noexcept                  \
+    {                                                       \
+        return new Number(MathPrivate::name(x->unboxed())); \
     }
 
-#define DEFINE_MATH_METHOD2(name)                                                       \
-    Number* Math::name(Number* x, Number* y) noexcept                       \
-    {                                                                                   \
-        return new Number(MathPrivate::name(x->unboxed(), y->unboxed()));    \
+#define DEFINE_MATH_METHOD2(name)                                         \
+    Number* Math::name(Number* x, Number* y) noexcept                     \
+    {                                                                     \
+        return new Number(MathPrivate::name(x->unboxed(), y->unboxed())); \
     }
 
 DEFINE_MATH_METHOD0(E)

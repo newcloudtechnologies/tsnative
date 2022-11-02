@@ -1,30 +1,41 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
-#include "std/tsobject.h"
 #include "std/tsarray.h"
-#include "std/tsnull.h"
 #include "std/tsboolean.h"
-#include "std/tsundefined.h"
-#include "std/tsstring.h"
-#include "std/tsnumber.h"
-#include "std/tsset.h"
-#include "std/tsmap.h"
-#include "std/tsunion.h"
-#include "std/tstuple.h"
-#include "std/tsdate.h"
 #include "std/tsclosure.h"
+#include "std/tsdate.h"
+#include "std/tsmap.h"
+#include "std/tsnull.h"
+#include "std/tsnumber.h"
+#include "std/tsobject.h"
+#include "std/tsset.h"
+#include "std/tsstring.h"
+#include "std/tstuple.h"
+#include "std/tsundefined.h"
+#include "std/tsunion.h"
 
 #include "global_test_allocator_fixture.h"
 
 namespace test
 {
-template<typename T>
+template <typename T>
 class GloballyAllocatedObjectWrapper : public T
 {
 public:
     using T::T;
 
-    void* operator new (std::size_t n)
+    void* operator new(std::size_t n)
     {
         return GlobalTestAllocatorFixture::getAllocator().allocate(n);
     }
@@ -41,13 +52,13 @@ using Date = GloballyAllocatedObjectWrapper<::Date>;
 using Union = GloballyAllocatedObjectWrapper<::Union>;
 using Closure = GloballyAllocatedObjectWrapper<::TSClosure>;
 
-template<typename T>
+template <typename T>
 using Array = GloballyAllocatedObjectWrapper<::Array<T>>;
 
-template<typename T>
+template <typename T>
 using Set = GloballyAllocatedObjectWrapper<::Set<T>>;
 
-template<typename K, typename V>
+template <typename K, typename V>
 using Map = GloballyAllocatedObjectWrapper<::Map<K, V>>;
 
-} // test
+} // namespace test

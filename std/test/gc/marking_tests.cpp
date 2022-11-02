@@ -1,5 +1,16 @@
-#include <gtest/gtest.h>
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "../infrastructure/global_test_allocator_fixture.h"
 #include "../infrastructure/object_wrappers.h"
@@ -10,7 +21,10 @@
 namespace
 {
 
-MATCHER_P(IsMarked, state, "") { return arg->isMarked() == state; }
+MATCHER_P(IsMarked, state, "")
+{
+    return arg->isMarked() == state;
+}
 
 class MarkingTestFixture : public test::GlobalTestAllocatorFixture
 {
@@ -18,8 +32,7 @@ public:
     void SetUp() override
     {
         TestAllocator::Callbacks allocatorCallbacks;
-        allocatorCallbacks.onAllocated = [this] (void* o)
-        {
+        allocatorCallbacks.onAllocated = [this](void* o) {
             auto* obj = static_cast<::Object*>(o);
             _actualAllocatedObjects.push_back(obj);
         };
@@ -37,7 +50,6 @@ public:
 
         _actualAllocatedObjects.clear();
     }
-
 
     const std::vector<Object*>& getActualAllocatedObjects() const
     {
@@ -128,15 +140,15 @@ TEST_F(MarkingTestFixture, union)
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
 }
 
-void closureBody() {};
+void closureBody(){};
 
 TEST_F(MarkingTestFixture, closure)
 {
     void* env[] = {new test::Object(), new test::Object()}; // should be marked
 
-    auto* numArgs = new test::Number(0.f); // should be marked
+    auto* numArgs = new test::Number(0.f);   // should be marked
     auto* envLength = new test::Number(2.f); // should be marked
-    ::Number optionals(0.f); // should NOT be marked
+    ::Number optionals(0.f);                 // should NOT be marked
 
     void* closureBodyVoidStar = (void*)(&closureBody);
     auto closure = new test::Closure(closureBodyVoidStar, env, envLength, numArgs, &optionals);

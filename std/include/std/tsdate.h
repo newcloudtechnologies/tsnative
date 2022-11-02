@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #pragma once
 
 #include <TS.h>
@@ -22,27 +33,29 @@ public:
 
     TS_METHOD TS_SIGNATURE("UTC(year: number, month: number, day?: number, hours?: number, minutes?: number, "
                            "seconds?: number, milliseconds?: number): number") static Number* UTC(Number* year,
-                                                                                        Number* month_index,
-                                                                                        Union* day,
-                                                                                        Union* hours,
-                                                                                        Union* minutes,
-                                                                                        Union* seconds,
-                                                                                        Union* milliseconds);
+                                                                                                  Number* month_index,
+                                                                                                  Union* day,
+                                                                                                  Union* hours,
+                                                                                                  Union* minutes,
+                                                                                                  Union* seconds,
+                                                                                                  Union* milliseconds);
 
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor()") Date();
 
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(dateString: string)") explicit Date(String* date_string);
 
-    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(msSinceEpoch: number)") explicit Date(Number* since_epoch_milliseconds);
+    TS_METHOD TS_NO_CHECK
+        TS_SIGNATURE("constructor(msSinceEpoch: number)") explicit Date(Number* since_epoch_milliseconds);
 
-    TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(year: number, month: number, day?: number, hours?: number, minutes?: number, "
-                           "seconds?: number, milliseconds?: number)") Date(Number* year,
-                                                                            Number* month_index,
-                                                                            Union* day,
-                                                                            Union* hours,
-                                                                            Union* minutes,
-                                                                            Union* seconds,
-                                                                            Union* milliseconds);
+    TS_METHOD TS_NO_CHECK TS_SIGNATURE(
+        "constructor(year: number, month: number, day?: number, hours?: number, minutes?: number, "
+        "seconds?: number, milliseconds?: number)") Date(Number* year,
+                                                         Number* month_index,
+                                                         Union* day,
+                                                         Union* hours,
+                                                         Union* minutes,
+                                                         Union* seconds,
+                                                         Union* milliseconds);
 
     // getters
     TS_METHOD Number* getDate() const noexcept;
@@ -92,10 +105,7 @@ public:
     TS_METHOD Number* setDate(Number* new_date);
 
     TS_METHOD TS_SIGNATURE("setHours(hours: number, minutes?: number, seconds?: number, milliseconds?: number): number")
-        Number* setHours(Number* new_hours,
-                         Union* new_minutes,
-                         Union* new_seconds,
-                         Union* new_milliseconds);
+        Number* setHours(Number* new_hours, Union* new_minutes, Union* new_seconds, Union* new_milliseconds);
 
     TS_METHOD TS_SIGNATURE("setMinutes(minutes: number, seconds?: number, milliseconds?: number): number")
         Number* setMinutes(Number* new_minutes, Union* new_seconds, Union* new_milliseconds);

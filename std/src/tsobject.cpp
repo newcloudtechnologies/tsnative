@@ -1,16 +1,27 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/tsobject.h"
 
-#include "std/private/tsmap_p.h"
 #include "std/private/logger.h"
+#include "std/private/tsmap_p.h"
 
+#include "std/tsarray.h"
 #include "std/tsboolean.h"
 #include "std/tsmap.h"
 #include "std/tsstring.h"
-#include "std/tsarray.h"
 #include "std/tsunion.h"
 
-#include "std/runtime.h"
 #include "std/private/allocator.h"
+#include "std/runtime.h"
 
 #include "std/private/logger.h"
 
@@ -118,20 +129,14 @@ bool Object::has(String* key) const
 std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
 {
     std::unordered_set<String*> uniqueKeys;
-    if (!o || !o->_props) 
+    if (!o || !o->_props)
     {
         return uniqueKeys;
     }
 
     const auto isKeyShouldBeIgnored = [&superKeyCppStr = superKey->cpp_str(),
-                                      &parentKeyCppStr = parentKey->cpp_str()]
-                                     (const String* candidate)
-    {
-        static const std::unordered_set<std::string> keysToIgnore
-        {
-            superKeyCppStr,
-            parentKeyCppStr
-        };
+                                       &parentKeyCppStr = parentKey->cpp_str()](const String* candidate) {
+        static const std::unordered_set<std::string> keysToIgnore{superKeyCppStr, parentKeyCppStr};
 
         if (!candidate)
         {
@@ -161,8 +166,8 @@ std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
         // std::make_move_iterator will not help here.
         // uset iterators are const in fact
         // https://en.cppreference.com/w/cpp/container/unordered_set/begin
-        // Because both iterator and const_iterator are constant iterators (and may in fact be the same type), 
-        // it is not possible to mutate the elements of the container 
+        // Because both iterator and const_iterator are constant iterators (and may in fact be the same type),
+        // it is not possible to mutate the elements of the container
         // through an iterator returned by any of these member functions.
         uniqueKeys.insert(superUniqueKeys.begin(), superUniqueKeys.end());
     }
@@ -176,7 +181,7 @@ Array<String*>* Object::getKeysArray() const
 
     auto result = new Array<String*>();
 
-    for (auto* s : uniqueKeys) 
+    for (auto* s : uniqueKeys)
     {
         result->push(s);
     }
@@ -303,10 +308,7 @@ void Object::copyPropsTo(Object* target)
 {
     // @todo: handle 'super' key?
     _props->forEachEntry(
-        [this, &target](const auto& pair)
-        {
-            target->set(pair.first, static_cast<Union*>(pair.second)->getValue());
-        });
+        [this, &target](const auto& pair) { target->set(pair.first, static_cast<Union*>(pair.second)->getValue()); });
 }
 
 bool Object::isMarked() const
@@ -329,8 +331,7 @@ void Object::markChildren()
 {
     LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
 
-    const auto callable = [](auto& entry)
-    {
+    const auto callable = [](auto& entry) {
         auto* key = entry.first;
         auto* value = static_cast<Object*>(entry.second);
 
@@ -350,7 +351,7 @@ void Object::markChildren()
     LOG_INFO("Finished calling OBJECT::markChildren");
 }
 
-void* Object::operator new (std::size_t n)
+void* Object::operator new(std::size_t n)
 {
     LOG_INFO("Calling Object new operator");
 
@@ -358,7 +359,7 @@ void* Object::operator new (std::size_t n)
     // static String* s = new String("adasd")
     if (!Runtime::isInitialized())
     {
-        return :: operator new(n);
+        return ::operator new(n);
     }
 
     auto* allocator = Runtime::getAllocator();

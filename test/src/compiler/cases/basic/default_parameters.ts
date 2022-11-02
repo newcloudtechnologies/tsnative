@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -102,7 +102,7 @@ const isEqual = function <T>(a: T[], b: T[]): boolean {
     }
 
     {
-        const children =  [
+        const children = [
             new RxWidget(),
             new RxWidget()
         ];

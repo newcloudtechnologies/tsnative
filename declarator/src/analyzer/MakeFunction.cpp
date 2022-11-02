@@ -1,5 +1,5 @@
 /*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2021
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
  *
  * You can not use the contents of the file in any way without
  * New Cloud Technologies, Ltd. written permission.
@@ -10,8 +10,8 @@
  */
 
 #include "MakeFunction.h"
-#include "TsUtils.h"
 #include "Checkers.h"
+#include "TsUtils.h"
 
 #include "generator/FunctionBlock.h"
 

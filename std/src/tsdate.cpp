@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
 #include "std/tsdate.h"
 
 #include "private/tsdate_absl_p.h"
@@ -26,13 +37,8 @@ Number* Date::now()
 #endif
 }
 
-Number* Date::UTC(Number* year,
-                  Number* month_index,
-                  Union* day,
-                  Union* hours,
-                  Union* minutes,
-                  Union* seconds,
-                  Union* milliseconds)
+Number* Date::UTC(
+    Number* year, Number* month_index, Union* day, Union* hours, Union* minutes, Union* seconds, Union* milliseconds)
 {
     double unboxedYear = year->unboxed();
     double unboxedMonthIndex = month_index->unboxed();
@@ -45,13 +51,8 @@ Number* Date::UTC(Number* year,
 #ifdef USE_ABSL_DATE_BACKEND
     AbslDatePrivate priv;
 
-    return new Number(priv.UTC(unboxedYear,
-                                         unboxedMonthIndex,
-                                         unboxedDay,
-                                         unboxedHours,
-                                         unboxedMinutes,
-                                         unboxedSeconds,
-                                         unboxedMilliseconds));
+    return new Number(priv.UTC(
+        unboxedYear, unboxedMonthIndex, unboxedDay, unboxedHours, unboxedMinutes, unboxedSeconds, unboxedMilliseconds));
 #endif
 }
 
@@ -63,13 +64,8 @@ Date::Date()
 {
 }
 
-Date::Date(Number* year,
-           Number* month_index,
-           Union* day,
-           Union* hours,
-           Union* minutes,
-           Union* seconds,
-           Union* milliseconds)
+Date::Date(
+    Number* year, Number* month_index, Union* day, Union* hours, Union* minutes, Union* seconds, Union* milliseconds)
     : Object(TSTypeID::Date)
 {
     double unboxedYear = year->unboxed();
@@ -242,10 +238,7 @@ Number* Date::setDate(Number* new_date)
     return new Number(date);
 }
 
-Number* Date::setHours(Number* new_hours,
-                       Union* new_minutes,
-                       Union* new_seconds,
-                       Union* new_milliseconds)
+Number* Date::setHours(Number* new_hours, Union* new_minutes, Union* new_seconds, Union* new_milliseconds)
 {
     double newHoursUnboxed = new_hours->unboxed();
     double newMinutesUnboxed = new_minutes->hasValue() ? new_minutes->getValue<Number*>()->unboxed() : 0;
