@@ -138,9 +138,8 @@ int Runtime::init(int ac, char* av[])
     _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
 
     DefaultGC::Callbacks gcCallbacks;
-    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o) {
-        memStorage->onDeleted(o);
-    };
+    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o)
+    { memStorage->onDeleted(o); };
     auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
     Allocator::Callbacks allocatorCallbacks;

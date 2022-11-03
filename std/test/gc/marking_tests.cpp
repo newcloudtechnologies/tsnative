@@ -32,7 +32,8 @@ public:
     void SetUp() override
     {
         TestAllocator::Callbacks allocatorCallbacks;
-        allocatorCallbacks.onAllocated = [this](void* o) {
+        allocatorCallbacks.onAllocated = [this](void* o)
+        {
             auto* obj = static_cast<::Object*>(o);
             _actualAllocatedObjects.push_back(obj);
         };

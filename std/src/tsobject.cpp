@@ -134,8 +134,9 @@ std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
         return uniqueKeys;
     }
 
-    const auto isKeyShouldBeIgnored = [&superKeyCppStr = superKey->cpp_str(),
-                                       &parentKeyCppStr = parentKey->cpp_str()](const String* candidate) {
+    const auto isKeyShouldBeIgnored =
+        [&superKeyCppStr = superKey->cpp_str(), &parentKeyCppStr = parentKey->cpp_str()](const String* candidate)
+    {
         static const std::unordered_set<std::string> keysToIgnore{superKeyCppStr, parentKeyCppStr};
 
         if (!candidate)
@@ -307,8 +308,8 @@ Array<String*>* Object::keys(Object* entity)
 void Object::copyPropsTo(Object* target)
 {
     // @todo: handle 'super' key?
-    _props->forEachEntry(
-        [this, &target](const auto& pair) { target->set(pair.first, static_cast<Union*>(pair.second)->getValue()); });
+    _props->forEachEntry([this, &target](const auto& pair)
+                         { target->set(pair.first, static_cast<Union*>(pair.second)->getValue()); });
 }
 
 bool Object::isMarked() const
@@ -331,7 +332,8 @@ void Object::markChildren()
 {
     LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
 
-    const auto callable = [](auto& entry) {
+    const auto callable = [](auto& entry)
+    {
         auto* key = entry.first;
         auto* value = static_cast<Object*>(entry.second);
 

@@ -24,28 +24,30 @@ void Settings::do_init(int argc, char** argv)
 {
     std::vector<std::string> args(argv + 1, argv + argc);
 
-    visit(args, [this](const std::string& opt, const std::string& val) {
-        if (opt == "I")
-        {
-            m_include_dirs.push_back(val);
-        }
-        if (opt == "D")
-        {
-            m_definitions.push_back(val);
-        }
-        else if (opt == "target")
-        {
-            m_compiler_abi = val;
-        }
-        else if (opt == "sysroot")
-        {
-            m_sysroot = val;
-        }
-        else if (opt == "")
-        {
-            m_source = val;
-        }
-    });
+    visit(args,
+          [this](const std::string& opt, const std::string& val)
+          {
+              if (opt == "I")
+              {
+                  m_include_dirs.push_back(val);
+              }
+              if (opt == "D")
+              {
+                  m_definitions.push_back(val);
+              }
+              else if (opt == "target")
+              {
+                  m_compiler_abi = val;
+              }
+              else if (opt == "sysroot")
+              {
+                  m_sysroot = val;
+              }
+              else if (opt == "")
+              {
+                  m_source = val;
+              }
+          });
 }
 
 void Settings::visit(const std::vector<std::string>& args,
@@ -53,7 +55,8 @@ void Settings::visit(const std::vector<std::string>& args,
 {
     using namespace utils;
 
-    auto getLongOption = [&args](auto index, std::string& left, std::string& right) -> int {
+    auto getLongOption = [&args](auto index, std::string& left, std::string& right) -> int
+    {
         _ASSERT(index >= 0 && index < args.size());
 
         std::string opt = args.at(index);
@@ -67,7 +70,8 @@ void Settings::visit(const std::vector<std::string>& args,
         return index;
     };
 
-    auto getShortOption = [&args](auto index, std::string& left, std::string& right) -> int {
+    auto getShortOption = [&args](auto index, std::string& left, std::string& right) -> int
+    {
         auto result = index;
 
         _ASSERT(index >= 0 && index < args.size());

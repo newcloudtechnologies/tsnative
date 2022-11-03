@@ -105,7 +105,8 @@ public:
     template <typename F>
     void walk(F&& callback)
     {
-        auto func = [](uv_handle_t* handle, void* func) {
+        auto func = [](uv_handle_t* handle, void* func)
+        {
             if (!handle->data)
             {
                 return;

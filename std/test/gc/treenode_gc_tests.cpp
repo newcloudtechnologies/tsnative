@@ -58,7 +58,8 @@ public:
     void SetUp() override
     {
         DefaultGC::Callbacks gcCallbacks;
-        gcCallbacks.beforeDeleted = [this](const Object& o) {
+        gcCallbacks.beforeDeleted = [this](const Object& o)
+        {
             auto it = std::find(_actualAliveObjects.begin(), _actualAliveObjects.end(), &o);
             ASSERT_NE(_actualAliveObjects.end(), it);
             _actualAliveObjects.erase(it);
@@ -67,7 +68,8 @@ public:
         _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks));
 
         TestAllocator::Callbacks allocatorCallbacks;
-        allocatorCallbacks.onAllocated = [this](void* o) {
+        allocatorCallbacks.onAllocated = [this](void* o)
+        {
             auto* obj = static_cast<Object*>(o);
             _gc->addObject(obj);
             _actualAliveObjects.push_back(obj);
@@ -110,7 +112,8 @@ private:
 // A
 TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
 {
-    const auto garbageMaker = [this](TreeNodeBase*& suspensionPoint) {
+    const auto garbageMaker = [this](TreeNodeBase*& suspensionPoint)
+    {
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
@@ -152,7 +155,8 @@ TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
 // A
 TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
 {
-    const auto garbageMaker = [this] {
+    const auto garbageMaker = [this]
+    {
         auto A = new TreeNode{'A'};
         auto B = new TreeNode{'B'};
 
@@ -221,7 +225,8 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleNoBreak)
 // A, B
 TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
 {
-    const auto garbageMaker = [this] {
+    const auto garbageMaker = [this]
+    {
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
@@ -332,7 +337,8 @@ TEST_F(TreeNodeGCTestFixture, detectDeepGarbage)
 // {A, B, C}
 TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
 {
-    const auto createNodes = [this] {
+    const auto createNodes = [this]
+    {
         auto A = new TreeNode{'A'};
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
@@ -376,7 +382,8 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
 // {}
 TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
 {
-    const auto createNodes = [this] {
+    const auto createNodes = [this]
+    {
         auto A = new TreeNode{'A'};
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
@@ -428,7 +435,8 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
 // {A}
 TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 {
-    const auto createNodes = [this] {
+    const auto createNodes = [this]
+    {
         auto A = new TreeNode{'A'};
         getGC().addRoot(A);
 
@@ -461,7 +469,8 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 // {}
 TEST_F(TreeNodeGCTestFixture, lostSelfCycleNode)
 {
-    const auto createNodes = [this] {
+    const auto createNodes = [this]
+    {
         auto A = new TreeNode{'A'};
         getGC().addRoot(A);
 
@@ -495,7 +504,8 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
     TreeNode* AA = nullptr;
     TreeNode* BB = nullptr;
 
-    const auto createNodes = [&AA, &BB, this] {
+    const auto createNodes = [&AA, &BB, this]
+    {
         auto A = new TreeNode{'A'};
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};

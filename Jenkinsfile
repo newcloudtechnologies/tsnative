@@ -34,10 +34,10 @@ pipeline {
     }
 
     stages {
-        stage('clang-format') {
+        stage('Check formatting') {
             agent {
                 docker {
-                    image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/${global.SHARED_LIB_DOCKER_IMAGE_CLANG_FORMAT_NAME}:${global.SHARED_LIB_ANTIQ_DOCKER_IMAGE_CLANG_FORMAT_VERSION}"
+                    image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/clang-format:14-ubuntu20"
                     registryUrl "${JENKINS_DOCKER_REGISTRY_URL}"
                     registryCredentialsId "${JENKINS_DOCKER_REGISTRY_CI_AUTHENTICATION_TOKEN}"
                     reuseNode true

@@ -204,12 +204,14 @@ std::string TypeMapper::adaptTemplate(const std::string& prefix, const std::stri
 {
     using namespace utils;
 
-    auto isTemplate = [](const std::string& expr) -> bool {
+    auto isTemplate = [](const std::string& expr) -> bool
+    {
         std::regex regexp(R"(([\w]*)\<(.+)\>)");
         return std::regex_match(expr, regexp);
     };
 
-    auto parse = [](const std::string& expr, std::string& name, std::vector<std::string>& args) {
+    auto parse = [](const std::string& expr, std::string& name, std::vector<std::string>& args)
+    {
         using namespace utils;
 
         std::regex regexp(R"(([\w]*)\<(.+)\>)"); // example: Tuple<K, V>
@@ -437,7 +439,8 @@ int getPointerSize()
 
 int sizeInPointers(int sizeInBytes)
 {
-    auto divider = [](int x, int y) {
+    auto divider = [](int x, int y)
+    {
         int result = x / y;
         int rest = x % y;
 

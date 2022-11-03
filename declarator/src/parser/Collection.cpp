@@ -605,9 +605,10 @@ abstract_item_t Collection::get(const std::string& path)
             if (found.empty())
             {
                 // MyTemplate<T> - is not specialization, this is template MyTemplate
-                std::copy_if(all.begin(), all.end(), std::back_inserter(found), [](auto it) {
-                    return it->type() == AbstractItem::Type::CLASS_TEMPLATE;
-                });
+                std::copy_if(all.begin(),
+                             all.end(),
+                             std::back_inserter(found),
+                             [](auto it) { return it->type() == AbstractItem::Type::CLASS_TEMPLATE; });
             }
 
             _ASSERT(found.size() == 1);
@@ -639,9 +640,10 @@ abstract_item_t Collection::get(const std::string& parentPath, const std::string
         item_list_t children = parent->children();
 
         item_list_t found;
-        std::copy_if(children.begin(), children.end(), std::back_inserter(found), [name](const auto& it) {
-            return it->name() == name;
-        });
+        std::copy_if(children.begin(),
+                     children.end(),
+                     std::back_inserter(found),
+                     [name](const auto& it) { return it->name() == name; });
 
         _ASSERT(found.size() == 1);
 
@@ -653,7 +655,8 @@ abstract_item_t Collection::get(const std::string& parentPath, const std::string
 
 void Collection::visit(std::function<void(const_abstract_item_t item)> handler) const
 {
-    std::function<void(abstract_item_t item)> do_visit = [&do_visit, handler](abstract_item_t item) {
+    std::function<void(abstract_item_t item)> do_visit = [&do_visit, handler](abstract_item_t item)
+    {
         handler(item);
 
         if (AbstractItem::isContainer(item))
@@ -718,7 +721,8 @@ void Collection::addNamespace(const std::string& name,
         auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
 
         // check: forward declaration must not to have annotations
-        auto isDuplicateDeclaration = [A1 = annotations, namespaceItem]() {
+        auto isDuplicateDeclaration = [A1 = annotations, namespaceItem]()
+        {
             AnnotationList A2(getAnnotations(namespaceItem->decl()));
 
             return (A1.exist(TS_MODULE) || A1.exist(TS_NAMESPACE)) && namespaceItem->isLocal() &&
@@ -726,7 +730,8 @@ void Collection::addNamespace(const std::string& name,
         };
 
         // forward declaration must be a local and without annotations
-        auto isForwardDeclaration = [namespaceItem]() {
+        auto isForwardDeclaration = [namespaceItem]()
+        {
             AnnotationList A2(getAnnotations(namespaceItem->decl()));
 
             return namespaceItem->isLocal() && !(A2.exist(TS_MODULE) || A2.exist(TS_NAMESPACE));
@@ -773,24 +778,27 @@ void Collection::addClass(const std::string& name,
                           bool isCompletedDecl,
                           const clang::CXXRecordDecl* decl)
 {
-    add(name, prefix, [name, prefix, isLocal, isCompletedDecl, decl]() {
-        using namespace global::annotations;
-
-        parser::class_item_t item;
-
-        AnnotationList annotations(getAnnotations(decl));
-
-        if (annotations.exist(TS_CODE))
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
         {
-            item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
-        }
-        else
-        {
-            item = AbstractItem::make<ClassItem>(name, prefix, isLocal, isCompletedDecl, decl);
-        }
+            using namespace global::annotations;
 
-        return item;
-    });
+            parser::class_item_t item;
+
+            AnnotationList annotations(getAnnotations(decl));
+
+            if (annotations.exist(TS_CODE))
+            {
+                item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
+            }
+            else
+            {
+                item = AbstractItem::make<ClassItem>(name, prefix, isLocal, isCompletedDecl, decl);
+            }
+
+            return item;
+        });
 }
 
 void Collection::addClassTemplate(const std::string& name,
@@ -799,9 +807,10 @@ void Collection::addClassTemplate(const std::string& name,
                                   bool isCompletedDecl,
                                   const clang::ClassTemplateDecl* decl)
 {
-    add(name, prefix, [name, prefix, isLocal, isCompletedDecl, decl]() {
-        return AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, isCompletedDecl, decl);
-    });
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 void Collection::addClassTemplateSpecialization(const std::string& name,
@@ -810,18 +819,20 @@ void Collection::addClassTemplateSpecialization(const std::string& name,
                                                 bool isCompletedDecl,
                                                 const clang::ClassTemplateSpecializationDecl* decl)
 {
-    add(name, prefix, [name, prefix, isLocal, isCompletedDecl, decl]() {
-        return AbstractItem::make<ClassTemplateSpecializationItem>(name, prefix, isLocal, isCompletedDecl, decl);
-    });
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<ClassTemplateSpecializationItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 void Collection::addEnum(
     const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::EnumDecl* decl)
 {
 
-    add(name, prefix, [name, prefix, isLocal, isCompletedDecl, decl]() {
-        return AbstractItem::make<EnumItem>(name, prefix, isLocal, isCompletedDecl, decl);
-    });
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<EnumItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 void Collection::addFunction(const std::string& name,
@@ -857,9 +868,10 @@ void Collection::addFunctionTemplate(const std::string& name,
 void Collection::addVariable(
     const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::VarDecl* decl)
 {
-    add(name, prefix, [name, prefix, isLocal, isCompletedDecl, decl]() {
-        return AbstractItem::make<VariableItem>(name, prefix, isLocal, isCompletedDecl, decl);
-    });
+    add(name,
+        prefix,
+        [name, prefix, isLocal, isCompletedDecl, decl]()
+        { return AbstractItem::make<VariableItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 } //  namespace parser

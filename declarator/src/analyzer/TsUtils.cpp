@@ -34,9 +34,8 @@ void TsSignature::parse(const std::string& sig)
 {
     std::smatch match;
 
-    auto regex_search = [sig, &match](const std::string& pattern) {
-        return std::regex_search(sig.begin(), sig.end(), match, std::regex(pattern));
-    };
+    auto regex_search = [sig, &match](const std::string& pattern)
+    { return std::regex_search(sig.begin(), sig.end(), match, std::regex(pattern)); };
 
     // method: readResponse0(fInfos: FileInfo_t): void
     if (regex_search(R"(^((get|set)\b)?(([\s]+))?([\w]+)\((.*)\)(\s*\:\s*)?([\w\.]+((\<(.+)\>)|(\[\]))?)?)"))

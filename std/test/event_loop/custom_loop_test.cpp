@@ -134,13 +134,17 @@ TEST(CustomLoop, CheckEmitEventForLoop)
 
     ASSERT_FALSE(emitter.has<MouseEvent>());
 
-    emitter.on<MouseEvent>([&loop, &emitter, mouse_event_x, mouse_event_y](const auto& event, auto& sender) {
-        loop.enqueue([&sender, &emitter, mouse_event_x, mouse_event_y, event] {
-            ASSERT_TRUE(&sender == &emitter);
-            ASSERT_TRUE(event.x == mouse_event_x);
-            ASSERT_TRUE(event.y == mouse_event_y);
+    emitter.on<MouseEvent>(
+        [&loop, &emitter, mouse_event_x, mouse_event_y](const auto& event, auto& sender)
+        {
+            loop.enqueue(
+                [&sender, &emitter, mouse_event_x, mouse_event_y, event]
+                {
+                    ASSERT_TRUE(&sender == &emitter);
+                    ASSERT_TRUE(event.x == mouse_event_x);
+                    ASSERT_TRUE(event.y == mouse_event_y);
+                });
         });
-    });
 
     emitter.on<ErrorEvent>([](auto&&...) { FAIL(); });
 

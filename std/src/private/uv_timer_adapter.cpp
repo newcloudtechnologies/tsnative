@@ -47,23 +47,27 @@ std::chrono::milliseconds UVTimerAdapter::due() const
 void UVTimerAdapter::setInterval(std::chrono::milliseconds repeat, Callback&& callback)
 {
     LOG_METHOD_CALL;
-    _timerHandler->on<uv::TimerEvent>([callback = std::move(callback), repeat](auto&, auto& h) {
-        callback();
-        if (!repeat.count())
+    _timerHandler->on<uv::TimerEvent>(
+        [callback = std::move(callback), repeat](auto&, auto& h)
         {
-            h.start(0ms, repeat);
-        }
-    });
+            callback();
+            if (!repeat.count())
+            {
+                h.start(0ms, repeat);
+            }
+        });
     _timerHandler->start(0ms, repeat);
 }
 
 void UVTimerAdapter::setTimeout(std::chrono::milliseconds timeout, Callback&& callback)
 {
     LOG_METHOD_CALL;
-    _timerHandler->on<uv::TimerEvent>([callback = std::move(callback)](auto&, auto& h) {
-        callback();
-        h.stop();
-    });
+    _timerHandler->on<uv::TimerEvent>(
+        [callback = std::move(callback)](auto&, auto& h)
+        {
+            callback();
+            h.stop();
+        });
     _timerHandler->start(timeout, 0ms);
 }
 

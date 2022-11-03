@@ -236,17 +236,20 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
     os << "[ ";
     if (!array->storage_.empty())
     {
-        std::for_each(array->storage_.cbegin(), array->storage_.cend() - 1, [&os](T value) {
-            if (value)
-            {
-                os << static_cast<Object*>(value)->toString() << ", ";
-            }
-            else
-            {
-                os << "null"
-                   << ", ";
-            }
-        });
+        std::for_each(array->storage_.cbegin(),
+                      array->storage_.cend() - 1,
+                      [&os](T value)
+                      {
+                          if (value)
+                          {
+                              os << static_cast<Object*>(value)->toString() << ", ";
+                          }
+                          else
+                          {
+                              os << "null"
+                                 << ", ";
+                          }
+                      });
 
         auto last = array->storage_.back();
         if (last)

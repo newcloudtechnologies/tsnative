@@ -24,11 +24,10 @@ void addArgument(generator::ts::decorator_t decorator, const std::string& value)
     bool vBool = false;
     double vDbl = 0;
 
-    utils::is_type<int>(value, vInt) ? decorator->addArgument(vInt)
-                                     : utils::is_type<bool>(value, vBool) ? decorator->addArgument(vBool)
-                                                                          : utils::is_type<double>(value, vDbl)
-                                                                                ? decorator->addArgument(vDbl)
-                                                                                : decorator->addArgument(value.c_str());
+    utils::is_type<int>(value, vInt)      ? decorator->addArgument(vInt)
+    : utils::is_type<bool>(value, vBool)  ? decorator->addArgument(vBool)
+    : utils::is_type<double>(value, vDbl) ? decorator->addArgument(vDbl)
+                                          : decorator->addArgument(value.c_str());
 }
 
 } //  namespace

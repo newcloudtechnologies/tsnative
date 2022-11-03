@@ -206,7 +206,8 @@ template <typename K, typename V>
 void Map<K, V>::markChildren()
 {
     LOG_ADDRESS("Calling Map::markChildren on ", this);
-    const auto callable = [](std::pair<K, V>& entry) {
+    const auto callable = [](std::pair<K, V>& entry)
+    {
         auto* key = static_cast<Object*>(entry.first);
         auto* value = static_cast<Object*>(entry.second);
 

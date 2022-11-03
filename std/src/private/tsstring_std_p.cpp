@@ -210,7 +210,8 @@ std::string StdStringBackend::substring(int startIndex, int endIndex) const
     int n1 = startIndex;
     int n2 = endIndex;
 
-    auto normalize = [this](int index) {
+    auto normalize = [this](int index)
+    {
         int length = this->length();
 
         if (index <= 0)
