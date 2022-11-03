@@ -74,7 +74,8 @@ double AbslDatePrivate::parse(const std::string& date_string)
     auto t = absl::Time{};
     auto err = std::string{};
 
-    auto parse = [&t, &err, &date_string](const format_t& fmt) -> bool {
+    auto parse = [&t, &err, &date_string](const format_t& fmt) -> bool
+    {
         if (fmt.second == Repr::Local)
             return absl::ParseTime(fmt.first, date_string, absl::LocalTimeZone(), &t, &err);
         return absl::ParseTime(fmt.first, date_string, absl::UTCTimeZone(), &t, &err);

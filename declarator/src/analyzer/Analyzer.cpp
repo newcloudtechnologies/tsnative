@@ -99,12 +99,14 @@ void do_create(parser::const_abstract_item_t item,
     using namespace analyzer;
     using namespace generator::ts;
 
-    auto parentBlock = [block]() {
+    auto parentBlock = [block]()
+    {
         _ASSERT(AbstractBlock::isContainerBlock(block));
         return std::static_pointer_cast<ContainerBlock>(block);
     };
 
-    auto addImports = [&importBlocks](generator::ts::container_block_t containerBlock) {
+    auto addImports = [&importBlocks](generator::ts::container_block_t containerBlock)
+    {
         if (!detectImport(containerBlock))
         {
             for (const auto& it : importBlocks)
@@ -201,16 +203,18 @@ parser::const_item_list_t getSuitableItems(const parser::Collection& collection)
 
     parser::const_item_list_t result;
 
-    collection.visit([&result](parser::const_abstract_item_t item) {
-        AnnotationList anotations(getItemAnnotations(item));
-
-        if (item->isLocal() &&
-            (anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE) || anotations.exist(TS_EXPORT) ||
-             anotations.exist(TS_DECLARE) || anotations.exist(TS_CODE)))
+    collection.visit(
+        [&result](parser::const_abstract_item_t item)
         {
-            result.push_back(item);
-        }
-    });
+            AnnotationList anotations(getItemAnnotations(item));
+
+            if (item->isLocal() &&
+                (anotations.exist(TS_MODULE) || anotations.exist(TS_NAMESPACE) || anotations.exist(TS_EXPORT) ||
+                 anotations.exist(TS_DECLARE) || anotations.exist(TS_CODE)))
+            {
+                result.push_back(item);
+            }
+        });
 
     return result;
 }
@@ -221,21 +225,22 @@ analyzer::TypeMapper makeTypeMapper(const parser::Collection& collection)
     using namespace parser;
     using namespace utils;
 
-    auto getClassFullName = [](const std::string& name, const std::string& nsPrefix) {
-        return !nsPrefix.empty() ? nsPrefix + "::" + name : name;
-    };
+    auto getClassFullName = [](const std::string& name, const std::string& nsPrefix)
+    { return !nsPrefix.empty() ? nsPrefix + "::" + name : name; };
 
     std::map<std::string, std::string> table;
 
-    collection.visit([&table, getClassFullName](parser::const_abstract_item_t item) {
-        AnnotationList anotations(getItemAnnotations(item));
-
-        if (anotations.exist(TS_NAME))
+    collection.visit(
+        [&table, getClassFullName](parser::const_abstract_item_t item)
         {
-            table.insert(
-                std::make_pair(getClassFullName(item->name(), item->prefix()), anotations.values(TS_NAME).at(0)));
-        }
-    });
+            AnnotationList anotations(getItemAnnotations(item));
+
+            if (anotations.exist(TS_NAME))
+            {
+                table.insert(
+                    std::make_pair(getClassFullName(item->name(), item->prefix()), anotations.values(TS_NAME).at(0)));
+            }
+        });
 
     return table;
 }
@@ -252,11 +257,13 @@ generator::ts::abstract_block_t analyze(parser::const_abstract_item_t item,
 
     auto root = std::static_pointer_cast<File>(file);
 
-    auto find = [item](container_block_t parent, const std::string& name) {
+    auto find = [item](container_block_t parent, const std::string& name)
+    {
         abstract_block_t result;
         bool hasNamesake = false;
 
-        auto isCodeBlockInside = [item](const generator::ts::abstract_block_t& parentBlock) {
+        auto isCodeBlockInside = [item](const generator::ts::abstract_block_t& parentBlock)
+        {
             bool result = false;
 
             result = (item->type() == AbstractItem::Type::CODE_BLOCK &&

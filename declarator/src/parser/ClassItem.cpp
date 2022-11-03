@@ -84,15 +84,17 @@ template_method_item_list_t ClassItem::templateMethods() const
 {
     template_method_item_list_t result;
 
-    visit([&result](const clang::Decl* decl) {
-        if (decl->getKind() == clang::Decl::Kind::FunctionTemplate)
+    visit(
+        [&result](const clang::Decl* decl)
         {
-            const auto* functionTemplateDecl = clang::dyn_cast_or_null<const clang::FunctionTemplateDecl>(decl);
-            _ASSERT(functionTemplateDecl);
+            if (decl->getKind() == clang::Decl::Kind::FunctionTemplate)
+            {
+                const auto* functionTemplateDecl = clang::dyn_cast_or_null<const clang::FunctionTemplateDecl>(decl);
+                _ASSERT(functionTemplateDecl);
 
-            result.push_back(TemplateMethodItem::make(functionTemplateDecl));
-        }
-    });
+                result.push_back(TemplateMethodItem::make(functionTemplateDecl));
+            }
+        });
 
     return result;
 }

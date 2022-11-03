@@ -37,7 +37,8 @@ namespace
 template <typename T>
 void pushBlock(typename std::vector<T>& container, T block)
 {
-    auto pred = [block](const T& it) {
+    auto pred = [block](const T& it)
+    {
         bool result = false;
 
         if (it->isConstructor())

@@ -78,21 +78,25 @@ void printCollection(parser::Collection& collection, const std::string& filename
 
     std::ofstream ofs{filename, std::ofstream::out};
 
-    Collection::ref().visit([&rows](const_abstract_item_t item) {
-        rows.push_back({item->prefix(), item->name(), typeToString(item->type())});
-    });
+    Collection::ref().visit(
+        [&rows](const_abstract_item_t item) {
+            rows.push_back({item->prefix(), item->name(), typeToString(item->type())});
+        });
 
-    auto prefix_max_size = std::max_element(rows.begin(), rows.end(), [](const auto& a, const auto& b) {
-                               return a.prefix.size() < b.prefix.size();
-                           })->prefix.size();
+    auto prefix_max_size =
+        std::max_element(
+            rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.prefix.size() < b.prefix.size(); })
+            ->prefix.size();
 
-    auto name_max_size = std::max_element(rows.begin(), rows.end(), [](const auto& a, const auto& b) {
-                             return a.name.size() < b.name.size();
-                         })->name.size();
+    auto name_max_size = std::max_element(rows.begin(),
+                                          rows.end(),
+                                          [](const auto& a, const auto& b) { return a.name.size() < b.name.size(); })
+                             ->name.size();
 
-    auto type_max_size = std::max_element(rows.begin(), rows.end(), [](const auto& a, const auto& b) {
-                             return a.type.size() < b.type.size();
-                         })->type.size();
+    auto type_max_size = std::max_element(rows.begin(),
+                                          rows.end(),
+                                          [](const auto& a, const auto& b) { return a.type.size() < b.type.size(); })
+                             ->type.size();
 
     for (const auto& it : rows)
     {

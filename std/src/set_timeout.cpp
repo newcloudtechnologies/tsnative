@@ -27,10 +27,12 @@ Number* setTimeout(TSClosure* handler, Number* timeout)
     auto timerId = timer->getTimerID();
 
     auto t = std::chrono::milliseconds{static_cast<uint64_t>(timeout->unboxed())};
-    timer->setTimeout(t, [handler, timerId] {
-        handler->call();
-        clearTimeout(new Number(static_cast<double>(timerId)));
-    });
+    timer->setTimeout(t,
+                      [handler, timerId]
+                      {
+                          handler->call();
+                          clearTimeout(new Number(static_cast<double>(timerId)));
+                      });
 
     return new Number(static_cast<double>(timerId));
 }

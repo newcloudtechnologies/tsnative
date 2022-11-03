@@ -142,9 +142,10 @@ Array<String*>* String::split(String* pattern, Union* maybeLimit) const
     std::vector<String*> boxed;
     boxed.reserve(result.size());
 
-    std::transform(result.cbegin(), result.cend(), std::back_inserter(boxed), [](const std::string& value) {
-        return new String(value);
-    });
+    std::transform(result.cbegin(),
+                   result.cend(),
+                   std::back_inserter(boxed),
+                   [](const std::string& value) { return new String(value); });
 
     return Array<String*>::fromStdVector(boxed);
 }

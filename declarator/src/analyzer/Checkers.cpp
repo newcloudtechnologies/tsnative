@@ -110,9 +110,10 @@ private:
 
         C<T, A> methods;
 
-        std::copy_if(std::begin(container), std::end(container), std::back_inserter(methods), [name](const auto& item) {
-            return itemName(item) == name;
-        });
+        std::copy_if(std::begin(container),
+                     std::end(container),
+                     std::back_inserter(methods),
+                     [name](const auto& item) { return itemName(item) == name; });
 
         if (methods.size() == 2)
         {
@@ -193,7 +194,8 @@ void TypeChecker::check(const clang::QualType& type,
     std::string typeName = typeToString(type);
     std::string refinedTypeName = typeToString(removeCVPR(type), context);
 
-    auto notAPointer = [&context](const clang::QualType& type) {
+    auto notAPointer = [&context](const clang::QualType& type)
+    {
         bool result = false;
 
         auto& collection = Collection::ref();
@@ -357,7 +359,8 @@ void ClassChecker::overloads(parser::const_class_item_t item)
         SETTER
     };
 
-    auto get_accessor = [](const_method_item_t method) {
+    auto get_accessor = [](const_method_item_t method)
+    {
         AccessorType result = AccessorType::NOTHING;
 
         AnnotationList annotations{getAnnotations(method->decl())};
@@ -365,21 +368,22 @@ void ClassChecker::overloads(parser::const_class_item_t item)
         if (annotations.exist(TS_SIGNATURE))
         {
             TsSignature signature(annotations.values(TS_SIGNATURE).at(0));
-            result = signature.accessor() == "get"
-                         ? AccessorType::GETTER
-                         : signature.accessor() == "set" ? AccessorType::SETTER : AccessorType::NOTHING;
+            result = signature.accessor() == "get"   ? AccessorType::GETTER
+                     : signature.accessor() == "set" ? AccessorType::SETTER
+                                                     : AccessorType::NOTHING;
         }
         else
         {
-            result = annotations.exist(TS_GETTER)
-                         ? AccessorType::GETTER
-                         : annotations.exist(TS_SETTER) ? AccessorType::SETTER : AccessorType::NOTHING;
+            result = annotations.exist(TS_GETTER)   ? AccessorType::GETTER
+                     : annotations.exist(TS_SETTER) ? AccessorType::SETTER
+                                                    : AccessorType::NOTHING;
         }
 
         return result;
     };
 
-    auto is_accessors_pair = [get_accessor](const_method_item_t a, const_method_item_t b) {
+    auto is_accessors_pair = [get_accessor](const_method_item_t a, const_method_item_t b)
+    {
         std::set<AccessorType> accessors{get_accessor(a), get_accessor(b)};
 
         return accessors.find(AccessorType::GETTER) != accessors.end() &&
@@ -439,7 +443,8 @@ void ClassChecker::types(parser::const_class_item_t item)
 
         if (annotations.exist(TS_METHOD) && !annotations.exist(TS_NO_CHECK))
         {
-            auto where = [className = item->name(), prefix = item->prefix(), methodName = it->name()]() {
+            auto where = [className = item->name(), prefix = item->prefix(), methodName = it->name()]()
+            {
                 return utils::strprintf(
                     R"(class: %s, prefix: %s, method: %s)", className.c_str(), prefix.c_str(), methodName.c_str());
             };
@@ -486,31 +491,40 @@ void FunctionChecker::overloads(parser::const_function_item_t item, const std::s
     std::string scopeName = item->prefix();
 
     // functionType could be AbstractItem::Type::FUNCTION or AbstractItem::Type::FUNCTION_TEMPLATE
-    auto get_overloads = [](const item_list_t& children, AbstractItem::Type functionType) {
+    auto get_overloads = [](const item_list_t& children, AbstractItem::Type functionType)
+    {
         using namespace parser;
 
         item_list_t items;
         function_item_list_t functions;
 
-        std::copy_if(std::begin(children), std::end(children), std::back_inserter(items), [functionType](auto item) {
-            bool result = false;
-            auto type = item->type();
+        std::copy_if(std::begin(children),
+                     std::end(children),
+                     std::back_inserter(items),
+                     [functionType](auto item)
+                     {
+                         bool result = false;
+                         auto type = item->type();
 
-            if (type == functionType)
-            {
-                auto functionItem = std::static_pointer_cast<FunctionItem const>(item);
-                AnnotationList annotations(getAnnotations(functionItem->decl()));
-                result = annotations.exist("TS_EXPORT") || annotations.exist("TS_DECLARE");
-            }
+                         if (type == functionType)
+                         {
+                             auto functionItem = std::static_pointer_cast<FunctionItem const>(item);
+                             AnnotationList annotations(getAnnotations(functionItem->decl()));
+                             result = annotations.exist("TS_EXPORT") || annotations.exist("TS_DECLARE");
+                         }
 
-            return result;
-        });
+                         return result;
+                     });
 
-        std::transform(items.begin(), items.end(), std::back_inserter(functions), [](auto item) {
-            _ASSERT(item->type() == AbstractItem::Type::FUNCTION ||
-                    item->type() == AbstractItem::Type::FUNCTION_TEMPLATE);
-            return std::static_pointer_cast<FunctionItem>(item);
-        });
+        std::transform(items.begin(),
+                       items.end(),
+                       std::back_inserter(functions),
+                       [](auto item)
+                       {
+                           _ASSERT(item->type() == AbstractItem::Type::FUNCTION ||
+                                   item->type() == AbstractItem::Type::FUNCTION_TEMPLATE);
+                           return std::static_pointer_cast<FunctionItem>(item);
+                       });
 
         return OverloadDetector::get(functions);
     };
@@ -553,18 +567,16 @@ void FunctionChecker::types(parser::const_function_item_t item)
 {
     using namespace parser;
 
-    auto where_func = [functionName = item->name(), prefix = item->prefix()]() {
-        return utils::strprintf(R"(function: %s, prefix: %s)", functionName.c_str(), prefix.c_str());
-    };
+    auto where_func = [functionName = item->name(), prefix = item->prefix()]()
+    { return utils::strprintf(R"(function: %s, prefix: %s)", functionName.c_str(), prefix.c_str()); };
 
     for (const auto& it : item->parameters())
     {
         // skip parameters with template types
         if (!it.isTemplated())
         {
-            auto where_arg = [where_func, argName = it.name()]() {
-                return utils::strprintf(R"(%s, arg: %s)", where_func().c_str(), argName.c_str());
-            };
+            auto where_arg = [where_func, argName = it.name()]()
+            { return utils::strprintf(R"(%s, arg: %s)", where_func().c_str(), argName.c_str()); };
 
             TypeChecker::check(it.type(), it.decl()->getASTContext(), where_arg);
         }

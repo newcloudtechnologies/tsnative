@@ -120,7 +120,8 @@ std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(parser::const_cla
 
     std::vector<clang::CXXBaseSpecifier> result;
 
-    auto get_bases_from_class = [&result](const clang::CXXRecordDecl* classDecl) {
+    auto get_bases_from_class = [&result](const clang::CXXRecordDecl* classDecl)
+    {
         if (classDecl && classDecl->hasDefinition())
         {
             auto bases = classDecl->bases();
@@ -132,7 +133,8 @@ std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(parser::const_cla
         }
     };
 
-    auto get_bases_from_templated_class = [get_bases_from_class](const clang::ClassTemplateDecl* classTemplateDecl) {
+    auto get_bases_from_templated_class = [get_bases_from_class](const clang::ClassTemplateDecl* classTemplateDecl)
+    {
         const auto* templatedClassDecl = classTemplateDecl->getTemplatedDecl();
 
         _ASSERT(templatedClassDecl);
@@ -178,7 +180,8 @@ std::vector<clang::CXXBaseSpecifier> InheritanceNode::getBases(parser::const_cla
 
 std::string InheritanceNode::getTemplateName(const std::string& actualTypeName) const
 {
-    auto untemplatize = [](const std::string& fullName, std::string& templateName) {
+    auto untemplatize = [](const std::string& fullName, std::string& templateName)
+    {
         std::regex regexp(R"(^([\w]+)(\<(.+)\>)?$)");
         std::smatch match;
 
@@ -192,7 +195,8 @@ std::string InheritanceNode::getTemplateName(const std::string& actualTypeName) 
         return result;
     };
 
-    auto isTemplate = [untemplatize](const std::string& name) {
+    auto isTemplate = [untemplatize](const std::string& name)
+    {
         std::string templateName;
         return untemplatize(name, templateName) && templateName != name;
     };

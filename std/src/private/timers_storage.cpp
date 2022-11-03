@@ -18,11 +18,14 @@ TimersStorage::TimersStorage(IEventLoop& eventLoop)
     : _eventLoop{eventLoop}
 {
     LOG_METHOD_CALL;
-    _registry.registerFactory(_registryKey, [this] {
-        static_assert(std::is_base_of<IEventLoop, UVLoopAdapter>::value, "UVLoopAdapter should be IEventLoop type");
-        const auto& uvLoop = static_cast<const UVLoopAdapter&>(_eventLoop);
-        return std::make_unique<UVTimerAdapter>(uvLoop, generateTimerId());
-    });
+    _registry.registerFactory(_registryKey,
+                              [this]
+                              {
+                                  static_assert(std::is_base_of<IEventLoop, UVLoopAdapter>::value,
+                                                "UVLoopAdapter should be IEventLoop type");
+                                  const auto& uvLoop = static_cast<const UVLoopAdapter&>(_eventLoop);
+                                  return std::make_unique<UVTimerAdapter>(uvLoop, generateTimerId());
+                              });
 }
 
 ITimer* TimersStorage::createTimer()
