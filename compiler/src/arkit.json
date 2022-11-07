@@ -1,0 +1,70 @@
+{
+    "$schema": "https://arkit.pro/schema.json",
+    "components": [
+      {
+        "type": "Entry",
+        "patterns": ["main.ts"]
+      },
+      {
+        "type": "Component",
+        "patterns": ["**/*.ts", "**/**/*.ts"]
+      }
+    ],
+    "output": {
+      "path": "arkit.svg",
+      "groups": [
+        {
+          "first": true,
+          "components": ["Entry"],
+          "patterns":  ["main.ts"]
+        },
+        {
+          "type": "LLVM",
+          "patterns": ["llvm/**"]
+        },
+        {
+          "type": "TS",
+          "patterns": ["ts/**"]
+        },
+        {
+          "type": "LLVM Builder",
+          "patterns": ["builder/**"]
+        },
+        {
+          "type": "Build utils",
+          "patterns": ["buildutils/**"]
+        },
+        {
+          "type": "CXX integration",
+          "patterns": ["cppintegration/**"]
+        },
+        {
+          "type": "Generator",
+          "patterns": ["generator/**"]
+        },
+        {
+          "type": "Expression handlers",
+          "patterns": ["handlers/expression/**"]
+        },
+        {
+          "type": "Node handlers",
+          "patterns": ["handlers/node/**"]
+        },
+        {
+          "type": "Mangling",
+          "patterns": ["mangling/**"]
+        },
+        {
+          "type": "Scope",
+          "patterns": ["scope/**"]
+        },
+        {
+          "type": "TS builtins",
+          "patterns": ["tsbuiltins/**"]
+        },
+        {
+          "components": ["Entry", "Component"]
+        }
+      ]
+    }
+  }
