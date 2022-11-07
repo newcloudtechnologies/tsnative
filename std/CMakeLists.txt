@@ -81,7 +81,10 @@ set(SOURCES
     src/private/memory_diagnostics_storage.cpp
     src/private/uv_loop_adapter.cpp
     src/private/uv_timer_adapter.cpp
-    src/private/timers_storage.cpp)
+    src/private/timers_storage.cpp
+    src/private/promise/promise_p.cpp
+    src/private/promise/shared_promise_internal_state.cpp
+    src/private/promise/promise_callback.cpp)
 
 if(ENABLE_LOGS)
     add_definitions( -DENABLE_LOGS )
@@ -104,6 +107,8 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         tsnative-declarator # for include path only
         absl::time # $<BUILD_INTERFACE:absl::time> ?
+        absl::bad_optional_access
+        absl::bad_variant_access
         uv_a
 )
 
