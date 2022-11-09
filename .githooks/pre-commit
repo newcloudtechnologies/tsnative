@@ -1,0 +1,8 @@
+#!/bin/sh
+
+echo "Applying clang-format"
+for FILE in $(git diff --cached --name-only | grep -E '.*\.(c|cpp|cc|h|hpp)')
+do
+    echo "$FILE"
+    clang-format-14 -i $FILE
+done
