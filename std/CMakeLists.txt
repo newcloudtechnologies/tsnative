@@ -196,7 +196,8 @@ if (BUILD_TEST)
     set(TEST_HEADERS test/infrastructure/equality_checkers.h
                      test/infrastructure/test_allocator.h
                      test/infrastructure/global_test_allocator_fixture.h
-                     test/infrastructure/object_wrappers.h)
+                     test/infrastructure/object_wrappers.h
+                     test/promise/mock_inline_executor.h)
 
     set(TEST_SOURCES test/infrastructure/equality_checkers.cpp
                      test/infrastructure/test_allocator.cpp
@@ -206,7 +207,11 @@ if (BUILD_TEST)
                      test/runtime_tests.cpp
                      test/event_loop/uv_loop_test.cpp
                      test/event_loop/custom_loop_test.cpp
-                     test/event_loop/timers.cpp)
+                     test/event_loop/timers.cpp
+                     test/promise/expected_tests.cpp
+                     test/promise/general_finite_state_machine_tests.cpp
+                     test/promise/promise_wrapper.cpp
+                     test/promise/promise_tests.cpp)
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 
