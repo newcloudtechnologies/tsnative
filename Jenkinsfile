@@ -7,6 +7,7 @@ import com.ncloudtech.emb.devops.pipeline.complexUtils
 import com.ncloudtech.emb.devops.pipeline.notificationUtils
 import com.ncloudtech.emb.devops.pipeline.VersioningUtils
 import com.ncloudtech.git.Gitea
+import com.ncloudtech.atlassian.Jira
 
 def gitUtils = new gitUtils()
 
@@ -181,6 +182,13 @@ pipeline {
                                     project: projectName,
                                     tagName: "v${version}",
                                     name: "release v${version}"
+                            )
+
+                            addFixVersionsToJira(
+                                owner: owner,
+                                projectName: projectName,
+                                branch: 'master',
+                                fieldValue: "v${version}"
                             )
                         }
                     }
