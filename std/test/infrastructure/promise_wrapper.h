@@ -11,12 +11,12 @@
 
 #pragma once
 
+#include "../infrastructure/object_wrappers.h"
 #include "std/private/make_closure_from_lambda.h"
 #include "std/private/promise/promise_p.h"
-#include "std/tsobject.h"
-#include "std/tsundefined.h"
 
-#include <vector>
+namespace test
+{
 
 namespace test
 {
@@ -34,6 +34,7 @@ public:
     {
         auto* onFulfilledClosure = makeClosure(std::move(onFulfilled));
         auto* onRejectedClosure = makeClosure(std::move(onRejected));
+
         return Promise{_promisePrivate.then(onFulfilledClosure, onRejectedClosure, _executor), _executor};
     }
 
@@ -41,7 +42,7 @@ public:
     Promise then(F&& onFulfilled)
     {
         auto* onFulfilledClosure = makeClosure(std::move(onFulfilled));
-        return Promise{_promisePrivate.then(onFulfilledClosure, Undefined::instance(), _executor), _executor};
+        return Promise{_promisePrivate.then(onFulfilledClosure, test::Undefined::instance(), _executor), _executor};
     }
 
     Promise then();
@@ -50,7 +51,7 @@ public:
     Promise fail(F&& onRejected)
     {
         auto* catchClosure = makeClosure(std::move(onRejected));
-        return Promise{_promisePrivate.then(Undefined::instance(), catchClosure, _executor), _executor};
+        return Promise{_promisePrivate.then(test::Undefined::instance(), catchClosure, _executor), _executor};
     }
 
     Promise fail();
@@ -64,9 +65,19 @@ public:
 
     Promise finally();
 
-    void resolve(Object* resolved);
+    template <typename T>
+    void resolve(T resolved)
+    {
+        static_assert(std::is_pointer<T>::value, "Expect T is pointer");
+        _promisePrivate.resolve(resolved);
+    }
 
-    void reject(Object* rejected);
+    template <typename T>
+    void reject(T rejected)
+    {
+        static_assert(std::is_pointer<T>::value, "Expect T is pointer");
+        _promisePrivate.reject(rejected);
+    }
 
     bool ready() const;
 
