@@ -37,6 +37,42 @@
 }
 
 {
+    const obj = { d: 1, b: 2, c: 3 };
+
+    const expectedKeys = ["d", "b", "c"];
+    const keys = Object.keys(obj);
+    console.assert(keys.length === expectedKeys.length, "Object.keys() array length doesn't correspond to keys in object initialization");
+    let currentIndex = 0;
+    while (currentIndex < keys.length) {
+        console.assert(keys[currentIndex] === expectedKeys[currentIndex], "Object.keys() array doesn't correspond object initialization");
+        ++currentIndex;
+    }
+}
+
+{
+    class Base {
+        x: number = 0;
+        y: string = "";
+    };
+
+    class Derived extends Base {
+        x: number = 10; // Shadowing
+        z: number = 100;
+    };
+
+    const d = new Derived();
+
+    const expectedKeys = ["x", "y", "z"];
+    const keys = Object.keys(d);
+    console.assert(keys.length === expectedKeys.length, "Object.keys() array length doesn't correspond to keys in object initialization");
+    let currentIndex = 0;
+    while (currentIndex < keys.length) {
+        console.assert(keys[currentIndex] === expectedKeys[currentIndex], "Object.keys() array doesn't correspond object initialization");
+        ++currentIndex;
+    }
+}
+
+{
     interface A {
         v: number,
         k: string

@@ -15,7 +15,7 @@
 
 #include <ostream>
 #include <string>
-#include <unordered_set>
+#include <vector>
 
 class Boolean;
 class String;
@@ -73,7 +73,7 @@ public:
 
 protected:
     bool has(String* key) const;
-
+    std::vector<String*> getKeys() const;
     virtual Array<String*>* getKeysArray() const;
 
 public:
@@ -106,9 +106,6 @@ public:
     virtual void markChildren();
 
     void* operator new(std::size_t n);
-
-private:
-    std::unordered_set<String*> getUniqueKeys(const Object* o) const;
 
 private:
     MapPrivate<String*, void*>* _props = nullptr;
