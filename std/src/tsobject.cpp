@@ -9,6 +9,8 @@
  *
  */
 
+#include <unordered_set>
+
 #include "std/tsobject.h"
 
 #include "std/private/logger.h"
@@ -131,51 +133,36 @@ bool Object::has(String* key) const
     return _props->has(key);
 }
 
-std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
+std::vector<String*> Object::getKeys() const
 {
-    std::unordered_set<String*> uniqueKeys;
-    if (!o || !o->_props)
+    std::vector<String*> uniqueKeys;
+
+    const std::string& superKeyCppStr = superKey->cpp_str();
+    const std::string& parentKeyCppStr = parentKey->cpp_str();
+
+    if (has(superKey))
     {
-        return uniqueKeys;
+        auto* superObject = static_cast<Union*>(get(superKey))->getValue();
+        std::vector<String*> superUniqueKeys = superObject->getKeys();
+        uniqueKeys.insert(uniqueKeys.end(),
+                          std::make_move_iterator(superUniqueKeys.begin()),
+                          std::make_move_iterator(superUniqueKeys.end()));
     }
 
-    const auto isKeyShouldBeIgnored =
-        [&superKeyCppStr = superKey->cpp_str(), &parentKeyCppStr = parentKey->cpp_str()](const String* candidate)
+    // To process properties shadowing we need to search for super keys those are shadowed
+    std::unordered_set<String*> superKeys(uniqueKeys.begin(), uniqueKeys.end());
+
+    const std::vector<String*>& keys = _props->orderedKeys();
+
+    for (String* key : keys)
     {
-        static const std::unordered_set<std::string> keysToIgnore{superKeyCppStr, parentKeyCppStr};
-
-        if (!candidate)
-        {
-            return true;
-        }
-
-        return keysToIgnore.find(candidate->cpp_str()) != keysToIgnore.cend();
-    };
-
-    const auto& keys = o->_props->orderedKeys();
-
-    for (auto* key : keys)
-    {
-        if (isKeyShouldBeIgnored(key))
+        const std::string& keyCppStr = key->cpp_str();
+        if (keyCppStr == superKeyCppStr || keyCppStr == parentKeyCppStr || superKeys.find(key) != superKeys.end())
         {
             continue;
         }
 
-        uniqueKeys.insert(key);
-    }
-
-    if (o->has(superKey))
-    {
-        auto* superObject = static_cast<Union*>(o->get(superKey))->getValue();
-        auto superUniqueKeys = getUniqueKeys(superObject);
-
-        // std::make_move_iterator will not help here.
-        // uset iterators are const in fact
-        // https://en.cppreference.com/w/cpp/container/unordered_set/begin
-        // Because both iterator and const_iterator are constant iterators (and may in fact be the same type),
-        // it is not possible to mutate the elements of the container
-        // through an iterator returned by any of these member functions.
-        uniqueKeys.insert(superUniqueKeys.begin(), superUniqueKeys.end());
+        uniqueKeys.push_back(key);
     }
 
     return uniqueKeys;
@@ -183,16 +170,7 @@ std::unordered_set<String*> Object::getUniqueKeys(const Object* o) const
 
 Array<String*>* Object::getKeysArray() const
 {
-    auto uniqueKeys = getUniqueKeys(this);
-
-    auto result = new Array<String*>();
-
-    for (auto* s : uniqueKeys)
-    {
-        result->push(s);
-    }
-
-    return result;
+    return Array<String*>::fromStdVector(getKeys());
 }
 
 void* Object::get(String* key) const
