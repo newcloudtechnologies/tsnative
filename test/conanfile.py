@@ -123,6 +123,7 @@ class TSNativeTestsConan(ConanFile):
             excludes.append("date.ts"      )   # FIXME: TSN-163
             excludes.append("inher.ts"     )   # FIXME: TSN-164
             excludes.append("runtime.ts"   )   # FIXME: TSN-165
+            excludes.append("promises.ts"  )   # FIXME: TSN-65
 
         def in_excludes(path: str):
             for ex in excludes:

@@ -40,6 +40,8 @@ class IEventLoop;
 
 class ITimer;
 
+class IExecutor;
+
 class TS_EXPORT TS_DECLARE Runtime final : public Object
 {
 public:
@@ -56,6 +58,8 @@ public:
     static TS_METHOD EventLoop* getLoop();
 
     static Timers* getTimersStorage();
+
+    static IExecutor* getExecutor();
 
     static TS_METHOD Array<String*>* getCmdArgs();
 
@@ -81,4 +85,5 @@ private:
     static std::unique_ptr<Allocator> _allocator;
 
     static std::unique_ptr<Timers> _timersStorage;
+    static std::unique_ptr<IExecutor> _executor;
 };

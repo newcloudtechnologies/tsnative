@@ -100,4 +100,8 @@ export const EVENT_LOOP_DEFINITION = toPosixStyle(
     path.join(__dirname, "definitions", "event_loop.d.ts")
 );
 
+export const PROMISE_DEFINITION = toPosixStyle(
+    path.join(__dirname, "definitions", "tspromise.d.ts")
+);
+
 export const STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));
