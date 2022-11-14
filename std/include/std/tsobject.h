@@ -73,7 +73,6 @@ public:
 
 protected:
     bool has(String* key) const;
-    std::vector<String*> getKeys() const;
     virtual Array<String*>* getKeysArray() const;
 
 public:
@@ -106,6 +105,9 @@ public:
     virtual void markChildren();
 
     void* operator new(std::size_t n);
+
+private:
+    std::vector<String*> getKeys() const;
 
 private:
     MapPrivate<String*, void*>* _props = nullptr;

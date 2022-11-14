@@ -157,7 +157,7 @@ std::vector<String*> Object::getKeys() const
     for (String* key : keys)
     {
         const std::string& keyCppStr = key->cpp_str();
-        if (keyCppStr == superKeyCppStr || keyCppStr == parentKeyCppStr || superKeys.find(key) != superKeys.end())
+        if (keyCppStr == superKeyCppStr || keyCppStr == parentKeyCppStr || superKeys.count(key))
         {
             continue;
         }
