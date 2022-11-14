@@ -15,15 +15,11 @@
 #include "std/private/emitter.h"
 #include "std/private/promise/promise_callback.h"
 
-struct ReadyEvent final
-{
-};
-
 class PromisePrivate;
 class Object;
 class IExecutor;
 
-class SharedPromiseInternalState final : public EmitterBase<SharedPromiseInternalState, ReadyEvent>
+class SharedPromiseInternalState final : public PromiseEmitter<SharedPromiseInternalState>
 {
 public:
     using States = PromiseState::States;

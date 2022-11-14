@@ -197,9 +197,7 @@
     });
 }
 
-
 type Callback<ArgT> = (i: ArgT) => void;
-
 {
 // Use Promise constructor
 // Check resolve call and attach fulfilled receiver
@@ -207,12 +205,10 @@ type Callback<ArgT> = (i: ArgT) => void;
     const p = new Promise((resolve: Callback<number>, reject: Callback<number>) => {
         resolve(23);
     });
-
     p.then((i: number) => {
         console.assert(i === 23, "Promise. Case [1-O-1]:  Expects: 23");
     });
 }
-
 {
 // Use Promise constructor
 // Check resolve call and attach fulfilled receiver
@@ -220,12 +216,10 @@ type Callback<ArgT> = (i: ArgT) => void;
     const p = new Promise((resolve: Callback<number>, reject: Callback<number>) => {
         reject(23);
     });
-
     p.catch((i: number) => {
         console.assert(i === 23, "Promise. Case [1-P-1]:  Expects: 23");
     });
 }
-
 {
 // Use Promise constructor
 // Check resolve call and reject call. Reject should be ignored
@@ -234,7 +228,19 @@ type Callback<ArgT> = (i: ArgT) => void;
         resolve(23)
         reject(23);
     });
-
+    p.then((i: number) => {
+        console.assert(i === 23, "Promise. Case [1-Q-1]:  Expects: 23");
+    }).catch((i: number) => {
+        console.assert(false, "Promise. Case [1-Q-2]:  This callback should not be called");
+    });
+}
+{
+// Use Promise constructor
+// Check resolve call with timeout
+//
+    const p = new Promise((resolve: Callback<number>, reject: Callback<number>) => {
+        setTimeout(() => resolve(23), 0);
+    });
     p.then((i: number) => {
         console.assert(i === 23, "Promise. Case [1-R-1]:  Expects: 23");
     }).catch((i: number) => {
@@ -244,30 +250,77 @@ type Callback<ArgT> = (i: ArgT) => void;
 
 {
 // Use Promise constructor
-// Check resolve call with timeout
-//
-    const p = new Promise((resolve: Callback<number>, reject: Callback<number>) => {
-        setTimeout(() => resolve(23), 0);
-    });
-
-    p.then((i: number) => {
-        console.assert(i === 23, "Promise. Case [1-S-1]:  Expects: 23");
-    }).catch((i: number) => {
-        console.assert(false, "Promise. Case [1-S-2]:  This callback should not be called");
-    });
-}
-
-{
-// Use Promise constructor
 // Then with function
 
-    function doubler(i: number) {
-        return i * 2;
-    }
+        function doubler(i: number) {
+            return i * 2;
+        }
 
     const p = new Promise((resolve: Callback<number>) => {
         resolve(2);
     }).then(doubler).then(doubler).then((i: number) => {
-        console.assert(i === 8, "Promise. Case [1-T-1]:  Expects 8");
+        console.assert(i === 8, "Promise. Case [1-S-1]:  Expects 8");
     })
+}
+
+{
+// To manually create an already resolved or rejected promise
+// Set to resolved state. Checking that a ready promise like value is resolved with the desired result
+//
+    Promise.resolve(23).then((i: number) => {
+        console.assert(i === 23, "Promise. Case [1-T-1]: Expects 23")
+        return Promise.resolve(55);
+    }).then((i: number) => {
+        console.assert(i === 55, "Promise. Case [1-T-2]: Expects 55")
+    });
+}
+
+{
+// To manually create an already resolved or rejected promise
+// Set to resolved state. Checking that a promise like value is resolved with the desired result
+//
+    const fn = (n: number) => {
+        return Promise.resolve(n).then((i: number) => {
+            return Promise.resolve(i).then((i: number) => {
+                if (i % 2 === 0) {
+                    throw i;
+                }
+                return i;
+            })
+        });
+    }
+
+    fn(1).then((i: number): void => {
+        console.assert(i % 2 !== 0, "Promise. Case [1-U-1] Expects odd, actual even");
+    }).catch((i: number) => {
+        console.assert(false, "Promise. Case [1-U-2] This callback should not be called");
+    });
+
+    fn(2).then((i: number): void => {
+        console.assert(false, "Promise. Case [1-U-3] This callback should not be called");
+    }).catch((i: number) => {
+        console.assert(i % 2 === 0, "Promise. Case [1-U-4] Expects even, actual odd");
+    });
+}
+
+{
+// To manually create an already resolved or rejected promise
+// Set to resolved state. Check Promise.resolve with Promise
+//
+    Promise.resolve(Promise.resolve(23)).then((i: number) => {
+        console.assert(i === 23, "Promise. Case [1-V] This callback should not be called");
+    });
+}
+
+{
+// To manually create an already resolved or rejected promise
+// Set to resolved state. Check Promise.resolve with Promise thenable
+//
+    const p = Promise.resolve(23).then((i: number) => {
+        return i;
+    });
+
+    Promise.resolve(p).then((i: number) => {
+        console.assert(i === 23, "Promise. Case [1-W] This callback should not be called");
+    });
 }
