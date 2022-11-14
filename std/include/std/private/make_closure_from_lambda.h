@@ -15,6 +15,7 @@
 #include "std/tsclosure.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -67,7 +68,7 @@ typename std::enable_if_t<FunctionPtr<Func>::argsCount == 0, TSClosure*> makeClo
     auto f = [fn = std::move(fn)](void** env) -> void* { return fn(); };
 
     auto functionPtr = toFunctionPtr(std::move(f));
-    void* env[] = {};
+    void** env = (void**)std::malloc(sizeof(void*)); // TODO Сonsider deleting memory
     auto* envLength = new Number{0.f};
     auto* numArgs = new Number{0.f};
     auto* opt = new Number{0.f};
@@ -90,7 +91,11 @@ typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, TSClosure*> makeClo
     };
 
     auto functionPtr = toFunctionPtr(std::move(f));
-    void* env[] = {};
+    void** env = (void**)std::malloc(argsCount * sizeof(void*)); // TODO Сonsider deleting memory
+    for (std::size_t i = 0; i < argsCount; ++i)
+    {
+        env[i] = (void*)std::malloc(sizeof(void*));
+    }
     auto* envLength = new Number{(double)argsCount};
     auto* numArgs = new Number{(double)argsCount};
     auto* opt = new Number{0.f};

@@ -42,7 +42,7 @@ set(HEADERS
     include/std/set_timeout.h
     include/std/set_interval.h
     include/std/event_loop.h
-)
+    include/std/tspromise.h)
 
 set(SOURCES
     src/gc.cpp
@@ -65,12 +65,12 @@ set(SOURCES
     src/set_timeout.cpp
     src/set_interval.cpp
     src/event_loop.cpp
+    src/tspromise.cpp
 
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
     src/private/libuv_wrapper/timer_event_handler.cpp
     src/private/libuv_wrapper/async_event_handler.cpp
-
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
@@ -84,7 +84,8 @@ set(SOURCES
     src/private/timers_storage.cpp
     src/private/promise/promise_p.cpp
     src/private/promise/shared_promise_internal_state.cpp
-    src/private/promise/promise_callback.cpp)
+    src/private/promise/promise_callback.cpp
+    src/private/default_executor.cpp)
 
 if(ENABLE_LOGS)
     add_definitions( -DENABLE_LOGS )
