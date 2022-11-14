@@ -10,10 +10,15 @@
  */
 
 #include "std/private/promise/promise_p.h"
+
 #include "std/private/promise/shared_promise_internal_state.h"
+#include "std/tspromise.h"
+#include "std/tsstring.h"
+#include <utility>
 
 PromisePrivate::PromisePrivate()
     : _internalState{std::make_shared<SharedPromiseInternalState>()}
+    , _connector{std::make_shared<Connector>(_internalState)}
 {
 }
 
@@ -26,11 +31,21 @@ PromisePrivate PromisePrivate::then(Object* onResolved, Object* onRejected, IExe
 
 void PromisePrivate::resolve(Object* resolved)
 {
+    if (resolved->isPromise())
+    {
+        auto* tsPromise = static_cast<Promise*>(resolved);
+        return joinPromise(tsPromise);
+    }
     _internalState->resolve(Result::makeValue(resolved));
 }
 
 void PromisePrivate::reject(Object* rejected)
 {
+    if (rejected->isPromise())
+    {
+        auto* tsPromise = static_cast<Promise*>(rejected);
+        return joinPromise(tsPromise);
+    }
     _internalState->reject(Result::makeError(rejected));
 }
 
@@ -62,4 +77,39 @@ bool PromisePrivate::operator!=(const PromisePrivate& other) const
 Object* PromisePrivate::getResult() const
 {
     return _internalState->getResult();
+}
+
+void PromisePrivate::joinPromise(Promise* tsPromise)
+{
+    if (tsPromise->ready())
+    {
+        return transferResult(tsPromise);
+    }
+    tsPromise->on<ReadyEvent>([this, tsPromise](auto&&...) { transferResult(tsPromise); });
+}
+
+void PromisePrivate::transferResult(Promise* readyPromise)
+{
+    if (readyPromise->isFulfilled())
+    {
+        resolve(readyPromise->getResult());
+    }
+    else if (readyPromise->isRejected())
+    {
+        reject(readyPromise->getResult());
+    }
+}
+
+std::weak_ptr<PromisePrivate::Connector> PromisePrivate::getReadyConnector() const
+{
+    return _connector;
+}
+
+PromisePrivate::Connector::Connector(std::weak_ptr<SharedPromiseInternalState> weakInternalState)
+    : _weakInternalState{std::move(weakInternalState)}
+{
+    if (auto ptr = _weakInternalState.lock())
+    {
+        ptr->on<ReadyEvent>([this](auto&&...) { emit(ReadyEvent{}); });
+    }
 }
