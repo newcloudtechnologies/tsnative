@@ -9,6 +9,15 @@
  *
  */
 
+function assertObjectKeysAreEqual(keys : string[], expectedKeys : string[], msg : string) {
+    console.assert(keys.length === expectedKeys.length, msg);
+    let currentIndex = 0;
+    while (currentIndex < keys.length) {
+        console.assert(keys[currentIndex] === expectedKeys[currentIndex], msg);
+        ++currentIndex;
+    }
+}
+
 {
     const a = { v: 12 };
     const b = { v: 12 };
@@ -35,6 +44,145 @@
     console.assert(c.v === 12, "Object spread initialization failed (4)");
     console.assert(c.k === "00", "Object spread initialization failed (5)");
 }
+
+{
+    const obj = { d: 1, b: 2, c: 3 };
+    const expectedKeys = ["d", "b", "c"];
+    assertObjectKeysAreEqual(Object.keys(obj), expectedKeys,
+            "Object.keys() array ordering test failed");
+}
+
+{
+    class Base {
+        x: number = 0;
+        y: string = "";
+    };
+
+    class Derived extends Base {
+        x: number = 10; // Shadowing
+        z: number = 100;
+    };
+
+    const d = new Derived();
+
+    const expectedKeys = ["x", "y", "z"];
+    assertObjectKeysAreEqual(Object.keys(d), expectedKeys,
+            "Object.keys() array shadowing test failed");
+}
+
+{
+    class Base {
+        a: string = "";
+        n: number = 15;
+    }
+
+    class Inheritor extends Base {
+        n: number = 10
+        a: string = "abcaba"
+    }
+
+    const i = new Inheritor;
+    const expectedKeys = ["a", "n"];
+
+    assertObjectKeysAreEqual(Object.keys(i), expectedKeys, "Object.keys() array shadowing test failed");
+}
+
+// TODO This test to be uncommented after TSN-218
+// {
+//     class C {
+//         _length = 0;
+//         get length() {
+//           return this._length;
+//         }
+//         set length(value) {
+//           this._length = value;
+//         }
+//     }
+//     const c = new C();
+//     const expectedKeys = ["_length"];
+
+//     console.log("Testing ser and get property, keys are: ")
+//     console.log(Object.keys(c))
+//     assertObjectKeysAreEqual(Object.keys(c), expectedKeys, "Object.keys() array get set properties test failed");
+// }
+
+// TODO uncomment this on TSN-219 fix
+// {
+//     class A {
+//         foo() : number
+//         {
+//             return 10;
+//         }
+//     }
+//     const expectedKeys: string [] = [];
+
+//     console.log(Object.keys(new A));
+
+//     assertObjectKeysAreEqual(Object.keys(new A), expectedKeys,
+//             "Object.keys() array class without properties test failed");
+// }
+//
+// {
+//     class A {
+//         a = 1;
+//         b = 1;
+//         foo() : number
+//         {
+//             return 10;
+//         }
+//     }
+
+//     class B extends A {
+//         b = 10; // Shadowing
+//         a = 5
+//         bar(): number {
+//             return 0;
+//         }
+//     }
+//     const expectedKeys = ["a", "b"];
+
+//     assertObjectKeysAreEqual(Object.keys(new A), expectedKeys,
+//             "Object.keys() array class without properties test failed");
+// }
+//
+// {
+//     class D {
+//         x: number = 10;
+//         z: number = 100;
+//         say (a : number) : number {
+//             return this.x * a;
+//         }
+//     };
+
+//     const d = new D();
+//     const expectedKeys = ["x", "z"];
+
+//     console.log("DBG:", Object.keys(d));
+
+//     assertObjectKeysAreEqual(Object.keys(d), expectedKeys, "Object.keys() array class with function test failed");
+// }
+
+{
+    let a = { "foo": function(){}}
+    const expectedKeys = ["foo"];
+
+    assertObjectKeysAreEqual(Object.keys(a), expectedKeys, "Object.keys() array object with function test failed");
+}
+
+// TODO: this is out of scope for TSN-198, uncomment for TSN-212
+// {
+//     class BB {
+//         parent = "1"
+//     }
+//
+//     class DD extends BB {}
+//     const d = new DD();
+//     const expectedKeys = ["parent"];
+//
+//     assertObjectKeysAreEqual(Object.keys(d), expectedKeys,
+//                "Object.keys() parent custom property test failed");
+//
+// }
 
 {
     interface A {
