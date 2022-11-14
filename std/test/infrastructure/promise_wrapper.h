@@ -15,8 +15,6 @@
 #include "std/private/make_closure_from_lambda.h"
 #include "std/private/promise/promise_p.h"
 
-namespace test
-{
 
 namespace test
 {
