@@ -252,9 +252,9 @@ type Callback<ArgT> = (i: ArgT) => void;
 // Use Promise constructor
 // Then with function
 
-        function doubler(i: number) {
-            return i * 2;
-        }
+    function doubler(i: number) {
+        return i * 2;
+    }
 
     const p = new Promise((resolve: Callback<number>) => {
         resolve(2);
@@ -323,4 +323,19 @@ type Callback<ArgT> = (i: ArgT) => void;
     Promise.resolve(p).then((i: number) => {
         console.assert(i === 23, "Promise. Case [1-W] This callback should not be called");
     });
+}
+
+{
+// Use Promise constructor
+// Use executor with one params(resolve)
+
+    function x3(i: number) {
+        return i * 3;
+    }
+
+    const p = new Promise((resolve: (i: number) => void, reject: (i: number) => void) => {
+        resolve(2);
+    }).then(x3).then(x3).then((i: number) => {
+        console.assert(i === 18, "Promise. Case [1-X-1]:  Expects 8");
+    })
 }
