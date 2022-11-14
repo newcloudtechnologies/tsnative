@@ -18,6 +18,9 @@
 
 #include <vector>
 
+namespace test
+{
+
 class Promise
 {
 protected:
@@ -75,3 +78,5 @@ private:
     PromisePrivate _promisePrivate;
     IExecutor& _executor;
 };
+
+} // namespace test

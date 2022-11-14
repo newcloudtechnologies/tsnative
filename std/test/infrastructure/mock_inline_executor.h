@@ -16,6 +16,9 @@
 #include "std/private/ievent_loop.h"
 #include "std/private/iexecutor.h"
 
+namespace test
+{
+
 class MockInlineExecutor : public IExecutor
 {
 public:
@@ -31,3 +34,5 @@ public:
 
     void enqueue(Callback&& callback) const noexcept override;
 };
+
+} // namespace test

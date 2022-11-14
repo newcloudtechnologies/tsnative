@@ -45,6 +45,10 @@ Promise::Promise(PromisePrivate* promisePrivate)
     : Object{TSTypeID::Promise}
     , _d{promisePrivate}
 {
+    if (auto ptr = _d->getReadyConnector().lock())
+    {
+        ptr->on<ReadyEvent>([this](auto&&...) { this->emit(ReadyEvent{}); });
+    }
 }
 
 Promise::Promise(TSClosure* executor)
@@ -107,6 +111,24 @@ Object* Promise::getResult() const
 {
     LOG_METHOD_CALL;
     return _d->getResult();
+}
+
+bool Promise::ready() const
+{
+    LOG_METHOD_CALL;
+    return _d->ready();
+}
+
+bool Promise::isFulfilled() const
+{
+    LOG_METHOD_CALL;
+    return _d->isFulfilled();
+}
+
+bool Promise::isRejected() const
+{
+    LOG_METHOD_CALL;
+    return _d->isRejected();
 }
 
 void Promise::success(Object* resolved)

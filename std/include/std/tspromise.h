@@ -15,6 +15,8 @@
 
 #include "std/tsobject.h"
 
+#include "std/private/promise/promise_emitter.h"
+
 #include <memory>
 
 class String;
@@ -24,7 +26,7 @@ class TSClosure;
 
 class PromisePrivate;
 
-class TS_DECLARE Promise : public Object
+class TS_DECLARE Promise : public Object, public EmitterBase<Promise, ReadyEvent>
 {
 protected:
     explicit Promise(PromisePrivate* promisePrivate);
@@ -49,6 +51,12 @@ public:
     Promise* finally(Union* onFinally);
 
     Object* getResult() const;
+
+    bool ready() const;
+
+    bool isFulfilled() const;
+
+    bool isRejected() const;
 
     TS_METHOD Boolean* equals(Object* other) const override;
 
