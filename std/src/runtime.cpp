@@ -19,6 +19,7 @@
 
 #include "std/event_loop.h"
 #include "std/private/allocator.h"
+#include "std/private/default_executor.h"
 #include "std/private/default_gc.h"
 #include "std/private/logger.h"
 #include "std/private/memory_diagnostics_storage.h"
@@ -33,6 +34,7 @@ std::unique_ptr<Allocator> Runtime::_allocator{nullptr};
 std::unique_ptr<MemoryDiagnosticsStorage> Runtime::_memoryDiagnosticsStorage{nullptr};
 std::unique_ptr<IEventLoop> Runtime::_loop{nullptr};
 std::unique_ptr<Runtime::Timers> Runtime::_timersStorage{nullptr};
+std::unique_ptr<IExecutor> Runtime::_executor{nullptr};
 
 namespace
 {
@@ -222,4 +224,13 @@ String* Runtime::toString() const
 Boolean* Runtime::toBool() const
 {
     return new Boolean(_isInitialized);
+}
+
+IExecutor* Runtime::getExecutor()
+{
+    if (!_executor)
+    {
+        _executor = std::make_unique<DefaultExecutor>(*_loop);
+    }
+    return _executor.get();
 }
