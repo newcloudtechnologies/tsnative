@@ -11,8 +11,8 @@
 
 #include <gtest/gtest.h>
 
-#include "mock_inline_executor.h"
-#include "promise_wrapper.h"
+#include "../infrastructure/mock_inline_executor.h"
+#include "../infrastructure/promise_wrapper.h"
 #include "std/private/promise/promise_p.h"
 #include "std/tsnumber.h"
 #include "std/tsstring.h"
@@ -20,14 +20,14 @@
 class PromiseTest : public ::testing::Test
 {
 public:
-    MockInlineExecutor& getExecutor()
+    test::MockInlineExecutor& getExecutor()
     {
         return _executor;
     }
 
-    Promise createPromise()
+    test::Promise createPromise()
     {
-        return Promise{getExecutor()};
+        return test::Promise{getExecutor()};
     }
 
     void SetUp() override
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    MockInlineExecutor _executor{};
+    test::MockInlineExecutor _executor{};
 };
 
 TEST_F(PromiseTest, checkEmptyStatesPromise)
@@ -113,7 +113,8 @@ TEST_F(PromiseTest, checkNonEquality)
 
 TEST_F(PromiseTest, checkEmptyThen)
 {
-    Promise p = createPromise();
+    auto p = createPromise();
+
     p.then();
 
     EXPECT_FALSE(p.ready());
@@ -127,7 +128,7 @@ TEST_F(PromiseTest, checkThenOnlyFulfilled)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise p = createPromise();
+    auto p = createPromise();
 
     auto onFulfilled = [](Number* n) -> Number*
     {
@@ -146,7 +147,7 @@ TEST_F(PromiseTest, checkThenAndIgnoreRejectReceiver)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto resolved = new Number{1.0f};
 
@@ -171,7 +172,7 @@ TEST_F(PromiseTest, checkThenAndIgnoreFulfilledReceiver)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto rejected = new Number{1.0f};
 
@@ -196,7 +197,7 @@ TEST_F(PromiseTest, checkThenNoFatalIfThrow)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto resolved = new Number{1.0f};
 
@@ -216,7 +217,7 @@ TEST_F(PromiseTest, checkFailMethod)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto rejected = new Number{1.0f};
 
@@ -237,7 +238,7 @@ TEST_F(PromiseTest, checkFinallyIfSetResolveValue)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto resolved = new Number{1.0f};
 
@@ -258,7 +259,7 @@ TEST_F(PromiseTest, checkFinallyIfSetRejectedValue)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(1);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto rejected = new Number{0.f};
 
@@ -279,7 +280,7 @@ TEST_F(PromiseTest, checkAllFullChainsAndSetResolve)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(3);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise
         .then(
@@ -308,7 +309,7 @@ TEST_F(PromiseTest, checkAllFullChainsAndSetReject)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(3);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise
         .then(
@@ -337,7 +338,7 @@ TEST_F(PromiseTest, checkHandlingLastException)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(3);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise
         .then([](Number* n) -> Number* { throw new String("FAIL-1"); })
@@ -356,7 +357,7 @@ TEST_F(PromiseTest, checkHandlingLastExceptionAndIgnoreBeforeReceivers)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(4);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise
         .then([](Number* n) -> Number* { throw new String("FAIL-1"); })
@@ -381,7 +382,7 @@ TEST_F(PromiseTest, checkIgnoreEmptyReceiversAndHandlingResultNoEmptyIfResolve)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(3);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise.then().finally().then(
         [](Number* n) -> Object*
@@ -397,7 +398,7 @@ TEST_F(PromiseTest, checkLastReceiverIsFinally)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(5);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     auto* value = new Number{1.0f};
 
@@ -440,7 +441,7 @@ TEST_F(PromiseTest, checkIgnoreEmptyReceiversAndHandlingResultNoEmptyIfReject)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(3);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise.then().finally().then(
         [](Number* n) -> Object*
@@ -461,7 +462,7 @@ TEST_F(PromiseTest, checkIgnoreBeforeFulfilledAndHandlingCatch)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(6);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise.then()
         .finally()
@@ -492,7 +493,7 @@ TEST_F(PromiseTest, checkIgnoreRestFulfilledAndHandlingCatch)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(6);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise
         .then(
@@ -529,7 +530,7 @@ TEST_F(PromiseTest, checkImmutableStatePromise)
 {
     EXPECT_CALL(getExecutor(), enqueue(::testing::_)).Times(3);
 
-    Promise promise = createPromise();
+    auto promise = createPromise();
 
     promise
         .then(

@@ -11,6 +11,9 @@
 
 #include "promise_wrapper.h"
 
+namespace test
+{
+
 Promise::Promise(PromisePrivate promisePrivate, IExecutor& executor)
     : _promisePrivate{promisePrivate}
     , _executor{executor}
@@ -61,3 +64,5 @@ bool Promise::isRejected() const
 {
     return _promisePrivate.isRejected();
 }
+
+} // namespace test
