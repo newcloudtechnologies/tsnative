@@ -57,22 +57,31 @@ Promise::Promise(TSClosure* executor)
     LOG_METHOD_CALL;
     LOG_ADDRESS("Calling Promise ctor with executor for ", this);
 
-    auto* resolve = makeClosure(
+    auto numArgs = (std::size_t)executor->getNumArgs()->unboxed();
+
+    TSClosure* resolve = makeClosure(
         [this](Object* resolved) -> Object*
         {
             success(resolved);
             return Undefined::instance();
         });
 
-    auto* reject = makeClosure(
+    TSClosure* reject = makeClosure(
         [this](Object* rejected) -> Object*
         {
             failure(rejected);
             return Undefined::instance();
         });
 
-    executor->setEnvironmentElement(resolve, 0);
-    executor->setEnvironmentElement(reject, 1);
+    if (numArgs == 1)
+    {
+        executor->setEnvironmentElement(resolve, 0);
+    }
+    else if (numArgs == 2)
+    {
+        executor->setEnvironmentElement(resolve, 0);
+        executor->setEnvironmentElement(reject, 1);
+    }
     executor->call();
 }
 
