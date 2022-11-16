@@ -188,3 +188,87 @@
         break;
     }
 }
+
+{
+    const are_equal_arrays = function <T>(a: T[], b: T[]): boolean {
+        let result = false;
+
+        if (a.length === b.length) {
+            result = true;
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) {
+                    result = false;
+                    break;
+                }
+            }
+        } else {
+            result = false;
+        }
+
+        return result;
+    };
+
+    {
+        const arr = [1, 2, 3, 4, 5, 6, 7, 8];
+        const expected = [1, 2, 3, 4, 5, 6, 7, 8];
+
+        for (let item of arr) {
+            if (item === 4) {
+                item = 12
+            }
+        }
+
+        console.assert(are_equal_arrays(arr, expected), "For..of shouldn't change iteration source");
+    }
+
+    {
+        class C {
+            n = 0;
+        }
+
+        const o1: C = { n: 1 };
+        const o2: C = { n: 2 };
+        const o3: C = { n: 3 };
+
+        const arr = [o1, o2, o3];
+        const expected = [o1, o2, o3];
+
+        let counter = 0;
+
+        for (let item of arr) {
+            if (counter === 1) {
+                item = { n: 99 }
+            }
+
+            ++counter;
+        }
+
+        console.assert(are_equal_arrays(arr, expected), "For..of shouldn't change iteration source (array of objects)");
+    }
+
+    {
+        class C {
+            n = 0;
+        }
+
+
+        const o1: C = { n: 1 };
+        const o2: C = { n: 2 };
+        const o3: C = { n: 3 };
+
+        const arr = [o1, o2, o3];
+        const expected = [o1, o2, o3];
+
+        let counter = 0;
+
+        for (let item of arr) {
+            if (counter === 1) {
+                item.n = 99;
+            }
+
+            ++counter;
+        }
+
+        console.assert(are_equal_arrays(arr, expected) && arr[1].n === 99 && expected[1].n === 99, "For..of shouldn't change iteration source (array of objects), iterable's properties should be able to change");
+    }
+}

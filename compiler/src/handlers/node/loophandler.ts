@@ -340,7 +340,12 @@ export class LoopHandler extends AbstractNodeHandler {
         let value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
         value = this.generator.builder.createBitCast(value, variableType.getLLVMType());
 
-        updateScope(value);
+        // Iteration source have to be immutable.
+        // Make a value clone regardless if iterable value is 'let' or 'const'.
+        let clone = this.generator.gc.allocate(value.type.getPointerElementType());
+        clone = clone.makeAssignment(value);
+
+        updateScope(clone);
 
         builder.createBr(body);
 
@@ -440,7 +445,12 @@ export class LoopHandler extends AbstractNodeHandler {
         let value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
         value = this.generator.builder.createBitCast(value, variableType.getLLVMType());
 
-        updateScope(value);
+        // Iteration source have to be immutable.
+        // Make a value clone regardless if iterable value is 'let' or 'const'.
+        let clone = this.generator.gc.allocate(value.type.getPointerElementType());
+        clone = clone.makeAssignment(value);
+
+        updateScope(clone);
 
         builder.createBr(body);
 

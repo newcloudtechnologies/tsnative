@@ -58,6 +58,10 @@ export class LLVMType {
     return LLVMType.make(type, generator);
   }
 
+  static getCXXVoidStarType(generator: LLVMGenerator) {
+    return LLVMType.getInt8Type(generator).getPointer();
+  }
+
   static getDoubleType(generator: LLVMGenerator) {
     const type = llvm.Type.getDoubleTy(generator.context);
     return LLVMType.make(type, generator);

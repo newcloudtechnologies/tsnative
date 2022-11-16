@@ -183,11 +183,8 @@ export class TSObject {
       throw new Error(`Unable to find cxx 'keys' for 'Object'`);
     }
 
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(keysDeclaration);
-    const tsReturnType = signature.getReturnType();
-    const llvmReturnType = tsReturnType.getLLVMReturnType();
-
-    const llvmArgumentTypes = [this.llvmType];
+    const llvmReturnType = LLVMType.getCXXVoidStarType(this.generator);
+    const llvmArgumentTypes = [LLVMType.getCXXVoidStarType(this.generator)];
 
     const { fn: keys } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
@@ -331,10 +328,11 @@ export class TSObject {
 
     const castedObject = this.generator.builder.createBitCast(
       obj,
-      this.generator.ts.obj.getLLVMType()
+      LLVMType.getCXXVoidStarType(this.generator)
     );
 
-    return this.generator.builder.createSafeCall(this.keysFn, [castedObject]);
+    const keys = this.generator.builder.createSafeCall(this.keysFn, [castedObject]);
+    return this.generator.builder.createBitCast(keys, this.generator.ts.array.getLLVMType());
   }
 
   get(thisValue: LLVMValue, key: string) {

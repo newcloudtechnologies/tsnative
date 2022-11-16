@@ -382,3 +382,32 @@
         break;
     }
 }
+
+{
+    const are_equal_arrays = function <T>(a: T[], b: T[]): boolean {
+        let result = false;
+
+        if (a.length === b.length) {
+            result = true;
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) {
+                    result = false;
+                    break;
+                }
+            }
+        } else {
+            result = false;
+        }
+
+        return result;
+    };
+
+    const obj = { a: 1, b: 2, c: 3 };
+    const expected = ["a", "b", "c"];
+
+    for (let prop in obj) {
+        prop = "22"
+    }
+
+    console.assert(are_equal_arrays(Object.keys(obj), expected), "For..in shouldn't change iteration source");
+}
