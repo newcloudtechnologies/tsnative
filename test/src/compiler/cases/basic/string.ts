@@ -236,3 +236,21 @@
 
   console.assert(templateStringLiteral === expected, "Template string test failed (2)");
 }
+
+{
+  const original = '1234qwerty 567 qwe';
+
+  const sub = '1234';
+
+  const newSub = '';
+
+  console.assert(original.replace(sub, newSub) === "qwerty 567 qwe", "Replace failed (1)");
+
+  console.assert(original.replace('qwe','ABCD') === "1234ABCDrty 567 qwe", "Replace failed (2)");
+
+  console.assert('aa aa aa'.replace('aa','Word') === "Word aa aa", "Replace failed (3)");
+  
+  console.assert('aaa a'.replace('','!') === "!aaa a", "Replace failed (4)");
+
+  console.assert('aaa b'.replace('aaa b','') === "", "Replace failed (5)");
+}

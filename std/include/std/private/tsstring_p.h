@@ -44,6 +44,8 @@ public:
     virtual bool includes(const std::string& pattern) const = 0;
     virtual bool includes(const std::string& pattern, int startIndex) const = 0;
 
+    virtual std::string replace(const std::string& substring, const std::string& replacement) const = 0;
+
     virtual int indexOf(const std::string& pattern) const = 0;
     virtual int indexOf(const std::string& pattern, int startIndex) const = 0;
 
