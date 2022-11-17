@@ -8,8 +8,18 @@
 # at http://ncloudtech.com/contact.html
 #
 
-find_package(LLVM REQUIRED CONFIG)
 find_package(tsnative-std REQUIRED)
+
+if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
+    find_program(llcBin tsnative-llc)
+    if (NOT llcBin)
+        message(FATAL_ERROR "tsnative-llc not found")
+    endif()
+else()
+    find_program(llcBin tsnative-llc REQUIRED)
+endif()
+
+set (nmBin ${CMAKE_NM})
 
 if (${TS_PROFILE_BUILD})
     message(STATUS "Enable TsBuildUtils2 profiler")
@@ -141,7 +151,6 @@ function (add_ts_library ARG_NAME ...)
     # Stage 4
 
     string(REPLACE ".ll" ".cpp.o" objFile "${llFile}")
-    set(llcBin ${LLVM_TOOLS_BINARY_DIR}/llc${CMAKE_EXECUTABLE_SUFFIX})
     add_custom_command(
         OUTPUT ${objFile}
         DEPENDS ${llFile}
@@ -271,8 +280,8 @@ function (_add_nm_command ARG_TARGET)
 
     add_custom_command(
         TARGET ${ARG_TARGET} POST_BUILD
-        COMMAND ${CMAKE_NM} ${libPath} > ${mangledPath}
-        COMMAND ${CMAKE_NM} -C ${libPath} > ${demangledPath}
+        COMMAND ${nmBin} ${libPath} > ${mangledPath}
+        COMMAND ${nmBin} -C ${libPath} > ${demangledPath}
         COMMENT "[TS2] _add_nm_command: ${ARG_TARGET}"
         VERBATIM
     )
@@ -333,8 +342,8 @@ function (_add_nm_target ARG_NAME ARG_OUT_MANGLED ARG_OUT_DEMANGLED)
 
         add_custom_command(
             TARGET ${mainTarget} POST_BUILD
-            COMMAND ${CMAKE_NM} "${libPath}" > "${mangledPath}"
-            COMMAND ${CMAKE_NM} -C "${libPath}" > "${demangledPath}"
+            COMMAND ${nmBin} "${libPath}" > "${mangledPath}"
+            COMMAND ${nmBin} -C "${libPath}" > "${demangledPath}"
             COMMENT "[TS2] Generating symbols for ${library}"
             DEPENDS "${libPath}"
             VERBATIM
