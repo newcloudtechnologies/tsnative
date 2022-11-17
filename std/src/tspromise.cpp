@@ -57,14 +57,14 @@ Promise::Promise(TSClosure* executor)
     LOG_METHOD_CALL;
     LOG_ADDRESS("Calling Promise ctor with executor for ", this);
 
-    auto* resolve = makeClosure(
+    auto* resolve = makeClosure<TSClosure>(
         [this](Object* resolved) -> Object*
         {
             success(resolved);
             return Undefined::instance();
         });
 
-    auto* reject = makeClosure(
+    auto* reject = makeClosure<TSClosure>(
         [this](Object* rejected) -> Object*
         {
             failure(rejected);

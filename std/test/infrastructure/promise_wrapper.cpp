@@ -37,17 +37,8 @@ Promise Promise::fail()
 
 Promise Promise::finally()
 {
-    return Promise{_promisePrivate.then(Undefined::instance(), Undefined::instance(), _executor), _executor};
-}
-
-void Promise::resolve(Object* resolved)
-{
-    _promisePrivate.resolve(resolved);
-}
-
-void Promise::reject(Object* rejected)
-{
-    _promisePrivate.reject(rejected);
+    return Promise{_promisePrivate.then(test::Undefined::instance(), test::Undefined::instance(), _executor),
+                   _executor};
 }
 
 bool Promise::ready() const

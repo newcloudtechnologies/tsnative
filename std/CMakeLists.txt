@@ -198,7 +198,7 @@ if (BUILD_TEST)
                      test/infrastructure/test_allocator.h
                      test/infrastructure/global_test_allocator_fixture.h
                      test/infrastructure/object_wrappers.h
-                     test/infrastructure/mock_inline_executor.h)
+                     test/mocks/mock_inline_executor.h)
 
     set(TEST_SOURCES test/infrastructure/equality_checkers.cpp
                      test/infrastructure/test_allocator.cpp
