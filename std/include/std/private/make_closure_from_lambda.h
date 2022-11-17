@@ -12,7 +12,7 @@
 #pragma once
 
 #include "std/private/lambda_to_function_ptr.h"
-#include "std/tsclosure.h"
+#include "std/tsnumber.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -62,26 +62,27 @@ auto apply(F&& f, Tuple&& tuple)
 
 } // namespace details
 
-template <typename Func>
-typename std::enable_if_t<FunctionPtr<Func>::argsCount == 0, TSClosure*> makeClosure(Func&& fn)
+template <typename Closure, typename Func>
+typename std::enable_if_t<FunctionPtr<Func>::argsCount == 0, Closure*> makeClosure(Func&& fn)
 {
     auto f = [fn = std::move(fn)](void** env) -> void* { return fn(); };
 
     auto functionPtr = toFunctionPtr(std::move(f));
-    void** env = (void**)std::malloc(sizeof(void*)); // TODO Сonsider deleting memory
+    void** env = (void**)std::malloc(sizeof(void*)); // TODO Consider deleting memory
     auto* envLength = new Number{0.f};
     auto* numArgs = new Number{0.f};
     auto* opt = new Number{0.f};
 
-    auto* closure = new TSClosure{(void*)functionPtr, env, envLength, numArgs, opt};
+    auto* closure = new Closure{(void*)functionPtr, env, envLength, numArgs, opt};
 
     return closure;
 }
 
-template <typename Func,
+template <typename Closure,
+          typename Func,
           typename TupleArgsType = typename FunctionPtr<Func>::ArgTypes,
           std::size_t argsCount = FunctionPtr<Func>::argsCount>
-typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, TSClosure*> makeClosure(Func&& fn)
+typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, Closure*> makeClosure(Func&& fn)
 {
     auto f = [fn = std::move(fn)](void** env) -> void*
     {
@@ -91,7 +92,7 @@ typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, TSClosure*> makeClo
     };
 
     auto functionPtr = toFunctionPtr(std::move(f));
-    void** env = (void**)std::malloc(argsCount * sizeof(void*)); // TODO Сonsider deleting memory
+    void** env = (void**)std::malloc(argsCount * sizeof(void*)); // TODO Consider deleting memory
     for (std::size_t i = 0; i < argsCount; ++i)
     {
         env[i] = (void*)std::malloc(sizeof(void*));
@@ -100,7 +101,7 @@ typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, TSClosure*> makeClo
     auto* numArgs = new Number{(double)argsCount};
     auto* opt = new Number{0.f};
 
-    auto* closure = new TSClosure{(void*)functionPtr, env, envLength, numArgs, opt};
+    auto* closure = new Closure{(void*)functionPtr, env, envLength, numArgs, opt};
 
     return closure;
 }
