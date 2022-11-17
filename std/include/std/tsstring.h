@@ -69,6 +69,8 @@ public:
     TS_METHOD TS_SIGNATURE("includes(pattern: string, start?: number): boolean") Boolean* includes(
         String* pattern, Union* maybeStartIndex) const;
 
+    TS_METHOD String* replace(String* substr, String* newSubstr) const;
+
     TS_METHOD TS_SIGNATURE("indexOf(pattern: string, start?: number): number") Number* indexOf(
         String* pattern, Union* maybeStartIndex) const;
     TS_METHOD TS_SIGNATURE("lastIndexOf(pattern: string, start?: number): number") Number* lastIndexOf(

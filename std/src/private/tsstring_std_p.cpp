@@ -235,6 +235,26 @@ std::string StdStringBackend::substring(int startIndex, int endIndex) const
     return _string.substr(start, end - start);
 }
 
+std::string StdStringBackend::replace(const std::string& substr, const std::string& newSubstr) const
+{
+    std::string result = _string;
+
+    if (substr.empty())
+    {
+        result = newSubstr + result;
+    }
+    else
+    {
+        auto pos = result.find(substr);
+        if (pos != std::string::npos)
+        {
+            result.replace(pos, substr.size(), newSubstr);
+        }
+    }
+
+    return result;
+}
+
 std::string StdStringBackend::trim() const
 {
     std::string s = _string;

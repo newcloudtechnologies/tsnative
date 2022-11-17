@@ -40,6 +40,8 @@ public:
     std::string substring(int startIndex, int endIndex) const override;
     std::string trim() const override;
 
+    std::string replace(const std::string& substr, const std::string& newSubstr) const override;
+
     std::string toLowerCase() const override;
     std::string toUpperCase() const override;
 

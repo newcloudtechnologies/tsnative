@@ -183,6 +183,11 @@ String* String::substring(Number* startIndex, Union* maybeEndIndex) const
     return new String(result);
 }
 
+String* String::replace(String* substr, String* newSubstr) const
+{
+    return new String(_d->replace(substr->cpp_str(), newSubstr->cpp_str()));
+}
+
 String* String::trim() const
 {
     std::string result = _d->trim();

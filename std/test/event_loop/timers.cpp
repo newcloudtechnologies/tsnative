@@ -17,7 +17,7 @@
 
 using namespace std::chrono_literals;
 
-TEST(UVTimer, CheckCreateTimer)
+TEST(UVTimer, checkCreateTimer)
 {
     UVLoopAdapter loop{};
 
@@ -31,7 +31,7 @@ TEST(UVTimer, CheckCreateTimer)
     ASSERT_NE(timer_1.getTimerID(), timer_2.getTimerID());
 }
 
-TEST(UVTimer, CheckStartSetTimeout)
+TEST(UVTimer, checkStartSetTimeout)
 {
     UVLoopAdapter loop{};
     UVTimerAdapter timer{loop, 1};
@@ -49,7 +49,7 @@ TEST(UVTimer, CheckStartSetTimeout)
     EXPECT_TRUE(flag);
 }
 
-TEST(UVTimer, CheckNestedTimeout)
+TEST(UVTimer, checkNestedTimeout)
 {
     UVLoopAdapter loop{};
     UVTimerAdapter timer_1{loop, 1};
@@ -69,7 +69,7 @@ TEST(UVTimer, CheckNestedTimeout)
     EXPECT_TRUE(val);
 }
 
-TEST(UVTimer, CheckTimeoutArgs)
+TEST(UVTimer, checkTimeoutArgs)
 {
     UVLoopAdapter loop{};
     UVTimerAdapter timer{loop, 1};
@@ -90,7 +90,7 @@ TEST(UVTimer, CheckTimeoutArgs)
     EXPECT_EQ(expected_sum_a_b, 3);
 }
 
-TEST(UVTimer, CheckStopTimeout)
+TEST(UVTimer, checkStopTimeout)
 {
     UVLoopAdapter loop{};
     UVTimerAdapter timer{loop, 1};
@@ -105,7 +105,7 @@ TEST(UVTimer, CheckStopTimeout)
     loop.run();
 }
 
-TEST(UVTimer, CheckStopTimeoutIfCallDestructor)
+TEST(UVTimer, checkStopTimeoutIfCallDestructor)
 {
     UVLoopAdapter uvLoop{};
     {
@@ -115,7 +115,7 @@ TEST(UVTimer, CheckStopTimeoutIfCallDestructor)
     uvLoop.processEvents();
 }
 
-TEST(UVTimer, CheckSetIntervalStopping)
+TEST(UVTimer, checkSetIntervalStopping)
 {
     UVLoopAdapter loop{};
     UVTimerAdapter timer{loop, 1};
