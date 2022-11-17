@@ -6,7 +6,7 @@ import os, shutil
 class TSNativeCompilerConan(ConanFile):
     name = "tsnative-compiler"
 
-    settings = "os", "arch", "compiler", "build_type"
+    settings = "os", "arch", "build_type"
 
     description = "Typescript compiler"
 
@@ -14,6 +14,7 @@ class TSNativeCompilerConan(ConanFile):
 
     def requirements(self):
         self.requires("llvm-node/3.0.6", private=True)
+        self.requires("llvm/11.1.0#0", private=True)
 
     def export_sources(self):
         self.copy("package.json")
@@ -61,7 +62,15 @@ class TSNativeCompilerConan(ConanFile):
         self.copy("*", src="seed", dst="seed")
         self.copy("*", src="scripts", excludes="tsnative-compiler*")
         self.copy("tsconfig.json")
-        
+
+        binext = ""
+        if self.settings.os == "Windows":
+            binext = ".exe"
+
+        llvm_path = self.dependencies["llvm"].cpp_info.bindirs[0]
+        llc_path = os.path.join(llvm_path, "llc%s" % binext)
+        shutil.copy2(llc_path, os.path.join(self.package_folder, "tsnative-llc%s" % binext))
+
         if (self.settings.build_type == self.debug_build_type):
             self.copy("package.json")
             
@@ -78,15 +87,8 @@ class TSNativeCompilerConan(ConanFile):
             # It is important to give a name of folder exactly equal to a name in the tsconfig.json.
             self.copy("*", src="sourceMaps", dst="sourceMaps")
 
-
-
     def package_info(self):
         self.env_info.path.append(self.package_folder)
-
-    def package_id(self):
-        # Ignore compiler and build_type settings when generatings package id
-        # because we dont really care what compiler was used to build the binary
-        del self.info.settings.compiler
 
     # TODO: common python lib required - use python_requires?
     # keep in sync with test/conanfile.py
