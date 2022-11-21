@@ -21,14 +21,11 @@ export class OperatorInHandler extends AbstractExpressionHandler {
       this.generator.emitLocation(expression.left);
       this.generator.emitLocation(expression.right);
 
-      let left = this.generator.handleExpression(expression.left, env);
-      let right = this.generator.handleExpression(expression.right, env);
+      const left = this.generator.handleExpression(expression.left, env);
+      const right = this.generator.handleExpression(expression.right, env);
 
-      switch (expression.operatorToken.kind) {
-        case ts.SyntaxKind.InKeyword:
+      if (expression.operatorToken.kind === ts.SyntaxKind.InKeyword) {
           return this.generator.ts.obj.createOperatorIn(right, left);
-        default:
-          break;
       }
     }
 
