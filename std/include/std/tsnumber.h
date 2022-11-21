@@ -46,7 +46,7 @@ public:
     TS_METHOD Number* divInplace(Number* other);
     TS_METHOD Number* modInplace(Number* other);
 
-    TS_METHOD Number* negate();
+    TS_METHOD Number* negate() const;
 
     TS_METHOD Number* prefixIncrement();
     TS_METHOD Number* postfixIncrement();

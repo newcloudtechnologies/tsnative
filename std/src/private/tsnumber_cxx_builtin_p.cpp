@@ -68,9 +68,9 @@ void NumberCXXBuiltinPrivate::modInplace(double other)
     _value = std::fmod(_value, other);
 }
 
-void NumberCXXBuiltinPrivate::negate()
+double NumberCXXBuiltinPrivate::negate() const
 {
-    _value = -_value;
+    return -_value;
 }
 
 void NumberCXXBuiltinPrivate::prefixIncrement()

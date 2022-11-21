@@ -210,6 +210,7 @@ if (BUILD_TEST)
                      test/event_loop/custom_loop_test.cpp
                      test/event_loop/timers.cpp
                      test/primitive_types/string/replace_tests.cpp
+                     test/primitive_types/number/unary.cpp
                      test/promise/expected_tests.cpp
                      test/promise/general_finite_state_machine_tests.cpp
                      test/infrastructure/promise_wrapper.cpp

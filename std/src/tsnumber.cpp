@@ -105,10 +105,9 @@ Number* Number::modInplace(Number* other)
     return this;
 }
 
-Number* Number::negate()
+Number* Number::negate() const
 {
-    _d->negate();
-    return this;
+    return new Number(_d->negate());
 }
 
 Number* Number::prefixIncrement()

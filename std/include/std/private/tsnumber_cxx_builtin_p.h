@@ -32,7 +32,7 @@ public:
     void divInplace(double other) override;
     void modInplace(double other) override;
 
-    void negate() override;
+    double negate() const override;
 
     void prefixIncrement() override;
     double postfixIncrement() override;
