@@ -74,6 +74,7 @@ public:
 protected:
     bool has(String* key) const;
     virtual Array<String*>* getKeysArray() const;
+    TS_METHOD Boolean* operatorIn(String * key) const;
 
 public:
     TS_METHOD TS_SIGNATURE("get(key: string): any") void* get(String* key) const;
