@@ -26,4 +26,4 @@ export { NoopHandler } from "./noophandler";
 export { ParenthesizedHandler } from "./parenthesizedhandler";
 export { TemplateExpressionHandler } from "./templateexpressionhandler";
 export { UnaryHandler } from "./unaryhandler";
-export { OperatorInHandler } from "./operator_inhandler";
+export { OperatorInHandler } from "./operator_in_handler";

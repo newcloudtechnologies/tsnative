@@ -51,7 +51,7 @@
 {
     class A {
         x = 10;
-        sqX() : number{
+        sqX() : number {
             return this.x * this.x;
         }
     }
@@ -72,6 +72,24 @@
     const d = new Derived();
     console.assert("m" in d === true, "In operator: inheritance 1");
     console.assert("n" in d === true, "In operator: inheritance 2");
+}
+
+{
+    class Base {
+        m = 10;
+    }
+    class Derived extends Base {
+        n = 15;
+    }
+
+    class Derived2 extends Derived {
+        k = 15;
+    }
+
+    const d = new Derived2();
+    console.assert("m" in d === true, "In operator: deep inheritance 1");
+    console.assert("n" in d === true, "In operator: deep inheritance 2");
+    console.assert("n" in d === true, "In operator: deep inheritance 3");
 }
 
 {
