@@ -30,7 +30,7 @@ public:
     virtual void divInplace(double other) = 0;
     virtual void modInplace(double other) = 0;
 
-    virtual void negate() = 0;
+    virtual double negate() const = 0;
 
     virtual void prefixIncrement() = 0;
     virtual double postfixIncrement() = 0;

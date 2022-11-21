@@ -19,6 +19,27 @@
 }
 
 {
+    let num = 123;
+    let negated = -num;
+    console.assert(num === 123 && negated === -123, "Unary negate test on number");
+
+    num = -123.5;
+    negated = -num;
+    console.assert(num === -123.5 && negated === 123.5, "Unary negate test on number #2");
+
+    num = 0.0;
+    negated = -num;
+    console.assert(num === 0.0 && negated === 0.0, "Unary negate test on number #3");
+}
+
+{
+    let stat = true;
+    let other = !stat;
+
+    console.assert(stat === true && other === false, "Unary negate test on boolean");
+}
+
+{
     let s = "0s";
     let q = s;
 
