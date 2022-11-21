@@ -25,6 +25,7 @@ import {
   UnaryHandler,
   NoopHandler,
   TemplateExpressionHandler,
+  OperatorInHandler
 } from "../../handlers/expression";
 import { LLVMGenerator } from "../../generator";
 import * as ts from "typescript";
@@ -52,7 +53,8 @@ export class ExpressionHandlerChain {
       .setNext(new LogicHandler(generator))
       .setNext(new ParenthesizedHandler(generator))
       .setNext(new UnaryHandler(generator))
-      .setNext(new TemplateExpressionHandler(generator));
+      .setNext(new TemplateExpressionHandler(generator))
+      .setNext(new OperatorInHandler(generator));
 
     this.root = noop;
   }

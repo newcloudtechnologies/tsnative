@@ -31,6 +31,8 @@ export class TSObject {
   private setFn: LLVMValue | undefined;
   private keysFn: LLVMValue | undefined;
   private copyPropsFn: LLVMValue | undefined;
+  private operatorInFn: LLVMValue | undefined;
+
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -221,6 +223,33 @@ export class TSObject {
     return copyProps;
   }
 
+  private initOperatorInFn() {
+    const operatorInDeclaration = this.declaration.members.find((m) => m.name?.getText() === "operatorIn");
+
+    if (!operatorInDeclaration) {
+      throw new Error(`Unable to find 'operatorIn' at '${this.declaration.getText()}'`);
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      operatorInDeclaration,
+      undefined,
+      this.declaration.type,
+      [this.generator.ts.str.getDeclaration().type],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Unable to find cxx 'operatorIn' for 'Object'`);
+    }
+
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.ts.str.getLLVMType()];
+
+    const { fn: operatorIn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return operatorIn;
+  }
+
   private getVPtrEquals(thisValue: LLVMValue) {
     const vtables = this.generator.builder.createBitCast(
       thisValue,
@@ -370,6 +399,16 @@ export class TSObject {
 
     return result;
   }
+
+  createOperatorIn(thisValue: LLVMValue, key: LLVMValue) {
+    if (!this.operatorInFn) {
+      this.operatorInFn = this.initOperatorInFn();
+    }
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+    return this.generator.builder.createSafeCall(this.operatorInFn, [thisUntyped, key]);
+  }
+
 
   getLLVMType() {
     return this.llvmType;
