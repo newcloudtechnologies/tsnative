@@ -63,6 +63,45 @@
 }
 
 {
+    class C {
+        _length = 0;
+        get length() {
+          return this._length;
+        }
+        set length(value) {
+          this._length = value;
+        }
+    }
+    const c = new C();
+
+    // TODO This test to be uncommented after TSN-218
+    // console.assert("length" in c === true, "In operator: class with property getter and setter 1")
+    console.assert("_length" in c === true, "In operator: class with property getter and setter 2")
+}
+
+{
+    class C {
+        _length = 0;
+        get length() {
+          return this._length;
+        }
+        set length(value) {
+          this._length = value;
+        }
+    }
+    class D extends C {
+        x = 1;
+    }
+    const d = new D();
+
+    // TODO This test to be uncommented after TSN-218
+    //console.assert("length" in d === true, "In operator: class with property getter and setter and inheritance 1")
+    console.assert("_length" in d === true, "In operator: class with property getter and setter and inheritance 2")
+    console.assert("x" in d === true, "In operator: class with property getter and setter and inheritance 3")
+}
+
+
+{
     class Base {
         m = 10;
     }
@@ -90,6 +129,23 @@
     console.assert("m" in d === true, "In operator: deep inheritance 1");
     console.assert("n" in d === true, "In operator: deep inheritance 2");
     console.assert("n" in d === true, "In operator: deep inheritance 3");
+}
+
+{
+    class Employee {
+        static headcount: number = 0;
+        constructor(private name: string) {
+            Employee.headcount++;
+        }
+        static getHeadcount() : number {
+            return Employee.headcount;
+        }
+    }
+    const a = new Employee("Foo");
+    // TODO: uncomment this after TNS-247 is fixed
+    //console.assert("name" in a === true, "In operator: static 1");
+    console.assert("headcount" in a === false, "In operator: static 2");
+    console.assert("getHeadcount" in a === false, "In operator: static 3");
 }
 
 {
