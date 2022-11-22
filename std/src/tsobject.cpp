@@ -180,14 +180,7 @@ Boolean* Object::operatorIn(String* key) const
         // Super lookup (linear)
         std::string keyCppStr = key->cpp_str();
         auto* superObject = static_cast<Union*>(get(superKey))->getValue();
-        std::vector<String*> superKeys = superObject->getKeys();
-        for (String* s : superKeys)
-        {
-            if (s->cpp_str() == keyCppStr)
-            {
-                return new Boolean(true);
-            }
-        }
+        return superObject->operatorIn(key);
     }
     return new Boolean(false);
 }
