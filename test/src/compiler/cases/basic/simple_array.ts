@@ -490,3 +490,41 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
   f(...getns());
 }
+
+
+{
+  let arr: number[] = [] as number[]
+  let width = 0;
+  arr.push(width);
+  width += 1;
+
+  console.assert(arr[0] === 0, "Adding numbers to array should behave as 'value types'");
+}
+
+{
+  let obj = {
+    num: 10,
+  };
+
+  interface Interf 
+  {
+      num: number,
+  }
+
+  let arr2 : Interf[] = [] as Interf[];
+  arr2.push(obj);
+  obj.num = 22;
+
+  console.assert(arr2[0].num === 22, "Adding objects to array");
+}
+
+{
+  let str = "aaa";
+  let arr3 = new Array<String>();
+
+  arr3.push(str);
+  str = "bbb";
+  arr3.push(str);
+
+  console.assert(arr3[0] === "aaa" && arr3[1] === "bbb", "Adding strings to array should behave as 'value types'");
+}
