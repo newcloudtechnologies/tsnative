@@ -121,7 +121,7 @@
     return state;
   }
 
-  // const FMStore = createStore2(MyReducer)
+  const FMStore = createStore2(MyReducer)
   // FMStore.dispatch({ type: 123 })
 }
 
