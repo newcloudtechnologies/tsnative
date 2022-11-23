@@ -449,7 +449,7 @@ export class LLVMValue {
     throw new Error(`Invalid operand types to greater equals than: 
                             lhs: ${this.type.toString()} ${this.type.typeIDName}
                             rhs: ${other.type.toString()} ${other.type.typeIDName}`);
-  } 
+  }
 
   clone(): LLVMValue {
     if (this.type.isTSNumber()) {
