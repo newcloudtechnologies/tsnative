@@ -102,6 +102,11 @@ export class LiteralHandler extends AbstractExpressionHandler {
             // mimics 'value' semantic for primitives
             propVal = propVal.clone();
           }
+
+          while(propVal.type.isUnion()) {
+            propVal = this.generator.ts.union.get(propVal)
+          }
+
           llvmValues.set(property.name.getText(), propVal);
           break;
         case ts.SyntaxKind.ShorthandPropertyAssignment:
