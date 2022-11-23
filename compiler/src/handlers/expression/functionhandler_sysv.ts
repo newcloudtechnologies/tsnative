@@ -282,6 +282,10 @@ export class SysVFunctionHandler {
 
       let arg = this.generator.handleExpression(argument, outerEnv);
 
+      if (arg.isTSPrimitivePtr()) {
+        arg = arg.clone();
+      }
+
       // there may be no parameter declared at argument's index in case of rest arguments
       const parameterAtIndex = declaration.parameters[index];
       if (parameterAtIndex) {
@@ -304,10 +308,6 @@ export class SysVFunctionHandler {
 
         if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
           return this.generator.ts.union.create(arg);
-        }
-
-        if (arg.isTSPrimitivePtr()) {
-          arg = arg.clone();
         }
       }
 
