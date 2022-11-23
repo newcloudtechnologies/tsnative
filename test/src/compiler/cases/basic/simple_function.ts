@@ -86,7 +86,7 @@
   console.assert(bounded(9) === 9, "Function bind test failed (3)");
 }
 
-Uncalled funargs. Test only buildability
+//Uncalled funargs. Test only buildability
 {
   function foo(callback: (lol: string) => void) { }
   foo((lol: string): void => { });
