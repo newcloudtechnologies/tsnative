@@ -148,6 +148,71 @@
     console.assert("getHeadcount" in a === false, "In operator: static 3");
 }
 
+// TODO this doesn't work, see TSN-247
+// {
+//     // FIXME: this syntax is unsupported
+//     //var trees = new Array<String>("redwood", "bay", "cedar", "oak", "maple");
+//     var trees = new Array<String>();
+//     trees.push("redwood");
+//     trees.push("bay");
+//     trees.push("cedar");
+//     trees.push("oak");
+//     trees.push("maple");
+
+//     console.assert(0 in trees === true, "In operator: array 1");
+//     console.assert(3 in trees === true, "In operator: array 2");
+//     console.assert(6 in trees === false, "In operator: array 3");
+//     console.assert("bay" in trees === false, "In operator: array 4");
+// }
+
+// TODO this doesn't work, see TSN-247
+// {
+//     let a = [1, 2, 15];
+//     console.assert(0 in a === true, "In operator: array2 1");
+//     console.assert(1 in a === true, "In operator: array2 2");
+//     console.assert(2 in a === true, "In operator: array2 3");
+//     console.assert(3 in a === false, "In operator: array2 4");
+// }
+
+// TODO this doesn't work, see TSN-247
+// {
+//     let s = new String("ab")
+//     console.assert('a' in s === false, "In operator: string 1");
+//     console.assert(0 in s === true, "In operator: string 2");
+//     console.assert(1 in s === true, "In operator: string 2");
+//     console.assert(2 in s === false, "In operator: string 2");
+// }
+
+// TODO this doesn't work
+// {
+//     console.assert("toString" in {} === true, "In operator: default inheritance 1");
+// }
+
+{
+    class A {
+        constructor() {};
+
+        get foo() { return 10; }
+        set bar(a: number) {};
+
+        static baz() {};
+
+        barbar() {};
+    }
+    let aa = new A();
+
+    // TODO: commented out methods don't work but expected to work
+    //console.assert("constructor" in aa === true, "In operator: class with methods 1");
+    //console.assert("foo" in aa === true, "In operator: class with methods 2");
+    //console.assert("bar" in aa === true, "In operator: class with methods 3");
+    console.assert("baz" in aa === false, "In operator: class with methods 4");
+    //console.assert("toString" in aa === true, "In operator: class with methods 5");
+    console.assert("barbar" in aa === true, "In operator: class with methods 6");
+
+    //console.assert("constructor" in new Array<String>() === true, "In operator: class with methods 7");
+    //console.assert("push" in new Array<String>() === true, "In operator: class with methods 8");
+}
+
 {
     type Person = {
         name: string;

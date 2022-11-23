@@ -33,7 +33,6 @@ export class TSObject {
   private copyPropsFn: LLVMValue | undefined;
   private operatorInFn: LLVMValue | undefined;
 
-
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
@@ -408,7 +407,6 @@ export class TSObject {
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     return this.generator.builder.createSafeCall(this.operatorInFn, [thisUntyped, key]);
   }
-
 
   getLLVMType() {
     return this.llvmType;
