@@ -223,6 +223,14 @@ export class TSType {
     return declaration.isAmbient();
   }
 
+  isStaticFunctionType(): boolean {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    return Boolean(this.getSymbol().valueDeclaration?.isStatic());
+  }
+
   isInterface() {
     if (this.isSymbolless()) {
       return false;

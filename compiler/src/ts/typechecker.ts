@@ -76,6 +76,10 @@ export class TypeChecker {
     return type;
   }
 
+  getSignaturesOfType(type: TSType) {
+    return this.checker.getSignaturesOfType(type.unwrap(), ts.SignatureKind.Call).map((s) => Signature.create(s, this.generator));
+  }
+
   getDeclaredTypeOfSymbol(symbol: ts.Symbol) {
     return TSType.create(this.checker.getDeclaredTypeOfSymbol(symbol), this);
   }
