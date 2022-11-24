@@ -168,6 +168,23 @@ std::vector<String*> Object::getKeys() const
     return uniqueKeys;
 }
 
+Boolean* Object::operatorIn(String* key) const
+{
+    // Local lookup O(1)
+    if (has(key))
+    {
+        return new Boolean(true);
+    }
+    else if (has(superKey))
+    {
+        // Super lookup (linear)
+        std::string keyCppStr = key->cpp_str();
+        auto* superObject = static_cast<Union*>(get(superKey))->getValue();
+        return superObject->operatorIn(key);
+    }
+    return new Boolean(false);
+}
+
 Array<String*>* Object::getKeysArray() const
 {
     return Array<String*>::fromStdVector(getKeys());
