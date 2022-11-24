@@ -23,68 +23,68 @@
   console.assert(bar(1, 2) === 3, "function: bar(1, 2) failed");
 }
 
-// {
-//   let isInvoked = false;
+{
+  let isInvoked = false;
 
-//   function fnc() {
-//     isInvoked = true;
-//   }
+  function fnc() {
+    isInvoked = true;
+  }
 
-//   fnc();
+  fnc();
 
-//   // @ts-ignore
-//   console.assert(isInvoked === true, "function: isInvoked failed");
-// }
+  // @ts-ignore
+  console.assert(isInvoked === true, "function: isInvoked failed");
+}
 
-// {
-//   function takesFunctionDeclaration(fn: () => void) {
-//     fn();
-//   }
-//   function declaration() { }
+{
+  function takesFunctionDeclaration(fn: () => void) {
+    fn();
+  }
+  function declaration() { }
 
-//   takesFunctionDeclaration(declaration);
-// }
+  takesFunctionDeclaration(declaration);
+}
 
-// {
-//   function dummyFunctionScope() {
-//     function scopedAndTakesFunctionDeclaration(fn: () => void) {
-//       fn();
-//     }
-//     function scopedDeclaration() { }
+{
+  function dummyFunctionScope() {
+    function scopedAndTakesFunctionDeclaration(fn: () => void) {
+      fn();
+    }
+    function scopedDeclaration() { }
 
-//     scopedAndTakesFunctionDeclaration(scopedDeclaration);
-//   }
+    scopedAndTakesFunctionDeclaration(scopedDeclaration);
+  }
 
-// }
+}
 
-// {
-//   class Getter {
-//     i = 43;
+{
+  class Getter {
+    i = 43;
 
-//     get() {
-//       return this.i;
-//     }
-//   }
+    get() {
+      return this.i;
+    }
+  }
 
-//   class Storage {
-//     i = 1;
-//   }
+  class Storage {
+    i = 1;
+  }
 
-//   const getter = new Getter();
-//   const storage = new Storage();
+  const getter = new Getter();
+  const storage = new Storage();
 
-//   const getterI = getter.get.bind(getter);
-//   console.assert(getterI() === 43, "Function bind test failed (1)")
+  const getterI = getter.get.bind(getter);
+  console.assert(getterI() === 43, "Function bind test failed (1)")
 
-//   const storageI = getter.get.bind(storage);
-//   console.assert(storageI() === 1, "Function bind test failed (2)")
+  const storageI = getter.get.bind(storage);
+  console.assert(storageI() === 1, "Function bind test failed (2)")
 
-//   const f = (f: (n: number) => number, m: number) => f(m);
-//   const functionToBind = (n: number) => n;
-//   const bounded = f.bind(null, functionToBind);
+  const f = (f: (n: number) => number, m: number) => f(m);
+  const functionToBind = (n: number) => n;
+  const bounded = f.bind(null, functionToBind);
 
-//   console.assert(bounded(9) === 9, "Function bind test failed (3)");
-// }
+  console.assert(bounded(9) === 9, "Function bind test failed (3)");
+}
 
 //Uncalled funargs. Test only buildability
 {
@@ -125,53 +125,53 @@
   FMStore.dispatch({ type: 123 })
 }
 
-// {
-//   // Test only buildability
-//   function createStore<S, A>(reducer: (state: S, action: A) => S, initialState: S): S {
-//     // TODO AN-1117
-//     // If you write "state" here instead of a "newState" then you will get GC segfault.
-//     // See the task for more details
-//     let newState = initialState;
-//     let unused = reducer;
-//     return newState;
-//   }
+{
+  // Test only buildability
+  function createStore<S, A>(reducer: (state: S, action: A) => S, initialState: S): S {
+    // TODO AN-1117
+    // If you write "state" here instead of a "newState" then you will get GC segfault.
+    // See the task for more details
+    let newState = initialState;
+    let unused = reducer;
+    return newState;
+  }
 
-//   function FMReducer(state: string, action: number): string {
-//     return state;
-//   }
+  function FMReducer(state: string, action: number): string {
+    return state;
+  }
 
-//   const createFMStore = (state: string) => {
-//     createStore(FMReducer, state);
-//   }
+  const createFMStore = (state: string) => {
+    createStore(FMReducer, state);
+  }
 
-//   createFMStore("");
-// }
+  createFMStore("");
+}
 
-// {
-//   const f = (i: number) => {
-//     if (i === 10) {
-//       return 0;
-//     } else {
-//       return 10;
-//     }
-//   }
-//   console.assert(f(1) === 10, "Function without explicit terminator must have implicit one");
-// }
+{
+  const f = (i: number) => {
+    if (i === 10) {
+      return 0;
+    } else {
+      return 10;
+    }
+  }
+  console.assert(f(1) === 10, "Function without explicit terminator must have implicit one");
+}
 
-// {
-//   const i = 42;
+{
+  const i = 42;
 
-//   function create() {
-//     const list = {};
+  function create() {
+    const list = {};
 
-//     return function () {
-//       console.assert(i === 42, "Outer variables are available inside nested function");
-//       return list;
-//     }
-//   }
+    return function () {
+      console.assert(i === 42, "Outer variables are available inside nested function");
+      return list;
+    }
+  }
 
-//   const first = create();
-//   const second = create();
+  const first = create();
+  const second = create();
 
-//   console.assert(first() !== second(), "Nested functions should not reuse same parent function locals");
-// }
+  console.assert(first() !== second(), "Nested functions should not reuse same parent function locals");
+}
