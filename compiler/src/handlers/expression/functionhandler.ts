@@ -270,9 +270,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const closureCall = this.generator.tsclosure.getLLVMCall();
 
-    const valueDeclaration = this.generator.ts.checker
-      .getTypeAtLocation(expression.expression)
-      .getSymbol().valueDeclaration;
+    const type = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+
+    const valueDeclaration = !type.isSymbolless() ? type.getSymbol().valueDeclaration : undefined;
     const body = valueDeclaration?.isFunctionLike() ? valueDeclaration.body : undefined;
     if (llvmReturnType.isVoid()) {
       llvmReturnType = this.generator.ts.undef.getLLVMType();
@@ -793,7 +793,39 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return functionToBind;
   }
 
+  private tryCallMethod(expression: ts.CallExpression, outerEnv?: Environment) {
+    // method calling is always property access
+    if (!ts.isPropertyAccessExpression(expression.expression)) {
+      return;
+    }
+
+    const rootType = this.generator.ts.checker.getTypeAtLocation(expression.expression.expression);
+    // functions from namespaces are not a methods
+    if (rootType.isNamespace()) {
+      return;
+    }
+
+    const functionType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+
+    // external method calls are handled using CXX symbols search
+    if (functionType.isAmbient()) {
+      return;
+    }
+
+    // static methods calls handling require value declaration
+    if (functionType.isStaticFunctionType()) {
+      return;
+    }
+
+    return this.handleMethodCall(expression.expression, outerEnv);
+  }
+
   private handleCallExpression(expression: ts.CallExpression, outerEnv?: Environment): LLVMValue {
+    const maybeMethodCalled = this.tryCallMethod(expression, outerEnv);
+    if (maybeMethodCalled) {
+      return maybeMethodCalled;
+    }
+
     const isMethod = Expression.create(expression.expression, this.generator).isMethod();
     let thisType: TSType | undefined;
 
@@ -802,7 +834,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       thisType = this.generator.ts.checker.getTypeAtLocation(propertyAccess.expression);
     }
 
-    const symbol = this.generator.ts.checker.getTypeAtLocation(expression.expression).getSymbol();
+    const functionType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
+    const symbol = functionType.getSymbol();
 
     const argumentTypes = Expression.create(expression, this.generator).getArgumentTypes();
     const valueDeclaration =
@@ -845,14 +878,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (valueDeclaration.isStatic()) {
       return this.handleStaticMethodCall(expression, signature, valueDeclaration, qualifiedName, outerEnv);
-    }
-
-    if (ts.isPropertyAccessExpression(expression.expression)) {
-      const rootType = this.generator.ts.checker.getTypeAtLocation(expression.expression.expression);
-
-      if (!rootType.isNamespace()) {
-        return this.handleMethodCall(expression.expression, outerEnv);
-      }
     }
 
     let functionToCall = this.generator.handleExpression(expression.expression, outerEnv);
@@ -915,14 +940,30 @@ export class FunctionHandler extends AbstractExpressionHandler {
         object = this.generator.ts.obj.get(object, "parent");
         object = this.generator.ts.union.get(object);
       }
+
+      // 'obj.method()' where obj is of type T | U and T and U have no common base 'obj' is a union
+      // extract a value
+      if (object.type.isUnion()) {
+        object = this.generator.ts.union.get(object);
+      }
     }
 
     const type = this.generator.ts.checker.getTypeAtLocation(propertyAccessExpression.name);
+    let signature: Signature;
 
-    const symbol = type.getSymbol();
-    const declaration = symbol.valueDeclaration || symbol.declarations[0];
+    if (!type.isSymbolless()) {
+      const symbol = type.getSymbol();
 
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
+      const declaration = symbol.valueDeclaration || symbol.declarations[0];
+      signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
+    } else {
+      // signatures are merged into one:
+      // (() => string | () => number) ---> () => string | number
+      // ((_: string) => string | () => number) ---> (_: string) => string | number
+      // and so on
+      signature = this.generator.ts.checker.getSignaturesOfType(type)[0];
+    }
+
     const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
       return this.handleCallArguments(callExpression, signature, localScope, outerEnv);
     }, this.generator.symbolTable.currentScope);
@@ -931,9 +972,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const closureUnion = this.generator.ts.obj.get(object, propertyAccessExpression.name.getText());
     let closure = this.generator.ts.union.get(closureUnion);
 
-    closure = declaration.type.isOptionalUnion()
-      ? this.generator.builder.createBitCast(closure, this.generator.tsclosure.getLLVMType())
-      : this.generator.builder.createBitCast(closure, declaration.type.getLLVMType());
+    closure = this.generator.builder.createBitCast(closure, this.generator.tsclosure.getLLVMType());
 
     return this.handleTSClosureCall(callExpression, signature, args, closure);
   }
