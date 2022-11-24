@@ -9,19 +9,19 @@
  *
  */
 
-{
-  function foo(a: number, b: number) {
-    return a + b;
-  }
+// {
+//   function foo(a: number, b: number) {
+//     return a + b;
+//   }
 
-  function bar(a: number, b: number) {
-    return foo(b, a);
-  }
+//   function bar(a: number, b: number) {
+//     return foo(b, a);
+//   }
 
-  let res = bar(1, 2);
+//   let res = bar(1, 2);
 
-  console.assert(bar(1, 2) === 3, "function: bar(1, 2) failed");
-}
+//   console.assert(bar(1, 2) === 3, "function: bar(1, 2) failed");
+// }
 
 {
   let isInvoked = false;
@@ -87,43 +87,43 @@
 }
 
 //Uncalled funargs. Test only buildability
-{
-  function foo(callback: (lol: string) => void) { }
-  foo((lol: string): void => { });
+// {
+//   function foo(callback: (lol: string) => void) { }
+//   foo((lol: string): void => { });
 
-  function onClicked(handler: (event: string) => void) { }
-  onClicked((event: string): void => {
-    console.log("hiphip", event);
-  });
+//   function onClicked(handler: (event: string) => void) { }
+//   onClicked((event: string): void => {
+//     console.log("hiphip", event);
+//   });
 
-  interface Store<A> {
-    dispatch: (action: A) => void,
-  }
+//   interface Store<A> {
+//     dispatch: (action: A) => void,
+//   }
 
-  type Reducer<S, A> = (state: S, action: A) => S;
+//   type Reducer<S, A> = (state: S, action: A) => S;
 
-  function createStore2<S, A>(reducer: Reducer<S, A>): Store<A> {
-    return {
-      dispatch: function (action: A): void { },
-    }
-  }
+//   function createStore2<S, A>(reducer: Reducer<S, A>): Store<A> {
+//     return {
+//       dispatch: function (action: A): void { },
+//     }
+//   }
 
-  type MyState_t = {
-    str: string
-  }
+//   type MyState_t = {
+//     str: string
+//   }
 
-  type MyAction_t = {
-    type: number
-  }
+//   type MyAction_t = {
+//     type: number
+//   }
 
-  function MyReducer(state: MyState_t, action: MyAction_t): MyState_t {
-    let unused = action;
-    return state;
-  }
+//   function MyReducer(state: MyState_t, action: MyAction_t): MyState_t {
+//     let unused = action;
+//     return state;
+//   }
 
-  const FMStore = createStore2(MyReducer)
-  FMStore.dispatch({ type: 123 })
-}
+//   const FMStore = createStore2(MyReducer)
+//   FMStore.dispatch({ type: 123 })
+// }
 
 // {
 //   // Test only buildability
