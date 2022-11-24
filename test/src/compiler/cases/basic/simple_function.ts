@@ -122,7 +122,7 @@
   }
 
   const FMStore = createStore2(MyReducer)
-  // FMStore.dispatch({ type: 123 })
+  FMStore.dispatch({ type: 123 })
 }
 
 // {
