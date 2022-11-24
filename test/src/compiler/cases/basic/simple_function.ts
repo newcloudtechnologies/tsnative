@@ -9,82 +9,82 @@
  *
  */
 
+{
+  function foo(a: number, b: number) {
+    return a + b;
+  }
+
+  function bar(a: number, b: number) {
+    return foo(b, a);
+  }
+
+  let res = bar(1, 2);
+
+  console.assert(bar(1, 2) === 3, "function: bar(1, 2) failed");
+}
+
 // {
-//   function foo(a: number, b: number) {
-//     return a + b;
+//   let isInvoked = false;
+
+//   function fnc() {
+//     isInvoked = true;
 //   }
 
-//   function bar(a: number, b: number) {
-//     return foo(b, a);
-//   }
+//   fnc();
 
-//   let res = bar(1, 2);
-
-//   console.assert(bar(1, 2) === 3, "function: bar(1, 2) failed");
+//   // @ts-ignore
+//   console.assert(isInvoked === true, "function: isInvoked failed");
 // }
 
-{
-  let isInvoked = false;
+// {
+//   function takesFunctionDeclaration(fn: () => void) {
+//     fn();
+//   }
+//   function declaration() { }
 
-  function fnc() {
-    isInvoked = true;
-  }
+//   takesFunctionDeclaration(declaration);
+// }
 
-  fnc();
+// {
+//   function dummyFunctionScope() {
+//     function scopedAndTakesFunctionDeclaration(fn: () => void) {
+//       fn();
+//     }
+//     function scopedDeclaration() { }
 
-  // @ts-ignore
-  console.assert(isInvoked === true, "function: isInvoked failed");
-}
+//     scopedAndTakesFunctionDeclaration(scopedDeclaration);
+//   }
 
-{
-  function takesFunctionDeclaration(fn: () => void) {
-    fn();
-  }
-  function declaration() { }
+// }
 
-  takesFunctionDeclaration(declaration);
-}
+// {
+//   class Getter {
+//     i = 43;
 
-{
-  function dummyFunctionScope() {
-    function scopedAndTakesFunctionDeclaration(fn: () => void) {
-      fn();
-    }
-    function scopedDeclaration() { }
+//     get() {
+//       return this.i;
+//     }
+//   }
 
-    scopedAndTakesFunctionDeclaration(scopedDeclaration);
-  }
+//   class Storage {
+//     i = 1;
+//   }
 
-}
+//   const getter = new Getter();
+//   const storage = new Storage();
 
-{
-  class Getter {
-    i = 43;
+//   const getterI = getter.get.bind(getter);
+//   console.assert(getterI() === 43, "Function bind test failed (1)")
 
-    get() {
-      return this.i;
-    }
-  }
+//   const storageI = getter.get.bind(storage);
+//   console.assert(storageI() === 1, "Function bind test failed (2)")
 
-  class Storage {
-    i = 1;
-  }
+//   const f = (f: (n: number) => number, m: number) => f(m);
+//   const functionToBind = (n: number) => n;
+//   const bounded = f.bind(null, functionToBind);
 
-  const getter = new Getter();
-  const storage = new Storage();
-
-  const getterI = getter.get.bind(getter);
-  console.assert(getterI() === 43, "Function bind test failed (1)")
-
-  const storageI = getter.get.bind(storage);
-  console.assert(storageI() === 1, "Function bind test failed (2)")
-
-  const f = (f: (n: number) => number, m: number) => f(m);
-  const functionToBind = (n: number) => n;
-  const bounded = f.bind(null, functionToBind);
-
-  console.assert(bounded(9) === 9, "Function bind test failed (3)");
-}
+//   console.assert(bounded(9) === 9, "Function bind test failed (3)");
+// }
 
 //Uncalled funargs. Test only buildability
 // {
