@@ -238,13 +238,6 @@ Number* Date::setDate(Number* new_date)
     return new Number(date);
 }
 
-// TODO remove me
-static void crash()
-{
-    int* foo = (int*)-1; // make a bad pointer
-    *foo = 100500;
-}
-
 Number* Date::setHours(Number* new_hours, Union* new_minutes, Union* new_seconds, Union* new_milliseconds)
 {
     double newHoursUnboxed = new_hours->unboxed();
@@ -253,8 +246,6 @@ Number* Date::setHours(Number* new_hours, Union* new_minutes, Union* new_seconds
     double newMillisecondsUnboxed = new_milliseconds->hasValue() ? new_milliseconds->getValue<Number*>()->unboxed() : 0;
 
     double date = _d->setHours(newHoursUnboxed, newMinutesUnboxed, newSecondsUnboxed, newMillisecondsUnboxed);
-
-    crash();
 
     return new Number(date);
 }
