@@ -3,6 +3,12 @@ from conans.model.version import Version
 from distutils.dir_util import copy_tree
 import os, shutil
 
+def is_ci():
+    return "CI" in os.environ and os.environ["CI"].lower() == "true"
+
+def get_default_using_custom_seed():
+    return is_ci(); 
+
 class TSNativeCompilerConan(ConanFile):
     name = "tsnative-compiler"
 
@@ -11,6 +17,14 @@ class TSNativeCompilerConan(ConanFile):
     description = "Typescript compiler"
 
     debug_build_type = "Debug"
+
+    options = {
+        "custom_seed" : [True, False],
+    }
+
+    default_options = {
+        "custom_seed": get_default_using_custom_seed(),
+    }
 
     def requirements(self):
         self.requires("llvm-node/3.0.7", private=True)
@@ -21,8 +35,9 @@ class TSNativeCompilerConan(ConanFile):
         self.copy("tsconfig.json")
         self.copy("src*")
         self.copy("scripts*")
-        self.copy("seed*")
         self.copy(".npm*")
+        self.copy("private/seed*")
+        self.copy("seed*")
 
     def build(self):
         # prepare env
@@ -59,9 +74,13 @@ class TSNativeCompilerConan(ConanFile):
 
     def package(self):
         self.copy("*", src="bin")
-        self.copy("*", src="seed", dst="seed")
         self.copy("*", src="scripts", excludes="tsnative-compiler*")
         self.copy("tsconfig.json")
+
+        if (self.options.custom_seed):
+            self.copy("*", src="private/seed", dst="seed")
+        else:
+            self.copy("*", src="seed", dst="seed")
 
         binext = ""
         if self.settings.os == "Windows":
@@ -89,6 +108,9 @@ class TSNativeCompilerConan(ConanFile):
 
     def package_info(self):
         self.env_info.path.append(self.package_folder)
+
+    def package_id(self):
+        del self.info.options.custom_seed
 
     # TODO: common python lib required - use python_requires?
     # keep in sync with test/conanfile.py
