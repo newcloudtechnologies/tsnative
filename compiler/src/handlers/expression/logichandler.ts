@@ -15,6 +15,7 @@ import * as llvm from "llvm-node";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
+import { LLVMType } from "../../llvm/type";
 
 export class LogicHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -39,10 +40,9 @@ export class LogicHandler extends AbstractExpressionHandler {
 
     if (ts.isConditionalExpression(expression)) {
       const conditionValue = this.generator.handleExpression(expression.condition, env);
-      const condition = conditionValue.makeBoolean();
+      const condition = conditionValue.makeBoolean(); 
 
-      const resultType = this.generator.ts.checker.getTypeAtLocation(expression);
-      const result = this.generator.gc.allocate(resultType.getLLVMType().unwrapPointer());
+      let result = this.generator.builder.createAlloca(LLVMType.getInt8Type(this.generator).getPointer());
 
       const trueBlock = llvm.BasicBlock.create(this.generator.context, "trueTernary", this.generator.currentFunction);
       const falseBlock = llvm.BasicBlock.create(this.generator.context, "falseTernary", this.generator.currentFunction);
@@ -51,31 +51,21 @@ export class LogicHandler extends AbstractExpressionHandler {
 
       this.generator.builder.setInsertionPoint(trueBlock);
       let thenResult = this.generator.handleExpression(expression.whenTrue, env);
-
-      if (result.type.isUnion()) {
-        thenResult = this.generator.ts.union.create(thenResult);
-      } else if (thenResult.type.isUnion()) {
-        thenResult = this.generator.ts.union.get(thenResult);
-        thenResult = this.generator.builder.createBitCast(thenResult, result.type);
-      }
-
       this.generator.builder.createSafeStore(thenResult, result);
       this.generator.builder.createBr(endBlock);
 
       this.generator.builder.setInsertionPoint(falseBlock);
       let elseResult = this.generator.handleExpression(expression.whenFalse, env);
-
-      if (result.type.isUnion()) {
-        elseResult = this.generator.ts.union.create(elseResult);
-      } else if (elseResult.type.isUnion()) {
-        elseResult = this.generator.ts.union.get(elseResult);
-        elseResult = this.generator.builder.createBitCast(elseResult, result.type);
-      }
-
       this.generator.builder.createSafeStore(elseResult, result);
       this.generator.builder.createBr(endBlock);
 
       this.generator.builder.setInsertionPoint(endBlock);
+
+      result = this.generator.builder.createLoad(result);
+      if (thenResult.type.isUnion() || elseResult.type.isUnion()) {
+        const type = thenResult.type.isUnion() ? thenResult.type : elseResult.type;
+        result = this.generator.builder.createBitCast(result, type);
+      }
 
       return result;
     }

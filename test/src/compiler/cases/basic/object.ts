@@ -419,3 +419,18 @@ function assertObjectKeysAreEqual(keys : string[], expectedKeys : string[], msg 
         console.assert(dict["Edit1"] === value, "Plain object with non-explicit string key access by element access expression (double quote)");
     }
 }
+
+// Object literals and unions
+{
+    function foo(): number|string {
+        return 10;
+    }
+
+    let a = {
+        text: foo()
+    }
+    console.assert(a.text === 10, "Object: Object with union(number inside) is not equal");
+
+    a.text = "abacaba";
+    console.assert(a.text === "abacaba", "Object: Object with union(string inside) is not equal");
+}
