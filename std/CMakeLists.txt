@@ -46,7 +46,6 @@ set(HEADERS
 
 set(SOURCES
     src/gc.cpp
-    src/tsboolean.cpp
     src/tsclosure.cpp
     src/tsdate.cpp
     src/tsmath.cpp

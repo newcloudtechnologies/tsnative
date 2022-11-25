@@ -105,6 +105,17 @@ public:
 
     virtual void markChildren();
 
+    template <typename T>
+    static Object* asObject(T value)
+    {
+        /*
+        hard cast 'value' to Object
+        std's containers may contain forward declared types so it's impossible to use static_cast and perform any static
+        checks use reinterpret_cast in assumption that T is a pointer of class derived from Object
+        */
+        return reinterpret_cast<Object*>(value);
+    }
+
     void* operator new(std::size_t n);
 
 private:
