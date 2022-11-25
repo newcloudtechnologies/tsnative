@@ -45,6 +45,12 @@ class IExecutor;
 class TS_EXPORT TS_DECLARE Runtime final : public Object
 {
 public:
+    enum class Ownership
+    {
+        CPP = 0,
+        TSC,
+    };
+
     using Timers = TimersStorage;
 
     static int init(int argc, char* argv[]);
@@ -67,6 +73,8 @@ public:
     TS_METHOD Boolean* toBool() const override;
 
     static Allocator* getAllocator();
+
+    static void setObjectOwnership(Object* resource, Ownership ownership);
 
 private:
     Runtime() = delete;
