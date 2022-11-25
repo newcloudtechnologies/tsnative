@@ -74,7 +74,7 @@ export class GC {
         if (type.isPointer()) {
             throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
         }
-
+        
         const gcAddress = this.runtime.getGCAddress();
         const size = type.getTypeSize();
         const returnValue = this.generator.builder.createSafeCall(callable,

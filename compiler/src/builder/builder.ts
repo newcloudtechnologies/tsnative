@@ -266,6 +266,11 @@ export class Builder {
     return LLVMValue.create(loaded, this.generator);
   }
 
+  createAlloca(type: LLVMType) {
+    const alloca = this.builder.createAlloca(type.unwrapped);
+    return LLVMValue.create(alloca, this.generator);
+  }
+
   createBitCast(value: LLVMValue, destType: LLVMType, name?: string) {
     if (this.generator.tsclosure.lazyClosure.isLazyClosure(value) && destType.isClosure()) {
       throw new Error("Cannot bitcast lazy closure to closure");

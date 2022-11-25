@@ -60,7 +60,41 @@
 // Expression as conditional
 {
     let a = (1 + 2) ? "a" : "b";
-    console.assert(a === "a", "Ternary: simple ternary is not equal");
+    console.assert(a === "a", "Ternary: Expression as conditional ternary is not equal");
+}
+
+// Nested ternary
+{
+    let a = true ? (true ? "a" : "c") : "b";
+    console.assert(a === "a", "Ternary: Nested ternary is not equal");
+}
+
+// Ternary with unions
+{
+    function foo(): number|string {
+        return 10;
+    }
+
+    let a = true ? foo() : "b";
+    console.assert(a === 10, "Ternary: Ternary with unions is not equal");
+
+    a = "abacaba";
+    console.assert(a === "abacaba", "Ternary: Ternary with unions is not equal");
+}
+
+// Ternary with object literals and unions
+{
+    function foo(): number|string {
+        return 10;
+    }
+
+    let a = {
+        text: true ? foo() : "b"
+    }
+    console.assert(a.text === 10, "Ternary: Ternary with unions is not equal");
+
+    a.text = "abacaba";
+    console.assert(a.text === "abacaba", "Ternary: Ternary with unions is not equal");
 }
 
 // Create user object with ternary and pass directly to the constructor

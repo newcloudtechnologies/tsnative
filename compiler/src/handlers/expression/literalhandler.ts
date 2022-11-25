@@ -103,10 +103,6 @@ export class LiteralHandler extends AbstractExpressionHandler {
             propVal = propVal.clone();
           }
 
-          while(propVal.type.isUnion()) {
-            propVal = this.generator.ts.union.get(propVal)
-          }
-
           llvmValues.set(property.name.getText(), propVal);
           break;
         case ts.SyntaxKind.ShorthandPropertyAssignment:
