@@ -63,7 +63,7 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 function (add_ts_library ARG_NAME ...)
     set(options )
     set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG PRINT_IR TRACE_IMPORT OPT_LEVEL RUN_EVENT_LOOP)
-    set(multiValueArgs DEFINES INCLUDE_DIRS LIBRARIES WATCH_SOURCES)
+    set(multiValueArgs DEFINES LIBRARIES WATCH_SOURCES)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
@@ -110,6 +110,9 @@ function (add_ts_library ARG_NAME ...)
     set(mangledTables )
     set(demangledTables )
 
+    set(includeDirs )
+    list(APPEND includeDirs ${tsnative-std_INCLUDE_DIR})
+
     # Stage 0
 
     _add_nm_target(${stage0} mangledTables demangledTables
@@ -118,13 +121,7 @@ function (add_ts_library ARG_NAME ...)
         DEPENDS ${libraries}
     )
 
-    # Stage 1 and 2
-
-    # This is a macro. It checks if ARG_INCLUDE_DIRS is defined.
-    # - If not, it collects headers from libraries and filter out
-    #   broken mgt headers and some thirdparty dirs. Sets includeDirs var.
-    # - If defined, do nothing.
-    _collectIncludeDirs()
+    # Stage 1
 
     # This is a macro. It checks if ARG_WATCH_SOURCES is defined.
     # - If not, it collects sources as mentioned in this function docs.
@@ -135,7 +132,7 @@ function (add_ts_library ARG_NAME ...)
     _addStage(${stage1} ${stage0} "instantiated_classes.cpp" --processTemplateClasses)
     _addStage(${stage2} ${stage1} "instantiated_functions.cpp" --processTemplateFunctions)
 
-    # Stage 3
+    # Stage 2
 
     get_filename_component(llFile ${mainTs} NAME_WLE)
     set(llFile ${outputDir}/${llFile}.ll)
@@ -148,7 +145,7 @@ function (add_ts_library ARG_NAME ...)
         DEPENDS ${stage2}
     )
 
-    # Stage 4
+    # Stage 3
 
     string(REPLACE ".ll" ".cpp.o" objFile "${llFile}")
     add_custom_command(
@@ -167,7 +164,7 @@ function (add_ts_library ARG_NAME ...)
         COMMAND_EXPAND_LISTS
     )
 
-    # Stage 5
+    # Stage 4
 
     add_library(${targetName} STATIC ${objFile})
 
@@ -229,7 +226,6 @@ function (_add_ts_command ARG_SRC ...)
     set(mangledTable ${ARG_MANGLED})
     set(demangledTable ${ARG_DEMANGLED})
     set(dependencies ${ARG_DEPENDS})
-    set(includeDirs ${ARG_INCLUDE_DIRS})
     # XXX: We have to use comma-space separator bc of WinApi CommandLineToArgvW function that
     # cmake uses to parse command line arguments. It adds a strange prefix 'C;' to paths if we
     # use only comma to separate paths.
@@ -382,25 +378,6 @@ macro (_collectWatchSources)
     else()
         message(STATUS "[TS2] Watching user provided ts sources.")
     endif()
-endmacro()
-
-macro (_collectIncludeDirs)
-    if (NOT DEFINED ARG_INCLUDE_DIRS)
-        set(_includeDirs )
-        foreach (lib ${libraries})
-            list(APPEND _includeDirs $<TARGET_PROPERTY:${lib},INTERFACE_INCLUDE_DIRECTORIES>)
-        endforeach()
-
-        # XXX: This is a hack due to some broken headers in mgt. Also it filter out redundant include directories
-        # from third parties. Just filter out broken?
-        set(_filterRegex libuv|/usr|mgt_graphics|mgt_pal|mgt_bpl|mgt_ui|abseil|rapidjson)
-        set(_includeDirs $<FILTER:$<REMOVE_DUPLICATES:${_includeDirs}>,EXCLUDE,${_filterRegex}>)
-    else()
-        # If the include directories are defined in caller context, trust that they know what they're doing.
-        set(_includeDirs ${ARG_INCLUDE_DIRS})
-    endif()
-
-    set(includeDirs ${_includeDirs})
 endmacro()
 
 macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FILENAME ARG_FLAG)

@@ -49,7 +49,6 @@ foreach(TEST IN LISTS TESTS)
         BASE_URL ${PROJECT_BASE_URL}
         TS_CONFIG tsconfig.json
         LIBRARIES ${extTarget}
-        INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/cpp
         TS_DEBUG ${TS_DEBUG}
         RUN_EVENT_LOOP ${RUN_EVENT_LOOP}
         PRINT_IR ${PRINT_IR}

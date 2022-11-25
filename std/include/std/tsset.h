@@ -176,7 +176,7 @@ void Set<T>::markChildren()
     LOG_INFO("Calling Set::markChildren");
     const auto callable = [](T& entry)
     {
-        auto* object = static_cast<Object*>(entry);
+        auto* object = Object::asObject(entry);
         if (object && !object->isMarked())
         {
             LOG_ADDRESS("Mark set element: ", object);

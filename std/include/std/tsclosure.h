@@ -70,7 +70,7 @@ void TSClosure::setEnvironmentElement(T value, int index)
     if ((this->_optionals & (1 << index)) != 0)
     {
         Union* optional = static_cast<Union*>(_env[index]);
-        optional->setValue(static_cast<Object*>(value));
+        optional->setValue(Object::asObject(value));
         return;
     }
 

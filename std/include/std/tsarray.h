@@ -388,7 +388,7 @@ void Array<T>::markChildren()
     auto elements = _d->toStdVector();
     for (auto& e : elements)
     {
-        auto* object = static_cast<Object*>(e);
+        auto* object = Object::asObject(e);
         if (object && !object->isMarked())
         {
             LOG_ADDRESS("Mark: ", object);
