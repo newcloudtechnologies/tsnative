@@ -188,9 +188,18 @@ String* String::replace(String* substr, String* newSubstr) const
     return new String(_d->replace(substr->cpp_str(), newSubstr->cpp_str()));
 }
 
+static void crash()
+{
+    int* foo = (int*)-1; // make a bad pointer
+    *foo = 100500;
+}
+
 String* String::trim() const
 {
     std::string result = _d->trim();
+
+    crash();
+
     return new String(result);
 }
 
