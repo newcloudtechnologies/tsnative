@@ -47,8 +47,7 @@ Number::~Number()
 
 Number* Number::add(Number* other) const
 {
-    double result = _d->add(other->unboxed());
-    return new Number(result);
+    return new Number(_d->add(other->unboxed()));
 }
 
 Number* Number::sub(Number* other) const

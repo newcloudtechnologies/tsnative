@@ -192,6 +192,8 @@ Array<String*>* Object::getKeysArray() const
 
 void* Object::get(String* key) const
 {
+    LOG_INFO("Calling object::get for key " + key->cpp_str());
+
     if (has(key))
     {
         return _props->get(key);

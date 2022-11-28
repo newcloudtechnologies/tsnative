@@ -25,22 +25,22 @@ export class UnaryHandler extends AbstractExpressionHandler {
 
     switch (expression.operator) {
       case ts.SyntaxKind.PlusToken:
-        return this.generator.handleExpression(operand, env);
+        return this.generator.handleExpression(operand, env).derefToPtrLevel1();
       case ts.SyntaxKind.MinusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        const value = this.generator.handleExpression(operand, env).derefToPtrLevel1();
         return value.createNegate();
       }
       case ts.SyntaxKind.PlusPlusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        const value = this.generator.handleExpression(operand, env).derefToPtrLevel1();
         return value.createPrefixIncrement();
       }
       case ts.SyntaxKind.MinusMinusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        const value = this.generator.handleExpression(operand, env).derefToPtrLevel1();
         return value.createPrefixDecrement();
       }
       // case ts.SyntaxKind.TildeToken: @todo
       case ts.SyntaxKind.ExclamationToken:
-        return this.generator.handleExpression(operand, env).makeBoolean().createNegate();
+        return this.generator.handleExpression(operand, env).derefToPtrLevel1().makeBoolean().createNegate();
       default:
         throw new Error(`Unhandled unary operator '${ts.SyntaxKind[expression.operator]}'`);
     }
@@ -51,11 +51,11 @@ export class UnaryHandler extends AbstractExpressionHandler {
 
     switch (expression.operator) {
       case ts.SyntaxKind.PlusPlusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        const value = this.generator.handleExpression(operand, env).derefToPtrLevel1();
         return value.createPostfixIncrement();
       }
       case ts.SyntaxKind.MinusMinusToken: {
-        const value = this.generator.handleExpression(operand, env);
+        const value = this.generator.handleExpression(operand, env).derefToPtrLevel1();
         return value.createPostfixDecrement();
       }
     }

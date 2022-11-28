@@ -267,11 +267,12 @@ export function createEnvironment(
 
   if (functionData?.signature) {
     const argsTypes = functionData.args.map((arg, index) => {
-      if (!arg.type.isPointer()) {
+      if (arg.type.getPointerLevel() > 2) {
         throw new Error(
-          `Argument at index ${index} expected to be of PointerType, got '${arg.type.toString()}' (signature: ${functionData.signature!.toString()}))`
+          `Argument at index ${index} expected to be of PointerType **, got '${arg.type.toString()}' (signature: ${functionData.signature!.toString()}))`
         );
       }
+
       return arg.type;
     });
 
@@ -339,9 +340,23 @@ export function createEnvironment(
   }
 
   const names = Array.from(map.keys());
-  const types = Array.from(map.values()).map((value) => value.type);
+  const types = Array.from(map.values()).map((value) => {
+    if (value.type.getPointerLevel() === 1) {
+      return value.type.getPointer();
+    }
+    return value.type;
+  });
 
-  const allocations = Array.from(map.values()).map((value) => value.allocated);
+  let allocations = [];
+  for (const [_, value] of map) {
+    let allocationPtrPtr = value.allocated;
+    if (allocationPtrPtr.type.getPointerLevel() === 1) {
+      allocationPtrPtr = generator.gc.allocate(value.allocated.type);
+      generator.builder.createSafeStore(value.allocated, allocationPtrPtr);
+    }
+
+    allocations.push(allocationPtrPtr);
+  }
 
   const environmentDataType = Environment.getEnvironmentType(types, generator);
   const environmentData = allocations.reduce(
@@ -352,9 +367,7 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
-  const env = new Environment(names, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
-
-  return env;
+  return new Environment(names, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
 }
 
 function populateStaticContext(scope: Scope, environmentVariables: string[]) {
@@ -604,11 +617,7 @@ export class Scope {
 
       const name = node.name.getText();
 
-      if (this.get(name)) {
-        this.overwrite(name, inplaceAllocated);
-      } else {
-        this.set(name, inplaceAllocated);
-      }
+      this.set(name, inplaceAllocated);
     }
 
     root.forEachChild(initializeFrom);
@@ -665,28 +674,87 @@ export class Scope {
     return;
   }
 
-  set(identifier: string, value: ScopeValue) {
-    if (!this.get(identifier)) {
-      return this.map.set(identifier, value);
-    }
-
-    throw new Error(`Identifier '${identifier}' already exists. Use 'Scope.overwrite' instead of 'Scope.set'`);
-  }
-
-  overwrite(identifier: string, value: ScopeValue) {
+  setOrAssign(identifier: string, valuePtr: ScopeValue) {
     if (this.get(identifier)) {
-      return this.map.set(identifier, value);
+      this.assign(identifier, valuePtr);
     }
-
-    throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+    else {
+      this.set(identifier, valuePtr);
+    }
   }
 
-  overwriteThroughParentChain(identifier: string, value: ScopeValue) {
-    if (this.map.get(identifier)) {
+  set(identifier: string, valuePtr: ScopeValue) {
+    if (this.get(identifier)) {
+      throw new Error(`Identifier '${identifier}' already exists. Use 'Scope.assign' instead of 'Scope.set'`);
+    }
+
+    if (valuePtr instanceof Scope) {
+      this.map.set(identifier, valuePtr);
+      return;
+    }
+
+    const vPtr = valuePtr instanceof HeapVariableDeclaration ? valuePtr.allocated : valuePtr;
+    if (vPtr.type.getPointerLevel() === 2) {
+      this.map.set(identifier, vPtr);
+      return;
+    }
+
+    const vPtrPtr = this.generator.gc.allocate(vPtr.type);
+    this.generator.builder.createSafeStore(vPtr, vPtrPtr);
+
+    this.map.set(identifier, vPtrPtr);
+  }
+
+  replace(identifier: string, newValue: LLVMValue) {
+    if (!this.get(identifier)) {
+      throw new Error(`Identifier '${identifier}' does not exist.`);
+    }
+
+    if (newValue.type.getPointerLevel() !== 2) {
+      throw new Error(`newValue of '${identifier}' is not **`);
+    }
+    this.map.set(identifier, newValue);
+  }
+
+  assign(identifier: string, value: ScopeValue) {
+    const valuePtrPtr = this.get(identifier);
+    if (!valuePtrPtr) {
+      throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+    }
+
+    if (value instanceof Scope) {
       this.map.set(identifier, value);
       return;
+    }
+
+    if (!(valuePtrPtr instanceof LLVMValue)) {
+      throw new Error(`Identifier '${identifier}' is not LLVMValue(**) inside of a scope`);
+    }
+
+    if (valuePtrPtr.type.getPointerLevel() != 2) {
+      throw new Error(`Identifier '${identifier}' assignment failed: valuePtrPtr is not **`);
+    }
+
+    const actualVal = value instanceof HeapVariableDeclaration ? value.allocated : value;
+    if (actualVal.type.getPointerLevel() != 1) {
+      throw new Error(`Identifier '${identifier}' assignment failed: or actualVal is not *`);
+    }
+
+    if (actualVal.type.isClosure()) {
+      // New value may be a bound function, have to store its meta
+      const fixedArgsCount = this.generator.meta.getFixedArgsCount(actualVal);
+      this.generator.meta.registerFixedArgsCount(valuePtrPtr, fixedArgsCount);
+    }
+
+    this.generator.builder.createSafeStore(actualVal, valuePtrPtr);
+  }
+
+  assignThroughParentChain(identifier: string, value: ScopeValue) {
+    if (this.map.get(identifier)) {
+      this.assign(identifier, value);
+      return;
     } else if (this.parent) {
-      this.parent.overwriteThroughParentChain(identifier, value);
+      this.parent.assignThroughParentChain(identifier, value);
       return;
     }
 

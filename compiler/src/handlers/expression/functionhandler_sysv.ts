@@ -62,7 +62,7 @@ export class SysVFunctionHandler {
 
     const args: LLVMValue[] = [];
     if (!isStaticGetter) {
-      const thisValue = this.generator.handleExpression(expression.expression, env);
+      const thisValue = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
       const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
       args.push(thisValueUntyped);
     }
@@ -84,7 +84,7 @@ export class SysVFunctionHandler {
     const llvmThisType = LLVMType.getInt8Type(this.generator).getPointer();
 
     const parent = expression.parent as ts.BinaryExpression;
-    const arg = this.generator.handleExpression(parent.right, env);
+    const arg = this.generator.handleExpression(parent.right, env).derefToPtrLevel1();
 
     const llvmArgumentTypes = [llvmThisType, arg.type];
 
@@ -101,7 +101,7 @@ export class SysVFunctionHandler {
        Make sure there is no class '${parentClass.name!.getText()}' declared in C++ and TS code that have same fully qualified name (namespace + class name).`);
     }
 
-    const thisValue = this.generator.handleExpression(expression.expression, env);
+    const thisValue = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
     const args = [thisValueUntyped, arg];
 
@@ -124,7 +124,7 @@ export class SysVFunctionHandler {
     let thisValue;
     if (isMethod) {
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-      thisValue = this.generator.handleExpression(propertyAccess.expression, env);
+      thisValue = this.generator.handleExpression(propertyAccess.expression, env).derefToPtrLevel1();
       if (!thisValue.type.isPointer()) {
         throw new Error(
           `Expected LLVM pointer type for 'this' at expression: '${propertyAccess.expression.getText()}', got '${thisValue.type.toString()}'. Error at '${expression.getText()}'`
@@ -260,7 +260,7 @@ export class SysVFunctionHandler {
       }
 
       const thisValuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, thisIdx]);
-      thisValue = this.generator.builder.createLoad(thisValuePtr);
+      thisValue = this.generator.builder.createLoad(thisValuePtr).derefToPtrLevel1();
     }
 
     const thisValueUntyped = this.generator.builder.asVoidStar(thisValue);
@@ -277,10 +277,10 @@ export class SysVFunctionHandler {
   private handleCallArguments(tsArgs: ts.NodeArray<ts.Expression>, declaration: Declaration, outerEnv?: Environment) {
     const llvmArgs = tsArgs.map((argument, index) => {
       if (ts.isSpreadElement(argument)) {
-        return this.generator.handleExpression(argument.expression, outerEnv);
+        return this.generator.handleExpression(argument.expression, outerEnv).derefToPtrLevel1();
       }
 
-      const arg = this.generator.handleExpression(argument, outerEnv);
+      const arg = this.generator.handleExpression(argument, outerEnv).derefToPtrLevel1();
 
       // there may be no parameter declared at argument's index in case of rest arguments
       const parameterAtIndex = declaration.parameters[index];

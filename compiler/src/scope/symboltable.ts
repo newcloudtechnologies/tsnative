@@ -72,6 +72,7 @@ export class SymbolTable {
     const scope = new Scope(name, name, this.generator, false, parentScope);
     this.scopes.push(scope);
     const result = body(scope);
+    scope.deinitialize();
     this.scopes.pop();
 
     return result;

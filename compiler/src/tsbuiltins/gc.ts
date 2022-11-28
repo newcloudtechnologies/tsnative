@@ -55,13 +55,13 @@ export class GC {
         return this.doAllocate(this.allocateFn, type, name);
     }
 
-    allocateObject(type: LLVMType, name?: string): LLVMValue {
+    allocateObject(type: LLVMType, name?: string) : LLVMValue {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
     deallocate(mem: LLVMValue): LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
-        const voidStarMem = this.generator.builder.asVoidStar(mem);
+        const voidStarMem = this.generator.builder.asVoidStar(mem.derefToPtrLevel1());
 
         return this.generator.builder.createSafeCall(this.deallocateFn,
             [
@@ -70,11 +70,7 @@ export class GC {
             ]);
     }
 
-    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string): LLVMValue {
-        if (type.isPointer()) {
-            throw new Error(`Expected non-pointer type, got '${type.toString()}'`);
-        }
-        
+    private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const size = type.getTypeSize();
         const returnValue = this.generator.builder.createSafeCall(callable,
