@@ -208,7 +208,7 @@ endmacro()
 function (_add_ts_command ARG_SRC ...)
     set(options )
     set(oneValueArgs OUTPUT)
-    set(multiValueArgs MANGLED DEMANGLED INCLUDE_DIRS FLAGS DEPENDS)
+    set(multiValueArgs MANGLED DEMANGLED FLAGS DEPENDS)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
@@ -386,25 +386,17 @@ macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FILENAME ARG_FLAG)
 
     # Generating .cpp file
 
-    # TODO: Why should we pass the includes to compiler? Couldn't we add them by ourselves?
     _add_ts_command(${mainTs}
         OUTPUT ${cppFile}
         MANGLED ${mangledTables}
         DEMANGLED ${demangledTables}
-        INCLUDE_DIRS ${includeDirs}
         FLAGS ${baseFlags};${ARG_FLAG};--templatesOutputDir;${outputDir}
         DEPENDS ${ARG_DEPENDS} ${watchSources}
     )
 
     # Compile .cpp file
 
-    add_custom_command(
-        OUTPUT _warning_message
-        COMMAND ${CMAKE_COMMAND} -E echo "*** IF THIS STAGE FAILS! Some include dirs were filtered out, try to set them via INCLUDE_DIRS ***"
-        VERBATIM
-    )
-
-    add_library(${cppTarget} STATIC ${cppFile} _warning_message)
+    add_library(${cppTarget} STATIC ${cppFile})
 
     target_link_libraries(${cppTarget} PUBLIC ${libraries} tsnative-std::tsnative-std)
     set_target_properties(${cppTarget} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${outputDir})
