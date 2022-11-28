@@ -21,8 +21,8 @@ export class ComparisonHandler extends AbstractExpressionHandler {
       this.generator.emitLocation(expression.left);
       this.generator.emitLocation(expression.right);
 
-      let left = this.generator.handleExpression(expression.left, env);
-      let right = this.generator.handleExpression(expression.right, env);
+      let left = this.generator.handleExpression(expression.left, env).derefToPtrLevel1();
+      let right = this.generator.handleExpression(expression.right, env).derefToPtrLevel1();
 
       switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsToken:

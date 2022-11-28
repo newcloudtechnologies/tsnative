@@ -150,10 +150,10 @@ TEST_F(PromiseTest, checkThenOnlyFulfilled)
 
     auto p = createPromise();
 
-    auto onFulfilled = [](test::Number* n) -> test::Number*
+    auto onFulfilled = [](test::Number** n) -> test::Number*
     {
-        EXPECT_EQ(n->unboxed(), 1.0f);
-        return n;
+        EXPECT_EQ((*n)->unboxed(), 1.0f);
+        return *n;
     };
 
     p.then(std::move(onFulfilled));
@@ -172,15 +172,15 @@ TEST_F(PromiseTest, checkThenAndIgnoreRejectReceiver)
     auto resolved = new test::Number{1.0f};
 
     promise.then(
-        [](test::Number* n) -> test::Number*
+        [](test::Number** n) -> test::Number*
         {
-            EXPECT_EQ(n->unboxed(), 1.0f);
-            throw n;
+            EXPECT_EQ((*n)->unboxed(), 1.0f);
+            throw *n;
         },
-        [](test::Number* n) -> test::Number*
+        [](test::Number** n) -> test::Number*
         {
             EXPECT_TRUE(false);
-            return n;
+            return *n;
         });
 
     promise.resolve(resolved);
@@ -197,15 +197,15 @@ TEST_F(PromiseTest, checkThenAndIgnoreFulfilledReceiver)
     auto rejected = new test::Number{1.0f};
 
     promise.then(
-        [](test::Number* n) -> test::Number*
+        [](test::Number** n) -> test::Number*
         {
             EXPECT_TRUE(false);
-            return n;
+            return *n;
         },
-        [](Number* n) -> Number*
+        [](test::Number** n) -> test::Number*
         {
-            EXPECT_EQ(n->unboxed(), 1.0f);
-            throw n;
+            EXPECT_EQ((*n)->unboxed(), 1.0f);
+            throw *n;
         });
 
     promise.reject(rejected);
@@ -221,10 +221,10 @@ TEST_F(PromiseTest, checkThenNoFatalIfThrow)
 
     auto resolved = new test::Number{1.0f};
 
-    auto onFulfilled = [](test::Number* n) -> test::Number*
+    auto onFulfilled = [](test::Number** n) -> test::Number*
     {
-        EXPECT_EQ(n->unboxed(), 1.0f);
-        throw n;
+        EXPECT_EQ((*n)->unboxed(), 1.0f);
+        throw *n;
     };
 
     promise.then(std::move(onFulfilled));
@@ -241,10 +241,10 @@ TEST_F(PromiseTest, checkFailMethod)
 
     auto rejected = new test::Number{1.0f};
 
-    auto onRejected = [](test::Number* n) -> test::Number*
+    auto onRejected = [](test::Number** n) -> test::Number*
     {
-        EXPECT_EQ(n->unboxed(), 1.0f);
-        return n;
+        EXPECT_EQ((*n)->unboxed(), 1.0f);
+        return *n;
     };
 
     promise.fail(std::move(onRejected));
@@ -304,22 +304,22 @@ TEST_F(PromiseTest, checkAllFullChainsAndSetResolve)
 
     promise
         .then(
-            [](test::Number* n)
+            [](test::Number** n)
             {
-                EXPECT_EQ(n->unboxed(), 1.0f);
-                return n;
+                EXPECT_EQ((*n)->unboxed(), 1.0f);
+                return *n;
             },
-            [](test::Number* n)
+            [](test::Number** n)
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             })
         .finally([]() -> test::Object* { throw new String("FAIL"); })
         .fail(
-            [](test::String* s)
+            [](test::String** s)
             {
-                EXPECT_EQ(s->cpp_str(), "FAIL");
-                return s;
+                EXPECT_EQ((*s)->cpp_str(), "FAIL");
+                return *s;
             });
 
     promise.resolve(new test::Number{1.0f});
@@ -333,22 +333,22 @@ TEST_F(PromiseTest, checkAllFullChainsAndSetReject)
 
     promise
         .then(
-            [](test::Number* n)
+            [](test::Number** n)
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             },
-            [](test::Number* n)
+            [](test::Number** n)
             {
-                EXPECT_EQ(n->unboxed(), 1.0f);
-                return n;
+                EXPECT_EQ((*n)->unboxed(), 1.0f);
+                return *n;
             })
         .finally([]() -> test::Object* { throw new test::String("FAIL"); })
         .fail(
-            [](test::String* s)
+            [](test::String** s)
             {
-                EXPECT_EQ(s->cpp_str(), "FAIL");
-                return s;
+                EXPECT_EQ((*s)->cpp_str(), "FAIL");
+                return *s;
             });
 
     promise.reject(new test::Number{1.0f});
@@ -361,13 +361,13 @@ TEST_F(PromiseTest, checkHandlingLastException)
     auto promise = createPromise();
 
     promise
-        .then([](test::Number* n) -> test::Number* { throw new test::String("FAIL-1"); })
+        .then([](test::Number** n) -> test::Number* { throw new test::String("FAIL-1"); })
         .finally([]() -> test::Object* { throw new test::String("FAIL-2"); })
         .fail(
-            [](test::String* s) -> test::String*
+            [](test::String** s) -> test::String*
             {
-                EXPECT_EQ(s->cpp_str(), "FAIL-2");
-                return s;
+                EXPECT_EQ((*s)->cpp_str(), "FAIL-2");
+                return *s;
             });
 
     promise.resolve(new test::Number{1.0f});
@@ -380,19 +380,19 @@ TEST_F(PromiseTest, checkHandlingLastExceptionAndIgnoreBeforeReceivers)
     auto promise = createPromise();
 
     promise
-        .then([](test::Number* n) -> test::Number* { throw new test::String("FAIL-1"); })
+        .then([](test::Number** n) -> test::Number* { throw new test::String("FAIL-1"); })
         .finally([]() -> test::Object* { throw new test::String("FAIL-2"); })
         .then(
-            [](test::Object* o) -> test::Object*
+            [](test::Object** o) -> test::Object*
             {
                 EXPECT_TRUE(false);
-                return o;
+                return *o;
             })
         .fail(
-            [](test::String* s)
+            [](test::String** s)
             {
-                EXPECT_EQ(s->cpp_str(), "FAIL-2");
-                return s;
+                EXPECT_EQ((*s)->cpp_str(), "FAIL-2");
+                return *s;
             });
 
     promise.resolve(new test::Number{1.0f});
@@ -405,10 +405,10 @@ TEST_F(PromiseTest, checkIgnoreEmptyReceiversAndHandlingResultNoEmptyIfResolve)
     auto promise = createPromise();
 
     promise.then().finally().then(
-        [](test::Number* n) -> test::Number*
+        [](test::Number** n) -> test::Number*
         {
-            EXPECT_EQ(n->unboxed(), 1.0f);
-            return n;
+            EXPECT_EQ((*n)->unboxed(), 1.0f);
+            return *n;
         });
 
     promise.resolve(new test::Number{1.0f});
@@ -425,29 +425,29 @@ TEST_F(PromiseTest, checkLastReceiverIsFinally)
 
     promise
         .then(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
-                EXPECT_EQ(n->unboxed(), 1.0f);
-                auto* result = n->addInplace(new test::Number{1.0f});
+                EXPECT_EQ((*n)->unboxed(), 1.0f);
+                auto* result = (*n)->addInplace(new test::Number{1.0f});
                 return static_cast<test::Number*>(result);
             })
         .then(
-            [](test::Number* n) -> test::Object*
+            [](test::Number** n) -> test::Object*
             {
-                EXPECT_EQ(n->unboxed(), 2.0f);
-                throw n;
+                EXPECT_EQ((*n)->unboxed(), 2.0f);
+                throw *n;
             })
         .then(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             })
         .fail(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
-                EXPECT_EQ(n->unboxed(), 2.0f);
-                return n;
+                EXPECT_EQ((*n)->unboxed(), 2.0f);
+                return *n;
             })
         .finally(
             [&testFinallyFlag]
@@ -467,15 +467,15 @@ TEST_F(PromiseTest, checkIgnoreEmptyReceiversAndHandlingResultNoEmptyIfReject)
     auto promise = createPromise();
 
     promise.then().finally().then(
-        [](test::Number* n) -> test::Number*
+        [](test::Number** n) -> test::Number*
         {
             EXPECT_TRUE(false);
-            return n;
+            return *n;
         },
-        [](test::Number* n) -> test::Number*
+        [](test::Number** n) -> test::Number*
         {
-            EXPECT_EQ(n->unboxed(), 1.0f);
-            return n;
+            EXPECT_EQ((*n)->unboxed(), 1.0f);
+            return *n;
         });
 
     promise.reject(new test::Number{1.0f});
@@ -490,23 +490,23 @@ TEST_F(PromiseTest, checkIgnoreBeforeFulfilledAndHandlingCatch)
     promise.then()
         .finally()
         .then(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             })
         .then(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             })
         .finally([] { return test::Undefined::instance(); })
         .fail(
-            [](test::Number* n)
+            [](test::Number** n)
             {
-                EXPECT_EQ(n->unboxed(), 1.0f);
-                return n;
+                EXPECT_EQ((*n)->unboxed(), 1.0f);
+                return *n;
             });
 
     promise.reject(new test::Number{1.0f});
@@ -520,30 +520,30 @@ TEST_F(PromiseTest, checkIgnoreRestFulfilledAndHandlingCatch)
 
     promise
         .then(
-            [](test::Number* n) -> test::Object*
+            [](test::Number** n) -> test::Object*
             {
-                EXPECT_EQ(n->unboxed(), 1.0f);
+                EXPECT_EQ((*n)->unboxed(), 1.0f);
                 throw new test::String{"FAIL"};
             })
         .finally()
         .then(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             })
         .then(
-            [](test::Number* n) -> test::Number*
+            [](test::Number** n) -> test::Number*
             {
                 EXPECT_TRUE(false);
-                return n;
+                return *n;
             })
         .finally([] { return test::Undefined::instance(); })
         .fail(
-            [](test::String* s)
+            [](test::String** s)
             {
-                EXPECT_EQ(s->cpp_str(), "FAIL");
-                return s;
+                EXPECT_EQ((*s)->cpp_str(), "FAIL");
+                return *s;
             });
 
     promise.resolve(new test::Number{1.0f});
@@ -557,22 +557,22 @@ TEST_F(PromiseTest, checkImmutableStatePromise)
 
     promise
         .then(
-            [](test::Number* n) -> test::Object*
+            [](test::Number** n) -> test::Object*
             {
-                EXPECT_EQ(n->unboxed(), 1.0f);
+                EXPECT_EQ((*n)->unboxed(), 1.0f);
                 throw new test::String{"FAIL"};
             })
         .fail(
-            [](test::String* s)
+            [](test::String** s)
             {
-                EXPECT_EQ(s->cpp_str(), "FAIL");
-                return s;
+                EXPECT_EQ((*s)->cpp_str(), "FAIL");
+                return *s;
             })
         .fail(
-            [](test::String* s)
+            [](test::String** s)
             {
                 EXPECT_TRUE(false);
-                return s;
+                return *s;
             });
 
     promise.resolve(new test::Number{1.0f});

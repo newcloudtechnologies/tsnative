@@ -23,7 +23,7 @@ Allocator::Allocator(Callbacks&& callbacks)
 void* Allocator::allocate(std::size_t n)
 {
     auto* result = doAllocate(n);
-    LOG_ADDRESS("Allocated memory using allocate ", result);
+    LOG_ADDRESS("Allocated " + std::to_string(n) + " using allocate ", result);
     return result;
 }
 
@@ -37,7 +37,7 @@ void* Allocator::allocateObject(std::size_t n)
     auto* memory = doAllocate(n);
     auto* object = Object::asObject(memory);
 
-    LOG_ADDRESS("Allocated memory using allocateObject ", memory);
+    LOG_ADDRESS("Allocated " + std::to_string(n) + " bytes using allocateObject ", memory);
 
     _callbacks.onObjectAllocated(object);
 

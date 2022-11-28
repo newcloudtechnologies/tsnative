@@ -44,12 +44,12 @@ public:
     {
         _allocator = nullptr;
 
-        for (auto* o : _actualAllocatedObjects)
+        // delete objects in reversed creation order
+        for (auto rit = _actualAllocatedObjects.rbegin(); rit != _actualAllocatedObjects.rend(); ++rit)
         {
+            auto* o = *rit;
             delete o;
         }
-
-        _actualAllocatedObjects.clear();
     }
 
     const std::vector<Object*>& getActualAllocatedObjects() const
@@ -145,7 +145,20 @@ void closureBody(){};
 
 TEST_F(MarkingTestFixture, closure)
 {
-    void* env[] = {new test::Object(), new test::Object()}; // should be marked
+    auto* o1 = new test::Object(); // should be marked
+    auto* o2 = new test::Object(); // should be marked
+
+    auto** o1Star = (void**)malloc(sizeof(void*));
+    auto** o2Star = (void**)malloc(sizeof(void*));
+    *o1Star = (void*)o1;
+    *o2Star = (void*)o2;
+
+    LOG_ADDRESS("o1Star ", o1Star);
+    LOG_ADDRESS("o2Star ", o2Star);
+
+    void*** env = (void***)malloc(2 * sizeof(void**));
+    env[0] = o1Star;
+    env[1] = o2Star;
 
     auto* numArgs = new test::Number(0.f);   // should be marked
     auto* envLength = new test::Number(2.f); // should be marked

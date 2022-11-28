@@ -19,12 +19,12 @@ export class BranchHandler extends AbstractNodeHandler {
     if (ts.isIfStatement(node)) {
       this.generator.emitLocation(node);
       const statement = node as ts.IfStatement;
-      const condition = this.generator.handleExpression(statement.expression, env).makeBoolean();
+      const condition = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1().makeBoolean();
 
       const thenBlock = BasicBlock.create(this.generator.context, "then", this.generator.currentFunction);
       const elseBlock = BasicBlock.create(this.generator.context, "else", this.generator.currentFunction);
       const endBlock = BasicBlock.create(this.generator.context, "endif", this.generator.currentFunction);
-      this.generator.builder.createCondBr(condition, thenBlock, elseBlock);
+      this.generator.builder.createCondBr(condition.derefToPtrLevel1(), thenBlock, elseBlock);
       this.handleBranch(statement.thenStatement, thenBlock, endBlock, parentScope, env);
       this.handleBranch(statement.elseStatement, elseBlock, endBlock, parentScope, env);
       this.generator.builder.setInsertionPoint(endBlock);

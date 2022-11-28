@@ -19,8 +19,8 @@ export class ArithmeticHandler extends AbstractExpressionHandler {
     if (ts.isBinaryExpression(expression) && this.canHandle(expression)) {
       this.generator.emitLocation(expression.left);
       this.generator.emitLocation(expression.right);
-      const left = this.generator.handleExpression(expression.left, env);
-      const right = this.generator.handleExpression(expression.right, env);
+      const left = this.generator.handleExpression(expression.left, env).derefToPtrLevel1();
+      const right = this.generator.handleExpression(expression.right, env).derefToPtrLevel1();
 
       switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.PlusToken:

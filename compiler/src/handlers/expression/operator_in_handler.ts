@@ -21,8 +21,8 @@ export class OperatorInHandler extends AbstractExpressionHandler {
       this.generator.emitLocation(expression.left);
       this.generator.emitLocation(expression.right);
 
-      const left = this.generator.handleExpression(expression.left, env);
-      const right = this.generator.handleExpression(expression.right, env);
+      const left = this.generator.handleExpression(expression.left, env).derefToPtrLevel1();
+      const right = this.generator.handleExpression(expression.right, env).derefToPtrLevel1();
 
       if (expression.operatorToken.kind === ts.SyntaxKind.InKeyword) {
           return this.generator.ts.obj.createOperatorIn(right, left);

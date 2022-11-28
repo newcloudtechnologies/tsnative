@@ -54,7 +54,7 @@ export class ClassHandler extends AbstractNodeHandler {
 
     for (const memberDecl of declaration.members) {
       if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStatic()) {
-        const initializerValue = this.generator.handleExpression(memberDecl.initializer);
+        const initializerValue = this.generator.handleExpression(memberDecl.initializer).derefToPtrLevel1();
         staticProperties.set(memberDecl.name!.getText(), initializerValue);
       }
     }
@@ -90,11 +90,7 @@ export class ClassHandler extends AbstractNodeHandler {
       });
 
       // @todo: this logic is required because of builtins
-      if (parentScope.get(mangledTypename)) {
-        parentScope.overwrite(mangledTypename, scope);
-      } else {
-        parentScope.set(mangledTypename, scope);
-      }
+      parentScope.setOrAssign(mangledTypename, scope);
     }, parentScope);
   }
 

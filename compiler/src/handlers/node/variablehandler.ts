@@ -13,6 +13,7 @@ import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../.
 import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
+import { LLVM } from "../../llvm/llvm";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -81,23 +82,14 @@ export class VariableHandler extends AbstractNodeHandler {
       initializer = this.generator.builder.createBitCast(initializer, this.generator.ts.undef.getLLVMType());
     }
 
-    let existing = parentScope.get(name);
-
-    if (existing && existing instanceof LLVMValue) {
-      // overwrite pointers that possibly captured in some environments
-      existing.makeAssignment(initializer);
-      // overwrite value for future uses
-      parentScope.overwrite(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
-    } else {
-      parentScope.set(name, new HeapVariableDeclaration(initializer, initializer, name, declaration));
-    }
+    parentScope.setOrAssign(name, initializer);
 
     if (outerEnv?.variables.includes(name)) {
       const index = outerEnv.getVariableIndex(name);
       const valuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, index]);
       const value = this.generator.builder.createLoad(valuePtr);
 
-      value.makeAssignment(initializer);
+      this.generator.builder.createSafeStore(initializer, value);
     }
 
     const dbg = this.generator.getDebugInfo();
@@ -154,19 +146,14 @@ export class VariableHandler extends AbstractNodeHandler {
         }
       }
 
-      const value = new HeapVariableDeclaration(allocated, allocated, name, declaration);
-      if (parentScope.get(name)) {
-        parentScope.overwrite(name, value);
-      } else {
-        parentScope.set(name, value);
-      }
+      parentScope.setOrAssign(name, allocated);
       initializer = undefined;
     } else {
       this.checkAssignmentFromMethod(declaration);
       initializer = this.generator.handleExpression(declaration.initializer, outerEnv);
     }
 
-    return initializer;
+    return initializer?.derefToPtrLevel1();
   }
 
   private handleArrayBindingPattern(declaration: ts.VariableDeclaration, parentScope: Scope, outerEnv?: Environment) {
@@ -192,7 +179,7 @@ export class VariableHandler extends AbstractNodeHandler {
       identifiers.push(element.name);
     });
 
-    const arrayInitializer = this.generator.handleExpression(declaration.initializer, outerEnv);
+    const arrayInitializer = this.generator.handleExpression(declaration.initializer, outerEnv).derefToPtrLevel1();
     const arrayUntyped = this.generator.builder.asVoidStar(arrayInitializer);
     const arrayType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
     let elementType = arrayType.getTypeGenericArguments()[0];

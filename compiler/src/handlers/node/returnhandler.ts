@@ -28,7 +28,7 @@ export class ReturnHandler extends AbstractNodeHandler {
       if (node.expression) {
         this.generator.emitLocation(node);
 
-        let ret = this.generator.handleExpression(node.expression, env);
+        let ret = this.generator.handleExpression(node.expression, env).derefToPtrLevel1();
 
         if (node.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
           const currentClassDeclaration = this.generator.meta.getCurrentClassDeclaration();

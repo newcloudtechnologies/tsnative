@@ -31,6 +31,8 @@ Union::Union(Object* value)
 
 Object* Union::getValue() const
 {
+    LOG_ADDRESS("Calling union :: getValue for ", this);
+    LOG_ADDRESS("Resulting value is ", _value);
     return _value;
 }
 

@@ -31,7 +31,7 @@ export class EnumHandler extends AbstractNodeHandler {
         const memberInitializer = member.initializer;
 
         const value = memberInitializer
-          ? this.generator.handleExpression(memberInitializer, env)
+          ? this.generator.handleExpression(memberInitializer, env).derefToPtrLevel1()
           : this.generator.builtinNumber.create(LLVMConstantFP.get(this.generator, index));
 
         this.generator.ts.obj.set(enumObject, memberName, value);

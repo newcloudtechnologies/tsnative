@@ -315,12 +315,12 @@ export class TSObject {
     }
 
     const castedSource = this.generator.builder.createBitCast(
-      source,
+      source.derefToPtrLevel1(),
       this.llvmType
     );
 
     const castedTarget = this.generator.builder.createBitCast(
-      target,
+      target.derefToPtrLevel1(),
       this.llvmType
     );
 
@@ -355,7 +355,7 @@ export class TSObject {
     }
 
     const castedObject = this.generator.builder.createBitCast(
-      obj,
+      obj.derefToPtrLevel1(),
       LLVMType.getCXXVoidStarType(this.generator)
     );
 
@@ -368,7 +368,7 @@ export class TSObject {
       this.getFn = this.initGetFn();
     }
 
-    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
     const llvmKey = this.generator.ts.str.create(key);
 
     return this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
@@ -379,8 +379,8 @@ export class TSObject {
       this.setFn = this.initSetFn();
     }
 
-    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
-    const valueUntyped = this.generator.builder.asVoidStar(value);
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
+    const valueUntyped = this.generator.builder.asVoidStar(value.derefToPtrLevel1());
 
     const wrappedKey = this.generator.ts.str.create(key);
 
