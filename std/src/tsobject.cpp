@@ -299,7 +299,8 @@ Boolean* Object::toBool() const
 
 Boolean* Object::equals(Object* other) const
 {
-    return new Boolean(other == this);
+    // Consider Object as properties map wrapper
+    return new Boolean(other->_props == _props);
 }
 
 Array<String*>* Object::keys(Object* entity)
