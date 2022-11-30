@@ -81,7 +81,7 @@ function (add_ts_library ARG_NAME ...)
     set(definitions ${ARG_DEFINES})
     set(libraries ${ARG_LIBRARIES};tsnative-std::tsnative-std)
     set(baseFlags --baseUrl;${ARG_BASE_URL};--tsconfig;${ARG_TS_CONFIG})
-    set(extraFlags 
+    set(extraFlags
         $<$<BOOL:${ARG_PRINT_IR}>:--printIR;>
         $<$<BOOL:${ARG_TS_DEBUG}>:--debug;>
         $<$<BOOL:${ARG_TRACE_IMPORT}>:--trace;>
@@ -95,11 +95,11 @@ function (add_ts_library ARG_NAME ...)
     _printVar(definitions)
     _printVar(libraries)
 
-    # Stages 0-2 produce files with mangled and demangled names for input targets(libraries),
+    # Stages 0 and 1 produce files with mangled and demangled names for input targets(libraries),
     #   instantiated classes and functions. And add them to two lists: mangledTables and demangledTables.
-    # Stage 3 compiles mainTs and produces an IR bytecode.
-    # Stage 4 compiles IR to an object file.
-    # Stage 5 compiles seed and creates an object library.
+    # Stage 2 compiles mainTs and produces an IR bytecode.
+    # Stage 3 compiles IR to an object file.
+    # Stage main compiles seed and creates an object library.
 
     # These top-level targets will be created.
 
@@ -109,9 +109,6 @@ function (add_ts_library ARG_NAME ...)
 
     set(mangledTables )
     set(demangledTables )
-
-    set(includeDirs )
-    list(APPEND includeDirs ${tsnative-std_INCLUDE_DIR})
 
     # Stage 0
 
@@ -208,7 +205,7 @@ endmacro()
 function (_add_ts_command ARG_SRC ...)
     set(options )
     set(oneValueArgs OUTPUT)
-    set(multiValueArgs MANGLED DEMANGLED FLAGS DEPENDS)
+    set(multiValueArgs MANGLED DEMANGLED INCLUDE_DIRS FLAGS DEPENDS)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
@@ -226,6 +223,7 @@ function (_add_ts_command ARG_SRC ...)
     set(mangledTable ${ARG_MANGLED})
     set(demangledTable ${ARG_DEMANGLED})
     set(dependencies ${ARG_DEPENDS})
+    set(includeDirs ${ARG_INCLUDE_DIRS})
     # XXX: We have to use comma-space separator bc of WinApi CommandLineToArgvW function that
     # cmake uses to parse command line arguments. It adds a strange prefix 'C;' to paths if we
     # use only comma to separate paths.
@@ -383,6 +381,11 @@ endmacro()
 macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FILENAME ARG_FLAG)
     set(cppFile ${outputDir}/${ARG_FILENAME})
     set(cppTarget ${ARG_STAGE})
+    set(stageIncludeDirs ${tsnative-std_INCLUDE_DIR})
+
+    if (NOT stageIncludeDirs)
+        message(FATAL_ERROR "Include directories cannot be empty!")
+    endif()
 
     # Generating .cpp file
 
@@ -390,6 +393,7 @@ macro (_addStage ARG_STAGE ARG_DEPENDS ARG_FILENAME ARG_FLAG)
         OUTPUT ${cppFile}
         MANGLED ${mangledTables}
         DEMANGLED ${demangledTables}
+        INCLUDE_DIRS ${stageIncludeDirs}
         FLAGS ${baseFlags};${ARG_FLAG};--templatesOutputDir;${outputDir}
         DEPENDS ${ARG_DEPENDS} ${watchSources}
     )
