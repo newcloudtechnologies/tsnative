@@ -86,7 +86,7 @@ class LazyClosure {
       throw new Error(`Expected lazy closure to be passed at LazyClosure.getEnv, got '${lazyClosure.type.toString()}'`);
     }
 
-    const envPtr = this.generator.builder.createSafeInBoundsGEP(lazyClosure, [0, 0]);
+    const envPtr = this.generator.builder.createSafeInBoundsGEP(lazyClosure.derefToPtrLevel1(), [0, 0]);
     return this.generator.builder.createLoad(envPtr);
   }
 
@@ -191,7 +191,7 @@ export class BuiltinTSClosure extends Builtin {
       throw new Error("External symbol for TSClosure.getEnvironment not found");
     }
 
-    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer().getPointer().getPointer();
     const llvmArgumentTypes = [this.getLLVMType()];
 
     const { fn: getEnvironment } = this.generator.llvm.function.create(
@@ -218,7 +218,7 @@ export class BuiltinTSClosure extends Builtin {
       [],
       this.generator,
       undefined,
-      ["void*", "void**", "Number*", "Number*", "Number*"]
+      ["void*", "void***", "Number*", "Number*", "Number*"]
     );
     if (!isExternalSymbol) {
       throw new Error("External symbol TSClosure constructor not found");
@@ -228,7 +228,7 @@ export class BuiltinTSClosure extends Builtin {
     const llvmArgumentTypes = [
       this.getLLVMType(),
       LLVMType.getInt8Type(this.generator).getPointer(),
-      LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
+      LLVMType.getInt8Type(this.generator).getPointer().getPointer().getPointer(),
       this.generator.builtinNumber.getLLVMType(),
       this.generator.builtinNumber.getLLVMType(),
       this.generator.builtinNumber.getLLVMType(),
@@ -270,7 +270,7 @@ export class BuiltinTSClosure extends Builtin {
 
     const thisValue = this.generator.gc.allocate(this.getLLVMType().unwrapPointer());
     const untypedFn = this.generator.builder.asVoidStar(fn);
-    const untypedEnv = this.generator.builder.asVoidStarStar(env.untyped);
+    const untypedEnv = this.generator.builder.asVoidStarStarStar(env.untyped);
 
     const numArgs = functionDeclaration.parameters.length;
 

@@ -102,12 +102,7 @@ export class TypeAliasHandler extends AbstractNodeHandler {
         });
 
         // @todo: this logic is required because of builtins
-        if (parentScope.get(name)) {
-          parentScope.overwrite(name, scope);
-        } else {
-          parentScope.set(name, scope);
-        }
-
+        parentScope.setOrAssign(name, scope);
         return true;
       default:
         break;

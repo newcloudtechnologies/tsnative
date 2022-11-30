@@ -43,7 +43,7 @@
         return new RxButton_t(args.text);
     }
 
-    let qqq = RxButton({
+    const qqq = RxButton({
         text: true ? "Log In" : "Processing...",
     })
 
@@ -52,8 +52,7 @@
 
 // Simple ternary with flag
 {
-    let flag = true;
-    let a = flag ? "a" : "b";
+    const a = true ? "a" : "b";
     console.assert(a === "a", "Ternary: simple ternary is not equal");
 }
 
@@ -99,7 +98,7 @@
 
 // Create user object with ternary and pass directly to the constructor
 {
-    let flag = true;
+    const flag = true;
 
     interface RxText_args {
         text: string
@@ -112,7 +111,7 @@
         }
     }
 
-    let rxText = new RxText(
+    const rxText = new RxText(
         {
             text: (flag ? "title1" : "title2")
         });

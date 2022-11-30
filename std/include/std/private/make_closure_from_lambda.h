@@ -23,13 +23,13 @@
 namespace details
 {
 template <std::size_t size, std::size_t... Is>
-constexpr auto makeTupleFromEnvironment(void** environment, std::index_sequence<Is...>)
+constexpr auto makeTupleFromEnvironment(void*** environment, std::index_sequence<Is...>)
 {
     return std::make_tuple(environment[Is]...);
 }
 
 template <std::size_t size>
-constexpr auto makeTupleFromEnvironment(void** array)
+constexpr auto makeTupleFromEnvironment(void*** array)
 {
     return makeTupleFromEnvironment<size>(array, std::make_index_sequence<size>{});
 }
@@ -37,7 +37,8 @@ constexpr auto makeTupleFromEnvironment(void** array)
 template <typename TupleTypeTo, typename Tuple, std::size_t... Is>
 auto createFromTuple(Tuple& tuple, std::index_sequence<Is...>)
 {
-    return std::make_tuple(static_cast<typename std::tuple_element<Is..., TupleTypeTo>::type>(std::get<Is...>(tuple)));
+    using ResultType = typename std::tuple_element<Is..., TupleTypeTo>::type;
+    return std::make_tuple(reinterpret_cast<ResultType>(std::get<Is...>(tuple)));
 }
 
 template <typename TupleTypeTo, typename Tuple, std::size_t size = std::tuple_size<TupleTypeTo>{}>
@@ -65,17 +66,15 @@ auto apply(F&& f, Tuple&& tuple)
 template <typename Closure, typename Func>
 typename std::enable_if_t<FunctionPtr<Func>::argsCount == 0, Closure*> makeClosure(Func&& fn)
 {
-    auto f = [fn = std::move(fn)](void** env) -> void* { return fn(); };
+    auto f = [fn = std::move(fn)](void*** env) -> void* { return fn(); };
 
     auto functionPtr = toFunctionPtr(std::move(f));
-    void** env = (void**)std::malloc(sizeof(void*)); // TODO Consider deleting memory
+    void*** env = (void***)malloc(sizeof(void**)); // just to feed something to tsclosure::free
     auto* envLength = new Number{0.f};
     auto* numArgs = new Number{0.f};
     auto* opt = new Number{0.f};
 
-    auto* closure = new Closure{(void*)functionPtr, env, envLength, numArgs, opt};
-
-    return closure;
+    return new Closure{(void*)functionPtr, env, envLength, numArgs, opt};
 }
 
 template <typename Closure,
@@ -84,7 +83,7 @@ template <typename Closure,
           std::size_t argsCount = FunctionPtr<Func>::argsCount>
 typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, Closure*> makeClosure(Func&& fn)
 {
-    auto f = [fn = std::move(fn)](void** env) -> void*
+    auto f = [fn = std::move(fn)](void*** env) -> void*
     {
         auto tupleEnvironments = details::makeTupleFromEnvironment<argsCount>(env);
         auto target = details::createFromTuple<TupleArgsType>(tupleEnvironments);
@@ -92,16 +91,17 @@ typename std::enable_if_t<FunctionPtr<Func>::argsCount != 0, Closure*> makeClosu
     };
 
     auto functionPtr = toFunctionPtr(std::move(f));
-    void** env = (void**)std::malloc(argsCount * sizeof(void*)); // TODO Consider deleting memory
+    void*** env = (void***)malloc(argsCount * sizeof(void**));
     for (std::size_t i = 0; i < argsCount; ++i)
     {
-        env[i] = (void*)std::malloc(sizeof(void*));
+        // TODO All that stuff leaks
+        env[i] = (void**)malloc(sizeof(void**));
+        *(env[i]) = (void*)malloc(sizeof(void*));
     }
+
     auto* envLength = new Number{(double)argsCount};
     auto* numArgs = new Number{(double)argsCount};
     auto* opt = new Number{0.f};
 
-    auto* closure = new Closure{(void*)functionPtr, env, envLength, numArgs, opt};
-
-    return closure;
+    return new Closure{(void*)functionPtr, env, envLength, numArgs, opt};
 }

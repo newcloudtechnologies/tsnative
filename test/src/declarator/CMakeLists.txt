@@ -75,13 +75,12 @@ function(runScenario target dep_target ...)
     add_custom_target(${target})
 
     set_target_properties(${target} PROPERTIES
-        TS_HEADERS "${headers}"
-        TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
-        TS_IMPORT "${ARG_IMPORT}"
         TS_NO_IMPORT_STD "${ARG_NO_IMPORT_STD}"
     )
 
     ts_generate_declarations(${target}
+        TS_HEADERS ${headers}
+        TS_IMPORT "${ARG_IMPORT}"
         TARGET_COMPILER_ABI "${ARG_TARGET_COMPILER_ABI}"
         OUTPUT_DIR "${outputDir}"
         IGNORE_ERROR "${ARG_IGNORE_ERROR}"
@@ -152,7 +151,7 @@ function(runIndexScenario target dep_target ...)
     set(outputsFile "${tempDir}/outputs.txt")
     set(snippetsFile "${tempDir}/snippets.txt")
 
-    ts_generate_index_ex(${target}
+    ts_generate_index(${target}
         DECLARATIONS ${declarationList}
         EXPORTED_NAME "index_test"
         MODULE_NAME "test"
@@ -195,14 +194,8 @@ _requiredVar(TSNATIVE_DECLARATOR_INCLUDE_DIR)
 set(SCENARIOS_DIR
     "${SOURCE_DIR}/src/declarator/scenarios"
 )
-set(INCLUDE_DIRECTORIES 
-    "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}"
-    "${TSNATIVE_STD_INCLUDE_DIR}"
-    "${TSNATIVE_DECLARATOR_INCLUDE_DIR}"
-)
 
 _printVar(SCENARIOS_DIR)
-_printVar(INCLUDE_DIRECTORIES)
 
 add_custom_target(build_anyway ALL)
 

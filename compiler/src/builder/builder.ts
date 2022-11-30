@@ -215,6 +215,15 @@ export class Builder {
     return LLVMValue.create(casted, this.generator);
   }
 
+  asVoidStarStarStar(value: LLVMValue) {
+    // It might looks strange, but void* in LLVM is i8*.
+    const casted = this.builder.createBitCast(
+      value.unwrapped,
+      LLVMType.getInt8Type(this.generator).getPointer().getPointer().getPointer().unwrapped
+    );
+    return LLVMValue.create(casted, this.generator);
+  }
+
   getInsertBlock() {
     return this.builder.getInsertBlock();
   }

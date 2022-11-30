@@ -97,7 +97,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
     expression.properties.forEach((property) => {
       switch (property.kind) {
         case ts.SyntaxKind.PropertyAssignment:
-          let propVal = this.generator.handleExpression(property.initializer, env);
+          let propVal = this.generator.handleExpression(property.initializer, env).derefToPtrLevel1();
           if (propVal.isTSPrimitivePtr()) {
             // mimics 'value' semantic for primitives
             propVal = propVal.clone();
@@ -106,10 +106,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
           llvmValues.set(property.name.getText(), propVal);
           break;
         case ts.SyntaxKind.ShorthandPropertyAssignment:
-          llvmValues.set(property.name.getText(), this.generator.handleExpression(property.name, env));
+          llvmValues.set(property.name.getText(), this.generator.handleExpression(property.name, env).derefToPtrLevel1());
           break;
         case ts.SyntaxKind.SpreadAssignment:
-          const obj = this.generator.handleExpression(property.expression, env);
+          const obj = this.generator.handleExpression(property.expression, env).derefToPtrLevel1();
 
           const type = this.generator.ts.checker.getTypeAtLocation(property.expression);
           const props = type.getProperties();
@@ -162,12 +162,12 @@ export class LiteralHandler extends AbstractExpressionHandler {
     for (const element of expression.elements) {
       if (ts.isSpreadElement(element)) {
         const concat = this.generator.ts.array.createConcat(expression);
-        let elementValue = this.generator.handleExpression(element.expression, outerEnv);
+        let elementValue = this.generator.handleExpression(element.expression, outerEnv).derefToPtrLevel1();
 
         if (elementValue instanceof HeapVariableDeclaration) {
           elementValue = elementValue.allocated;
         }
-
+        elementValue = elementValue.derefToPtrLevel1();
         if (!elementType.isUnion() && elementValue.type.isUnion()) {
           elementValue = this.generator.ts.union.get(elementValue);
         }
@@ -177,7 +177,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           this.generator.builder.asVoidStar(elementValue),
         ]);
       } else {
-        let elementValue = this.generator.handleExpression(element, outerEnv);
+        let elementValue = this.generator.handleExpression(element, outerEnv).derefToPtrLevel1();
         if (!elementType.isUnion() && elementValue.type.isUnion()) {
           elementValue = this.generator.ts.union.get(elementValue);
         }

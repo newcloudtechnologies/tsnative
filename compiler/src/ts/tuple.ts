@@ -180,7 +180,7 @@ export class TSTuple {
     const push = this.getLLVMPush();
 
     for (const element of elements) {
-      const initializer = this.generator.handleExpression(element, env);
+      const initializer = this.generator.handleExpression(element, env).derefToPtrLevel1();
       this.generator.builder.createSafeCall(push, [allocated, this.generator.builder.asVoidStar(initializer)]);
     }
 

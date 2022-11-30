@@ -192,6 +192,8 @@ Array<String*>* Object::getKeysArray() const
 
 void* Object::get(String* key) const
 {
+    LOG_INFO("Calling object::get for key " + key->cpp_str());
+
     if (has(key))
     {
         return _props->get(key);
@@ -297,7 +299,8 @@ Boolean* Object::toBool() const
 
 Boolean* Object::equals(Object* other) const
 {
-    return new Boolean(other == this);
+    // Consider Object as properties map wrapper
+    return new Boolean(other->_props == _props);
 }
 
 Array<String*>* Object::keys(Object* entity)
