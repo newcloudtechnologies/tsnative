@@ -256,7 +256,7 @@ type Callback<ArgT> = (i: ArgT) => void;
             return i * 2;
         }
 
-    const p = new Promise((resolve: Callback<number>) => {
+    const p = new Promise((resolve: Callback<number>, reject: Callback<number>) => {
         resolve(2);
     }).then(doubler).then(doubler).then((i: number) => {
         console.assert(i === 8, "Promise. Case [1-S-1]:  Expects 8");

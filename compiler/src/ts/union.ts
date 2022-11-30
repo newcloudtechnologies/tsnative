@@ -182,15 +182,15 @@ export class TSUnion {
 
   get(union: LLVMValue) {
     const get = this.getGetFn();
-    const thisUntyped = this.generator.builder.asVoidStar(union);
+    const thisUntyped = this.generator.builder.asVoidStar(union.derefToPtrLevel1());
 
     return this.generator.builder.createSafeCall(get, [thisUntyped]);
   }
 
   set(union: LLVMValue, value: LLVMValue) {
     const set = this.getSetFn();
-    const thisUntyped = this.generator.builder.asVoidStar(union);
-    const valueUntyped = this.generator.builder.asVoidStar(value);
+    const thisUntyped = this.generator.builder.asVoidStar(union.derefToPtrLevel1());
+    const valueUntyped = this.generator.builder.asVoidStar(value.derefToPtrLevel1());
 
     return this.generator.builder.createSafeCall(set, [thisUntyped, valueUntyped]);
   }

@@ -66,7 +66,7 @@ export class LLVMValue {
   adjustToType(type: LLVMType): LLVMValue {
     let value = this as LLVMValue;
 
-    if (value.type.isPointer() && type.isPointer() && type.getPointerElementType().isIntegerType(8)) {
+    if (value.type.isPointer() && type.isPointer() && this.isInt8PtrType(type)) {
       value = this.generator.builder.createBitCast(value, type);
     }
 
@@ -123,7 +123,7 @@ export class LLVMValue {
       return false;
     }
 
-    const pointerElementType = this.type.getPointerElementType();
+    const pointerElementType = this.derefToPtrLevel1().type.getPointerElementType();
     return pointerElementType.isString() || pointerElementType.isTSNumber() || pointerElementType.isTSBoolean();
   }
 
@@ -132,21 +132,22 @@ export class LLVMValue {
       return this;
     }
 
+    const thisPtr = this.derefToPtrLevel1();
     if (this.type.isTSNumber()) {
       const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
-      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(this)]);
+      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(thisPtr)]);
     }
 
     if (this.type.isString()) {
       const lengthGetter = this.generator.ts.str.getLLVMLength();
-      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(this)]);
+      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(thisPtr)]);
 
       const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
       return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(length)]);
     }
 
     if (this.type.isUnion()) {
-      return this.generator.ts.union.toBool(this);
+      return this.generator.ts.union.toBool(thisPtr);
     }
 
     if (this.type.isUndefined() || this.type.isNull()) {
@@ -209,12 +210,11 @@ export class LLVMValue {
   // @todo: terminology mess
   createNegate(): LLVMValue {
     if (this.type.isTSNumber()) {
-      const fn = this.generator.builtinNumber.createMathFn("negate", OperationFlags.Unary);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+      return this.createUnaryNumberOperation("negate");
     } else if (this.type.isTSBoolean()) {
+      const thisPtr = this.derefToPtrLevel1();
       const fn = this.generator.builtinBoolean.getNegateFn();
-      return this.generator.builder.createSafeCall(fn, [this]);
+      return this.generator.builder.createSafeCall(fn, [thisPtr]);
     } else if (this.type.isUndefined() || this.type.isNull()) {
       return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
     }
@@ -223,31 +223,27 @@ export class LLVMValue {
   }
 
   createPrefixIncrement(): LLVMValue {
-    // @todo: check type
-    const fn = this.generator.builtinNumber.createMathFn("prefixIncrement", OperationFlags.Unary);
-    const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    return this.createUnaryNumberOperation("prefixIncrement");
   }
 
   createPostfixIncrement(): LLVMValue {
-    // @todo: check type
-    const fn = this.generator.builtinNumber.createMathFn("postfixIncrement", OperationFlags.Unary);
-    const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    return this.createUnaryNumberOperation("postfixIncrement");
   }
 
   createPrefixDecrement(): LLVMValue {
-    // @todo: check type
-    const fn = this.generator.builtinNumber.createMathFn("prefixDecrement", OperationFlags.Unary);
-    const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    return this.createUnaryNumberOperation("prefixDecrement");
   }
 
   createPostfixDecrement(): LLVMValue {
-    // @todo: check type
-    const fn = this.generator.builtinNumber.createMathFn("postfixDecrement", OperationFlags.Unary);
-    const thisUntyped = this.generator.builder.asVoidStar(this);
-    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    return this.createUnaryNumberOperation("postfixDecrement");
+  }
+
+  private createUnaryNumberOperation(name: string) {
+      // @todo: check type
+      const thisPtr = this.derefToPtrLevel1();
+      const fn = this.generator.builtinNumber.createMathFn(name, OperationFlags.Unary);
+      const thisUntyped = this.generator.builder.asVoidStar(thisPtr);
+      return this.generator.builder.createSafeCall(fn, [thisUntyped]);
   }
 
   createAdd(other: LLVMValue, flags?: MathFlags): LLVMValue {
@@ -255,144 +251,95 @@ export class LLVMValue {
     if (this.type.isString()) {
       // mkrv @todo: handle inPlace flag correcty
       const concat = this.generator.ts.str.getLLVMConcat();
-      const untypedThis = this.generator.builder.asVoidStar(this);
-      const untypedOther = this.generator.builder.asVoidStar(other);
 
-      const result = this.generator.builder.createSafeCall(concat, [untypedThis, untypedOther]);
+      const operand1 = this.derefToPtrLevel1();
+      const operand2 = other.derefToPtrLevel1();
+      const untypedOp1 = this.generator.builder.asVoidStar(operand1);
+      const untypedOp2 = this.generator.builder.asVoidStar(operand2);
+
+      const result = this.generator.builder.createSafeCall(concat, [untypedOp1, untypedOp2]);
       if (flags === MathFlags.Inplace) {
         return this.makeAssignment(result);
       }
 
       return result;
-    } else if (this.type.isTSNumber()) {
-      const fnName = `add${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+    }
+    else if (this.type.isTSNumber()) {
+      return this.createNumberArithmeticOperation(other, "add", flags);
     }
 
     throw new Error(`Invalid operand types to binary plus: '${this.type.toString()}' '${other.type.toString()}'`);
   }
 
   createSub(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fnName = `sub${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to binary minus: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "sub", flags);
   }
 
   createMul(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fnName = `mul${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to binary multiply: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "mul", flags);
   }
 
   createDiv(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fnName = `div${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to binary division: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "div", flags);
   }
 
   createMod(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fnName = `mod${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to binary modulo: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "mod", flags);
   }
 
   createBitwiseAnd(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    if (this.type.isTSNumber() && other.type.isTSNumber()) {
-      const fnName = `bitwiseAnd${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to bitwise and: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "bitwiseAnd", flags);
   }
 
   createBitwiseOr(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    if (this.type.isTSNumber() && other.type.isTSNumber()) {
-      const fnName = `bitwiseOr${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to bitwise or: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "bitwiseOr", flags);
   }
 
   createBitwiseXor(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    if (this.type.isTSNumber() && other.type.isTSNumber()) {
-      const fnName = `bitwiseXor${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to bitwise xor: '${this.type.toString()}' '${other.type.toString()}'`);
+    return this.createNumberArithmeticOperation(other, "bitwiseXor", flags);
   }
 
   createBitwiseLeftShift(other: LLVMValue, flags?: MathFlags): LLVMValue {
-    if (this.type.isTSNumber() && other.type.isTSNumber()) {
-      const fnName = `bitwiseLeftShift${flags === MathFlags.Inplace ? "Inplace" : ""}`;
-      const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(
-      `Invalid operand types to bitwise left shift: '${this.type.toString()}' '${other.type.toString()}'`
-    );
+    return this.createNumberArithmeticOperation(other, "bitwiseLeftShift", flags);
   }
 
   createBitwiseRightShift(other: LLVMValue, flags?: MathFlags): LLVMValue {
+    return this.createNumberArithmeticOperation(other, "bitwiseRightShift", flags);
+  }
+
+  private createNumberArithmeticOperation(other: LLVMValue, name: string, flags?: MathFlags) : LLVMValue {
     if (this.type.isTSNumber() && other.type.isTSNumber()) {
-      const fnName = `bitwiseRightShift${flags === MathFlags.Inplace ? "Inplace" : ""}`;
+      const lhs = this.derefToPtrLevel1();
+      const rhs = other.derefToPtrLevel1();
+
+      const fnName = name + (flags === MathFlags.Inplace ? "Inplace" : "");
       const fn = this.generator.builtinNumber.createMathFn(fnName);
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
+      const lhsUntyped = this.generator.builder.asVoidStar(lhs);
+      return this.generator.builder.createSafeCall(fn, [lhsUntyped, rhs]);
     }
 
     throw new Error(
-      `Invalid operand types to bitwise right shift: '${this.type.toString()}' '${other.type.toString()}'`
+      `Invalid operand types to ${name}: '${this.type.toString()}' '${other.type.toString()}'`
     );
   }
 
   createEquals(other: LLVMValue): LLVMValue {
-    if (this.type.isUnion()) {
-      let extracted = this.generator.ts.union.get(this);
-      extracted = this.generator.builder.createBitCast(extracted, other.type);
-      return extracted.createEquals(other);
-    } else if (other.type.isUnion()) {
-      let extracted = this.generator.ts.union.get(other);
-      extracted = this.generator.builder.createBitCast(extracted, this.type);
+    const thisPtr = this.derefToPtrLevel1();
+    const otherPtr = other.derefToPtrLevel1();
+    const thisType = thisPtr.type;
+    const otherType = otherPtr.type;
+
+    if (thisType.isUnion()) {
+      let extracted = this.generator.ts.union.get(thisPtr);
+      extracted = this.generator.builder.createBitCast(extracted, otherType);
+      return extracted.createEquals(otherPtr);
+    } else if (otherType.isUnion()) {
+      let extracted = this.generator.ts.union.get(otherPtr);
+      extracted = this.generator.builder.createBitCast(extracted, thisType);
       return this.createEquals(extracted);
     }
 
-    return this.generator.ts.obj.equals(this, other);
+    return this.generator.ts.obj.equals(thisPtr, otherPtr);
   }
 
   createNotEquals(other: LLVMValue): LLVMValue {
@@ -400,55 +347,34 @@ export class LLVMValue {
   }
 
   createLessThan(other: LLVMValue): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fn = this.generator.builtinNumber.createBooleanFn("lessThan");
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to less than: 
-                            lhs: ${this.type.toString()} ${this.type.typeIDName}
-                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+    return this.createComparisonOperation(other, "lessThan");
   }
 
   createLessThanEquals(other: LLVMValue): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fn = this.generator.builtinNumber.createBooleanFn("lessEqualsThan");
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to less equals than: 
-                            lhs: ${this.type.toString()} ${this.type.typeIDName}
-                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+    return this.createComparisonOperation(other, "lessEqualsThan");
   }
 
   createGreaterThan(other: LLVMValue): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fn = this.generator.builtinNumber.createBooleanFn("greaterThan");
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
-
-    throw new Error(`Invalid operand types to greater than: 
-                            lhs: ${this.type.toString()} ${this.type.typeIDName}
-                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+    return this.createComparisonOperation(other, "greaterThan");
   }
 
   createGreaterThanEquals(other: LLVMValue): LLVMValue {
-    // operand type is intentionally not checked
-    if (this.type.isTSNumber()) {
-      const fn = this.generator.builtinNumber.createBooleanFn("greaterEqualsThan");
-      const thisUntyped = this.generator.builder.asVoidStar(this);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped, other]);
-    }
+    return this.createComparisonOperation(other, "greaterEqualsThan");
+  }
 
-    throw new Error(`Invalid operand types to greater equals than: 
-                            lhs: ${this.type.toString()} ${this.type.typeIDName}
-                            rhs: ${other.type.toString()} ${other.type.typeIDName}`);
+  private createComparisonOperation(other: LLVMValue, name: string): LLVMValue {
+      // operand type is intentionally not checked
+      if (this.type.isTSNumber()) {
+        const lhs = this.derefToPtrLevel1();
+        const rhs = other.derefToPtrLevel1();
+        const fn = this.generator.builtinNumber.createBooleanFn(name);
+        const lhsUntyped = this.generator.builder.asVoidStar(lhs);
+        return this.generator.builder.createSafeCall(fn, [lhsUntyped, rhs]);
+      }
+  
+      throw new Error(`Invalid operand types to ${name} than: 
+                              lhs: ${this.type.toString()} ${this.type.typeIDName}
+                              rhs: ${other.type.toString()} ${other.type.typeIDName}`);
   }
 
   clone(): LLVMValue {
@@ -476,6 +402,30 @@ export class LLVMValue {
 
   get unwrapped() {
     return this.value;
+  }
+
+  private isInt8PtrType(type: LLVMType) {
+    while(type.getPointerLevel() != 1) {
+      type = type.getPointerElementType();
+    }
+
+    return type.getPointerElementType().isIntegerType(8);
+  }
+
+  derefToPtrLevelN(n: number) {
+    if (this.type.getPointerLevel() <= n) {
+      return this;
+    }
+
+    let result = this.generator.builder.createLoad(this);
+    while(result.type.getPointerLevel() !== n) {
+      result = this.generator.builder.createLoad(result);
+    }
+    return result;
+  }
+
+  derefToPtrLevel1() {
+    return this.derefToPtrLevelN(1);
   }
 }
 

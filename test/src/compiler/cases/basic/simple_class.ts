@@ -26,57 +26,55 @@
   console.assert(b.inc() === 4, "class: b.inc() failed");
 }
 
-/*
-@todo: doesn't work on ts-node
-{
-  class A {
-    static a: number = 0;
-    constructor() { }
-  }
+// @todo: doesn't work on ts-node
+// {
+//   class A {
+//     static a: number = 0;
+//     constructor() { }
+//   }
 
-  class B extends A {
-    static b: number = 0;
+//   class B extends A {
+//     static b: number = 0;
 
-    constructor() {
-      super()
-      B.a++;
-    }
+//     constructor() {
+//       super()
+//       B.a++;
+//     }
 
-    getA(): number {
-      return B.a;
-    }
+//     getA(): number {
+//       return B.a;
+//     }
 
-    setA(v: number) {
-      B.a = v;
-    }
-  }
+//     setA(v: number) {
+//       B.a = v;
+//     }
+//   }
 
-  const inst = new B();
+//   const inst = new B();
 
-  console.assert(inst.getA() === 1, "class: inst.getA() === 1 failed");
+//   console.assert(inst.getA() === 1, "class: inst.getA() === 1 failed");
 
-  inst.setA(2);
+//   inst.setA(2);
 
-  console.assert(inst.getA() === 2, "class: inst.getA() === 2 failed");
+//   console.assert(inst.getA() === 2, "class: inst.getA() === 2 failed");
 
-  console.assert(A.a === 2, "class: ClassA.a === 2 failed");
-  console.assert(B.a === 2, "class: ClassB.a === 2 failed");
+//   console.assert(A.a === 2, "class: ClassA.a === 2 failed");
+//   console.assert(B.a === 2, "class: ClassB.a === 2 failed");
 
-  B.a = 3;
-  console.assert(A.a === 3, "class: ClassA.a === 3 failed");
-  console.assert(B.a === 3, "class: ClassB.a === 3 failed");
+//   B.a = 3;
+//   console.assert(A.a === 3, "class: ClassA.a === 3 failed");
+//   console.assert(B.a === 3, "class: ClassB.a === 3 failed");
 
-  A.a = 4;
-  console.assert(A.a === 4, "class: ClassA.a === 4 failed");
-  console.assert(B.a === 4, "class: ClassB.a === 4 failed");
+//   A.a = 4;
+//   console.assert(A.a === 4, "class: ClassA.a === 4 failed");
+//   console.assert(B.a === 4, "class: ClassB.a === 4 failed");
 
-  console.assert(B.b === 0, "class: ClassB.b === 0 failed");
+//   console.assert(B.b === 0, "class: ClassB.b === 0 failed");
 
-  B.b = 1;
+//   B.b = 1;
 
-  console.assert(B.b === 1, "class: ClassB.b === 1 failed");
-}
-*/
+//   console.assert(B.b === 1, "class: ClassB.b === 1 failed");
+// }
 
 {
   class A {
@@ -119,28 +117,27 @@
     }
   }
 
-  /* @todo: super() call through inheritance chain
-  class ClasssC extends ClasssB {
-    static c: number = 0;
+//   @todo: super() call through inheritance chain
+//   class ClasssC extends ClasssB {
+//     static c: number = 0;
 
-    constructor() {
-      super();
-      ClasssB.b++;
-    }
-  }
+//     constructor() {
+//       super();
+//       ClasssB.b++;
+//     }
+//   }
 
-  new ClasssC();
+//   new ClasssC();
 
-  console.assert(ClasssB.b === 1, "class: ClasssB.b === 1 failed");
-  */
-
-  /*
-  @todo: doesn't work on ts-node
-    new B();
+//   console.assert(ClasssB.b === 1, "class: ClasssB.b === 1 failed");
   
-    console.assert(B.a === 1, "class: ClasssB.a === 1 failed");
-    console.assert(A.a === 1, "class: ClasssA.a === 1 failed");
-  */
+
+  
+//   @todo: doesn't work on ts-node
+//     new B();
+  
+//     console.assert(B.a === 1, "class: ClasssB.a === 1 failed");
+//     console.assert(A.a === 1, "class: ClasssA.a === 1 failed");
 }
 
 {
@@ -291,12 +288,12 @@
     constructor() {
       Widget.COUNT++;
     }
-    /*
+    
       // @todo: #4278
-        static make(): Widget {
-          return new Widget();
-        }
-    */
+      // static make(): Widget {
+      //   return new Widget();
+      // }
+
     static get count(): number {
       return Widget.COUNT;
     }
@@ -509,14 +506,11 @@
       const r1 = this.render1.bind(this);
       console.assert(r1() === i, "Assign class method to variable in ctor (outer variable capturing)");
 
-      /*
+      // mkrv: @todo
+      //  TS is not support polymorphic 'this' in 'super()' context, but we do. Have to fix this behaviour
 
-      mkrv: @todo
-       TS is not support polymorphic 'this' in 'super()' context, but we do. Have to fix this behaviour
-
-      const r2 = this.render2.bind(this);
-      console.assert(r2() === this.n, "Assign class method to variable in ctor (class variable capturing)");
-      */
+      // const r2 = this.render2.bind(this);
+      // console.assert(r2() === this.n, "Assign class method to variable in ctor (class variable capturing)");
     }
 
     render1(): number {
@@ -1271,7 +1265,7 @@
   }
 
   class MyStatum_t extends RxComponent_t {
-    protected /*override*/ render(): void {
+    protected render(): void {
       const widget = createText();
       console.assert(widget._selfWidget === s, "Outer function correcly captured in environment");
     }

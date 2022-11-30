@@ -164,13 +164,38 @@ export class LLVMGenerator {
 
   handleSources(sources: readonly ts.SourceFile[]) {
     for (const sourceFile of sources) {
-      this.currentSource = sourceFile;
-      this.symbolTable.addScope(sourceFile.fileName);
-
-      this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
-
-      sourceFile.forEachChild((node) => this.handleNode(node, this.symbolTable.currentScope));
+      this.handleSource(sourceFile);
     }
+  }
+
+  shouldHandleNodeInFunctionHoistingContext(node: ts.Node) {
+    return ts.isFunctionDeclaration(node) ||
+      ts.isImportDeclaration(node) ||
+      ts.isClassDeclaration(node) ||
+      ts.isEnumDeclaration(node);
+  }
+
+  private handleSource(source: ts.SourceFile) {
+    this.currentSource = source;
+
+    this.symbolTable.addScope(this.currentSourceFile.fileName);
+
+    this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
+    this.hoistFunctionDeclarations();
+
+    this.currentSourceFile.forEachChild((node) => {
+      if (!this.shouldHandleNodeInFunctionHoistingContext(node)) {
+        this.handleNode(node, this.symbolTable.currentScope)
+      }
+    });
+  }
+
+  private hoistFunctionDeclarations() {
+    this.currentSourceFile.forEachChild((node) => {
+      if (this.shouldHandleNodeInFunctionHoistingContext(node)) {
+        this.handleNode(node, this.symbolTable.currentScope)
+      }
+    });
   }
 
   initTSClosure(): void {

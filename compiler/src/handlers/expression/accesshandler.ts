@@ -166,9 +166,9 @@ export class AccessHandler extends AbstractExpressionHandler {
   private handleArrayElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const subscription = this.generator.ts.array.createSubscription(arrayType);
-    const array = this.generator.handleExpression(expression.expression, env);
+    const array = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
     const arrayUntyped = this.generator.builder.asVoidStar(array);
-    const index = this.generator.handleExpression(expression.argumentExpression, env);
+    const index = this.generator.handleExpression(expression.argumentExpression, env).derefToPtrLevel1();
 
     let elementType = arrayType.getTypeGenericArguments()[0];
 
@@ -183,9 +183,9 @@ export class AccessHandler extends AbstractExpressionHandler {
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const subscription = this.generator.ts.tuple.getSubscriptionFn();
-    const tuple = this.generator.handleExpression(expression.expression, env);
+    const tuple = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
-    const index = this.generator.handleExpression(expression.argumentExpression, env);
+    const index = this.generator.handleExpression(expression.argumentExpression, env).derefToPtrLevel1();
 
     const element = this.generator.builder.createSafeCall(subscription, [tupleUntyped, index]);
     const elementIndex = parseInt(expression.argumentExpression.getText(), 10);
@@ -209,8 +209,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     const left = expression.expression;
     let propertyName = ts.isPropertyAccessExpression(expression) ? expression.name.text : expression.argumentExpression.getText().replace(/['"]+/g, '');
 
-    let llvmValue = this.generator.handleExpression(left, env);
-
+    let llvmValue = this.generator.handleExpression(left, env).derefToPtrLevel1();
     if (!llvmValue.type.isPointer()) {
       throw new Error(`Expected pointer, got '${llvmValue.type}'`);
     }

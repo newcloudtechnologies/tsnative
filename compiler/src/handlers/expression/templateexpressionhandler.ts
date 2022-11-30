@@ -39,7 +39,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     this.generator.builder.createSafeCall(stringConstructor, [allocated, head]);
 
     for (const span of expression.templateSpans) {
-      const value = this.generator.handleExpression(span.expression, env);
+      const value = this.generator.handleExpression(span.expression, env).derefToPtrLevel1();
 
       const allocatedSpanExpression = this.llvmValueToString(span.expression, value);
 
