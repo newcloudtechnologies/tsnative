@@ -22,6 +22,7 @@
 #include <clang/AST/DeclTemplate.h>
 
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace parser
@@ -121,8 +122,12 @@ public:
     const_abstract_item_t get(const std::string& path) const;
     abstract_item_t get(const std::string& path);
 
+    std::optional<abstract_item_t> find(const std::string& path);
+
     const_abstract_item_t get(const std::string& parentPath, const std::string& name) const;
     abstract_item_t get(const std::string& parentPath, const std::string& name);
+
+    std::optional<abstract_item_t> find(const std::string& parentPath, const std::string& name);
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
 };

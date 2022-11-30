@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
+#include <optional>
 #include <regex>
 #include <set>
 #include <vector>
@@ -456,34 +457,22 @@ void Collection::populate()
 
 bool Collection::exists(const std::string& path, bool isCompletedDecl) const
 {
-    bool result = false;
-
-    try
+    const std::optional<abstract_item_t> o = const_cast<Collection*>(this)->find(path);
+    if (!o.has_value())
     {
-        auto item = get(path);
-        result = isCompletedDecl ? item->isCompletedDecl() : true;
+        return false;
     }
-    catch (std::exception&)
-    {
-    }
-
-    return result;
+    return isCompletedDecl ? o->get()->isCompletedDecl() : true;
 }
 
 bool Collection::exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl) const
 {
-    bool result = false;
-
-    try
+    const std::optional<abstract_item_t> o = const_cast<Collection*>(this)->find(parentPath, name);
+    if (!o.has_value())
     {
-        auto item = get(parentPath, name);
-        result = isCompletedDecl ? item->isCompletedDecl() : true;
+        return false;
     }
-    catch (std::exception&)
-    {
-    }
-
-    return result;
+    return isCompletedDecl ? o->get()->isCompletedDecl() : true;
 }
 
 template <typename T>
@@ -547,8 +536,13 @@ const_abstract_item_t Collection::get(const std::string& path) const
 
 abstract_item_t Collection::get(const std::string& path)
 {
-    abstract_item_t result;
+    std::optional<abstract_item_t> r = find(path);
+    _ASSERT(r.has_value() == true);
+    return *r;
+}
 
+std::optional<abstract_item_t> Collection::find(const std::string& path)
+{
     if (path.empty())
     {
         return {m_root};
@@ -611,13 +605,17 @@ abstract_item_t Collection::get(const std::string& path)
                              [](auto it) { return it->type() == AbstractItem::Type::CLASS_TEMPLATE; });
             }
 
-            _ASSERT(found.size() == 1);
-
-            result = found.at(0);
+            if (found.size() == 1)
+            {
+                return {found.at(0)};
+            }
+            else
+            {
+                return {};
+            }
         }
     }
-
-    return result;
+    return {};
 }
 
 const_abstract_item_t Collection::get(const std::string& parentPath, const std::string& name) const
@@ -627,10 +625,17 @@ const_abstract_item_t Collection::get(const std::string& parentPath, const std::
 
 abstract_item_t Collection::get(const std::string& parentPath, const std::string& name)
 {
-    abstract_item_t result;
+    std::optional<abstract_item_t> r = find(parentPath, name);
+    _ASSERT(r.has_value() == true);
+    return *r;
+}
 
+std::optional<abstract_item_t> Collection::find(const std::string& parentPath, const std::string& name)
+{
     if (name.empty())
-        return result;
+    {
+        return {};
+    }
 
     auto item = get(parentPath);
 
@@ -645,12 +650,17 @@ abstract_item_t Collection::get(const std::string& parentPath, const std::string
                      std::back_inserter(found),
                      [name](const auto& it) { return it->name() == name; });
 
-        _ASSERT(found.size() == 1);
-
-        result = found.at(0);
+        if (found.size() == 1)
+        {
+            return {found.at(0)};
+        }
+        else
+        {
+            return {};
+        }
     }
 
-    return result;
+    return {};
 }
 
 void Collection::visit(std::function<void(const_abstract_item_t item)> handler) const
