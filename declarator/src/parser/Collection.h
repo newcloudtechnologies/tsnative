@@ -119,15 +119,11 @@ public:
              const std::string& name,
              bool isCompletedDecl = true);
 
-    const_abstract_item_t get(const std::string& path) const;
-    abstract_item_t get(const std::string& path);
+    abstract_item_t get(const std::string& path) const;
+    abstract_item_t get(const std::string& parentPath, const std::string& name) const;
 
-    std::optional<abstract_item_t> find(const std::string& path);
-
-    const_abstract_item_t get(const std::string& parentPath, const std::string& name) const;
-    abstract_item_t get(const std::string& parentPath, const std::string& name);
-
-    std::optional<abstract_item_t> find(const std::string& parentPath, const std::string& name);
+    std::optional<abstract_item_t> find(const std::string& path) const;
+    std::optional<abstract_item_t> find(const std::string& parentPath, const std::string& name) const;
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
 };
