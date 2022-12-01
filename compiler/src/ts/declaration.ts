@@ -94,12 +94,16 @@ export class Declaration {
     return this.getBases().find((baseClass) => baseClass.isAmbient());
   }
 
+  getConstructors() {
+    return this.members.filter((m) => m.isConstructor());
+  }
+
   findConstructor(argumentTypes: TSType[]) {
     if (!this.isClass()) {
       throw new Error(`Expected Declaration.findConstructor to be called on class declaration, called on '${ts.SyntaxKind[this.declaration.kind]}: ${this.declaration.getText()}'`);
     }
 
-    const candidates = this.members.filter((m) => m.isConstructor());
+    const candidates = this.getConstructors();
 
     return candidates.find((decl) => {
       const lastParameter = decl.parameters[decl.parameters.length - 1];
@@ -133,41 +137,6 @@ export class Declaration {
           }
 
           return parameterEnumType.isSame(argumentType);
-        }
-
-        if (argumentType.isTSObjectType()) {
-          if (!parameterType.isSymbolless() && !argumentType.isSymbolless()) {
-            const parameterDeclaration = parameterType.getSymbol().declarations[0];
-            const argumentDeclaration = argumentType.getSymbol().declarations[0];
-
-            if (parameterDeclaration && argumentDeclaration) {
-              const parameterProperties = parameterDeclaration.ownProperties;
-              const argumentProperties = argumentDeclaration.ownProperties;
-
-              const sorter = (lhs: Declaration, rhs: Declaration) => {
-                const lhsName = lhs.name?.getText();
-                const rhsName = rhs.name?.getText();
-
-                if (!lhsName || !rhsName) {
-                  throw new Error(`Expected named property at: '${parameterDeclaration.getText()}' or '${argumentDeclaration.getText()}'`);
-                }
-
-                if (lhsName > rhsName) {
-                  return 1;
-                }
-
-                return -1;
-              }
-
-              parameterProperties.sort(sorter);
-              argumentProperties.sort(sorter);
-
-              return parameterProperties.every((prop, index) => {
-                const argumentProperty = argumentProperties[index];
-                return prop.name?.getText() === argumentProperty.name?.getText() && prop.type.isSame(argumentProperty.type);
-              });
-            }
-          }
         }
 
         return argumentType.isSame(parameterType) || argumentType.isUpcastableTo(parameterType);
