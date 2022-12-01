@@ -1193,19 +1193,23 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
 
-    let constructorDeclaration = valueDeclaration.findConstructor(argumentTypes);
+    let matchingConstructorDeclaration = valueDeclaration.findConstructor(argumentTypes);
+    const hasDeclaredConstructor = valueDeclaration.getConstructors().length > 0;
+    if (hasDeclaredConstructor && !matchingConstructorDeclaration) {
+      throw new Error(`Unable to find constructor matching arguments`);
+    }
 
-    const classWithoutConstructor = !constructorDeclaration;
+    const classWithoutConstructor = !hasDeclaredConstructor;
 
-    if (!constructorDeclaration) {
-      constructorDeclaration = Declaration.create(
+    if (!matchingConstructorDeclaration) {
+      matchingConstructorDeclaration = Declaration.create(
         ts.createConstructor(undefined, undefined, [], undefined),
         this.generator
       );
     }
 
     const manglingResult = FunctionMangler.mangle(
-      constructorDeclaration,
+      matchingConstructorDeclaration,
       expression,
       thisType,
       argumentTypes,
@@ -1234,7 +1238,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const args: LLVMValue[] = [];
 
     if (!classWithoutConstructor) {
-      signature = this.generator.ts.checker.getSignatureFromDeclaration(constructorDeclaration);
+      signature = this.generator.ts.checker.getSignatureFromDeclaration(matchingConstructorDeclaration);
       args.push(
         ...this.generator.symbolTable.withLocalScope((localScope: Scope) => {
           return this.handleCallArguments(expression, signature!, localScope, outerEnv);
@@ -1242,17 +1246,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    if (!classWithoutConstructor && !constructorDeclaration.body) {
+    if (!classWithoutConstructor && !matchingConstructorDeclaration.body) {
       throw new Error(`Constructor body required at '${expression.getText()}'`);
     }
 
     const environmentVariables: string[] = [];
 
-    if (constructorDeclaration.body || valueDeclaration.isDerived) {
+    if (matchingConstructorDeclaration.body || valueDeclaration.isDerived) {
       const baseClassConstructorDeclaration = valueDeclaration.isDerived
         ? valueDeclaration.getBases()[0].members.find((m) => m.isConstructor())
         : undefined;
-      const body = constructorDeclaration.body || baseClassConstructorDeclaration?.body;
+      const body = matchingConstructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
         scope.initializeVariablesAndFunctionDeclarations(body, this.generator);
@@ -1302,7 +1306,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       setLLVMFunctionScope(constructor, scope, this.generator, expression);
     }
 
-    const body = constructorDeclaration.isFunctionLike() ? constructorDeclaration.body : undefined;
+    const body = matchingConstructorDeclaration.isFunctionLike() ? matchingConstructorDeclaration.body : undefined;
     this.invoke(expression, body, constructor, [env.untyped]);
 
     if (valueDeclaration.cxxBase) {

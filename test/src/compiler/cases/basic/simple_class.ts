@@ -1584,3 +1584,39 @@
 
   new MyClass();
 }
+
+{
+  interface RxSize_i {
+    w: number,
+    h: number
+  }
+
+  type Auth_args = {
+    size: RxSize_i,
+    closeAction: () => void;
+  }
+
+  class AuthWidget_t {
+    closeAction: () => void;
+
+    constructor(args: Auth_args) {
+      this.closeAction = args.closeAction;
+    }
+  }
+
+  function AuthWidget(args: Auth_args) {
+    return new AuthWidget_t(args);
+  }
+
+  const closeAction = () => { };
+
+  const widget = AuthWidget({
+    size: {
+      w: 100,
+      h: 100,
+    },
+    closeAction
+  })
+
+  console.assert(widget.closeAction === closeAction, "Searching for matching constructor should work with object-typed arguments");
+}
