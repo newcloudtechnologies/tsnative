@@ -34,7 +34,6 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
-#include <optional>
 #include <regex>
 #include <set>
 #include <vector>
@@ -457,7 +456,7 @@ void Collection::populate()
 
 bool Collection::exists(const std::string& path, bool isCompletedDecl) const
 {
-    const std::optional<abstract_item_t> o = const_cast<Collection*>(this)->find(path);
+    const std::optional<abstract_item_t> o = find(path);
     if (!o.has_value())
     {
         return false;
@@ -467,7 +466,7 @@ bool Collection::exists(const std::string& path, bool isCompletedDecl) const
 
 bool Collection::exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl) const
 {
-    const std::optional<abstract_item_t> o = const_cast<Collection*>(this)->find(parentPath, name);
+    const std::optional<abstract_item_t> o = find(parentPath, name);
     if (!o.has_value())
     {
         return false;
@@ -529,24 +528,28 @@ bool Collection::get(typename parser::item_t<T>& item,
     return result;
 }
 
-const_abstract_item_t Collection::get(const std::string& path) const
-{
-    return const_cast<Collection*>(this)->get(path);
-}
-
-abstract_item_t Collection::get(const std::string& path)
+abstract_item_t Collection::get(const std::string& path) const
 {
     std::optional<abstract_item_t> r = find(path);
-    _ASSERT(r.has_value() == true);
+    _ASSERT(r.has_value());
     return *r;
 }
 
-std::optional<abstract_item_t> Collection::find(const std::string& path)
+abstract_item_t Collection::get(const std::string& parentPath, const std::string& name) const
+{
+    std::optional<abstract_item_t> r = find(parentPath, name);
+    _ASSERT(r.has_value());
+    return *r;
+}
+
+std::optional<abstract_item_t> Collection::find(const std::string& path) const
 {
     if (path.empty())
     {
         return {m_root};
     }
+
+    std::optional<abstract_item_t> result = {};
 
     item_list_t children = m_root->children();
 
@@ -607,34 +610,20 @@ std::optional<abstract_item_t> Collection::find(const std::string& path)
 
             if (found.size() == 1)
             {
-                return {found.at(0)};
-            }
-            else
-            {
-                return {};
+                result = {found.at(0)};
             }
         }
     }
-    return {};
+    return result;
 }
 
-const_abstract_item_t Collection::get(const std::string& parentPath, const std::string& name) const
+std::optional<abstract_item_t> Collection::find(const std::string& parentPath, const std::string& name) const
 {
-    return const_cast<Collection*>(this)->get(parentPath, name);
-}
+    std::optional<abstract_item_t> result = {};
 
-abstract_item_t Collection::get(const std::string& parentPath, const std::string& name)
-{
-    std::optional<abstract_item_t> r = find(parentPath, name);
-    _ASSERT(r.has_value() == true);
-    return *r;
-}
-
-std::optional<abstract_item_t> Collection::find(const std::string& parentPath, const std::string& name)
-{
     if (name.empty())
     {
-        return {};
+        return result;
     }
 
     auto item = get(parentPath);
@@ -652,15 +641,11 @@ std::optional<abstract_item_t> Collection::find(const std::string& parentPath, c
 
         if (found.size() == 1)
         {
-            return {found.at(0)};
-        }
-        else
-        {
-            return {};
+            result = {found.at(0)};
         }
     }
 
-    return {};
+    return result;
 }
 
 void Collection::visit(std::function<void(const_abstract_item_t item)> handler) const
