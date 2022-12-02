@@ -94,9 +94,6 @@ private:
                      const clang::VarDecl* decl);
 
     template <typename T>
-    bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true) const;
-
-    template <typename T>
     bool get(typename parser::item_t<T>& item,
              const std::string& parentPath,
              const std::string& name,
