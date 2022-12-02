@@ -38,6 +38,11 @@ private:
     item_t<TranslationUnitItem> m_root;
 
 private:
+    Collection();
+    static Collection& do_ref();
+    static Collection& do_init(CXTranslationUnit tu);
+    void populate();
+
     template <typename Callable>
     void add(const std::string& name, const std::string& prefix, Callable createHandler);
 
@@ -88,24 +93,8 @@ private:
                      bool isCompletedDecl,
                      const clang::VarDecl* decl);
 
-private:
-    Collection();
-    static Collection& do_ref();
-    static Collection& do_init(CXTranslationUnit tu);
-    void populate();
-
-public:
-    static void init(CXTranslationUnit tu);
-    static Collection& ref();
-
-    bool exists(const std::string& path, bool isCompletedDecl = true) const;
-    bool exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
-
     template <typename T>
     bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true) const;
-
-    template <typename T>
-    bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true);
 
     template <typename T>
     bool get(typename parser::item_t<T>& item,
@@ -113,11 +102,12 @@ public:
              const std::string& name,
              bool isCompletedDecl = true) const;
 
-    template <typename T>
-    bool get(typename parser::item_t<T>& item,
-             const std::string& parentPath,
-             const std::string& name,
-             bool isCompletedDecl = true);
+public:
+    static void init(CXTranslationUnit tu);
+    static Collection& ref();
+
+    bool exists(const std::string& path, bool isCompletedDecl = true) const;
+    bool exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
 
     abstract_item_t get(const std::string& path) const;
     abstract_item_t get(const std::string& parentPath, const std::string& name) const;
