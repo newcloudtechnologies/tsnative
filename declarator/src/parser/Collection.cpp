@@ -477,12 +477,6 @@ bool Collection::exists(const std::string& parentPath, const std::string& name, 
 template <typename T>
 bool Collection::get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl) const
 {
-    return const_cast<Collection*>(this)->get<T>(item, path, isCompletedDecl);
-}
-
-template <typename T>
-bool Collection::get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl)
-{
     bool result = false;
 
     try
@@ -503,15 +497,6 @@ bool Collection::get(typename parser::item_t<T>& item,
                      const std::string& parentPath,
                      const std::string& name,
                      bool isCompletedDecl) const
-{
-    return const_cast<Collection*>(this)->get<T>(item, parentPath, name, isCompletedDecl);
-}
-
-template <typename T>
-bool Collection::get(typename parser::item_t<T>& item,
-                     const std::string& parentPath,
-                     const std::string& name,
-                     bool isCompletedDecl)
 {
     bool result = false;
 
