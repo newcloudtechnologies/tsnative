@@ -93,12 +93,6 @@ private:
                      bool isCompletedDecl,
                      const clang::VarDecl* decl);
 
-    template <typename T>
-    bool get(typename parser::item_t<T>& item,
-             const std::string& parentPath,
-             const std::string& name,
-             bool isCompletedDecl = true) const;
-
 public:
     static void init(CXTranslationUnit tu);
     static Collection& ref();

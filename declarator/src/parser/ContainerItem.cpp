@@ -11,6 +11,8 @@
 
 #include "ContainerItem.h"
 
+#include <algorithm>
+
 namespace parser
 {
 
@@ -23,6 +25,20 @@ ContainerItem::ContainerItem(
 void ContainerItem::addItem(abstract_item_t item)
 {
     m_items.push_back(item);
+}
+
+void ContainerItem::replaceItem(abstract_item_t item, abstract_item_t new_item)
+{
+    auto it = std::find(m_items.begin(), m_items.end(), item);
+    if (it == m_items.end())
+    {
+        // should not happen, but for safety reasons
+        m_items.push_back(new_item);
+    }
+    else
+    {
+        *it = new_item;
+    }
 }
 
 item_list_t ContainerItem::children() const

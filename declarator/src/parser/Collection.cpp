@@ -474,27 +474,6 @@ bool Collection::exists(const std::string& parentPath, const std::string& name, 
     return isCompletedDecl ? o->get()->isCompletedDecl() : true;
 }
 
-template <typename T>
-bool Collection::get(typename parser::item_t<T>& item,
-                     const std::string& parentPath,
-                     const std::string& name,
-                     bool isCompletedDecl) const
-{
-    bool result = false;
-
-    try
-    {
-        item = std::dynamic_pointer_cast<T>(get(parentPath, name));
-        _ASSERT(item);
-        result = isCompletedDecl ? item->isCompletedDecl() : true;
-    }
-    catch (std::exception&)
-    {
-    }
-
-    return result;
-}
-
 abstract_item_t Collection::get(const std::string& path) const
 {
     std::optional<abstract_item_t> r = find(path);
@@ -644,21 +623,20 @@ void Collection::add(const std::string& name, const std::string& prefix, Callabl
     using return_type_t = typename utils::lambda_traits<Callable>::return_type_t;
     using T = typename return_type_t::element_type;
 
-    if (!exists(prefix, name, false)) // no any item (completed or incompleted)
+    std::optional<abstract_item_t> o = find(prefix, name);
+    auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+    if (!o.has_value()) // no any item (completed or incompleted)
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
         auto item = createHandler();
         parent->addItem(item);
     }
-    else // any item exist
+    else // item exist, if it is incomplete, call createHandler() for it
     {
-        typename parser::item_t<T> item;
-        if (get<T>(item, prefix, name, false) && !item->isCompletedDecl())
+        abstract_item_t item = *o;
+        if (!item->isCompletedDecl())
         {
             auto new_item = createHandler();
-
-            // replace incompleted item
-            *item = *new_item;
+            parent->replaceItem(item, new_item);
         }
     }
 }
