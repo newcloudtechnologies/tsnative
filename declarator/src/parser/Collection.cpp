@@ -475,24 +475,6 @@ bool Collection::exists(const std::string& parentPath, const std::string& name, 
 }
 
 template <typename T>
-bool Collection::get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl) const
-{
-    bool result = false;
-
-    try
-    {
-        item = std::dynamic_pointer_cast<T>(get(path));
-        _ASSERT(item);
-        result = isCompletedDecl ? item->isCompletedDecl() : true;
-    }
-    catch (std::exception&)
-    {
-    }
-
-    return result;
-}
-
-template <typename T>
 bool Collection::get(typename parser::item_t<T>& item,
                      const std::string& parentPath,
                      const std::string& name,
