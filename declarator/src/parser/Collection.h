@@ -44,7 +44,7 @@ private:
     void populate();
 
     template <typename Callable>
-    void add(const std::string& name, const std::string& prefix, Callable createHandler);
+    void addItem(const std::string& name, const std::string& prefix, Callable createHandler);
 
     void addNamespace(const std::string& name,
                       const std::string& prefix,
@@ -93,18 +93,18 @@ private:
                      bool isCompletedDecl,
                      const clang::VarDecl* decl);
 
+    abstract_item_t getItem(const std::string& path) const;
+    abstract_item_t getItem(const std::string& parentPath, const std::string& name) const;
+
 public:
     static void init(CXTranslationUnit tu);
     static Collection& ref();
 
-    bool exists(const std::string& path, bool isCompletedDecl = true) const;
-    bool exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
+    bool hasItem(const std::string& path, bool isCompletedDecl = true) const;
+    bool hasItem(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
 
-    abstract_item_t get(const std::string& path) const;
-    abstract_item_t get(const std::string& parentPath, const std::string& name) const;
-
-    std::optional<abstract_item_t> find(const std::string& path) const;
-    std::optional<abstract_item_t> find(const std::string& parentPath, const std::string& name) const;
+    std::optional<abstract_item_t> findItem(const std::string& path) const;
+    std::optional<abstract_item_t> findItem(const std::string& parentPath, const std::string& name) const;
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
 };
