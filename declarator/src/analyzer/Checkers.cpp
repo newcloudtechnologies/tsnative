@@ -201,11 +201,10 @@ void TypeChecker::check(const clang::QualType& type,
         auto& collection = Collection::ref();
         std::string path = typeToString(removeCVPR(type), context);
 
-        if (collection.exists(path))
+        std::optional<abstract_item_t> item = collection.findItem(path);
+        if (item.has_value())
         {
-            auto item = collection.get(path);
-
-            result = item->type() == parser::AbstractItem::Type::ENUM;
+            result = (*item)->type() == parser::AbstractItem::Type::ENUM;
         }
 
         return result;
@@ -221,15 +220,16 @@ void TypeChecker::check(const clang::QualType& type,
 
     if (refinedTypeName != "void")
     {
-        if (collection.exists(refinedTypeName, false))
+        std::optional<abstract_item_t> item = collection.findItem(refinedTypeName);
+        if (item.has_value())
         {
-            auto item = collection.get(refinedTypeName);
-            auto itemType = item->type();
+
+            auto itemType = (*item)->type();
 
             if (itemType == AbstractItem::Type::CLASS || itemType == AbstractItem::Type::CLASS_TEMPLATE ||
                 itemType == AbstractItem::Type::CLASS_TEMPLATE_SPECIALIZATION)
             {
-                auto classItem = std::static_pointer_cast<ClassItem const>(item);
+                auto classItem = std::static_pointer_cast<ClassItem const>(*item);
                 auto node = InheritanceNode::make(collection, classItem);
                 InheritanceChecker::check(node);
             }
@@ -529,13 +529,12 @@ void FunctionChecker::overloads(parser::const_function_item_t item, const std::s
         return OverloadDetector::get(functions);
     };
 
-    if (collection.exists(scopeName))
+    std::optional<abstract_item_t> scope = collection.findItem(scopeName);
+    if (scope.has_value())
     {
-        auto scope = collection.get(scopeName);
+        _ASSERT(AbstractItem::isContainer(*scope));
 
-        _ASSERT(AbstractItem::isContainer(scope));
-
-        auto containerItem = std::static_pointer_cast<ContainerItem>(scope);
+        auto containerItem = std::static_pointer_cast<ContainerItem>(*scope);
 
         item_list_t children = containerItem->children();
 

@@ -27,15 +27,12 @@ void ContainerItem::addItem(abstract_item_t item)
     m_items.push_back(item);
 }
 
-void ContainerItem::replaceItem(abstract_item_t item, abstract_item_t new_item)
+void ContainerItem::replaceItem(const std::string& name, const std::string& prefix, abstract_item_t new_item)
 {
-    auto it = std::find(m_items.begin(), m_items.end(), item);
-    if (it == m_items.end())
-    {
-        // should not happen, but for safety reasons
-        m_items.push_back(new_item);
-    }
-    else
+    auto it = std::find_if(m_items.begin(),
+                           m_items.end(),
+                           [&name, &prefix](abstract_item_t i) { return name == i->name() && prefix == i->prefix(); });
+    if (it != m_items.end())
     {
         *it = new_item;
     }

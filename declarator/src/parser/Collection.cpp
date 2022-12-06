@@ -454,9 +454,9 @@ void Collection::populate()
     finder.start();
 }
 
-bool Collection::exists(const std::string& path, bool isCompletedDecl) const
+bool Collection::hasItem(const std::string& path, bool isCompletedDecl) const
 {
-    const std::optional<abstract_item_t> o = find(path);
+    const std::optional<const_abstract_item_t> o = findItem(path);
     if (!o.has_value())
     {
         return false;
@@ -464,31 +464,31 @@ bool Collection::exists(const std::string& path, bool isCompletedDecl) const
     return isCompletedDecl ? o->get()->isCompletedDecl() : true;
 }
 
-bool Collection::exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl) const
+bool Collection::hasItem(const std::string& parentPath, const std::string& name, bool isCompletedDecl) const
 {
-    const std::optional<abstract_item_t> o = find(parentPath, name);
-    if (!o.has_value())
+    const std::optional<const_abstract_item_t> result = findItem(parentPath, name);
+    if (!result.has_value())
     {
         return false;
     }
-    return isCompletedDecl ? o->get()->isCompletedDecl() : true;
+    return isCompletedDecl ? result->get()->isCompletedDecl() : true;
 }
 
-abstract_item_t Collection::get(const std::string& path) const
+abstract_item_t Collection::getItem(const std::string& path) const
 {
-    std::optional<abstract_item_t> r = find(path);
+    std::optional<abstract_item_t> result = findItem(path);
+    _ASSERT(result.has_value());
+    return *result;
+}
+
+abstract_item_t Collection::getItem(const std::string& parentPath, const std::string& name) const
+{
+    std::optional<abstract_item_t> r = findItem(parentPath, name);
     _ASSERT(r.has_value());
     return *r;
 }
 
-abstract_item_t Collection::get(const std::string& parentPath, const std::string& name) const
-{
-    std::optional<abstract_item_t> r = find(parentPath, name);
-    _ASSERT(r.has_value());
-    return *r;
-}
-
-std::optional<abstract_item_t> Collection::find(const std::string& path) const
+std::optional<abstract_item_t> Collection::findItem(const std::string& path) const
 {
     if (path.empty())
     {
@@ -557,13 +557,14 @@ std::optional<abstract_item_t> Collection::find(const std::string& path) const
             if (found.size() == 1)
             {
                 result = {found.at(0)};
+                _ASSERT(*result);
             }
         }
     }
     return result;
 }
 
-std::optional<abstract_item_t> Collection::find(const std::string& parentPath, const std::string& name) const
+std::optional<abstract_item_t> Collection::findItem(const std::string& parentPath, const std::string& name) const
 {
     std::optional<abstract_item_t> result = {};
 
@@ -572,7 +573,7 @@ std::optional<abstract_item_t> Collection::find(const std::string& parentPath, c
         return result;
     }
 
-    auto item = get(parentPath);
+    auto item = getItem(parentPath);
 
     if (AbstractItem::isContainer(item))
     {
@@ -588,6 +589,7 @@ std::optional<abstract_item_t> Collection::find(const std::string& parentPath, c
         if (found.size() == 1)
         {
             result = {found.at(0)};
+            _ASSERT(*result);
         }
     }
 
@@ -618,13 +620,13 @@ void Collection::visit(std::function<void(const_abstract_item_t item)> handler) 
 }
 
 template <typename Callable>
-void Collection::add(const std::string& name, const std::string& prefix, Callable createHandler)
+void Collection::addItem(const std::string& name, const std::string& prefix, Callable createHandler)
 {
     using return_type_t = typename utils::lambda_traits<Callable>::return_type_t;
     using T = typename return_type_t::element_type;
 
-    std::optional<abstract_item_t> o = find(prefix, name);
-    auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+    std::optional<abstract_item_t> o = findItem(prefix, name);
+    auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
     if (!o.has_value()) // no any item (completed or incompleted)
     {
         auto item = createHandler();
@@ -636,7 +638,7 @@ void Collection::add(const std::string& name, const std::string& prefix, Callabl
         if (!item->isCompletedDecl())
         {
             auto new_item = createHandler();
-            parent->replaceItem(item, new_item);
+            parent->replaceItem(item->name(), item->prefix(), new_item);
         }
     }
 }
@@ -651,12 +653,12 @@ void Collection::addNamespace(const std::string& name,
     AnnotationList annotations(getAnnotations(decl));
 
     // Local namespace declaration needs to handle annotations (do not forget, processed header is local)
-    // Non-local namespace declarations needs to build hierarchy of entities (namespace -> classes and functions, etc)
-    // Local entities refer to non-local
-    if (exists(prefix, name))
+    // Non-local namespace declarations needs to build hierarchy of entities (namespace -> classes and functions,
+    // etc) Local entities refer to non-local
+    if (hasItem(prefix, name))
     {
         // Replace existed namespace declaration by "local"
-        abstract_item_t item = get(prefix, name);
+        abstract_item_t item = getItem(prefix, name);
         _ASSERT(item->type() == AbstractItem::Type::NAMESPACE);
         auto namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
 
@@ -706,7 +708,7 @@ void Collection::addNamespace(const std::string& name,
     else
     {
         // Put to collection first namespace declaration
-        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
         auto item = AbstractItem::make<NamespaceItem>(name, prefix, isLocal, decl);
         parent->addItem(item);
     }
@@ -718,27 +720,27 @@ void Collection::addClass(const std::string& name,
                           bool isCompletedDecl,
                           const clang::CXXRecordDecl* decl)
 {
-    add(name,
-        prefix,
-        [name, prefix, isLocal, isCompletedDecl, decl]()
-        {
-            using namespace global::annotations;
-
-            parser::class_item_t item;
-
-            AnnotationList annotations(getAnnotations(decl));
-
-            if (annotations.exist(TS_CODE))
+    addItem(name,
+            prefix,
+            [name, prefix, isLocal, isCompletedDecl, decl]()
             {
-                item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
-            }
-            else
-            {
-                item = AbstractItem::make<ClassItem>(name, prefix, isLocal, isCompletedDecl, decl);
-            }
+                using namespace global::annotations;
 
-            return item;
-        });
+                parser::class_item_t item;
+
+                AnnotationList annotations(getAnnotations(decl));
+
+                if (annotations.exist(TS_CODE))
+                {
+                    item = AbstractItem::make<CodeBlockItem>(name, prefix, isLocal, decl);
+                }
+                else
+                {
+                    item = AbstractItem::make<ClassItem>(name, prefix, isLocal, isCompletedDecl, decl);
+                }
+
+                return item;
+            });
 }
 
 void Collection::addClassTemplate(const std::string& name,
@@ -747,10 +749,10 @@ void Collection::addClassTemplate(const std::string& name,
                                   bool isCompletedDecl,
                                   const clang::ClassTemplateDecl* decl)
 {
-    add(name,
-        prefix,
-        [name, prefix, isLocal, isCompletedDecl, decl]()
-        { return AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, isCompletedDecl, decl); });
+    addItem(name,
+            prefix,
+            [name, prefix, isLocal, isCompletedDecl, decl]()
+            { return AbstractItem::make<ClassTemplateItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 void Collection::addClassTemplateSpecialization(const std::string& name,
@@ -759,7 +761,8 @@ void Collection::addClassTemplateSpecialization(const std::string& name,
                                                 bool isCompletedDecl,
                                                 const clang::ClassTemplateSpecializationDecl* decl)
 {
-    add(name,
+    addItem(
+        name,
         prefix,
         [name, prefix, isLocal, isCompletedDecl, decl]()
         { return AbstractItem::make<ClassTemplateSpecializationItem>(name, prefix, isLocal, isCompletedDecl, decl); });
@@ -769,10 +772,10 @@ void Collection::addEnum(
     const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::EnumDecl* decl)
 {
 
-    add(name,
-        prefix,
-        [name, prefix, isLocal, isCompletedDecl, decl]()
-        { return AbstractItem::make<EnumItem>(name, prefix, isLocal, isCompletedDecl, decl); });
+    addItem(name,
+            prefix,
+            [name, prefix, isLocal, isCompletedDecl, decl]()
+            { return AbstractItem::make<EnumItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 void Collection::addFunction(const std::string& name,
@@ -784,7 +787,7 @@ void Collection::addFunction(const std::string& name,
     // get first declaration of function
     if (decl->isFirstDecl())
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
         auto item = AbstractItem::make<FunctionItem>(name, prefix, isLocal, true, decl);
         parent->addItem(item);
     }
@@ -799,7 +802,7 @@ void Collection::addFunctionTemplate(const std::string& name,
     // get first declaration of function
     if (decl->isFirstDecl())
     {
-        auto parent = std::static_pointer_cast<ContainerItem>(get(prefix));
+        auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
         auto item = AbstractItem::make<FunctionTemplateItem>(name, prefix, isLocal, true, decl);
         parent->addItem(item);
     }
@@ -808,10 +811,10 @@ void Collection::addFunctionTemplate(const std::string& name,
 void Collection::addVariable(
     const std::string& name, const std::string& prefix, bool isLocal, bool isCompletedDecl, const clang::VarDecl* decl)
 {
-    add(name,
-        prefix,
-        [name, prefix, isLocal, isCompletedDecl, decl]()
-        { return AbstractItem::make<VariableItem>(name, prefix, isLocal, isCompletedDecl, decl); });
+    addItem(name,
+            prefix,
+            [name, prefix, isLocal, isCompletedDecl, decl]()
+            { return AbstractItem::make<VariableItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
 } //  namespace parser
