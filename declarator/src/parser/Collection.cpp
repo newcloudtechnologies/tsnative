@@ -456,12 +456,12 @@ void Collection::populate()
 
 bool Collection::hasItem(const std::string& path, bool isCompletedDecl) const
 {
-    const std::optional<const_abstract_item_t> o = findItem(path);
-    if (!o.has_value())
+    const std::optional<const_abstract_item_t> result = findItem(path);
+    if (!result.has_value())
     {
         return false;
     }
-    return isCompletedDecl ? o->get()->isCompletedDecl() : true;
+    return isCompletedDecl ? result->get()->isCompletedDecl() : true;
 }
 
 bool Collection::hasItem(const std::string& parentPath, const std::string& name, bool isCompletedDecl) const
