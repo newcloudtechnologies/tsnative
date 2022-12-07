@@ -223,7 +223,6 @@ void TypeChecker::check(const clang::QualType& type,
         std::optional<abstract_item_t> item = collection.findItem(refinedTypeName);
         if (item.has_value())
         {
-
             auto itemType = (*item)->type();
 
             if (itemType == AbstractItem::Type::CLASS || itemType == AbstractItem::Type::CLASS_TEMPLATE ||
