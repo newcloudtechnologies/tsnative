@@ -249,7 +249,7 @@ export class TSObject {
     return operatorIn;
   }
 
-  private getVPtrEquals(thisValue: LLVMValue) {
+  private getVPtrFn(thisValue: LLVMValue, functionName: string) {
     const vtables = this.generator.builder.createBitCast(
       thisValue,
       LLVMType.getInt8Type(this.generator).getPointer().getPointer()
@@ -265,21 +265,21 @@ export class TSObject {
       ).getPointer()
     );
 
-    const equalsDeclaration = this.declaration.members.find((m) => m.name?.getText() === "equals");
+    const methodDeclaration = this.declaration.members.find((m) => m.name?.getText() === functionName);
 
-    if (!equalsDeclaration) {
-      throw new Error(`Unable to find 'equals' at '${this.declaration.getText()}'`);
+    if (!methodDeclaration) {
+      throw new Error(`Unable to find '${functionName}' at '${this.declaration.getText()}'`);
     }
 
     const virtualFnPtr = this.generator.builder.createSafeInBoundsGEP(vtableAsArray, [
       0,
-      equalsDeclaration.vtableIndex
+      methodDeclaration.vtableIndex
     ]);
 
     return virtualFnPtr;
   }
 
-  private initEqualsFunction(thisValue: LLVMValue) {
+  private getEqualsFunctionPtr(thisValue: LLVMValue) {
     const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [cxxVoidStarType, cxxVoidStarType];
 
@@ -289,10 +289,26 @@ export class TSObject {
       false
     ).getPointerTo().getPointerTo();
 
-    let eqFn = this.getVPtrEquals(thisValue);
+    let eqFn = this.getVPtrFn(thisValue, "equals");
     eqFn = this.generator.builder.createBitCast(eqFn, LLVMType.make(type, this.generator));
 
     return this.generator.builder.createLoad(eqFn);
+  }
+
+  private getToStringFunctionPtr(thisValue: LLVMValue) {
+    const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [cxxVoidStarType];
+
+    const type = llvm.FunctionType.get(
+      cxxVoidStarType.unwrapped,
+      llvmArgumentTypes.map((t) => t.unwrapped),
+      false
+    ).getPointerTo().getPointerTo();
+
+    let toStringFn = this.getVPtrFn(thisValue, "toString");
+    toStringFn = this.generator.builder.createBitCast(toStringFn, LLVMType.make(type, this.generator));
+
+    return this.generator.builder.createLoad(toStringFn);
   }
 
   private getCtorFn(isDefault: boolean) {
@@ -388,13 +404,24 @@ export class TSObject {
   }
 
   equals(lhs: LLVMValue, rhs: LLVMValue) {
-    const equalsFn = this.initEqualsFunction(lhs);
+    const equalsFn = this.getEqualsFunctionPtr(lhs);
 
     const thisUntyped = this.generator.builder.asVoidStar(lhs);
     const valueUntyped = this.generator.builder.asVoidStar(rhs);
 
     let result = this.generator.builder.createSafeCall(equalsFn, [thisUntyped, valueUntyped]);
     result = this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
+
+    return result;
+  }
+
+  objectToString(thisValue: LLVMValue) {
+    const toStringFn = this.getToStringFunctionPtr(thisValue);
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+
+    let result = this.generator.builder.createSafeCall(toStringFn, [thisUntyped]);
+    result = this.generator.builder.createBitCast(result, this.generator.ts.str.getLLVMType());
 
     return result;
   }

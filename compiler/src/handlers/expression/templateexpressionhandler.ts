@@ -41,11 +41,11 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     for (const span of expression.templateSpans) {
       const value = this.generator.handleExpression(span.expression, env).derefToPtrLevel1();
 
-      const allocatedSpanExpression = this.llvmValueToString(span.expression, value);
+      const allocatedSpanExpression = this.generator.ts.obj.objectToString(value);
 
       allocated = this.generator.builder.createSafeCall(stringConcat, [
         this.generator.builder.asVoidStar(allocated),
-        allocatedSpanExpression,
+        this.generator.builder.asVoidStar(allocatedSpanExpression)
       ]);
 
       if (span.literal.rawText) {
@@ -64,30 +64,5 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
     }
 
     return allocated;
-  }
-
-  private llvmValueToString(expression: ts.Expression, value: LLVMValue) {
-    const nakedType = value.type.unwrapPointer();
-    if (!value.isTSPrimitivePtr() && !value.type.isArray()) {
-      throw new Error(`Only primitives and arrays are supported, got '${value.type.toString()}'`);
-    }
-
-    let allocated;
-    if (nakedType.isTSBoolean()) {
-      const toString = this.generator.builtinBoolean.getToStringFn();
-      allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
-    } else if (nakedType.isTSNumber()) {
-      const toString = this.generator.builtinNumber.getToStringFn();
-      allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
-    } else if (nakedType.isArray()) {
-      const arrayType = this.generator.ts.checker.getTypeAtLocation(expression);
-      const toString = this.generator.ts.array.getToStringFn(arrayType, expression);
-
-      allocated = this.generator.builder.createSafeCall(toString, [this.generator.builder.asVoidStar(value)]);
-    } else {
-      allocated = value;
-    }
-
-    return this.generator.builder.asVoidStar(allocated);
   }
 }
