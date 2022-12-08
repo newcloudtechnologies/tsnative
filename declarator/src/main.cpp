@@ -63,7 +63,7 @@ const std::string stdImportSignatures =
     R"(import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators";)"
     R"(import { TSClosure } from "tsnative/std/definitions/tsclosure";)";
 
-void printCollection(parser::Collection& collection, const std::string& filename = "collection.txt")
+void printCollection(const parser::Collection& collection, const std::string& filename = "collection.txt")
 {
     using namespace parser;
 
