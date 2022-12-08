@@ -190,7 +190,7 @@ void TypeChecker::check(const clang::QualType& type,
     using namespace parser;
     using namespace utils;
 
-    auto& collection = Collection::ref();
+    const auto& collection = Collection::ref();
     std::string typeName = typeToString(type);
     std::string refinedTypeName = typeToString(removeCVPR(type), context);
 
@@ -198,10 +198,10 @@ void TypeChecker::check(const clang::QualType& type,
     {
         bool result = false;
 
-        auto& collection = Collection::ref();
+        const auto& collection = Collection::ref();
         std::string path = typeToString(removeCVPR(type), context);
 
-        std::optional<abstract_item_t> item = collection.findItem(path);
+        std::optional<const_abstract_item_t> item = collection.findItem(path);
         if (item.has_value())
         {
             result = (*item)->type() == parser::AbstractItem::Type::ENUM;
@@ -220,7 +220,7 @@ void TypeChecker::check(const clang::QualType& type,
 
     if (refinedTypeName != "void")
     {
-        std::optional<abstract_item_t> item = collection.findItem(refinedTypeName);
+        std::optional<const_abstract_item_t> item = collection.findItem(refinedTypeName);
         if (item.has_value())
         {
             auto itemType = (*item)->type();
@@ -338,7 +338,7 @@ void InheritanceChecker::check(parser::const_class_item_t item)
 {
     using namespace parser;
 
-    auto& collection = Collection::ref();
+    const auto& collection = Collection::ref();
 
     auto node = InheritanceNode::make(collection, item);
 
@@ -485,7 +485,7 @@ void FunctionChecker::overloads(parser::const_function_item_t item, const std::s
     using namespace parser;
     using namespace utils;
 
-    auto& collection = Collection::ref();
+    const auto& collection = Collection::ref();
 
     std::string scopeName = item->prefix();
 
@@ -528,12 +528,12 @@ void FunctionChecker::overloads(parser::const_function_item_t item, const std::s
         return OverloadDetector::get(functions);
     };
 
-    std::optional<abstract_item_t> scope = collection.findItem(scopeName);
+    std::optional<const_abstract_item_t> scope = collection.findItem(scopeName);
     if (scope.has_value())
     {
         _ASSERT(AbstractItem::isContainer(*scope));
 
-        auto containerItem = std::static_pointer_cast<ContainerItem>(*scope);
+        const auto containerItem = std::static_pointer_cast<const ContainerItem>(*scope);
 
         item_list_t children = containerItem->children();
 

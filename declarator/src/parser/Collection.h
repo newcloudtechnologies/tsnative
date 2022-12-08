@@ -98,13 +98,13 @@ private:
 
 public:
     static void init(CXTranslationUnit tu);
-    static Collection& ref();
+    static const Collection& ref();
 
     bool hasItem(const std::string& path, bool isCompletedDecl = true) const;
     bool hasItem(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
 
-    std::optional<abstract_item_t> findItem(const std::string& path) const;
-    std::optional<abstract_item_t> findItem(const std::string& parentPath, const std::string& name) const;
+    std::optional<const_abstract_item_t> findItem(const std::string& path) const;
+    std::optional<const_abstract_item_t> findItem(const std::string& parentPath, const std::string& name) const;
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
 };

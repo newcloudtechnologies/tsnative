@@ -442,7 +442,7 @@ void Collection::init(CXTranslationUnit tu)
     instance.populate();
 }
 
-Collection& Collection::ref()
+const Collection& Collection::ref()
 {
     return Collection::do_ref();
 }
@@ -476,19 +476,21 @@ bool Collection::hasItem(const std::string& parentPath, const std::string& name,
 
 abstract_item_t Collection::getItem(const std::string& path) const
 {
-    std::optional<abstract_item_t> result = findItem(path);
+    std::optional<std::shared_ptr<const AbstractItem>> result = findItem(path);
     _ASSERT(result.has_value());
-    return *result;
+    abstract_item_t item = std::const_pointer_cast<AbstractItem>(*result);
+    return item;
 }
 
 abstract_item_t Collection::getItem(const std::string& parentPath, const std::string& name) const
 {
-    std::optional<abstract_item_t> result = findItem(parentPath, name);
+    std::optional<const_abstract_item_t> result = findItem(parentPath, name);
     _ASSERT(result.has_value());
-    return *result;
+    abstract_item_t item = std::const_pointer_cast<AbstractItem>(*result);
+    return item;
 }
 
-std::optional<abstract_item_t> Collection::findItem(const std::string& path) const
+std::optional<const_abstract_item_t> Collection::findItem(const std::string& path) const
 {
     if (path.empty())
     {
@@ -564,7 +566,7 @@ std::optional<abstract_item_t> Collection::findItem(const std::string& path) con
     return result;
 }
 
-std::optional<abstract_item_t> Collection::findItem(const std::string& parentPath, const std::string& name) const
+std::optional<const_abstract_item_t> Collection::findItem(const std::string& parentPath, const std::string& name) const
 {
     std::optional<abstract_item_t> result = {};
 
@@ -625,7 +627,7 @@ void Collection::addItem(const std::string& name, const std::string& prefix, Cal
     using return_type_t = typename utils::lambda_traits<Callable>::return_type_t;
     using T = typename return_type_t::element_type;
 
-    std::optional<abstract_item_t> item = findItem(prefix, name);
+    std::optional<const_abstract_item_t> item = findItem(prefix, name);
     auto parent = std::static_pointer_cast<ContainerItem>(getItem(prefix));
     if (!item.has_value()) // no any item (completed or incompleted)
     {
