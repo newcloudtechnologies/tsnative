@@ -172,7 +172,8 @@ export class LLVMGenerator {
     return ts.isFunctionDeclaration(node) ||
       ts.isImportDeclaration(node) ||
       ts.isClassDeclaration(node) ||
-      ts.isEnumDeclaration(node);
+      ts.isEnumDeclaration(node) ||
+      ts.isModuleDeclaration(node);
   }
 
   private handleSource(source: ts.SourceFile) {

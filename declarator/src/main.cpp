@@ -214,10 +214,19 @@ int main(int argc, char** argv)
 
         CXTranslationUnit unit;
 
-        if (clang_parseTranslationUnit2(index, 0, argv, argc, 0, 0, CXTranslationUnit_None, &unit) !=
-            CXErrorCode::CXError_Success)
+        const auto ec = clang_parseTranslationUnit2(index, 0, argv, argc, 0, 0, CXTranslationUnit_None, &unit);
+        if (ec != CXErrorCode::CXError_Success)
         {
-            throw std::runtime_error("Translation unit was not created");
+            std::string av = "";
+            for (int i = 0; i < argc; ++i)
+            {
+                av += argv[i];
+                av += " ";
+            }
+
+            const std::string message =
+                "Translation unit was not created for " + av + " with ec = " + std::to_string(ec);
+            throw utils::Exception(message.c_str());
         }
 
         Diagnostics diag = Diagnostics::get(unit);
