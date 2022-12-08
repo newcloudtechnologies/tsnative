@@ -817,7 +817,7 @@ void Collection::addVariable(
             { return AbstractItem::make<VariableItem>(name, prefix, isLocal, isCompletedDecl, decl); });
 }
 
-void print(const std::string& filename = "collection.txt") const
+void Collection::print(const std::string& filename = "collection.txt") const
 {
     struct Row
     {
