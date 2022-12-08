@@ -21,6 +21,7 @@
 #include <clang/AST/DeclCXX.h>
 #include <clang/AST/DeclTemplate.h>
 
+#include <fstream>
 #include <functional>
 #include <optional>
 #include <string>
@@ -107,6 +108,7 @@ public:
     std::optional<const_abstract_item_t> findItem(const std::string& parentPath, const std::string& name) const;
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
+    void print(const std::string& filename = "collection.txt");
 };
 
 } //  namespace parser

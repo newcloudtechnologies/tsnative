@@ -63,52 +63,6 @@ const std::string stdImportSignatures =
     R"(import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators";)"
     R"(import { TSClosure } from "tsnative/std/definitions/tsclosure";)";
 
-void printCollection(const parser::Collection& collection, const std::string& filename = "collection.txt")
-{
-    using namespace parser;
-
-    struct Row
-    {
-        std::string prefix;
-        std::string name;
-        std::string type;
-    };
-
-    std::vector<Row> rows;
-
-    std::ofstream ofs{filename, std::ofstream::out};
-
-    Collection::ref().visit(
-        [&rows](const_abstract_item_t item) {
-            rows.push_back({item->prefix(), item->name(), typeToString(item->type())});
-        });
-
-    auto prefix_max_size =
-        std::max_element(
-            rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.prefix.size() < b.prefix.size(); })
-            ->prefix.size();
-
-    auto name_max_size = std::max_element(rows.begin(),
-                                          rows.end(),
-                                          [](const auto& a, const auto& b) { return a.name.size() < b.name.size(); })
-                             ->name.size();
-
-    auto type_max_size = std::max_element(rows.begin(),
-                                          rows.end(),
-                                          [](const auto& a, const auto& b) { return a.type.size() < b.type.size(); })
-                             ->type.size();
-
-    for (const auto& it : rows)
-    {
-        ofs.width(prefix_max_size + 3);
-        ofs << it.prefix << " | ";
-        ofs.width(name_max_size + 3);
-        ofs << it.name << " | ";
-        ofs.width(type_max_size);
-        ofs << it.type << "\n";
-    }
-}
-
 } //  namespace
 
 std::string getDeclarationName(const std::string& source)
