@@ -22,6 +22,7 @@
 #include <clang/AST/DeclTemplate.h>
 
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace parser
@@ -37,8 +38,13 @@ private:
     item_t<TranslationUnitItem> m_root;
 
 private:
+    Collection();
+    static Collection& do_ref();
+    static Collection& do_init(CXTranslationUnit tu);
+    void populate();
+
     template <typename Callable>
-    void add(const std::string& name, const std::string& prefix, Callable createHandler);
+    void addItem(const std::string& name, const std::string& prefix, Callable createHandler);
 
     void addNamespace(const std::string& name,
                       const std::string& prefix,
@@ -87,44 +93,20 @@ private:
                      bool isCompletedDecl,
                      const clang::VarDecl* decl);
 
-private:
-    Collection();
-    static Collection& do_ref();
-    static Collection& do_init(CXTranslationUnit tu);
-    void populate();
+    container_item_t getContainerItem(const std::string& path) const;
 
 public:
     static void init(CXTranslationUnit tu);
-    static Collection& ref();
+    static const Collection& ref();
 
-    bool exists(const std::string& path, bool isCompletedDecl = true) const;
-    bool exists(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
+    bool hasItem(const std::string& path, bool isCompletedDecl = true) const;
+    bool hasItem(const std::string& parentPath, const std::string& name, bool isCompletedDecl = true) const;
 
-    template <typename T>
-    bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true) const;
-
-    template <typename T>
-    bool get(typename parser::item_t<T>& item, const std::string& path, bool isCompletedDecl = true);
-
-    template <typename T>
-    bool get(typename parser::item_t<T>& item,
-             const std::string& parentPath,
-             const std::string& name,
-             bool isCompletedDecl = true) const;
-
-    template <typename T>
-    bool get(typename parser::item_t<T>& item,
-             const std::string& parentPath,
-             const std::string& name,
-             bool isCompletedDecl = true);
-
-    const_abstract_item_t get(const std::string& path) const;
-    abstract_item_t get(const std::string& path);
-
-    const_abstract_item_t get(const std::string& parentPath, const std::string& name) const;
-    abstract_item_t get(const std::string& parentPath, const std::string& name);
+    std::optional<const_abstract_item_t> findItem(const std::string& path) const;
+    std::optional<const_abstract_item_t> findItem(const std::string& parentPath, const std::string& name) const;
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
+    void print(const std::string& filename = "collection.txt") const;
 };
 
 } //  namespace parser

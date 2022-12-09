@@ -93,15 +93,7 @@ InheritanceNode& InheritanceNode::operator=(const InheritanceNode& other)
 std::optional<parser::const_abstract_item_t> InheritanceNode::getItem(const parser::Collection& collection,
                                                                       const std::string& path) const
 {
-    std::optional<parser::const_abstract_item_t> result;
-    parser::const_item_list_t items;
-
-    if (collection.exists(path))
-    {
-        result = collection.get(path);
-    }
-
-    return result;
+    return collection.findItem(path);
 }
 
 std::string InheritanceNode::getType(const clang::CXXBaseSpecifier& it) const

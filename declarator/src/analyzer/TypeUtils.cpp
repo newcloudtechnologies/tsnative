@@ -70,15 +70,14 @@ bool getModuleName(const std::string& path, std::string& moduleName)
     {
         moduleName = parts.at(0);
 
-        auto& collection = Collection::ref();
+        const auto& collection = Collection::ref();
 
-        if (collection.exists("", moduleName))
+        std::optional<const_abstract_item_t> item = collection.findItem("", moduleName);
+        if (item.has_value())
         {
-            auto item = collection.get(moduleName);
-
-            if (item->type() == AbstractItem::Type::NAMESPACE)
+            if ((*item)->type() == AbstractItem::Type::NAMESPACE)
             {
-                namespace_item_t namespaceItem = std::static_pointer_cast<NamespaceItem>(item);
+                const_namespace_item_t namespaceItem = std::static_pointer_cast<const NamespaceItem>(*item);
                 AnnotationList annotations(getAnnotations(namespaceItem->decl()));
 
                 if (annotations.exist(TS_MODULE))
@@ -417,21 +416,21 @@ int getPointerSize()
     // snippet variable from TS.h
     const std::string void_pointer = "__snippets__::void_pointer";
 
-    auto& collection = Collection::ref();
+    const auto& collection = Collection::ref();
 
-    if (!collection.exists(void_pointer))
+    std::optional<const_abstract_item_t> item = collection.findItem(void_pointer);
+
+    if (!item.has_value())
     {
         throw utils::Exception(R"(snippet %s is not found, file TS.h is not correct)", void_pointer.c_str());
     }
 
-    auto item = collection.get(void_pointer);
-
-    if (item->type() != AbstractItem::Type::VARIABLE)
+    if ((*item)->type() != AbstractItem::Type::VARIABLE)
     {
         throw utils::Exception(R"(%s is not a variable, file TS.h is not correct)", void_pointer.c_str());
     }
 
-    auto varItem = std::static_pointer_cast<parser::VariableItem>(item);
+    const auto varItem = std::static_pointer_cast<const parser::VariableItem>(*item);
     _ASSERT(varItem);
 
     return varItem->size();
