@@ -176,7 +176,7 @@ bool NumberCXXBuiltinPrivate::greaterEqualsThan(double other) const
 
 bool NumberCXXBuiltinPrivate::toBool() const
 {
-    return _value != 0.0;
+    return _value != 0.0 && !std::isnan(_value);
 }
 
 double NumberCXXBuiltinPrivate::unboxed() const

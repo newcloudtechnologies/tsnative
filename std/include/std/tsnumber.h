@@ -29,6 +29,20 @@ class NumberPrivate;
 class TS_DECLARE Number : public Object
 {
 public:
+    TS_METHOD TS_GETTER static Number* NaN() noexcept;
+    TS_METHOD TS_GETTER static Number* POSITIVE_INFINITY() noexcept;
+    TS_METHOD TS_GETTER static Number* NEGATIVE_INFINITY() noexcept;
+    TS_METHOD TS_GETTER static Number* EPSILON() noexcept;
+    TS_METHOD TS_GETTER static Number* MAX_VALUE() noexcept;
+    TS_METHOD TS_GETTER static Number* MIN_VALUE() noexcept;
+    TS_METHOD TS_GETTER static Number* MAX_SAFE_INTEGER() noexcept;
+    TS_METHOD TS_GETTER static Number* MIN_SAFE_INTEGER() noexcept;
+
+    TS_METHOD static Boolean* isNaN(Object* value) noexcept;
+    TS_METHOD static Boolean* isFinite(Object* value) noexcept;
+    TS_METHOD static Boolean* isInteger(Object* value) noexcept;
+    TS_METHOD static Boolean* isSafeInteger(Object* value) noexcept;
+
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(_: any)") Number(double v);
     Number(Number* v);
 
@@ -84,7 +98,9 @@ private:
 };
 
 TS_CODE("// @ts-ignore\n"
-        "declare type number = Number;\n");
+        "declare type number = Number;\n"
+        "declare var NaN: number;\n"
+        "declare var Infinity: number;\n");
 
 namespace std
 {

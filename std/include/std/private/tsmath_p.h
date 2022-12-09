@@ -15,6 +15,9 @@
 #include <cstdint>   // std::uint8_t
 #include <type_traits>
 
+#include "std/private/algorithms.h"
+#include "std/private/tsnumber_p.h"
+
 class MathPrivate
 {
 public:
@@ -54,19 +57,31 @@ public:
     static double log2(double x) noexcept;
 
     // Floating points cannot be template paramters according to c++ standard, so use typename and static_assertion
-    template <typename Arg, typename... Args>
-    static Arg min(Arg first, Args... tail) noexcept
+    template <typename... Args>
+    static double min(Args... args) noexcept
     {
-        static_assert(std::is_floating_point<Arg>::value, "Expected Arg's 'T' to be of floating point type");
-        return std::min(first, min(tail...));
+        checkDoubleTraits(args...);
+
+        return hasNaN(args...) ? NumberPrivate::NaN() : std::min({args...});
+    }
+
+    static double min() noexcept
+    {
+        return NumberPrivate::POSITIVE_INFINITY();
     }
 
     // Floating points cannot be template paramters according to c++ standard, so use typename and static_assertion
-    template <typename Arg, typename... Args>
-    static Arg max(Arg first, Args... tail) noexcept
+    template <typename... Args>
+    static double max(Args... args) noexcept
     {
-        static_assert(std::is_floating_point<Arg>::value, "Expected Arg's 'T' to be of floating point type");
-        return std::max(first, max(tail...));
+        checkDoubleTraits(args...);
+
+        return hasNaN(args...) ? NumberPrivate::NaN() : std::max({args...});
+    }
+
+    static double max() noexcept
+    {
+        return NumberPrivate::NEGATIVE_INFINITY();
     }
 
     static double pow(double x, double y) noexcept;
@@ -81,15 +96,24 @@ public:
     static double trunc(double x) noexcept;
 
 private:
-    template <typename Arg>
-    static Arg min(Arg arg) noexcept // variadic tail
+    template <typename... Args>
+    constexpr static void checkDoubleTraits(Args&... args)
     {
-        return arg;
+        forEachInTuple(std::tuple<Args...>{},
+                       [](auto t)
+                       { static_assert(std::is_floating_point<decltype(t)>::value, "Require float pointing type"); });
     }
 
-    template <typename Arg>
-    static Arg max(Arg arg) noexcept // variadic tail
+    template <typename... Args>
+    static bool hasNaN(Args&... args)
     {
-        return arg;
+        std::size_t countNaN = 0;
+        forEachInTuple(std::make_tuple(args...), [&countNaN](double d) { countNaN += (NumberPrivate::isNaN(d)); });
+
+        return countNaN != 0;
     }
+
+    static double toInteger(double x) noexcept;
+    static uint32_t toUint32(double x) noexcept;
+    static double modulo(double x, double y) noexcept;
 };

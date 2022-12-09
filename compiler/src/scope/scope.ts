@@ -569,6 +569,10 @@ export class Scope {
     this.isNamespace = isNamespace;
   }
 
+  isAmbientSourceFile() {
+    return this.name?.endsWith(".d.ts");
+  }
+
   deinitialize() {
     // Removing roots code will be here
   }

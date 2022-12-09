@@ -20,6 +20,7 @@ import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 import { LLVMType } from "../llvm/type";
 import { CXXForwardsDeclarator } from "./cxxforwardsdeclarator";
+import { Scope } from "../scope";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
@@ -59,7 +60,15 @@ export class TemplateInstantiator {
       this.generator.runtime.initGlobalState();
 
       declarations.forEach((declaration) => {
-        this.generator.symbolTable.addScope(declaration.fileName);
+        const sourceFileScope = new Scope(
+          declaration.fileName,
+          undefined,
+          this.generator,
+          false,
+          this.generator.symbolTable.globalScope
+        );
+
+        this.generator.symbolTable.addScope(sourceFileScope);
         declaration.forEachChild((node) => this.generator.handleNode(node, this.generator.symbolTable.currentScope));
       });
     }
