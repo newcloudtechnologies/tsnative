@@ -224,43 +224,30 @@ export class AccessHandler extends AbstractExpressionHandler {
       llvmValue = this.generator.ts.union.get(llvmValue);
     }
 
-    let value = this.generator.ts.obj.get(llvmValue, propertyName);
-
-    let type = this.generator.ts.checker.getTypeAtLocation(left);
-    if (!type.isSymbolless()) {
-      const propertySymbol = type.getProperty(propertyName);
-      const propertyDeclaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
-      const propertyType = propertyDeclaration.type;
-
-      type = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
-    } else {
-      type = this.generator.ts.checker.getTypeAtLocation(left.parent);
-    }
-
-    let targetLLVMType: LLVMType;
-
-    // @todo startsWith?
-    const isThisAccess = left.getText() === this.generator.internalNames.This;
-
-    // Check if statement is initialization of 'this' value, e.g.
+    // Check if statement is property assignment, e.g.
     // this.v = 22
     // ^^^^ expression
     // ^^^^^^ expression.parent
     // ^^^^^^^^^^^ expression.parent.parent
-    const isInitialization =
+    const isPropertyAssignment =
       ts.isBinaryExpression(left.parent.parent) &&
       left.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       left.parent.parent.left === left.parent;
 
-    if (isThisAccess && isInitialization) {
-      targetLLVMType = this.generator.ts.union.getLLVMType();
-    } else {
-      targetLLVMType = type.getLLVMType();
-
-      if (!type.isOptionalUnion()) {
-        value = this.generator.ts.union.get(value);
-      }
+    if (isPropertyAssignment) {
+      return llvmValue;
     }
+
+    const value = this.generator.ts.obj.get(llvmValue, propertyName);
+    const objectType = this.generator.ts.checker.getTypeAtLocation(left);
+
+    const propertySymbol = objectType.getProperty(propertyName);
+    const propertyDeclaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
+
+    let propertyType = propertyDeclaration.type;
+    propertyType = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
+
+    const targetLLVMType = propertyType.getLLVMType();
 
     return this.generator.builder.createBitCast(value, targetLLVMType);
   }

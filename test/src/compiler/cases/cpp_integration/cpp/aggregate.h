@@ -34,7 +34,7 @@ public:
     TS_METHOD Number* getNumber() const;
 };
 
-class PointPair
+class PointPair : public Object
 {
 public:
     PointPair(Number* x1, Number* y1, Number* x2, Number* y2);
@@ -47,7 +47,7 @@ protected:
     Point* bottomRight = nullptr;
 };
 
-class RectHolder
+class RectHolder : public Object
 {
 public:
     RectHolder(Rect* rect);

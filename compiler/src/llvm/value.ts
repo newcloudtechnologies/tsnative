@@ -132,37 +132,7 @@ export class LLVMValue {
       return this;
     }
 
-    const thisPtr = this.derefToPtrLevel1();
-    if (this.type.isTSNumber()) {
-      const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
-      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(thisPtr)]);
-    }
-
-    if (this.type.isString()) {
-      const lengthGetter = this.generator.ts.str.getLLVMLength();
-      const length = this.generator.builder.createSafeCall(lengthGetter, [this.generator.builder.asVoidStar(thisPtr)]);
-
-      const toBoolFn = this.generator.builtinNumber.createBooleanFn("toBool", OperationFlags.Unary);
-      return this.generator.builder.createSafeCall(toBoolFn, [this.generator.builder.asVoidStar(length)]);
-    }
-
-    if (this.type.isUnion()) {
-      return this.generator.ts.union.toBool(thisPtr);
-    }
-
-    if (this.type.isUndefined() || this.type.isNull()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getFalse(this.generator));
-    }
-
-    if (this.type.isClosure()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
-    }
-
-    if (this.type.isPointer()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
-    }
-
-    throw new Error(`Unable to convert operand of type ${this.type.toString()} to boolean value`);
+    return this.generator.ts.obj.toBool(this);
   }
 
   makeAssignment(other: LLVMValue): LLVMValue {
@@ -329,11 +299,7 @@ export class LLVMValue {
     const thisType = thisPtr.type;
     const otherType = otherPtr.type;
 
-    if (thisType.isUnion()) {
-      let extracted = this.generator.ts.union.get(thisPtr);
-      extracted = this.generator.builder.createBitCast(extracted, otherType);
-      return extracted.createEquals(otherPtr);
-    } else if (otherType.isUnion()) {
+    if (otherType.isUnion()) {
       let extracted = this.generator.ts.union.get(otherPtr);
       extracted = this.generator.builder.createBitCast(extracted, thisType);
       return this.createEquals(extracted);

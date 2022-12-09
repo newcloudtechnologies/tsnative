@@ -100,6 +100,16 @@ export class TypeChecker {
     return TSType.create(this.checker.getBaseTypeOfLiteralType(type), this);
   }
 
+  getContextualType(node: ts.Expression) {
+    const type = this.checker.getContextualType(node);
+
+    if (!type) {
+      return;
+    }
+
+    return TSType.create(type, this);
+  }
+
   getSignatureFromDeclaration(declaration: Declaration) {
     const signatureDeclaration = declaration.unwrapped as ts.SignatureDeclaration;
     const signature = this.checker.getSignatureFromDeclaration(signatureDeclaration);
