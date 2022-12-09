@@ -33,6 +33,7 @@ public:
     virtual ~ContainerItem() = default;
 
     void addItem(abstract_item_t item);
+    void replaceItem(const std::string& name, const std::string& prefix, abstract_item_t new_item);
 
     item_list_t children() const;
 };
