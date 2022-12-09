@@ -49,6 +49,11 @@ export class VariableHandler extends AbstractNodeHandler {
     parentScope: Scope,
     outerEnv?: Environment
   ): void {
+    if (this.generator.symbolTable.currentScope.isAmbientSourceFile()) {
+      // variables declared in ambient sources are considered compiler internals
+      return;
+    }
+
     let name = (declaration.name as ts.Identifier).escapedText.toString() || declaration.name.getText();
 
     // Note about 'escapedText' from tsc: Text of identifier, but if the identifier begins with two underscores, this will begin with three;

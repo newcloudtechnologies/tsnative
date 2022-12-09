@@ -114,6 +114,9 @@ export class LLVMGenerator {
     this.ts.null.init();
     this.ts.undef.init();
 
+    this.builtinNumber.initNan();
+    this.builtinNumber.initInfinity();
+
     if (dbg) {
       dbg.emitMainScope(main.unwrapped as llvm.Function);
     }
@@ -179,7 +182,15 @@ export class LLVMGenerator {
   private handleSource(source: ts.SourceFile) {
     this.currentSource = source;
 
-    this.symbolTable.addScope(this.currentSourceFile.fileName);
+    const sourceFileScope = new Scope(
+      this.currentSourceFile.fileName,
+      undefined,
+      this,
+      false,
+      this.symbolTable.globalScope
+    );
+
+    this.symbolTable.addScope(sourceFileScope);
 
     this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
     this.hoistFunctionDeclarations();

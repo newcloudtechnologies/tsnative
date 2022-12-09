@@ -14,7 +14,7 @@ import * as ts from "typescript";
 import { ThisData, Scope, Environment } from "../scope";
 import { FunctionMangler } from "../mangling";
 import { LLVMStructType, LLVMType } from "../llvm/type";
-import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
+import { LLVMConstant, LLVMConstantFP, LLVMGlobalVariable, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
 
@@ -317,6 +317,8 @@ export class BuiltinNumber extends Builtin {
   private readonly toStringFn: LLVMValue;
   private readonly unboxFn: LLVMValue;
   private readonly cloneFn: LLVMValue;
+  private readonly nanFn: LLVMValue;
+  private readonly infinityFn: LLVMValue;
 
   private readonly boolFunctions = new Map<string, LLVMValue>();
   private readonly mathFunctions = new Map<string, LLVMValue>();
@@ -332,6 +334,8 @@ export class BuiltinNumber extends Builtin {
     this.toStringFn = this.initToStringFn();
     this.unboxFn = this.initUnboxFn();
     this.cloneFn = this.initCloneFn();
+    this.nanFn = this.getNumberGetterFn("NaN");
+    this.infinityFn = this.getNumberGetterFn("POSITIVE_INFINITY");
   }
 
   getTSType() {
@@ -560,6 +564,55 @@ export class BuiltinNumber extends Builtin {
     return fn;
   }
 
+  private getNumberGetterFn(functionName: string) {
+    const declaration = this.classDeclaration;
+
+    const fnDeclaration = declaration.members.find((m) => m.name?.getText() === functionName);
+    if (!fnDeclaration) {
+      throw new Error(`Unable to find method '${functionName}' at '${declaration.getText()}'`);
+    }
+
+    const thisType = this.getTSType();
+
+    const argTypes: TSType[] = [];
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      fnDeclaration,
+      undefined,
+      thisType,
+      argTypes,
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Number method '${functionName}' for '${thisType.toString()}' not found`);
+    }
+
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+
+    const { fn } = this.generator.llvm.function.create(llvmReturnType, [], qualifiedName);
+
+    return fn;
+  }
+
+  private initNumberConstants(fn: LLVMValue, name: string, globalScopeKey: string): void {
+    const instance = this.generator.builder.createSafeCall(fn, []);
+
+    const nullValue = LLVMConstant.createNullValue(this.llvmType, this.generator);
+    const globalConstant = LLVMGlobalVariable.make(
+      this.generator,
+      this.llvmType,
+      false,
+      nullValue,
+      name
+    );
+
+    const casted = this.generator.builder.createBitCast(instance, this.llvmType);
+    this.generator.builder.createSafeStore(casted, globalConstant);
+
+    this.generator.symbolTable.globalScope.set(globalScopeKey, globalConstant);
+  }
+
   getToStringFn() {
     return this.toStringFn;
   }
@@ -570,6 +623,14 @@ export class BuiltinNumber extends Builtin {
 
   getLLVMType() {
     return this.llvmType;
+  }
+
+  initNan(): void {
+    this.initNumberConstants(this.nanFn, "nan_constant", "NaN");
+  }
+
+  initInfinity(): void {
+    this.initNumberConstants(this.infinityFn, "infinity_constant", "Infinity");
   }
 
   create(value: LLVMValue) {

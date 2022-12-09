@@ -19,7 +19,43 @@
 
 #include "std/private/logger.h"
 
+#include <cassert>
+#include <limits>
 #include <sstream>
+
+#define DEFINE_GETTER_METHOD(name)                                                  \
+    Number* Number::name() noexcept                                                 \
+    {                                                                               \
+        static_assert(std::numeric_limits<double>::is_iec559, "IEEE 754 required"); \
+        return new Number{NumberPrivate::name()};                                   \
+    };
+
+#define DEFINE_CHECKER_METHOD(name)                                         \
+    Boolean* Number::name(Object* value) noexcept                           \
+    {                                                                       \
+        assert(value && "Invalid object");                                  \
+                                                                            \
+        if (!value->isNumber())                                             \
+        {                                                                   \
+            return new Boolean{false};                                      \
+        }                                                                   \
+        const double unboxedValue = static_cast<Number*>(value)->unboxed(); \
+        return new Boolean{NumberPrivate::name(unboxedValue)};              \
+    };
+
+DEFINE_GETTER_METHOD(NaN);
+DEFINE_GETTER_METHOD(POSITIVE_INFINITY);
+DEFINE_GETTER_METHOD(NEGATIVE_INFINITY);
+DEFINE_GETTER_METHOD(EPSILON);
+DEFINE_GETTER_METHOD(MAX_VALUE);
+DEFINE_GETTER_METHOD(MIN_VALUE);
+DEFINE_GETTER_METHOD(MAX_SAFE_INTEGER);
+DEFINE_GETTER_METHOD(MIN_SAFE_INTEGER);
+
+DEFINE_CHECKER_METHOD(isNaN)
+DEFINE_CHECKER_METHOD(isFinite)
+DEFINE_CHECKER_METHOD(isInteger)
+DEFINE_CHECKER_METHOD(isSafeInteger)
 
 Number::Number(double v)
     : Object(TSTypeID::Number)
@@ -242,6 +278,19 @@ Number* Number::clone() const
 String* Number::toString() const
 {
     std::ostringstream oss;
-    oss << this->unboxed();
+
+    const double unboxedValue = this->unboxed();
+    if (NumberPrivate::isNaN(unboxedValue))
+    {
+        oss << "NaN";
+    }
+    else if (!NumberPrivate::isFinite(unboxedValue))
+    {
+        oss << (NumberPrivate::POSITIVE_INFINITY() == unboxedValue ? "Infinity" : "-Infinity");
+    }
+    else
+    {
+        oss << this->unboxed();
+    }
     return new String(oss.str());
 }

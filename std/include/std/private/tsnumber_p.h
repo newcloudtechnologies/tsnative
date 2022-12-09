@@ -11,11 +11,102 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstdint>
+#include <limits>
+
+namespace constants
+{
+using DoubleTraits = std::numeric_limits<double>;
+
+constexpr double g_NaN = DoubleTraits::quiet_NaN();
+constexpr double g_PositiveInfinity = DoubleTraits::infinity();
+constexpr double g_NegativeInfinity = DoubleTraits::infinity() * -1;
+constexpr double g_Epsilon = DoubleTraits::epsilon();
+constexpr double g_MaxValue = DoubleTraits::max();
+constexpr double g_MinValue = DoubleTraits::min();
+
+// 2^53 - 1. See https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-number.max_safe_integer
+constexpr double g_MaxSafeInteger = 9'007'199'254'740'991;
+constexpr double g_MinSafeInteger = g_MaxSafeInteger * -1;
+} // namespace constants
 
 class NumberPrivate
 {
 public:
+    static double NaN() noexcept
+    {
+        return constants::g_NaN;
+    }
+
+    static double POSITIVE_INFINITY() noexcept
+    {
+        return constants::g_PositiveInfinity;
+    }
+
+    static double NEGATIVE_INFINITY() noexcept
+    {
+        return constants::g_NegativeInfinity;
+    }
+
+    static double EPSILON() noexcept
+    {
+        return constants::g_Epsilon;
+    }
+
+    static double MAX_VALUE() noexcept
+    {
+        return constants::g_MaxValue;
+    }
+
+    static double MIN_VALUE() noexcept
+    {
+        return constants::g_MinValue;
+    }
+
+    static double MAX_SAFE_INTEGER() noexcept
+    {
+        return constants::g_MaxSafeInteger;
+    }
+
+    static double MIN_SAFE_INTEGER() noexcept
+    {
+        return constants::g_MinSafeInteger;
+    }
+
+    static bool isNaN(double value) noexcept
+    {
+        return std::isnan(value);
+    }
+
+    static bool isFinite(double value) noexcept
+    {
+        return std::isfinite(value);
+    }
+
+    static bool isInteger(double value) noexcept
+    {
+        if (isNaN(value) || !isFinite(value))
+        {
+            return false;
+        }
+        const double absValue = std::abs(value);
+
+        return std::floor(absValue) == absValue;
+    }
+
+    static bool isSafeInteger(double value)
+    {
+        if (isInteger(value))
+        {
+            if (std::abs(value) <= constants::g_MaxSafeInteger)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     virtual ~NumberPrivate() = default;
 
     virtual double add(double other) const = 0;

@@ -16,7 +16,7 @@
 #include <limits>
 #include <random>
 
-namespace Constants
+namespace constants
 {
 const double E = 2.71828182845904523536;
 const double LOG2E = 1.44269504088896340736;
@@ -26,46 +26,47 @@ const double LN10 = 2.30258509299404568402;
 const double PI = M_PI;
 const double SQRT2 = 1.41421356237309504880;
 const double SQRT1_2 = 0.707106781186547524401;
-}; // namespace Constants
+constexpr double pow2of32 = 1ull << 32; // 2^32
+} // namespace constants
 
 double MathPrivate::E() noexcept
 {
-    return Constants::E;
+    return constants::E;
 }
 
 double MathPrivate::LN2() noexcept
 {
-    return Constants::LN2;
+    return constants::LN2;
 }
 
 double MathPrivate::LN10() noexcept
 {
-    return Constants::LN10;
+    return constants::LN10;
 }
 
 double MathPrivate::LOG2E() noexcept
 {
-    return Constants::LOG2E;
+    return constants::LOG2E;
 }
 
 double MathPrivate::LOG10E() noexcept
 {
-    return Constants::LOG10E;
+    return constants::LOG10E;
 }
 
 double MathPrivate::PI() noexcept
 {
-    return Constants::PI;
+    return constants::PI;
 }
 
 double MathPrivate::SQRT1_2() noexcept
 {
-    return Constants::SQRT1_2;
+    return constants::SQRT1_2;
 }
 
 double MathPrivate::SQRT2() noexcept
 {
-    return Constants::SQRT2;
+    return constants::SQRT2;
 }
 
 double MathPrivate::abs(double x) noexcept
@@ -120,30 +121,21 @@ double MathPrivate::ceil(double x) noexcept
 
 std::uint8_t MathPrivate::clz32(double x) noexcept
 {
-    const double floored = std::trunc(x);
+    const auto uint32Val = toUint32(x);
 
-    if (floored < std::numeric_limits<std::int32_t>::min() || floored > std::numeric_limits<std::int32_t>::max())
+    if (uint32Val == 0)
     {
-        return 0; // TODO Should we throw here?
+        return 32;
     }
 
-    const auto intX = static_cast<int32_t>(floored);
-    if (intX < 0)
-    {
-        return 0; // Sign bit goes first, no zeros before it
-    }
-
-    // Would be great to implement using binary search instead of O(32)
     std::uint8_t result = 0;
-    const std::uint32_t uintX = std::abs(intX);
-
+    const std::uint32_t uintX = uint32Val;
     std::uint32_t mask = 1 << 31;
     while (mask != 0 && ((uintX & mask) == 0))
     {
         ++result;
         mask = mask >> 1;
     }
-
     return result;
 }
 
@@ -164,6 +156,14 @@ double MathPrivate::exp(double x) noexcept
 
 double MathPrivate::expm1(double x) noexcept
 {
+    if (NumberPrivate::isNaN(x) || x == NumberPrivate::POSITIVE_INFINITY() || x == 0.0)
+    {
+        return x;
+    }
+    if (x == NumberPrivate::NEGATIVE_INFINITY())
+    {
+        return -1.0;
+    }
     return exp(x) - 1;
 }
 
@@ -180,14 +180,21 @@ double MathPrivate::fround(double x) noexcept
 
 double MathPrivate::hypot(double x, double y) noexcept
 {
-    return std::sqrt(x * x + y * y);
+    return std::hypot(x, y);
 }
 
 double MathPrivate::imul(double x, double y) noexcept
 {
-    // TODO here we are supposed to have fast integer multiplication algorithm
-    // Float parts from doubles are simply thrown away
-    return std::trunc(x) * std::trunc(y);
+    constexpr static uint32_t pow2of31 = 1ul << 31;
+    const auto a = toUint32(x);
+    const auto b = toUint32(y);
+
+    const auto product = modulo(a * b, constants::pow2of32);
+    if (product >= pow2of31)
+    {
+        return product - constants::pow2of32;
+    }
+    return a * b;
 }
 
 double MathPrivate::log(double x) noexcept
@@ -212,6 +219,42 @@ double MathPrivate::log2(double x) noexcept
 
 double MathPrivate::pow(double x, double y) noexcept
 {
+    // https://tc39.es/ecma262/multipage/ecmascript-data-types-and-values.html#sec-numeric-types-number-exponentiate
+    if (std::isnan(y))
+    {
+        return constants::g_NaN;
+    }
+
+    if (y == constants::g_PositiveInfinity)
+    {
+        if (abs(x) > 1)
+        {
+            return constants::g_PositiveInfinity;
+        }
+        if (abs(x) == 1)
+        {
+            return constants::g_NaN;
+        }
+        if (abs(x) < 1)
+        {
+            return +0;
+        }
+    }
+    if (y == constants::g_NegativeInfinity)
+    {
+        if (abs(x) > 1)
+        {
+            return +0;
+        }
+        if (abs(x) == 1)
+        {
+            return constants::g_NaN;
+        }
+        if (abs(x) < 1)
+        {
+            return constants::g_PositiveInfinity;
+        }
+    }
     return std::pow(x, y);
 }
 
@@ -240,7 +283,7 @@ double MathPrivate::round(double x) noexcept
 
 double MathPrivate::sign(double x) noexcept
 {
-    if (x == -0.0 || x == 0.0)
+    if (NumberPrivate::isNaN(x) || x == 0.0)
     {
         return x;
     }
@@ -275,4 +318,27 @@ double MathPrivate::tanh(double x) noexcept
 double MathPrivate::trunc(double x) noexcept
 {
     return std::trunc(x);
+}
+
+double MathPrivate::modulo(double x, double y) noexcept
+{
+    // “x modulo y” (y must be finite and non-zero) computes a value k of the same sign as y (or zero)
+    // such  that abs(k) < abs(y) and x - k = q × y for some integer q.
+    // See h ttps://tc39.es/ecma262/multipage/notational-conventions.html#integer
+    // x − k  = q × y
+    return x - floor(x / y) * y;
+}
+
+double MathPrivate::toInteger(double x) noexcept
+{
+    return x < 0 ? ceil(x) : floor(x);
+}
+
+uint32_t MathPrivate::toUint32(double x) noexcept
+{
+    if (NumberPrivate::isNaN(x) || x == 0 || !NumberPrivate::isFinite(x))
+    {
+        return 0;
+    }
+    return static_cast<uint32_t>(modulo(toInteger(x), constants::pow2of32));
 }

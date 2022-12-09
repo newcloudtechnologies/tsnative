@@ -55,8 +55,7 @@ export class SymbolTable {
     throw new IdentifierNotFound(`Identifier '${identifier}' not found`);
   }
 
-  addScope(name: string): void {
-    const scope = new Scope(name, name, this.generator);
+  addScope(scope: Scope): void {
     this.scopes.push(scope);
   }
 
