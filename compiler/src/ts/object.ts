@@ -91,7 +91,7 @@ export class TSObject {
       [],
       this.generator,
       undefined,
-      ["Map<String*, void*>*"]
+      ["Map<String*, Object*>*"]
     );
 
     if (!isConstructorExternalSymbol) {
@@ -116,10 +116,8 @@ export class TSObject {
       setDeclaration,
       undefined,
       this.declaration.type,
-      [],
-      this.generator,
-      undefined,
-      ["String*", "void*"]
+      [this.generator.ts.str.getDeclaration().type, this.declaration.type],
+      this.generator
     );
 
     if (!isExternalSymbol) {
@@ -128,9 +126,9 @@ export class TSObject {
 
     const llvmReturnType = LLVMType.getVoidType(this.generator);
     const llvmArgumentTypes = [
-      LLVMType.getInt8Type(this.generator).getPointer(),
+      this.getLLVMType(),
       this.generator.ts.str.getLLVMType(),
-      LLVMType.getInt8Type(this.generator).getPointer(),
+      this.getLLVMType(),
     ];
 
     const { fn: set } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
@@ -157,7 +155,7 @@ export class TSObject {
       throw new Error(`Unable to find cxx 'get' for 'Object'`);
     }
 
-    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmReturnType = this.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.ts.str.getLLVMType()];
 
     const { fn: get } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
@@ -295,6 +293,22 @@ export class TSObject {
     return this.generator.builder.createLoad(eqFn);
   }
 
+  private getToBoolFunctionPtr(thisValue: LLVMValue) {
+    const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [cxxVoidStarType];
+
+    const type = llvm.FunctionType.get(
+      cxxVoidStarType.unwrapped,
+      llvmArgumentTypes.map((t) => t.unwrapped),
+      false
+    ).getPointerTo().getPointerTo();
+
+    let toBoolFn = this.getVPtrFn(thisValue, "toBool");
+    toBoolFn = this.generator.builder.createBitCast(toBoolFn, LLVMType.make(type, this.generator));
+
+    return this.generator.builder.createLoad(toBoolFn);
+  }
+
   private getToStringFunctionPtr(thisValue: LLVMValue) {
     const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [cxxVoidStarType];
@@ -387,7 +401,8 @@ export class TSObject {
     const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
     const llvmKey = this.generator.ts.str.create(key);
 
-    return this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
+    const value = this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
+    return value;
   }
 
   set(thisValue: LLVMValue, key: string, value: LLVMValue) {
@@ -395,8 +410,8 @@ export class TSObject {
       this.setFn = this.initSetFn();
     }
 
-    const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
-    const valueUntyped = this.generator.builder.asVoidStar(value.derefToPtrLevel1());
+    const thisUntyped = this.generator.builder.createBitCast(thisValue.derefToPtrLevel1(), this.llvmType);
+    const valueUntyped = this.generator.builder.createBitCast(value.derefToPtrLevel1(), this.llvmType);
 
     const wrappedKey = this.generator.ts.str.create(key);
 
@@ -422,6 +437,19 @@ export class TSObject {
 
     let result = this.generator.builder.createSafeCall(toStringFn, [thisUntyped]);
     result = this.generator.builder.createBitCast(result, this.generator.ts.str.getLLVMType());
+
+    return result;
+  }
+
+  toBool(thisValue: LLVMValue) {
+    thisValue = thisValue.derefToPtrLevel1();
+
+    const toBoolFn = this.getToBoolFunctionPtr(thisValue);
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+
+    let result = this.generator.builder.createSafeCall(toBoolFn, [thisUntyped]);
+    result = this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
 
     return result;
   }

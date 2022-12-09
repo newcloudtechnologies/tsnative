@@ -34,6 +34,11 @@ void WithOptionalArgs::setValues(Union* n, Union* s)
     set("s", sValue);
 }
 
+void WithOptionalArgs::setString(String* s)
+{
+    set("s", s);
+}
+
 Number* WithOptionalArgs::getNumber() const
 {
     return get<Number*>("n");

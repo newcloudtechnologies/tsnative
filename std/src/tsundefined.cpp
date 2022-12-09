@@ -37,3 +37,8 @@ Boolean* Undefined::toBool() const
 {
     return new Boolean(false);
 }
+
+Boolean* Undefined::equals(Object* other) const
+{
+    return new Boolean(other == Undefined::instance());
+}

@@ -69,8 +69,25 @@ export class AssignmentHandler extends AbstractExpressionHandler {
               ? this.generator.ts.union.create(this.generator.ts.null.get())
               : this.generator.handleExpression(right, env).derefToPtrLevel1();
 
-          if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
-            this.generator.gc.deallocate(lhs);
+          if (!left.getText().startsWith("this.")) {
+            if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
+              this.generator.gc.deallocate(lhs);
+            }
+          }
+
+          if (ts.isPropertyAccessExpression(left)) {
+            const objectType = this.generator.ts.checker.getTypeAtLocation(left.expression);
+            const propertySymbol = objectType.getProperty(left.name.getText());
+
+            if (!propertySymbol.isStatic()) {
+              if ((propertySymbol.valueDeclaration?.type.isUnion() || propertySymbol.isOptional()) && !rhs.type.isUnion()) {
+                rhs = this.generator.ts.union.create(rhs);
+              }
+
+              const propertyName = left.name.getText();
+              this.generator.ts.obj.set(lhs, propertyName, rhs);
+              return rhs;
+            }
           }
 
           return lhs.makeAssignment(rhs);

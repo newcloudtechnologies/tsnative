@@ -557,8 +557,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       const key = valueDeclaration.name.getText() + "__get";
 
-      const getterUnion = this.generator.ts.obj.get(thisValue, key);
-      let getterClosure = this.generator.ts.union.get(getterUnion);
+      let getterClosure = this.generator.ts.obj.get(thisValue, key);
       getterClosure = this.generator.builder.createBitCast(getterClosure, this.generator.tsclosure.getLLVMType());
 
       const closureCall = this.generator.tsclosure.getLLVMCall();
@@ -644,8 +643,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       const key = valueDeclaration.name.getText() + "__set";
 
-      const setterUnion = this.generator.ts.obj.get(thisValue, key);
-      let setterClosure = this.generator.ts.union.get(setterUnion);
+      let setterClosure = this.generator.ts.obj.get(thisValue, key);
       setterClosure = this.generator.builder.createBitCast(setterClosure, this.generator.tsclosure.getLLVMType());
 
       const getEnvironment = this.generator.tsclosure.getLLVMGetEnvironment();
@@ -756,7 +754,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       originalThisValue = thisValuePtr.derefToPtrLevel1();
       let thisValue = this.generator.handleExpression(expression.expression.expression.expression, outerEnv).derefToPtrLevel1();
       thisValue = this.generator.ts.obj.get(thisValue, "parent");
-      thisValue = this.generator.ts.union.get(thisValue);
 
       this.generator.builder.createSafeStore(thisValue, thisValuePtr);
     }
@@ -925,15 +922,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       const thisValue = this.generator.builder.createLoad(thisValuePtr);
 
-      const superObjectUnion = this.generator.ts.obj.get(thisValue, "super");
-
-      object = this.generator.ts.union.get(superObjectUnion);
+      object = this.generator.ts.obj.get(thisValue, "super");
     } else {
       object = this.generator.handleExpression(propertyAccessExpression.expression, outerEnv).derefToPtrLevel1();
 
       if (propertyAccessExpression.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
         object = this.generator.ts.obj.get(object, "parent");
-        object = this.generator.ts.union.get(object);
       }
 
       // 'obj.method()' where obj is of type T | U and T and U have no common base 'obj' is a union
@@ -943,11 +937,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
       }
     }
 
-    const type = this.generator.ts.checker.getTypeAtLocation(propertyAccessExpression.name);
+    const objectType = this.generator.ts.checker.getTypeAtLocation(propertyAccessExpression.expression);
+    const methodType = this.generator.ts.checker.getTypeAtLocation(propertyAccessExpression.name);
+
     let signature: Signature;
 
-    if (!type.isSymbolless()) {
-      const symbol = type.getSymbol();
+    if (!methodType.isSymbolless()) {
+      const symbol = methodType.getSymbol();
 
       const declaration = symbol.valueDeclaration || symbol.declarations[0];
       signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);
@@ -956,7 +952,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       // (() => string | () => number) ---> () => string | number
       // ((_: string) => string | () => number) ---> (_: string) => string | number
       // and so on
-      signature = this.generator.ts.checker.getSignaturesOfType(type)[0];
+      signature = this.generator.ts.checker.getSignaturesOfType(methodType)[0];
     }
 
     const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
@@ -964,8 +960,13 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }, this.generator.symbolTable.currentScope);
 
 
-    const closureUnion = this.generator.ts.obj.get(object, propertyAccessExpression.name.getText());
-    let closure = this.generator.ts.union.get(closureUnion);
+    const methodName = propertyAccessExpression.name.getText();
+    let closure = this.generator.ts.obj.get(object, methodName);
+    const methodSymbol = objectType.getProperty(methodName);
+
+    if (methodSymbol.isOptional() || methodSymbol.valueDeclaration?.isMethodDeclaredOptional()) {
+      closure = this.generator.ts.union.get(closure);
+    }
 
     closure = this.generator.builder.createBitCast(closure, this.generator.tsclosure.getLLVMType());
 
@@ -1103,10 +1104,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const parameterDeclaration = parameterSymbol.valueDeclaration;
       if (!parameterDeclaration) {
         throw new Error(`Unable to find declaration for parameter '${parameterSymbol.escapedName}'`);
-      }
-
-      if (parameterDeclaration.isOptional()) {
-        continue;
       }
 
       const defaultInitializer = parameterDeclaration.initializer;
@@ -1713,7 +1710,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
             if (isSuperCall) {
               thisValue = this.generator.ts.obj.get(thisValue, "super");
-              thisValue = this.generator.ts.union.get(thisValue);
             } else {
               this.generator.meta.setCurrentClassDeclaration(classDeclaration);
             }
@@ -1778,18 +1774,23 @@ export class FunctionHandler extends AbstractExpressionHandler {
     environment: Environment
   ) {
     classDeclaration.ownProperties.forEach((prop) => {
-      const propertyInitializer = prop.initializer;
-      if (!propertyInitializer) {
-        return;
-      }
-
       const propertyName = prop.name?.getText();
       if (!propertyName) {
         throw new Error(`Property name expected. Error at: '${expression.getText()}'`);
       }
 
-      const value = this.generator.handleExpression(propertyInitializer, environment).derefToPtrLevel1();
-      this.generator.ts.obj.set(thisValue, propertyName, value);
+      const propertyInitializer = prop.initializer;
+      if (!propertyInitializer) {
+        return;
+      }
+
+      let propertyValue = this.generator.handleExpression(propertyInitializer, environment).derefToPtrLevel1();
+
+      if (prop.type.isUnion() && !propertyValue.type.isUnion()) {
+        propertyValue = this.generator.ts.union.create(propertyValue);
+      }
+
+      this.generator.ts.obj.set(thisValue, propertyName, propertyValue);
     });
   }
 
@@ -1809,8 +1810,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         if (method.isOptional() && !method.body) {
-          const methodName = method.name.getText();
-          this.generator.ts.obj.set(thisValue, methodName, this.generator.ts.undef.get());
           return;
         }
 
@@ -1876,7 +1875,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
         FunctionHandler.handleFunctionBody(method, fn, this.generator, env);
         LLVMFunction.verify(fn, expression);
 
-        const closure = this.makeClosure(fn, method, env);
+        let closure = this.makeClosure(fn, method, env);
+        if (method.isMethodDeclaredOptional()) {
+          closure = this.generator.ts.union.create(closure);
+        }
 
         let key = method.name.getText();
         if (method.isGetAccessor()) {

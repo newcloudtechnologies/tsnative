@@ -287,15 +287,17 @@ export class SysVFunctionHandler {
       if (parameterAtIndex) {
         const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
 
-        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
-          let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+        if (!parameterDeclaration.dotDotDotToken) {
+          if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
+              let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
 
-          if (parameterDeclaration.type.isEnum()) {
-            value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
-            return value.asLLVMInteger();
+              if (parameterDeclaration.type.isEnum()) {
+                value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
+                return value.asLLVMInteger();
+              }
+
+              return value;
           }
-
-          return value;
         }
 
         if (parameterDeclaration.type.isEnum()) {

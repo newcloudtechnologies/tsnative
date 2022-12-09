@@ -28,6 +28,8 @@ public:
 
     TS_METHOD TS_SIGNATURE("setValues(n?: number, s?: string): void") void setValues(Union* n, Union* s);
 
+    TS_METHOD void setString(String* s);
+
     TS_METHOD Number* getNumber() const;
     TS_METHOD String* getString() const;
 

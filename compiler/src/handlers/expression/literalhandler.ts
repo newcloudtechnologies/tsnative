@@ -14,6 +14,8 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment, HeapVariableDeclaration } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
 import { TSTuple } from "../../ts/tuple";
+import { TSType } from "../../ts/type";
+import { Declaration } from "../../ts/declaration";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -94,6 +96,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
   private handleObjectLiteralExpression(expression: ts.ObjectLiteralExpression, env?: Environment): LLVMValue {
     const llvmValues = new Map<string, LLVMValue>();
+
     expression.properties.forEach((property) => {
       switch (property.kind) {
         case ts.SyntaxKind.PropertyAssignment:
@@ -103,7 +106,14 @@ export class LiteralHandler extends AbstractExpressionHandler {
             propVal = propVal.clone();
           }
 
-          llvmValues.set(property.name.getText(), propVal);
+          const propertyName = property.name.getText();
+          const propertyContextType = this.generator.ts.checker.getContextualType(property.initializer);
+
+          if (propertyContextType?.isUnion() && !propVal.type.isUnion()) {
+            propVal = this.generator.ts.union.create(propVal)
+          }
+
+          llvmValues.set(propertyName, propVal);
           break;
         case ts.SyntaxKind.ShorthandPropertyAssignment:
           llvmValues.set(property.name.getText(), this.generator.handleExpression(property.name, env).derefToPtrLevel1());
@@ -117,8 +127,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
           for (const prop of props) {
             const propDeclaration = prop.valueDeclaration || prop.declarations[0];
             const propName = prop.escapedName.toString();
-            const maybePropValUntyped = this.generator.ts.obj.get(obj, propName);
-            const propValUntyped = this.generator.ts.union.get(maybePropValUntyped);
+            const propValUntyped = this.generator.ts.obj.get(obj, propName);
 
             let propVal = this.generator.builder.createBitCast(propValUntyped, propDeclaration.type.getLLVMType());
             if (propVal.isTSPrimitivePtr()) {

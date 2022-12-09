@@ -20,7 +20,6 @@
 #include "std/tsboolean.h"
 #include "std/tsmap.h"
 #include "std/tsstring.h"
-#include "std/tsunion.h"
 
 #include "std/private/allocator.h"
 #include "std/runtime.h"
@@ -32,13 +31,13 @@ static String* parentKey = new String("parent");
 
 Object::Object()
 #ifdef USE_MAP_STD_BACKEND
-    : _props(new MapStdPrivate<String*, void*>())
+    : _props(new MapStdPrivate<String*, Object*>())
 #endif
 {
     LOG_ADDRESS("Calling default object ctor ", this);
 }
 
-Object::Object(Map<String*, void*>* props)
+Object::Object(Map<String*, Object*>* props)
     : _props(props->_d)
 {
     LOG_ADDRESS("Calling object ctor with props ", this);
@@ -142,7 +141,7 @@ std::vector<String*> Object::getKeys() const
 
     if (has(superKey))
     {
-        auto* superObject = static_cast<Union*>(get(superKey))->getValue();
+        auto* superObject = get(superKey);
         std::vector<String*> superUniqueKeys = superObject->getKeys();
         uniqueKeys.insert(uniqueKeys.end(),
                           std::make_move_iterator(superUniqueKeys.begin()),
@@ -179,7 +178,7 @@ Boolean* Object::operatorIn(String* key) const
     {
         // Super lookup (linear)
         std::string keyCppStr = key->cpp_str();
-        auto* superObject = static_cast<Union*>(get(superKey))->getValue();
+        auto* superObject = get(superKey);
         return superObject->operatorIn(key);
     }
     return new Boolean(false);
@@ -190,7 +189,7 @@ Array<String*>* Object::getKeysArray() const
     return Array<String*>::fromStdVector(getKeys());
 }
 
-void* Object::get(String* key) const
+Object* Object::get(String* key) const
 {
     LOG_INFO("Calling object::get for key " + key->cpp_str());
 
@@ -201,7 +200,7 @@ void* Object::get(String* key) const
 
     if (has(superKey))
     {
-        auto superValue = static_cast<Union*>(get(superKey))->getValue();
+        auto superValue = get(superKey);
         while (superValue)
         {
             if (superValue->has(key))
@@ -211,7 +210,7 @@ void* Object::get(String* key) const
 
             if (superValue->has(superKey))
             {
-                superValue = static_cast<Union*>(superValue->get(superKey))->getValue();
+                superValue = superValue->get(superKey);
             }
             else
             {
@@ -220,37 +219,32 @@ void* Object::get(String* key) const
         }
     }
 
-    auto optional = new Union();
-    _props->set(key, optional);
-
-    return optional;
+    return Undefined::instance();
 }
 
-void Object::set(String* key, void* value)
+void Object::set(String* key, Object* value)
 {
-    auto optional = new Union(static_cast<Object*>(value));
-    _props->set(key, optional);
+    _props->set(key, value);
 }
 
-void* Object::get(const std::string& key) const
+Object* Object::get(const std::string& key) const
 {
+    // @todo: this method should behave as Object::get(String* key)
     auto keyWrapped = new String(key);
 
     if (_props->has(keyWrapped))
     {
-        return (static_cast<Union*>(_props->get(keyWrapped))->getValue());
+        return _props->get(keyWrapped);
     }
 
-    auto optional = new Union();
-    _props->set(keyWrapped, optional);
-    return (optional->getValue());
+    return Undefined::instance();
 }
 
 void Object::set(const std::string& key, void* value)
 {
     auto keyWrapped = new String(key);
-    auto optional = new Union(static_cast<Object*>(value));
-    _props->set(keyWrapped, optional);
+
+    _props->set(keyWrapped, static_cast<Object*>(value));
 }
 
 String* Object::toString() const
@@ -271,8 +265,7 @@ String* Object::toString() const
         oss << std::string(depth * PADDING_WIDTH, ' ') << key << ":";
 
         bool isParent = key->equals(parentKey)->unboxed();
-        auto maybe = static_cast<const Union*>(_props->get(key));
-        auto obj = maybe->getValue();
+        auto obj = static_cast<const Object*>(_props->get(key));
 
         if (isParent)
         {
@@ -311,8 +304,7 @@ Array<String*>* Object::keys(Object* entity)
 void Object::copyPropsTo(Object* target)
 {
     // @todo: handle 'super' key?
-    _props->forEachEntry([this, &target](const auto& pair)
-                         { target->set(pair.first, static_cast<Union*>(pair.second)->getValue()); });
+    _props->forEachEntry([this, &target](const auto& pair) { target->set(pair.first, pair.second); });
 }
 
 bool Object::isMarked() const
@@ -338,7 +330,7 @@ void Object::markChildren()
     const auto callable = [](auto& entry)
     {
         auto* key = entry.first;
-        auto* value = static_cast<Object*>(entry.second);
+        auto* value = entry.second;
 
         if (key && !key->isMarked())
         {
@@ -372,4 +364,4 @@ void* Object::operator new(std::size_t n)
 }
 
 class String;
-template class Map<String*, void*>;
+template class Map<String*, Object*>;

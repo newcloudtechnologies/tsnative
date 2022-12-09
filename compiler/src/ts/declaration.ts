@@ -150,7 +150,7 @@ export class Declaration {
 
   isOptional() {
     // @ts-ignore
-    return Boolean(this.declaration.questionToken);
+    return Boolean(this.declaration.questionToken) || this.type.isOptionalUnion();
   }
 
   get kind() {
@@ -372,6 +372,27 @@ export class Declaration {
     return ts.isMethodDeclaration(this.declaration);
   }
 
+  isMethodDeclaredOptional(): boolean {
+    if (!this.isMethod()) {
+      return false;
+    }
+
+    if (this.isOptional()) {
+      return true;
+    }
+
+    const name = this.name?.getText();
+    const bases = Declaration.create(this.parent as ts.ClassDeclaration, this.generator).getBases();
+    for (const base of bases) {
+      const baseMethod = base.getOwnMethods().find((method) => method.name?.getText() === name);
+      if (baseMethod?.isOptional()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   isMethodSignature() {
     return ts.isMethodSignature(this.declaration);
   }
@@ -474,7 +495,7 @@ export class Declaration {
             return clause.types.map((expressionWithTypeArgs) => {
               const baseType = this.generator.ts.checker.getTypeAtLocation(expressionWithTypeArgs);
               const baseSymbol = baseType.getSymbol();
-              const baseDeclaration = baseSymbol.valueDeclaration;
+              const baseDeclaration = baseSymbol.declarations[0];
               if (!baseDeclaration) {
                 throw new Error(`Unable to find declaration for type '${baseType.toString()}'`);
               }
@@ -488,7 +509,7 @@ export class Declaration {
     );
   }
 
-  getOwnMethods() {
+  getOwnMethods(): Declaration[] {
     return this.members.filter((m) => {
       return (m.isMethod() || m.isGetAccessor() || m.isSetAccessor()) && !m.isStatic() && m.name;
     });

@@ -58,6 +58,16 @@ Boolean* Union::toBool() const
     return _value->toBool();
 }
 
+Boolean* Union::equals(Object* other) const
+{
+    if (other->isUnion())
+    {
+        other = static_cast<Union*>(other)->getValue();
+    }
+
+    return getValue()->equals(other);
+}
+
 void Union::markChildren()
 {
     LOG_ADDRESS("Calling Union::markChildren on ", this);
