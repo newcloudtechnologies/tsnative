@@ -20,10 +20,11 @@ namespace generator
 namespace ts
 {
 
-FunctionBlock::FunctionBlock(const std::string& name, const std::string& retType, bool isExport)
+FunctionBlock::FunctionBlock(const std::string& name, const std::string& retType, bool isExport, bool isDeclare)
     : AbstractBlock(Type::FUNCTION, name)
     , m_retType(retType)
     , m_isExport(isExport)
+    , m_isDeclare(isDeclare)
 {
     _ASSERT(!m_retType.empty());
 }
@@ -43,6 +44,11 @@ bool FunctionBlock::isExport() const
     return m_isExport;
 }
 
+bool FunctionBlock::isDeclare() const
+{
+    return m_isDeclare;
+}
+
 void FunctionBlock::printBody(generator::print::printer_t printer) const
 {
     using namespace utils;
@@ -51,8 +57,13 @@ void FunctionBlock::printBody(generator::print::printer_t printer) const
     std::string templateArgumentList = formatTemplateArgumentList(m_templateArguments);
     std::string returnType = formatReturnType(m_retType);
 
+    // export XOR declare, this check is done by caller of FuncionBlock constructor
+    std::string exportOrDeclare;
+    exportOrDeclare = m_isExport ? "export " : "";
+    exportOrDeclare = m_isDeclare ? "declare " : "";
+
     std::string img = strprintf(R"(%s%s %s%s(%s)%s;)",
-                                m_isExport ? "export " : "",
+                                exportOrDeclare.c_str(),
                                 "function",
                                 name().c_str(),
                                 !templateArgumentList.empty() ? templateArgumentList.c_str() : "",

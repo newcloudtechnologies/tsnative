@@ -41,6 +41,24 @@ void makeFunction(parser::const_function_item_t item,
 
     function_block_t functionBlock;
 
+    bool isExport = false;
+    bool isDeclare = false;
+
+    if (annotations.exist(TS_EXPORT))
+    {
+        isExport = true;
+    }
+
+    if (annotations.exist(TS_DECLARE))
+    {
+        isDeclare = true;
+    }
+
+    if (!isExport && !isDeclare)
+    {
+        throw utils::Exception(R"(function "%s" must be either TS_EXPORT or TS_DECLARE)", item->name().c_str());
+    }
+
     if (annotations.exist(TS_SIGNATURE))
     {
         TsSignature signature(annotations.values(TS_SIGNATURE).at(0));
@@ -49,7 +67,7 @@ void makeFunction(parser::const_function_item_t item,
         {
             FunctionChecker::check(item, signature.name());
 
-            functionBlock = AbstractBlock::make<FunctionBlock>(signature.name(), signature.retType(), true);
+            functionBlock = AbstractBlock::make<FunctionBlock>(signature.name(), signature.retType(), isExport, isDeclare);
 
             for (const auto& it : signature.arguments())
             {
@@ -84,7 +102,7 @@ void makeFunction(parser::const_function_item_t item,
                                   ? annotations.values(TS_RETURN_TYPE).at(0)
                                   : typeMapper.convertToTSType(item->prefix(), item->returnType());
 
-        functionBlock = AbstractBlock::make<FunctionBlock>(name, retType, true);
+        functionBlock = AbstractBlock::make<FunctionBlock>(name, retType, isExport, isDeclare);
 
         for (const auto& it : item->parameters())
         {
