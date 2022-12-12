@@ -31,7 +31,7 @@ pipeline {
     agent none
     parameters {
         string(name: 'CONAN_DEPLOY_REPO', defaultValue: 'antiq/conan_deploy', description: '')
-        string(name: 'CONAN_DEPLOY_BRANCH', defaultValue: 'master', description: '')
+        string(name: 'CONAN_DEPLOY_BRANCH', defaultValue: 'PR-36', description: '')
     }
 
     stages {
@@ -139,8 +139,8 @@ pipeline {
                                     string(name: 'PKG_CONAN_VERSION', value: version),
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True"),
-                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True -b missing -b tsnative-std"),
+                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|windows.*mingw.*|windows.*clang.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
                         }
@@ -159,7 +159,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_VERSION', value: version),
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
+                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|windows.*mingw.*|windows.*clang.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
                         }
