@@ -59,7 +59,7 @@ class TSNativeTestsConan(ConanFile):
         to_unix = lambda path: path.replace("\\", "/") #tools.unix_path(path, path_flavor="MSYS2")
 
         # By default, the generator is 'MinGW Makefiles' on windows but it breaks some paths
-        tc = CMakeToolchain(self, generator="Unix Makefiles")
+        tc = CMakeToolchain(self)
         tc.variables["CMAKE_CXX_COMPILER_TARGET"] = str(self.settings.target_abi)
 
         if (self.options.verbose):
