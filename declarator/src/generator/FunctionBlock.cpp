@@ -60,7 +60,7 @@ void FunctionBlock::printBody(generator::print::printer_t printer) const
     // export XOR declare, this check is done by caller of FuncionBlock constructor
     std::string exportOrDeclare;
     exportOrDeclare = m_isExport ? "export " : "";
-    exportOrDeclare = m_isDeclare ? "declare " : "";
+    exportOrDeclare = m_isDeclare ? "declare " : exportOrDeclare;
 
     std::string img = strprintf(R"(%s%s %s%s(%s)%s;)",
                                 exportOrDeclare.c_str(),
