@@ -166,9 +166,9 @@ export class AccessHandler extends AbstractExpressionHandler {
   private handleArrayElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const arrayType = this.generator.ts.checker.getTypeAtLocation(expression.expression);
     const subscription = this.generator.ts.array.createSubscription(arrayType);
-    const array = this.generator.handleExpression(expression.expression, env);
+    const array = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
     const arrayUntyped = this.generator.builder.asVoidStar(array);
-    const index = this.generator.handleExpression(expression.argumentExpression, env);
+    const index = this.generator.handleExpression(expression.argumentExpression, env).derefToPtrLevel1();
 
     let elementType = arrayType.getTypeGenericArguments()[0];
 
@@ -183,9 +183,9 @@ export class AccessHandler extends AbstractExpressionHandler {
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
     const subscription = this.generator.ts.tuple.getSubscriptionFn();
-    const tuple = this.generator.handleExpression(expression.expression, env);
+    const tuple = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
     const tupleUntyped = this.generator.builder.asVoidStar(tuple);
-    const index = this.generator.handleExpression(expression.argumentExpression, env);
+    const index = this.generator.handleExpression(expression.argumentExpression, env).derefToPtrLevel1();
 
     const element = this.generator.builder.createSafeCall(subscription, [tupleUntyped, index]);
     const elementIndex = parseInt(expression.argumentExpression.getText(), 10);
@@ -209,8 +209,7 @@ export class AccessHandler extends AbstractExpressionHandler {
     const left = expression.expression;
     let propertyName = ts.isPropertyAccessExpression(expression) ? expression.name.text : expression.argumentExpression.getText().replace(/['"]+/g, '');
 
-    let llvmValue = this.generator.handleExpression(left, env);
-
+    let llvmValue = this.generator.handleExpression(left, env).derefToPtrLevel1();
     if (!llvmValue.type.isPointer()) {
       throw new Error(`Expected pointer, got '${llvmValue.type}'`);
     }
@@ -225,43 +224,30 @@ export class AccessHandler extends AbstractExpressionHandler {
       llvmValue = this.generator.ts.union.get(llvmValue);
     }
 
-    let value = this.generator.ts.obj.get(llvmValue, propertyName);
-
-    let type = this.generator.ts.checker.getTypeAtLocation(left);
-    if (!type.isSymbolless()) {
-      const propertySymbol = type.getProperty(propertyName);
-      const propertyDeclaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
-      const propertyType = propertyDeclaration.type;
-
-      type = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
-    } else {
-      type = this.generator.ts.checker.getTypeAtLocation(left.parent);
-    }
-
-    let targetLLVMType: LLVMType;
-
-    // @todo startsWith?
-    const isThisAccess = left.getText() === this.generator.internalNames.This;
-
-    // Check if statement is initialization of 'this' value, e.g.
+    // Check if statement is property assignment, e.g.
     // this.v = 22
     // ^^^^ expression
     // ^^^^^^ expression.parent
     // ^^^^^^^^^^^ expression.parent.parent
-    const isInitialization =
+    const isPropertyAssignment =
       ts.isBinaryExpression(left.parent.parent) &&
       left.parent.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
       left.parent.parent.left === left.parent;
 
-    if (isThisAccess && isInitialization) {
-      targetLLVMType = this.generator.ts.union.getLLVMType();
-    } else {
-      targetLLVMType = type.getLLVMType();
-
-      if (!type.isOptionalUnion()) {
-        value = this.generator.ts.union.get(value);
-      }
+    if (isPropertyAssignment) {
+      return llvmValue;
     }
+
+    const value = this.generator.ts.obj.get(llvmValue, propertyName);
+    const objectType = this.generator.ts.checker.getTypeAtLocation(left);
+
+    const propertySymbol = objectType.getProperty(propertyName);
+    const propertyDeclaration = propertySymbol.valueDeclaration || propertySymbol.declarations[0];
+
+    let propertyType = propertyDeclaration.type;
+    propertyType = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
+
+    const targetLLVMType = propertyType.getLLVMType();
 
     return this.generator.builder.createBitCast(value, targetLLVMType);
   }

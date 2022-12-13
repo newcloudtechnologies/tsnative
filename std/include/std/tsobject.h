@@ -51,7 +51,7 @@ class TS_DECLARE Object
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") Object();
-    Object(Map<String*, void*>* props);
+    Object(Map<String*, Object*>* props);
     Object(TSTypeID typeId);
 
     virtual ~Object();
@@ -74,12 +74,13 @@ public:
 protected:
     bool has(String* key) const;
     virtual Array<String*>* getKeysArray() const;
+    TS_METHOD Boolean* operatorIn(String* key) const;
 
 public:
-    TS_METHOD TS_SIGNATURE("get(key: string): any") void* get(String* key) const;
-    TS_METHOD TS_SIGNATURE("set(key: string, value: any): void") void set(String* key, void* value);
+    TS_METHOD TS_SIGNATURE("get(key: string): Object") Object* get(String* key) const;
+    TS_METHOD TS_SIGNATURE("set(key: string, value: Object): void") void set(String* key, Object* value);
 
-    void* get(const std::string& key) const;
+    Object* get(const std::string& key) const;
     void set(const std::string& key, void* value);
 
     template <typename T>
@@ -104,13 +105,24 @@ public:
 
     virtual void markChildren();
 
+    template <typename T>
+    static Object* asObject(T value)
+    {
+        /*
+        hard cast 'value' to Object
+        std's containers may contain forward declared types so it's impossible to use static_cast and perform any static
+        checks use reinterpret_cast in assumption that T is a pointer of class derived from Object
+        */
+        return reinterpret_cast<Object*>(value);
+    }
+
     void* operator new(std::size_t n);
 
 private:
     std::vector<String*> getKeys() const;
 
 private:
-    MapPrivate<String*, void*>* _props = nullptr;
+    MapPrivate<String*, Object*>* _props = nullptr;
 
     TSTypeID _typeid = TSTypeID::Object;
 

@@ -223,6 +223,14 @@ export class TSType {
     return declaration.isAmbient();
   }
 
+  isStaticFunctionType(): boolean {
+    if (this.isSymbolless()) {
+      return false;
+    }
+
+    return Boolean(this.getSymbol().valueDeclaration?.isStatic());
+  }
+
   isInterface() {
     if (this.isSymbolless()) {
       return false;
@@ -755,9 +763,55 @@ export class TSType {
     return namespace.length > 0 ? namespace + "::" + typename : typename;
   }
 
-  isSame(type: TSType) {
-    return this.type === type.unwrap() ||
-      (this.isBoolean() && type.isBoolean()) ||
+  isSame(type: TSType): boolean {
+    if (this.type === type.unwrap()) {
+      return true;
+    }
+
+    if (this.isTSObjectType() && type.isTSObjectType()) {
+      if (!this.isSymbolless() && !type.isSymbolless()) {
+        const thisSymbol = this.getSymbol();
+        if (thisSymbol.declarations.length > 1) {
+          throw new Error(`Expected symbol for type '${this.toString()}' have the only declaration, got '${thisSymbol.declarations.map((decl) => decl.getText())}'`);
+        }
+
+        const otherSymbol = type.getSymbol();
+        if (otherSymbol.declarations.length > 1) {
+          throw new Error(`Expected symbol for type '${type.toString()}' have the only declaration, got '${otherSymbol.declarations.map((decl) => decl.getText())}'`);
+        }
+
+        const thisDeclaration = thisSymbol.declarations[0];
+        const otherDeclaration = otherSymbol.declarations[0];
+
+        const thisProperties = thisDeclaration.ownProperties;
+        const otherProperties = otherDeclaration.ownProperties;
+
+        const sorter = (lhs: Declaration, rhs: Declaration) => {
+          const lhsName = lhs.name?.getText();
+          const rhsName = rhs.name?.getText();
+
+          if (!lhsName || !rhsName) {
+            throw new Error(`Expected named property at: '${thisDeclaration.getText()}' or '${otherDeclaration.getText()}'`);
+          }
+
+          if (lhsName > rhsName) {
+            return 1;
+          }
+
+          return -1;
+        }
+
+        thisProperties.sort(sorter);
+        otherProperties.sort(sorter);
+
+        return thisProperties.every((prop, index) => {
+          const otherProperty = otherProperties[index];
+          return prop.name?.getText() === otherProperty.name?.getText() && prop.type.isSame(otherProperty.type);
+        });
+      }
+    }
+
+    return (this.isBoolean() && type.isBoolean()) ||
       (this.isNumber() && type.isNumber()) ||
       (this.isString() && type.isString()) ||
       (this.isFunction() && type.isFunction());

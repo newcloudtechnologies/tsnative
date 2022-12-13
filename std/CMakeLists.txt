@@ -46,7 +46,6 @@ set(HEADERS
 
 set(SOURCES
     src/gc.cpp
-    src/tsboolean.cpp
     src/tsclosure.cpp
     src/tsdate.cpp
     src/tsmath.cpp
@@ -118,21 +117,16 @@ if (GENERATE_DECLARATIONS)
     set(NO_IMPORT_STD "true")
     set(TS_SOURCES ${HEADERS})
     set(TS_DECLARATIONS )
-    set(INCLUDE_DIRECTORIES 
-        "${CMAKE_CURRENT_LIST_DIR}/include"
-        "${INSTALL_DIR}/include"
-    )
 
     list(TRANSFORM TS_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        TS_HEADERS "${TS_SOURCES}"
-        TS_INCLUDE_DIRECTORIES "${INCLUDE_DIRECTORIES}"
-        TS_IMPORT "${IMPORT}"
         TS_NO_IMPORT_STD "${NO_IMPORT_STD}"
     )
 
     ts_generate_declarations(${PROJECT_NAME}
+        TS_HEADERS ${TS_SOURCES}
+        TS_IMPORT "${IMPORT}"
         TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
         OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
         OUT_DECLARATIONS TS_DECLARATIONS

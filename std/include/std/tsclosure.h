@@ -32,13 +32,10 @@ TS_CODE("// @ts-ignore\n"
 class TS_EXPORT TS_DECLARE TS_IGNORE TSClosure : public Object
 {
 public:
-    TS_METHOD TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals);
-    // this class is not an owner of passed ptrs, so use default dtor.
-    // @todo: should ptrs be untracked here?
-    // TODO Env should be deleted by the destructor
-    ~TSClosure() override = default;
+    TS_METHOD TS_NO_CHECK TSClosure(void* fn, void*** env, Number* envLength, Number* numArgs, Number* optionals);
+    ~TSClosure() override;
 
-    TS_METHOD void** getEnvironment() const;
+    TS_METHOD TS_NO_CHECK void*** getEnvironment() const;
 
     template <typename T>
     void setEnvironmentElement(T value, int index);
@@ -56,7 +53,7 @@ public:
 
 private:
     void* _fn = nullptr;
-    void** _env = nullptr;
+    void*** _env = nullptr;
     Number* _envLength = nullptr;
     Number* _numArgs = nullptr;
     int64_t _optionals = 0;
@@ -66,13 +63,14 @@ template <typename T>
 void TSClosure::setEnvironmentElement(T value, int index)
 {
     static_assert(std::is_pointer<T>::value, "Expected value to be of pointer type");
+    auto** objectStarAddress = _env[index];
 
     if ((this->_optionals & (1 << index)) != 0)
     {
-        Union* optional = static_cast<Union*>(_env[index]);
-        optional->setValue(static_cast<Object*>(value));
+        Union* optional = static_cast<Union*>(*objectStarAddress);
+        optional->setValue(Object::asObject(value));
         return;
     }
 
-    _env[index] = value;
+    *objectStarAddress = value;
 }

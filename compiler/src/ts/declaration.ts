@@ -94,12 +94,16 @@ export class Declaration {
     return this.getBases().find((baseClass) => baseClass.isAmbient());
   }
 
+  getConstructors() {
+    return this.members.filter((m) => m.isConstructor());
+  }
+
   findConstructor(argumentTypes: TSType[]) {
     if (!this.isClass()) {
       throw new Error(`Expected Declaration.findConstructor to be called on class declaration, called on '${ts.SyntaxKind[this.declaration.kind]}: ${this.declaration.getText()}'`);
     }
 
-    const candidates = this.members.filter((m) => m.isConstructor());
+    const candidates = this.getConstructors();
 
     return candidates.find((decl) => {
       const lastParameter = decl.parameters[decl.parameters.length - 1];
@@ -135,41 +139,6 @@ export class Declaration {
           return parameterEnumType.isSame(argumentType);
         }
 
-        if (argumentType.isTSObjectType()) {
-          if (!parameterType.isSymbolless() && !argumentType.isSymbolless()) {
-            const parameterDeclaration = parameterType.getSymbol().declarations[0];
-            const argumentDeclaration = argumentType.getSymbol().declarations[0];
-
-            if (parameterDeclaration && argumentDeclaration) {
-              const parameterProperties = parameterDeclaration.ownProperties;
-              const argumentProperties = argumentDeclaration.ownProperties;
-
-              const sorter = (lhs: Declaration, rhs: Declaration) => {
-                const lhsName = lhs.name?.getText();
-                const rhsName = rhs.name?.getText();
-
-                if (!lhsName || !rhsName) {
-                  throw new Error(`Expected named property at: '${parameterDeclaration.getText()}' or '${argumentDeclaration.getText()}'`);
-                }
-
-                if (lhsName > rhsName) {
-                  return 1;
-                }
-
-                return -1;
-              }
-
-              parameterProperties.sort(sorter);
-              argumentProperties.sort(sorter);
-
-              return parameterProperties.every((prop, index) => {
-                const argumentProperty = argumentProperties[index];
-                return prop.name?.getText() === argumentProperty.name?.getText() && prop.type.isSame(argumentProperty.type);
-              });
-            }
-          }
-        }
-
         return argumentType.isSame(parameterType) || argumentType.isUpcastableTo(parameterType);
       });
     });
@@ -181,7 +150,7 @@ export class Declaration {
 
   isOptional() {
     // @ts-ignore
-    return Boolean(this.declaration.questionToken);
+    return Boolean(this.declaration.questionToken) || this.type.isOptionalUnion();
   }
 
   get kind() {
@@ -403,6 +372,27 @@ export class Declaration {
     return ts.isMethodDeclaration(this.declaration);
   }
 
+  isMethodDeclaredOptional(): boolean {
+    if (!this.isMethod()) {
+      return false;
+    }
+
+    if (this.isOptional()) {
+      return true;
+    }
+
+    const name = this.name?.getText();
+    const bases = Declaration.create(this.parent as ts.ClassDeclaration, this.generator).getBases();
+    for (const base of bases) {
+      const baseMethod = base.getOwnMethods().find((method) => method.name?.getText() === name);
+      if (baseMethod?.isOptional()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   isMethodSignature() {
     return ts.isMethodSignature(this.declaration);
   }
@@ -505,7 +495,7 @@ export class Declaration {
             return clause.types.map((expressionWithTypeArgs) => {
               const baseType = this.generator.ts.checker.getTypeAtLocation(expressionWithTypeArgs);
               const baseSymbol = baseType.getSymbol();
-              const baseDeclaration = baseSymbol.valueDeclaration;
+              const baseDeclaration = baseSymbol.declarations[0];
               if (!baseDeclaration) {
                 throw new Error(`Unable to find declaration for type '${baseType.toString()}'`);
               }
@@ -519,7 +509,7 @@ export class Declaration {
     );
   }
 
-  getOwnMethods() {
+  getOwnMethods(): Declaration[] {
     return this.members.filter((m) => {
       return (m.isMethod() || m.isGetAccessor() || m.isSetAccessor()) && !m.isStatic() && m.name;
     });

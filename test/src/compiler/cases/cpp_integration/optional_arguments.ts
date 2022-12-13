@@ -25,3 +25,32 @@ console.assert(obj.getNumber() === 909 && obj.getString() === "Z", "Method with 
 
 obj.setValues();
 console.assert(obj.getNumber() === obj.getDefaultNumber() && obj.getString() === obj.getDefaultString(), "Method with optional args (3)");
+
+{
+    type ArgType = {
+        a?: {
+            b?: string
+        }
+    }
+
+    type ExtendedArgType = ArgType &
+    {
+        text?: string,
+    }
+
+    function test(args: ExtendedArgType) {
+        if (args.text) {
+            obj.setString(args.text);
+            console.assert(obj.getString() === args.text, "Optional field passed to CXX method");
+        }
+
+        if (args.a) {
+            if (args.a.b) {
+                obj.setString(args.a.b);
+                console.assert(obj.getString() === args.a.b, "Nested optional field passed to CXX method");
+            }
+        }
+    }
+
+    test({ a: { b: "test1" }, text: "test2" });
+}

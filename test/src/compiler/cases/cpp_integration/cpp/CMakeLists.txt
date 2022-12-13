@@ -63,27 +63,17 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 set(TS_DECLARATIONS )
-
-# FIXME: we dont need these properties any more, should be refatored
-# to pass these values as arguments to ts_generate_* calls
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    TS_HEADERS "${INCLUDES}"
-    TS_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}"
-    TS_IMPORT ""
-    TS_EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod"
-    TS_MODULE_NAME "cpp_integration"
-    TS_DECLARATIONS_OUT_DIR "${PROJECT_BASE_URL}/{PROJECT_NAME}"
-)
-
 ts_generate_declarations(${PROJECT_NAME}
+    TS_HEADERS ${INCLUDES}
+    TS_IMPORT ""
     TARGET_COMPILER_ABI ${CMAKE_CXX_COMPILER_TARGET}
     OUTPUT_DIR ${PROJECT_BASE_URL}/${PROJECT_NAME}
     OUT_DECLARATIONS TS_DECLARATIONS
 )
 
-# FIXME: do we really need two separate ts_generate_* functions?
-# generate index.ts file
 ts_generate_index(${PROJECT_NAME}
-        DECLARATIONS ${TS_DECLARATIONS}
-        OUT_DIRECTORY ${PROJECT_BASE_URL}/${PROJECT_NAME}
+    EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod"
+    MODULE_NAME "cpp_integration"
+    DECLARATIONS ${TS_DECLARATIONS}
+    OUT_DIRECTORY ${PROJECT_BASE_URL}/${PROJECT_NAME}
 )

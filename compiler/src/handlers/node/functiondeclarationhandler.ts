@@ -11,15 +11,18 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment, createEnvironment, HeapVariableDeclaration } from "../../scope";
+import { Scope, Environment, createEnvironment } from "../../scope";
 import { LLVMFunction } from "../../llvm/function";
 import { LLVMType } from "../../llvm/type";
 import { LLVMConstant, LLVMValue } from "../../llvm/value";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { FunctionHandler } from "../expression/functionhandler";
+import { DummyArgumentsCreator } from "../dummyargumentscreator";
 
 export class FunctionDeclarationHandler extends AbstractNodeHandler {
+    private readonly dummyArgsCreator = new DummyArgumentsCreator(this.generator);
+
     handle(node: ts.Node, parentScope: Scope, outerEnv?: Environment): boolean {
         if (ts.isFunctionDeclaration(node)) {
             const declaration = Declaration.create(node, this.generator);
@@ -77,19 +80,7 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         }
 
         // these dummy arguments will be substituted by actual arguments once called
-        const dummyArguments = llvmArgumentTypes.map((type) => {
-            if (type.isUnion()) {
-                return this.generator.ts.union.create();
-            }
-
-            const nonPtrType = type.unwrapPointer();
-
-            const nullValue = LLVMConstant.createNullValue(nonPtrType, this.generator);
-            const allocated = this.generator.gc.allocate(nonPtrType);
-            this.generator.builder.createSafeStore(nullValue, allocated);
-
-            return allocated;
-        });
+        const dummyArguments = this.dummyArgsCreator.create(llvmArgumentTypes);
 
         const scope = this.generator.symbolTable.currentScope;
 
@@ -132,15 +123,6 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
 
     registerClosureForDeclaration(closure: LLVMValue, declaration: Declaration, parentScope: Scope) {
         const name = this.getDeclarationName(declaration);
-        const existing = parentScope.get(name);
-
-        if (existing && existing instanceof LLVMValue) {
-            // overwrite pointers that possibly captured in some environments
-            existing.makeAssignment(closure);
-            // overwrite value for future uses
-            parentScope.overwrite(name, new HeapVariableDeclaration(closure, closure, name));
-        } else {
-            parentScope.set(name, new HeapVariableDeclaration(closure, closure, name));
-        }
+        parentScope.setOrAssign(name, closure);
     }
 }

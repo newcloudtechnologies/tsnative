@@ -114,7 +114,7 @@ function assertObjectKeysAreEqual(keys : string[], expectedKeys : string[], msg 
 //             return 10;
 //         }
 //     }
-//     const expectedKeys: string [] = [];
+//     const expectedKeys: string[] = [];
 
 //     console.log(Object.keys(new A));
 
@@ -169,7 +169,27 @@ function assertObjectKeysAreEqual(keys : string[], expectedKeys : string[], msg 
     assertObjectKeysAreEqual(Object.keys(a), expectedKeys, "Object.keys() array object with function test failed");
 }
 
-// TODO: this is out of scope for TSN-198, uncomment for TSN-212
+{
+    let a = {}
+    const expectedKeys: string[] = [];
+    assertObjectKeysAreEqual(Object.keys(a), expectedKeys, "Object.keys() empty array object");
+}
+
+// TODO uncomment this after TSN-212 is fixed
+// {
+//     class A {
+//         constructor() {}
+//         get foo() { return 10; }
+//         set bar(a: number) {}
+//         static baz() {}
+//         barbar() {}
+//     }
+//     let a = new A;
+//     const expectedKeys: string[] = [];
+//     assertObjectKeysAreEqual(Object.keys(a), expectedKeys, "Object.keys() class methods");
+// }
+
+// TODO: uncomment this after TSN-212 is fixed
 // {
 //     class BB {
 //         parent = "1"
@@ -398,4 +418,19 @@ function assertObjectKeysAreEqual(keys : string[], expectedKeys : string[], msg 
 
         console.assert(dict["Edit1"] === value, "Plain object with non-explicit string key access by element access expression (double quote)");
     }
+}
+
+// Object literals and unions
+{
+    function foo(): number|string {
+        return 10;
+    }
+
+    let a = {
+        text: foo()
+    }
+    console.assert(a.text === 10, "Object: Object with union(number inside) is not equal");
+
+    a.text = "abacaba";
+    console.assert(a.text === "abacaba", "Object: Object with union(string inside) is not equal");
 }

@@ -57,7 +57,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             return this.handleTupleDestructuring(left, right, env);
           }
 
-          const lhs = this.generator.handleExpression(left, env);
+          const lhs = this.generator.handleExpression(left, env).derefToPtrLevel1();
           let rhs;
 
           if (isSetAccessor(left)) {
@@ -67,10 +67,27 @@ export class AssignmentHandler extends AbstractExpressionHandler {
           rhs =
             right.kind === ts.SyntaxKind.NullKeyword
               ? this.generator.ts.union.create(this.generator.ts.null.get())
-              : this.generator.handleExpression(right, env);
+              : this.generator.handleExpression(right, env).derefToPtrLevel1();
 
-          if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
-            this.generator.gc.deallocate(lhs);
+          if (!left.getText().startsWith("this.")) {
+            if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
+              this.generator.gc.deallocate(lhs);
+            }
+          }
+
+          if (ts.isPropertyAccessExpression(left)) {
+            const objectType = this.generator.ts.checker.getTypeAtLocation(left.expression);
+            const propertySymbol = objectType.getProperty(left.name.getText());
+
+            if (!propertySymbol.isStatic()) {
+              if ((propertySymbol.valueDeclaration?.type.isUnion() || propertySymbol.isOptional()) && !rhs.type.isUnion()) {
+                rhs = this.generator.ts.union.create(rhs);
+              }
+
+              const propertyName = left.name.getText();
+              this.generator.ts.obj.set(lhs, propertyName, rhs);
+              return rhs;
+            }
           }
 
           return lhs.makeAssignment(rhs);
@@ -98,7 +115,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
       identifiers.push(e);
     });
 
-    const tupleInitializer = this.generator.handleExpression(rhs, env);
+    const tupleInitializer = this.generator.handleExpression(rhs, env).derefToPtrLevel1();
 
     const tupleUntyped = this.generator.builder.asVoidStar(tupleInitializer);
     const elementTypes = rhs.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
@@ -119,7 +136,7 @@ export class AssignmentHandler extends AbstractExpressionHandler {
       );
 
       const name = identifier.getText();
-      this.generator.symbolTable.currentScope.overwriteThroughParentChain(name, destructedValue);
+      this.generator.symbolTable.currentScope.assignThroughParentChain(name, destructedValue);
     });
 
     // Have to return something.

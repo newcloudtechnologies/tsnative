@@ -31,6 +31,8 @@ Union::Union(Object* value)
 
 Object* Union::getValue() const
 {
+    LOG_ADDRESS("Calling union :: getValue for ", this);
+    LOG_ADDRESS("Resulting value is ", _value);
     return _value;
 }
 
@@ -54,6 +56,16 @@ String* Union::toString() const
 Boolean* Union::toBool() const
 {
     return _value->toBool();
+}
+
+Boolean* Union::equals(Object* other) const
+{
+    if (other->isUnion())
+    {
+        other = static_cast<Union*>(other)->getValue();
+    }
+
+    return getValue()->equals(other);
 }
 
 void Union::markChildren()

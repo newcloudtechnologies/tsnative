@@ -254,3 +254,18 @@
 
   console.assert('aaa b'.replace('aaa b','') === "", "Replace failed (5)");
 }
+
+{
+  const arr: (string | number | boolean)[] = ['1', '2', '3'];
+  const expected: string[] = ['1', '2', '3'];
+
+  function check(arr: (string | number | boolean)[]) {
+    for (let i = 0; i < arr.length; i++) {
+        const value = arr[i];
+        const valueAsString = `${value}`;
+        console.assert(valueAsString === expected[i], "Any Object-derived can be cast to string using template string literal");
+    }
+  }
+
+  check(arr);
+}

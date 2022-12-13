@@ -145,7 +145,7 @@ export class SwitchHandler extends AbstractNodeHandler {
             ts.SyntaxKind.EqualsEqualsEqualsToken,
             clause.expression
           );
-          const comparisonResult = this.generator.handleExpression(comparisonExpression, env);
+          const comparisonResult = this.generator.handleExpression(comparisonExpression, env).derefToPtrLevel1();
 
           this.generator.builder.createCondBr(comparisonResult, block, nextConditionBlock || defaultBlock || endBlock);
         }

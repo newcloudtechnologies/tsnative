@@ -70,7 +70,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
     builder.createBr(condition);
     builder.setInsertionPoint(condition);
-    const conditionValue = this.generator.handleExpression(statement.expression, env);
+    const conditionValue = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
     builder.createCondBr(conditionValue, body, exiting);
 
     currentFunction.addBasicBlock(bodyLatch);
@@ -127,7 +127,7 @@ export class LoopHandler extends AbstractNodeHandler {
     builder.createBr(condition);
 
     builder.setInsertionPoint(condition);
-    const conditionValue = this.generator.handleExpression(statement.expression, env);
+    const conditionValue = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
     builder.createCondBr(conditionValue, body, exiting);
 
     builder.setInsertionPoint(exiting);
@@ -155,7 +155,7 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(condition);
         currentFunction.addBasicBlock(condition);
         builder.setInsertionPoint(condition);
-        const conditionValue = this.generator.handleExpression(statement.condition, env);
+        const conditionValue = this.generator.handleExpression(statement.condition, env).derefToPtrLevel1();
         builder.createCondBr(conditionValue, body, exiting);
       } else {
         builder.createBr(body);
@@ -186,7 +186,7 @@ export class LoopHandler extends AbstractNodeHandler {
       if (statement.incrementor) {
         currentFunction.addBasicBlock(incrementor);
         builder.setInsertionPoint(incrementor);
-        this.generator.handleExpression(statement.incrementor, env);
+        this.generator.handleExpression(statement.incrementor, env).derefToPtrLevel1();
         if (statement.condition) {
           builder.createBr(condition);
         } else {
@@ -207,7 +207,7 @@ export class LoopHandler extends AbstractNodeHandler {
       }, this.generator.symbolTable.currentScope);
     } else {
       if (statement.initializer) {
-        this.generator.handleExpression(statement.initializer as ts.Expression, env);
+        this.generator.handleExpression(statement.initializer as ts.Expression, env).derefToPtrLevel1();
       }
       handlerImpl();
     }
@@ -287,7 +287,7 @@ export class LoopHandler extends AbstractNodeHandler {
 
       const variableType = this.generator.ts.checker.getTypeAtLocation(initializer.name);
 
-      const iterable = this.generator.handleExpression(statement.expression, env);
+      const iterable = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
       const iterableTypeless = this.generator.builder.asVoidStar(iterable);
 
       const forOfHandlerImpl = () => {
@@ -396,7 +396,7 @@ export class LoopHandler extends AbstractNodeHandler {
       };
 
       const variableType = this.generator.ts.str.getDeclaration().type;
-      const iterable = this.generator.handleExpression(statement.expression, env);
+      const iterable = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
       const indices = this.generator.ts.obj.getKeys(iterable);
       const indicesTypeLess = this.generator.builder.asVoidStar(indices);
 

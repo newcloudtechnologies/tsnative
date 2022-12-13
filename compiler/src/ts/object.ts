@@ -31,6 +31,7 @@ export class TSObject {
   private setFn: LLVMValue | undefined;
   private keysFn: LLVMValue | undefined;
   private copyPropsFn: LLVMValue | undefined;
+  private operatorInFn: LLVMValue | undefined;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -90,7 +91,7 @@ export class TSObject {
       [],
       this.generator,
       undefined,
-      ["Map<String*, void*>*"]
+      ["Map<String*, Object*>*"]
     );
 
     if (!isConstructorExternalSymbol) {
@@ -115,10 +116,8 @@ export class TSObject {
       setDeclaration,
       undefined,
       this.declaration.type,
-      [],
-      this.generator,
-      undefined,
-      ["String*", "void*"]
+      [this.generator.ts.str.getDeclaration().type, this.declaration.type],
+      this.generator
     );
 
     if (!isExternalSymbol) {
@@ -127,9 +126,9 @@ export class TSObject {
 
     const llvmReturnType = LLVMType.getVoidType(this.generator);
     const llvmArgumentTypes = [
-      LLVMType.getInt8Type(this.generator).getPointer(),
+      this.getLLVMType(),
       this.generator.ts.str.getLLVMType(),
-      LLVMType.getInt8Type(this.generator).getPointer(),
+      this.getLLVMType(),
     ];
 
     const { fn: set } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
@@ -156,7 +155,7 @@ export class TSObject {
       throw new Error(`Unable to find cxx 'get' for 'Object'`);
     }
 
-    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmReturnType = this.getLLVMType();
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.ts.str.getLLVMType()];
 
     const { fn: get } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
@@ -221,7 +220,34 @@ export class TSObject {
     return copyProps;
   }
 
-  private getVPtrEquals(thisValue: LLVMValue) {
+  private initOperatorInFn() {
+    const operatorInDeclaration = this.declaration.members.find((m) => m.name?.getText() === "operatorIn");
+
+    if (!operatorInDeclaration) {
+      throw new Error(`Unable to find 'operatorIn' at '${this.declaration.getText()}'`);
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      operatorInDeclaration,
+      undefined,
+      this.declaration.type,
+      [this.generator.ts.str.getDeclaration().type],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Unable to find cxx 'operatorIn' for 'Object'`);
+    }
+
+    const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.ts.str.getLLVMType()];
+
+    const { fn: operatorIn } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return operatorIn;
+  }
+
+  private getVPtrFn(thisValue: LLVMValue, functionName: string) {
     const vtables = this.generator.builder.createBitCast(
       thisValue,
       LLVMType.getInt8Type(this.generator).getPointer().getPointer()
@@ -237,21 +263,21 @@ export class TSObject {
       ).getPointer()
     );
 
-    const equalsDeclaration = this.declaration.members.find((m) => m.name?.getText() === "equals");
+    const methodDeclaration = this.declaration.members.find((m) => m.name?.getText() === functionName);
 
-    if (!equalsDeclaration) {
-      throw new Error(`Unable to find 'equals' at '${this.declaration.getText()}'`);
+    if (!methodDeclaration) {
+      throw new Error(`Unable to find '${functionName}' at '${this.declaration.getText()}'`);
     }
 
     const virtualFnPtr = this.generator.builder.createSafeInBoundsGEP(vtableAsArray, [
       0,
-      equalsDeclaration.vtableIndex
+      methodDeclaration.vtableIndex
     ]);
 
     return virtualFnPtr;
   }
 
-  private initEqualsFunction(thisValue: LLVMValue) {
+  private getEqualsFunctionPtr(thisValue: LLVMValue) {
     const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
     const llvmArgumentTypes = [cxxVoidStarType, cxxVoidStarType];
 
@@ -261,10 +287,42 @@ export class TSObject {
       false
     ).getPointerTo().getPointerTo();
 
-    let eqFn = this.getVPtrEquals(thisValue);
+    let eqFn = this.getVPtrFn(thisValue, "equals");
     eqFn = this.generator.builder.createBitCast(eqFn, LLVMType.make(type, this.generator));
 
     return this.generator.builder.createLoad(eqFn);
+  }
+
+  private getToBoolFunctionPtr(thisValue: LLVMValue) {
+    const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [cxxVoidStarType];
+
+    const type = llvm.FunctionType.get(
+      cxxVoidStarType.unwrapped,
+      llvmArgumentTypes.map((t) => t.unwrapped),
+      false
+    ).getPointerTo().getPointerTo();
+
+    let toBoolFn = this.getVPtrFn(thisValue, "toBool");
+    toBoolFn = this.generator.builder.createBitCast(toBoolFn, LLVMType.make(type, this.generator));
+
+    return this.generator.builder.createLoad(toBoolFn);
+  }
+
+  private getToStringFunctionPtr(thisValue: LLVMValue) {
+    const cxxVoidStarType = LLVMType.getInt8Type(this.generator).getPointer();
+    const llvmArgumentTypes = [cxxVoidStarType];
+
+    const type = llvm.FunctionType.get(
+      cxxVoidStarType.unwrapped,
+      llvmArgumentTypes.map((t) => t.unwrapped),
+      false
+    ).getPointerTo().getPointerTo();
+
+    let toStringFn = this.getVPtrFn(thisValue, "toString");
+    toStringFn = this.generator.builder.createBitCast(toStringFn, LLVMType.make(type, this.generator));
+
+    return this.generator.builder.createLoad(toStringFn);
   }
 
   private getCtorFn(isDefault: boolean) {
@@ -287,12 +345,12 @@ export class TSObject {
     }
 
     const castedSource = this.generator.builder.createBitCast(
-      source,
+      source.derefToPtrLevel1(),
       this.llvmType
     );
 
     const castedTarget = this.generator.builder.createBitCast(
-      target,
+      target.derefToPtrLevel1(),
       this.llvmType
     );
 
@@ -327,7 +385,7 @@ export class TSObject {
     }
 
     const castedObject = this.generator.builder.createBitCast(
-      obj,
+      obj.derefToPtrLevel1(),
       LLVMType.getCXXVoidStarType(this.generator)
     );
 
@@ -340,10 +398,11 @@ export class TSObject {
       this.getFn = this.initGetFn();
     }
 
-    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
     const llvmKey = this.generator.ts.str.create(key);
 
-    return this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
+    const value = this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
+    return value;
   }
 
   set(thisValue: LLVMValue, key: string, value: LLVMValue) {
@@ -351,8 +410,8 @@ export class TSObject {
       this.setFn = this.initSetFn();
     }
 
-    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
-    const valueUntyped = this.generator.builder.asVoidStar(value);
+    const thisUntyped = this.generator.builder.createBitCast(thisValue.derefToPtrLevel1(), this.llvmType);
+    const valueUntyped = this.generator.builder.createBitCast(value.derefToPtrLevel1(), this.llvmType);
 
     const wrappedKey = this.generator.ts.str.create(key);
 
@@ -360,7 +419,7 @@ export class TSObject {
   }
 
   equals(lhs: LLVMValue, rhs: LLVMValue) {
-    const equalsFn = this.initEqualsFunction(lhs);
+    const equalsFn = this.getEqualsFunctionPtr(lhs);
 
     const thisUntyped = this.generator.builder.asVoidStar(lhs);
     const valueUntyped = this.generator.builder.asVoidStar(rhs);
@@ -369,6 +428,39 @@ export class TSObject {
     result = this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
 
     return result;
+  }
+
+  objectToString(thisValue: LLVMValue) {
+    const toStringFn = this.getToStringFunctionPtr(thisValue);
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+
+    let result = this.generator.builder.createSafeCall(toStringFn, [thisUntyped]);
+    result = this.generator.builder.createBitCast(result, this.generator.ts.str.getLLVMType());
+
+    return result;
+  }
+
+  toBool(thisValue: LLVMValue) {
+    thisValue = thisValue.derefToPtrLevel1();
+
+    const toBoolFn = this.getToBoolFunctionPtr(thisValue);
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+
+    let result = this.generator.builder.createSafeCall(toBoolFn, [thisUntyped]);
+    result = this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
+
+    return result;
+  }
+
+  createOperatorIn(thisValue: LLVMValue, key: LLVMValue) {
+    if (!this.operatorInFn) {
+      this.operatorInFn = this.initOperatorInFn();
+    }
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+    return this.generator.builder.createSafeCall(this.operatorInFn, [thisUntyped, key]);
   }
 
   getLLVMType() {

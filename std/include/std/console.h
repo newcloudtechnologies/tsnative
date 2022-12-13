@@ -50,11 +50,7 @@ TS_CODE(
 template <typename T>
 void console::log(T value)
 {
-    using NonPtrT = typename std::remove_pointer<T>::type;
-    static_assert(std::is_pointer<T>::value &&
-                  (std::is_base_of<Object, NonPtrT>::value || std::is_same<Object, NonPtrT>::value));
-
-    std::cout << std::boolalpha << static_cast<Object*>(value)->toString() << std::endl;
+    std::cout << std::boolalpha << Object::asObject(value)->toString() << std::endl;
 }
 
 template <typename T, typename... Ts>
@@ -66,11 +62,7 @@ void console::log(T v, Ts... ts)
 template <typename T, typename... Ts>
 void console::logImpl(T v, Ts... ts)
 {
-    using NonPtrT = typename std::remove_pointer<T>::type;
-    static_assert(std::is_pointer<T>::value &&
-                  (std::is_base_of<Object, NonPtrT>::value || std::is_same<Object, NonPtrT>::value));
-
-    std::cout << std::boolalpha << static_cast<Object*>(v)->toString() << " ";
+    std::cout << std::boolalpha << Object::asObject(v)->toString() << " ";
     console::log(ts...);
 }
 
@@ -79,11 +71,7 @@ static String* assertionFailedMessage = new String("Assertion failed:");
 template <typename T, typename... Ts>
 void console::assert(T assumption, Ts... ts)
 {
-    using NonPtrT = typename std::remove_pointer<T>::type;
-    static_assert(std::is_pointer<T>::value &&
-                  (std::is_base_of<Object, NonPtrT>::value || std::is_same<Object, NonPtrT>::value));
-
-    if (!static_cast<Object*>(assumption)->toBool()->unboxed())
+    if (!Object::asObject(assumption)->toBool()->unboxed())
     {
         console::log(assertionFailedMessage, ts...);
         std::terminate();

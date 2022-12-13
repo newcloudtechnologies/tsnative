@@ -19,10 +19,10 @@ import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 import { LLVMType } from "../llvm/type";
+import { CXXForwardsDeclarator } from "./cxxforwardsdeclarator";
 
 export class TemplateInstantiator {
   private readonly sources: ts.SourceFile[];
-  private readonly declarations: ts.SourceFile[];
   private readonly generator: LLVMGenerator;
   private readonly includeDirs: string[] = [];
 
@@ -39,13 +39,12 @@ export class TemplateInstantiator {
     const sources = program.getSourceFiles();
 
     this.sources = sources.filter((source) => !source.isDeclarationFile);
-    this.declarations = sources.filter((source) => source.isDeclarationFile);
 
     this.generator = new LLVMGenerator(program).init();
 
     // handle declarations to put all declared symbols into symbol table
     {
-      const declarations = this.declarations
+      const declarations = sources.filter((source) => source.isDeclarationFile);
 
       // some nodes, e.g EnumDeclaration requires some IR to be generated before symbol can be put into symbol table
       // this in turn require existing IR function
@@ -573,16 +572,11 @@ export class TemplateInstantiator {
   private handleInstantiated(source: string) {
     this.generatedContent = this.generatedContent.filter((s, idx) => this.generatedContent.indexOf(s) === idx);
 
-    const extractFilename = (tspath: string) => path.basename(tspath).split(".")[0];
+    const forwardDeclarations = new CXXForwardsDeclarator(this.generatedContent).createForwardDeclarations();
+    this.generatedContent.unshift(...forwardDeclarations);
 
-    const tsSources = this.declarations.map((tsfile: ts.SourceFile) => extractFilename(tsfile.fileName));
     const includes = flatten(this.includeDirs.map((dir: string) => this.getIncludes(dir)));
-
-    const finalIncludes = includes.filter((cxxPath: string) => {
-      return tsSources.indexOf(extractFilename(cxxPath)) >= 0;
-    });
-
-    for (const include of finalIncludes) {
+    for (const include of includes) {
       this.generatedContent.unshift(`#include "${include}"`);
     }
 

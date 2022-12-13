@@ -43,7 +43,7 @@
         return new RxButton_t(args.text);
     }
 
-    let qqq = RxButton({
+    const qqq = RxButton({
         text: true ? "Log In" : "Processing...",
     })
 
@@ -52,20 +52,53 @@
 
 // Simple ternary with flag
 {
-    let flag = true;
-    let a = flag ? "a" : "b";
+    const a = true ? "a" : "b";
     console.assert(a === "a", "Ternary: simple ternary is not equal");
 }
 
 // Expression as conditional
 {
     let a = (1 + 2) ? "a" : "b";
-    console.assert(a === "a", "Ternary: simple ternary is not equal");
+    console.assert(a === "a", "Ternary: Expression as conditional ternary is not equal");
+}
+
+// Nested ternary
+{
+    let a = true ? (true ? "a" : "c") : "b";
+    console.assert(a === "a", "Ternary: Nested ternary is not equal");
+}
+
+// Ternary with unions
+{
+    function foo(): number|string {
+        return 10;
+    }
+
+    let a = true ? foo() : "b";
+    console.assert(a === 10, "Ternary: Ternary with unions is not equal");
+
+    a = "abacaba";
+    console.assert(a === "abacaba", "Ternary: Ternary with unions is not equal");
+}
+
+// Ternary with object literals and unions
+{
+    function foo(): number|string {
+        return 10;
+    }
+
+    let a = {
+        text: true ? foo() : "b"
+    }
+    console.assert(a.text === 10, "Ternary: Ternary with unions is not equal");
+
+    a.text = "abacaba";
+    console.assert(a.text === "abacaba", "Ternary: Ternary with unions is not equal");
 }
 
 // Create user object with ternary and pass directly to the constructor
 {
-    let flag = true;
+    const flag = true;
 
     interface RxText_args {
         text: string
@@ -78,7 +111,7 @@
         }
     }
 
-    let rxText = new RxText(
+    const rxText = new RxText(
         {
             text: (flag ? "title1" : "title2")
         });

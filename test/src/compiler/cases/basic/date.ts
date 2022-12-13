@@ -9,7 +9,6 @@
  *
  */
 
-
 const string_equal_to = function (date_1: Date, date_2: Date): boolean {
     return date_1.toString() === date_2.toString()
         && date_1.toUTCString() === date_2.toUTCString()
@@ -19,15 +18,6 @@ const string_equal_to = function (date_1: Date, date_2: Date): boolean {
 }
 
 // FIXME: most tests wait for a AN-857: СXX extensions default arguments support
-// TODO: add logs to asserts to simplify debug
-// Constructors
-{
-    const date_1 = new Date();
-    const date_2 = new Date();
-
-    console.assert(date_1 !== date_2);
-    console.assert(string_equal_to(date_1, date_2), "Default Date ctor");
-}
 
 {
     const wrong_date_format = "2021-01-01 GG WP";

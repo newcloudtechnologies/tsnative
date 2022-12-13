@@ -23,7 +23,7 @@ export class CastHandler extends AbstractExpressionHandler {
 
         this.generator.emitLocation(asExpression);
 
-        let value = this.generator.handleExpression(asExpression.expression, env);
+        let value = this.generator.handleExpression(asExpression.expression, env).derefToPtrLevel1();
 
         if (value.type.isUnion()) {
           value = this.generator.ts.union.get(value);

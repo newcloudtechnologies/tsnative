@@ -155,3 +155,29 @@
         f();
     }
 }
+
+{
+    const value = "5";
+
+    hoisted(value);
+
+    function hoisted(str: string) {
+        console.assert(str === value, "Function declarations must be hoisted, that is, it must be possible to use function declaration before definition");
+    }
+}
+
+// Checks compilation only
+namespace Flex {
+    export function a() {
+    }
+}
+
+class ClassType {
+    constructor() {
+        Flex.a();
+    }
+}
+
+function classCreator(): ClassType {
+    return new ClassType();
+}
