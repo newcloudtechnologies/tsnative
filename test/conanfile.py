@@ -118,12 +118,12 @@ class TSNativeTestsConan(ConanFile):
         out_dir = "compiler_tests"
         # first - build pure ts tests
         excludes = [".d.ts", "cpp_integration"]
+
+
         if self.settings.os == "Windows":
-            excludes.append("exceptions.ts")   # FIXME: TSN-65
             excludes.append("date.ts"      )   # FIXME: TSN-163
-            excludes.append("inher.ts"     )   # FIXME: TSN-164
             excludes.append("runtime.ts"   )   # FIXME: TSN-165
-            excludes.append("promises.ts"  )   # FIXME: TSN-65
+            excludes.append("for_in.ts"    )   # TSN-258 . Need to fix irreggular crash in the test
 
         def in_excludes(path: str):
             for ex in excludes:

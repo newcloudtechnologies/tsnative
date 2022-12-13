@@ -17,12 +17,13 @@ export class BlockHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.Block:
-        this.generator.symbolTable.withLocalScope((scope) => {
-          scope.initializeVariablesAndFunctionDeclarations(node, this.generator);
+        const block = node as ts.Block;
 
-          for (const statement of (node as ts.Block).statements) {
-            this.generator.handleNode(statement, scope, env);
-          }
+        this.generator.symbolTable.withLocalScope((scope) => {
+          scope.initializeVariablesAndFunctionDeclarations(block, this.generator);
+          this.hoistFunctionDeclarations(block, scope, env);
+
+          this.handleBlock(block, scope, env);
 
           scope.deinitialize();
         }, this.generator.symbolTable.currentScope);
@@ -36,5 +37,21 @@ export class BlockHandler extends AbstractNodeHandler {
     }
 
     return false;
+  }
+
+  private hoistFunctionDeclarations(block: ts.Block, scope: Scope, env?: Environment) {
+    for (const statement of block.statements) {
+      if (this.generator.shouldHandleNodeInFunctionHoistingContext(statement)) {
+        this.generator.handleNode(statement, scope, env);
+      }
+    }
+  }
+
+  private handleBlock(block: ts.Block, scope: Scope, env?: Environment) {
+    for (const statement of block.statements) {
+      if (!this.generator.shouldHandleNodeInFunctionHoistingContext(statement)) {
+        this.generator.handleNode(statement, scope, env);
+      }
+    }
   }
 }

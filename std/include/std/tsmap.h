@@ -180,8 +180,8 @@ IterableIterator<Tuple*>* Map<K, V>::iterator()
     for (const K& key : keys)
     {
         auto tuple = new Tuple();
-        tuple->push(static_cast<Object*>(key));
-        tuple->push(static_cast<Object*>(get(key)));
+        tuple->push(Object::asObject(key));
+        tuple->push(Object::asObject(get(key)));
 
         zipped->push(tuple);
     }
@@ -208,8 +208,8 @@ void Map<K, V>::markChildren()
     LOG_ADDRESS("Calling Map::markChildren on ", this);
     const auto callable = [](std::pair<K, V>& entry)
     {
-        auto* key = static_cast<Object*>(entry.first);
-        auto* value = static_cast<Object*>(entry.second);
+        auto* key = Object::asObject(entry.first);
+        auto* value = Object::asObject(entry.second);
 
         if (key && !key->isMarked())
         {

@@ -96,7 +96,7 @@ export class ExceptionHandler extends AbstractNodeHandler {
     if (ts.isThrowStatement(node)) {
       if (node.expression) {
         this.generator.emitLocation(node);
-        const value = this.generator.handleExpression(node.expression, env);
+        const value = this.generator.handleExpression(node.expression, env).derefToPtrLevel1();
         this.emitThrowBlock(value, node);
       }
       return true;
@@ -245,7 +245,6 @@ export class ExceptionHandler extends AbstractNodeHandler {
 
   initRTTI(): void {
     const int8PtrTy = LLVMType.getInt8Type(this.generator).getPointer();
-    const int32Ty = LLVMType.getInt32Type(this.generator);
     const int64Ty = LLVMType.getInt64Type(this.generator);
     const voidTy = LLVMType.getVoidType(this.generator);
 
@@ -259,11 +258,7 @@ export class ExceptionHandler extends AbstractNodeHandler {
         "_ZTIPv"
       );
     }
-    ExceptionHandler.personality = this.createFunction(
-      int32Ty,
-      [],
-      "__gxx_personality_v0"
-    );
+    ExceptionHandler.personality = this.getPersonality();
     ExceptionHandler.allocateException = this.createFunction(
       int8PtrTy,
       [int64Ty],
@@ -284,5 +279,14 @@ export class ExceptionHandler extends AbstractNodeHandler {
       [],
       "__cxa_end_catch"
     );
+  }
+
+  getPersonality(): FunctionEntry {
+    const int32Ty = LLVMType.getInt32Type(this.generator);
+    const isOSWindows = new llvm.Triple(llvm.getProcessTriple()).isOSWindows();
+    if (isOSWindows) {
+      return this.createFunction(int32Ty, [], "__gxx_personality_seh0");
+    }
+    return this.createFunction(int32Ty, [], "__gxx_personality_v0");
   }
 }

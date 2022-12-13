@@ -38,3 +38,8 @@ Boolean* Null::toBool() const
 {
     return new Boolean(false);
 }
+
+Boolean* Null::equals(Object* other) const
+{
+    return new Boolean(other == Null::instance());
+}

@@ -50,8 +50,12 @@ export class TSSymbol {
     return this.valueDeclaration?.isStatic();
   }
 
+  isOptional() {
+    return this.valueDeclaration?.isOptional() || this.valueDeclaration?.type.isOptionalUnion();
+  }
+
   isOptionalMethod() {
-    return this.valueDeclaration?.isMethod() && this.valueDeclaration.isOptional();
+    return this.isMethod() && this.isOptional();
   }
 
   get name() {

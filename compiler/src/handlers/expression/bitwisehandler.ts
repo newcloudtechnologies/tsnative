@@ -22,8 +22,8 @@ export class BitwiseHandler extends AbstractExpressionHandler {
       this.generator.emitLocation(binaryExpression.left);
       this.generator.emitLocation(binaryExpression.right);
 
-      const left = this.generator.handleExpression(binaryExpression.left, env);
-      const right = this.generator.handleExpression(binaryExpression.right, env);
+      const left = this.generator.handleExpression(binaryExpression.left, env).derefToPtrLevel1();
+      const right = this.generator.handleExpression(binaryExpression.right, env).derefToPtrLevel1();
 
       switch (binaryExpression.operatorToken.kind) {
         case ts.SyntaxKind.AmpersandToken:

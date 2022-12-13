@@ -43,7 +43,6 @@ add_ts_library(ts
     BASE_URL ${PROJECT_BASE_URL}
     TS_CONFIG ${TS_CONFIG}
     LIBRARIES ""
-    INCLUDE_DIRS ${tsnative-std_INCLUDE_DIR}
     TS_DEBUG ${TS_DEBUG}
     RUN_EVENT_LOOP ${RUN_EVENT_LOOP}
     PRINT_IR ${PRINT_IR}

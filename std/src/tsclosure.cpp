@@ -16,7 +16,7 @@
 
 #include "std/private/logger.h"
 
-TSClosure::TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, Number* optionals)
+TSClosure::TSClosure(void* fn, void*** env, Number* envLength, Number* numArgs, Number* optionals)
     : Object(TSTypeID::Closure)
     , _fn(fn)
     , _env(env)
@@ -26,11 +26,29 @@ TSClosure::TSClosure(void* fn, void** env, Number* envLength, Number* numArgs, N
 {
     LOG_ADDRESS("Calling closure ctor ", this);
     LOG_ADDRESS("Env address: ", env);
+
+    const auto nArgs = static_cast<std::size_t>(numArgs->unboxed());
+    const auto envLen = static_cast<std::size_t>(envLength->unboxed());
+
+    for (std::size_t i = 0; i < nArgs; ++i)
+    {
+        LOG_ADDRESS("Arg void** ", _env[i]);
+    }
+
+    for (std::size_t i = nArgs; i < envLen; ++i)
+    {
+        LOG_ADDRESS("Captured void** ", _env[i]);
+    }
 }
 
-// TODO Should TSClosure remove it's env and how?
+TSClosure::~TSClosure()
+{
+    LOG_ADDRESS("Calling closure dtor ", this);
+    LOG_ADDRESS("Freeing env ", _env);
+    free(_env);
+}
 
-void** TSClosure::getEnvironment() const
+void*** TSClosure::getEnvironment() const
 {
     return _env;
 }
@@ -42,7 +60,7 @@ Number* TSClosure::getNumArgs() const
 
 void* TSClosure::operator()() const
 {
-    return reinterpret_cast<void* (*)(void**)>(_fn)(_env);
+    return reinterpret_cast<void* (*)(void***)>(_fn)(_env);
 }
 
 void* TSClosure::call() const
@@ -71,10 +89,11 @@ void TSClosure::markChildren()
         _envLength->mark();
     }
 
-    const auto argsCount = static_cast<std::size_t>(_envLength->unboxed());
-    for (std::size_t i = 0; i < argsCount; ++i)
+    const auto envLength = static_cast<std::size_t>(_envLength->unboxed());
+    for (std::size_t i = 0; i < envLength; ++i)
     {
-        auto* o = static_cast<Object*>(_env[i]);
+        auto voidStarStar = _env[i];
+        auto* o = static_cast<Object*>(*voidStarStar);
         if (o && !o->isMarked())
         {
             LOG_ADDRESS("Mark child ", o);

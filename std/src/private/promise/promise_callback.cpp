@@ -53,7 +53,7 @@ void PromiseCallback::callClosure(TSClosure* closure, Result&& arg) noexcept
         if (hasArguments)
         {
             closure->setEnvironmentElement(arg ? arg.get() : arg.getError(), 0);
-            auto* res = reinterpret_cast<Object*>(closure->call());
+            auto* res = Object::asObject(closure->call());
             _nextPromise.resolve(res);
         }
         else
@@ -64,7 +64,7 @@ void PromiseCallback::callClosure(TSClosure* closure, Result&& arg) noexcept
     }
     catch (void* e) // On TS side exception has type a void *
     {
-        auto* reason = reinterpret_cast<Object*>(e);
+        auto* reason = Object::asObject(e);
         _nextPromise.reject(reason);
     }
     catch (...)

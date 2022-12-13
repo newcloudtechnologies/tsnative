@@ -28,7 +28,7 @@ export class ReturnHandler extends AbstractNodeHandler {
       if (node.expression) {
         this.generator.emitLocation(node);
 
-        let ret = this.generator.handleExpression(node.expression, env);
+        let ret = this.generator.handleExpression(node.expression, env).derefToPtrLevel1();
 
         if (node.expression.getText() === "this" && this.generator.meta.inSuperCall()) {
           const currentClassDeclaration = this.generator.meta.getCurrentClassDeclaration();
@@ -36,7 +36,6 @@ export class ReturnHandler extends AbstractNodeHandler {
 
           if (currentClassDeclaration && declarationOfReturn?.isBaseOf(currentClassDeclaration)) {
             ret = this.generator.ts.obj.get(ret, "parent");
-            ret = this.generator.ts.union.get(ret);
             ret = this.generator.builder.createBitCast(ret, currentFunctionReturnType);
             this.generator.builder.createSafeRet(ret);
             return true;

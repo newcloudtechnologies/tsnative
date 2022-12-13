@@ -176,4 +176,33 @@
     console.assert(!!checkResult, "Type with optional field value in function args");
 }
 
+{
+    type MultiValue = {
+        w: string | number
+    }
 
+    const expected = 10;
+
+    const a: MultiValue = {
+        w: 10
+    }
+    console.assert(a.w === expected, "User type literal typed object with union property should be correctly initialized");
+
+    {
+        function f(v: MultiValue) {
+            console.assert(v.w === expected, "User type literal typed object with union property should be correctly initialized (function argument)");
+        }
+
+        f({ w: expected });
+    }
+
+    {
+        function f(): MultiValue {
+            return {
+                w: expected
+            }
+        }
+
+        console.assert(f().w === expected, "User type literal typed object with union property should be correctly initialized (function return)");
+    }
+}

@@ -175,3 +175,40 @@
 
   console.assert(first() !== second(), "Nested functions should not reuse same parent function locals");
 }
+
+{
+  // initially this test included sonamed functions with DIFFERENT return types (bug TSN-246)
+  class TextDoc {
+    static tag = "TextDoc";
+
+    asyncSave(): string {
+      return TextDoc.tag;
+    }
+  }
+
+  class TableDoc {
+    static tag = "TableDoc";
+    static expectedArgument = "109310911081";
+
+    asyncSave(value: string): string {
+      console.assert(value === TableDoc.expectedArgument, "It should be ok to pass arguments to methods handled in duck-typed manner");
+      return TableDoc.tag;
+    }
+  }
+
+  function testFunction(doc: TextDoc | TableDoc) {
+    return doc.asyncSave(TableDoc.expectedArgument);
+  }
+
+  {
+    const doc = new TextDoc();
+    const value = testFunction(doc);
+    console.assert(value === TextDoc.tag, "It should be ok to return values from methods handled in duck-typed manner (TextDoc)");
+  }
+
+  {
+    const doc = new TableDoc();
+    const value = testFunction(doc);
+    console.assert(value === TableDoc.tag, "It should be ok to return values from methods handled in duck-typed manner (TableDoc)");
+  }
+}

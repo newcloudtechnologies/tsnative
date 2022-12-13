@@ -71,19 +71,17 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     }
 
     const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier);
-    if (value) {
-      if (value instanceof HeapVariableDeclaration) {
-        return value.allocated;
-      }
-
-      if (value instanceof Scope) {
-        throw new Error(`Identifier handler: LLVMValue for '${expression.text}' not found (Scope)`);
-      }
-
-      return value as LLVMValue;
+    if (!value) {
+      throw new Error(`Identifier '${expression.text}' not found in local scope nor environment`);
     }
 
-    throw new Error(`Identifier '${expression.text}' not found in local scope nor environment`);
+    const memoryPtrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
+
+    if (memoryPtrPtr instanceof Scope) {
+      throw new Error(`Identifier handler: LLVMValue for '${expression.text}' not found (Scope)`);
+    }
+
+    return memoryPtrPtr;
   }
 
   private handleThis(env?: Environment): LLVMValue {
