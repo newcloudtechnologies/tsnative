@@ -4,6 +4,7 @@
 // imported need class from Jenkins shared library
 import com.ncloudtech.emb.devops.pipeline.gitUtils
 import com.ncloudtech.emb.devops.pipeline.complexUtils
+import com.ncloudtech.emb.devops.pipeline.JobUtils
 import com.ncloudtech.emb.devops.pipeline.notificationUtils
 import com.ncloudtech.emb.devops.pipeline.VersioningUtils
 import com.ncloudtech.git.Gitea
@@ -34,7 +35,19 @@ pipeline {
         string(name: 'CONAN_DEPLOY_BRANCH', defaultValue: 'master', description: '')
     }
 
+    options {
+        timeout(time: 1, unit: 'HOURS')   // timeout on whole pipeline job
+    }
+
     stages {
+        stage('Check Previous Builds') {
+            steps {
+                script {
+                    JobUtils.cancelPreviousPRBuilds(env.JOB_NAME, env.BUILD_NUMBER.toInteger(), currentBuild)
+                }
+            }
+        }
+
         stage('Check formatting') {
             agent {
                 docker {
