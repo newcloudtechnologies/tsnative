@@ -384,7 +384,7 @@
 }
 
 {
-    const are_equal_arrays = function <T>(a: T[], b: T[]): boolean {
+    const are_equal_arrays = function (a: Array<string>, b: Array<string>): boolean {
         let result = false;
 
         if (a.length === b.length) {

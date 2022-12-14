@@ -133,7 +133,6 @@ class TSNativeTestsConan(ConanFile):
         if self.settings.os == "Windows":
             excludes.append("date.ts"      )   # FIXME: TSN-163
             excludes.append("runtime.ts"   )   # FIXME: TSN-165
-            excludes.append("for_in.ts"    )   # TSN-258 . Need to fix irreggular crash in the test
 
         def in_excludes(path: str):
             for ex in excludes:
