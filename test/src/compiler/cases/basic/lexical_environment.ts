@@ -149,3 +149,13 @@
 
     new RxVStack_t();
 }
+
+{
+    const arr = [1, 2];
+    const mapped = arr.map((n: number) => {
+        return () => n;
+    });
+
+    console.assert(mapped[0]() === arr[0], "Inner function should create copy of variables that are parent function's parameters (1)");
+    console.assert(mapped[1]() === arr[1], "Inner function should create copy of variables that are parent function's parameters (2)");
+}

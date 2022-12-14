@@ -212,3 +212,15 @@
     console.assert(value === TableDoc.tag, "It should be ok to return values from methods handled in duck-typed manner (TableDoc)");
   }
 }
+
+// Shadowing
+{
+  const i = 22;
+
+  function f(i: number) {
+    return ++i;
+  }
+
+  const r = f(i);
+  console.assert(r === i + 1 && i === 22, "Parameters must shadow variables from outer scope");
+}

@@ -22,17 +22,19 @@ import { LLVMFunction } from "../llvm/function";
 
 export class Environment {
   private readonly pVariables: string[];
+  private readonly pParameterNames: string[];
   private pAllocated: LLVMValue;
   private readonly pLLVMType: LLVMStructType;
   private readonly pGenerator: LLVMGenerator;
   private pFixedArgsCount: number = 0;
 
-  constructor(variables: string[], allocated: LLVMValue, llvmType: LLVMStructType, generator: LLVMGenerator) {
+  constructor(variables: string[], parameterNames: string[], allocated: LLVMValue, llvmType: LLVMStructType, generator: LLVMGenerator) {
     if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
       throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
     }
 
     this.pVariables = variables;
+    this.pParameterNames = parameterNames;
     this.pAllocated = allocated;
     this.pLLVMType = llvmType;
     this.pGenerator = generator;
@@ -66,6 +68,18 @@ export class Environment {
     return this.pVariables;
   }
 
+  get parameterNames() {
+    return this.pParameterNames;
+  }
+
+  isParameter(name: string): boolean {
+    return this.pParameterNames.includes(name);
+  }
+
+  isParameterIndex(index: number): boolean {
+    return this.isParameter(this.pVariables[index]);
+  }
+
   getVariableIndex(variable: string) {
     return this.pVariables.indexOf(variable);
   }
@@ -86,6 +100,12 @@ export class Environment {
       const value = generator.builder.createSafeExtractValue(envValue, [i]);
       baseValues.push(value);
     }
+
+    const mergedParameterNames: string[] = [];
+
+    envs.forEach((e) => {
+      mergedParameterNames.push(...e.pParameterNames)
+    })
 
     const values = flatten(
       envs.map((e) => {
@@ -129,6 +149,7 @@ export class Environment {
 
     return new Environment(
       mergedVariableNames,
+      mergedParameterNames,
       generator.builder.asVoidStar(allocatedMergedEnvironment),
       mergedEnvironmentType,
       generator
@@ -265,6 +286,8 @@ export function createEnvironment(
 ) {
   const map = new Map<string, { type: LLVMType; allocated: LLVMValue }>();
 
+  const parameterNames = functionData?.signature?.getParameters().map((param) => param.escapedName.toString()) || [];
+
   if (functionData?.signature) {
     const argsTypes = functionData.args.map((arg, index) => {
       if (arg.type.getPointerLevel() > 2) {
@@ -276,15 +299,13 @@ export function createEnvironment(
       return arg.type;
     });
 
-    const parameters = functionData.signature.getParameters();
-
     argsTypes.forEach((argType, index) => {
-      if (!parameters[index]) {
+      if (!parameterNames[index]) {
         // ignore optional parameters that were not provided
         return;
       }
 
-      let parameterName = parameters[index].escapedName.toString();
+      let parameterName = parameterNames[index];
       // Note about 'escapedText' from tsc: Text of identifier, but if the identifier begins with two underscores, this will begin with three;
       // Cut leading underscore
       if (parameterName.startsWith("___")) {
@@ -307,7 +328,6 @@ export function createEnvironment(
   if (outerEnv) {
     const data = generator.builder.createLoad(outerEnv.typed);
 
-    const parameters = functionData?.signature?.getParameters().map((parameter) => parameter.escapedName.toString());
     const outerEnvValuesIndexes = [];
     for (let i = 0; i < outerEnv.variables.length; ++i) {
       const variableName = outerEnv.variables[i];
@@ -316,7 +336,7 @@ export function createEnvironment(
         continue;
       }
 
-      if (parameters?.includes(variableName)) {
+      if (parameterNames?.includes(variableName)) {
         continue;
       }
 
@@ -329,7 +349,16 @@ export function createEnvironment(
 
     const outerValues: LLVMValue[] = [];
     for (const index of outerEnvValuesIndexes) {
-      const extracted = generator.builder.createSafeExtractValue(data, [index]);
+      let extracted = generator.builder.createSafeExtractValue(data, [index]);
+
+      // @todo: remove pointer level check
+      if (extracted.type.getPointerLevel() === 2 && outerEnv.isParameterIndex(index)) {
+        extracted = generator.builder.createLoad(extracted);
+        const mem = generator.gc.allocate(extracted.type);
+        generator.builder.createSafeStore(extracted, mem);
+        extracted = mem;
+      }
+
       outerValues.push(extracted);
     }
 
@@ -367,7 +396,7 @@ export function createEnvironment(
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
-  return new Environment(names, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
+  return new Environment(names, parameterNames, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
 }
 
 function populateStaticContext(scope: Scope, environmentVariables: string[]) {
