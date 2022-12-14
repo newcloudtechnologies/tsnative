@@ -19,12 +19,12 @@ namespace constants
 {
 using DoubleTraits = std::numeric_limits<double>;
 
-constexpr double g_NaN = DoubleTraits::quiet_NaN();
-constexpr double g_PositiveInfinity = DoubleTraits::infinity();
-constexpr double g_NegativeInfinity = DoubleTraits::infinity() * -1;
-constexpr double g_Epsilon = DoubleTraits::epsilon();
-constexpr double g_MaxValue = DoubleTraits::max();
-constexpr double g_MinValue = DoubleTraits::min();
+constexpr const double g_NaN = DoubleTraits::quiet_NaN();
+constexpr const double g_PositiveInfinity = DoubleTraits::infinity();
+constexpr const double g_NegativeInfinity = DoubleTraits::infinity() * -1;
+constexpr const double g_Epsilon = DoubleTraits::epsilon();
+constexpr const double g_MaxValue = DoubleTraits::max();
+constexpr const double g_MinValue = DoubleTraits::min();
 
 // 2^53 - 1. See https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-number.max_safe_integer
 constexpr double g_MaxSafeInteger = 9'007'199'254'740'991;

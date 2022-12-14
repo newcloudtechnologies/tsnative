@@ -104,4 +104,12 @@ export const PROMISE_DEFINITION = toPosixStyle(
     path.join(__dirname, "definitions", "tspromise.d.ts")
 );
 
+export const PARSE_INT_DEFINITION = toPosixStyle(
+    path.join(__dirname, "definitions", "parse_int.d.ts")
+);
+
+export const PARSE_FLOAT_DEFINITION = toPosixStyle(
+    path.join(__dirname, "definitions", "parse_float.d.ts")
+);
+
 export const STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));

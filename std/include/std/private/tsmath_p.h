@@ -95,6 +95,11 @@ public:
     static double tanh(double x) noexcept;
     static double trunc(double x) noexcept;
 
+    static double toInteger(double x) noexcept;
+    static double modulo(double x, double y) noexcept;
+    static uint32_t toUint32(double x) noexcept;
+    static int32_t toInt32(double x) noexcept;
+
 private:
     template <typename... Args>
     constexpr static void checkDoubleTraits(Args&... args)
@@ -112,8 +117,4 @@ private:
 
         return countNaN != 0;
     }
-
-    static double toInteger(double x) noexcept;
-    static uint32_t toUint32(double x) noexcept;
-    static double modulo(double x, double y) noexcept;
 };

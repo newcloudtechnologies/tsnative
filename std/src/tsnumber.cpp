@@ -18,6 +18,7 @@
 #endif
 
 #include "std/private/logger.h"
+#include "std/private/number_parser.h"
 
 #include <cassert>
 #include <limits>
@@ -56,6 +57,16 @@ DEFINE_CHECKER_METHOD(isNaN)
 DEFINE_CHECKER_METHOD(isFinite)
 DEFINE_CHECKER_METHOD(isInteger)
 DEFINE_CHECKER_METHOD(isSafeInteger)
+
+Number* Number::parseInt(String* str, Union* radix) noexcept
+{
+    return NumberParser::parseInt(str, radix);
+}
+
+Number* Number::parseFloat(String* str) noexcept
+{
+    return NumberParser::parseFloat(str);
+}
 
 Number::Number(double v)
     : Object(TSTypeID::Number)
