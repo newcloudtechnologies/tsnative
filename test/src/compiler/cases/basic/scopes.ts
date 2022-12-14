@@ -137,3 +137,19 @@
 
     console.assert((new Wow).foo(), "Duplicate names in function scopes shouldn't populate scope locals");
 }
+
+{
+    // Test only buildability
+    // Sonamed local variables should not affect outer variables search (ConciseBody.getEnvironmentVariables)
+    function foo() {
+        let flag = true;
+        if (flag)
+        {
+            let variable = 1;
+        }
+        else
+        {
+            let variable = 2;
+        }
+    }
+}

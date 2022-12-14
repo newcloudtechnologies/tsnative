@@ -348,13 +348,13 @@ export class ConciseBody {
           node.forEachChild(visitor);
         };
 
-        const createFakeVariables = (node: ts.Node) => {
+        const createFakeVariables = (node: ts.Node, scope: Scope) => {
           if (ts.isFunctionDeclaration(node) && node.name) {
             const variableName = node.name.getText();
             const dummyValue = LLVMConstantInt.getFalse(this.generator);
             const fakeVariable = new HeapVariableDeclaration(dummyValue, dummyValue, "");
 
-            bodyScope.set(variableName, fakeVariable);
+            scope.set(variableName, fakeVariable);
           }
 
           // skip function body
@@ -368,17 +368,23 @@ export class ConciseBody {
               const dummyValue = LLVMConstantInt.getFalse(this.generator);
               const fakeVariable = new HeapVariableDeclaration(dummyValue, dummyValue, "");
 
-              bodyScope.set(variableName, fakeVariable);
+              scope.set(variableName, fakeVariable);
             });
           }
 
-          node.forEachChild(createFakeVariables);
+          if (ts.isBlock(node)) {
+            this.generator.symbolTable.withLocalScope((localScope) => {
+              node.forEachChild((n: ts.Node) => createFakeVariables(n, localScope));
+            }, scope);
+          } else {
+            node.forEachChild((n: ts.Node) => createFakeVariables(n, scope));
+          }
         };
 
         if (ts.isBlock(this.body)) {
-          this.body.forEachChild(createFakeVariables);
+          this.body.forEachChild((node: ts.Node) => createFakeVariables(node, bodyScope));
         } else {
-          createFakeVariables(this.body)
+          createFakeVariables(this.body, bodyScope)
         }
 
         if (ts.isBlock(this.body)) {
