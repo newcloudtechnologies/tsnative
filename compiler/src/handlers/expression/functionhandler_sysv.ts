@@ -280,7 +280,11 @@ export class SysVFunctionHandler {
         return this.generator.handleExpression(argument.expression, outerEnv).derefToPtrLevel1();
       }
 
-      const arg = this.generator.handleExpression(argument, outerEnv).derefToPtrLevel1();
+      let arg = this.generator.handleExpression(argument, outerEnv).derefToPtrLevel1();
+
+      if (arg.isTSPrimitivePtr()) {
+        arg = arg.clone();
+      }
 
       // there may be no parameter declared at argument's index in case of rest arguments
       const parameterAtIndex = declaration.parameters[index];

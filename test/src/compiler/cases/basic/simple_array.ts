@@ -490,3 +490,66 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
   f(...getns());
 }
+
+{ // Primitive types (string, number, boolean) should behave like 'value' types -> array should keep a copy of this added types
+  let arr: number[] = [] as number[]
+  let width = 0;
+  arr.push(width);
+  width += 1;
+
+  console.assert(arr[0] === 0, "Adding number to array should behave as 'value types'");
+}
+
+{ // Check on push several primitives
+  let arr: number[] = [] as number[]
+  let num1 = 0;
+  let num2 = 1;
+  let num3 = 3.14;
+  arr.push(num1, num2, num3);
+  
+  num1 -= 100500;
+  num2 = 300;
+  num3 *= 3;
+
+  console.log(arr);
+  console.assert(arr[0] === 0 && arr[1] === 1 && arr[2] === 3.14,  "Adding numbers to array should behave as 'value types'");
+}
+
+{ // Check on pushing objects into array (no deep copy here)
+  let obj = {
+    num: 10,
+  };
+
+  interface Interf 
+  {
+      num: number,
+  }
+
+  let arr2 : Interf[] = [] as Interf[];
+  arr2.push(obj);
+  obj.num = 22;
+
+  let obj2 = {
+    num: 100,
+  };
+  let obj3 = {
+    num: 1000,
+  };
+  arr2.push(obj2, obj3);
+  obj2.num -= 300;
+  obj3.num -= 3000;
+
+  console.assert(arr2[0].num === 22 && arr2[1].num === -200 && arr2[2].num === -2000, "Adding objects to array");
+}
+
+{ // Check on strings. Adding strings should make a deep copy
+  let str = "aaa";
+  let arr3 = new Array<String>();
+
+  arr3.push(str);
+  str = "bbb";
+  arr3.push(str, str, str);
+  str = "ccc";
+
+  console.assert(arr3[0] === "aaa" && arr3[1] === "bbb" && arr3[2] === "bbb", "Adding strings to array should behave as 'value types'");
+}
