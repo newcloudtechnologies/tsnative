@@ -38,6 +38,11 @@ class TSNativeTestsConan(ConanFile):
         "profile_build" : False,
     }
 
+    src_path = Path("src/compiler/cases")
+
+    def getRelativeCppIntegrationTestsPath(self):
+        return os.path.join(self.src_path, "cpp_integration")
+
     def requirements(self):
         self.requires("tsnative-std/%s" % pkg_suffix(self))
 
@@ -52,11 +57,13 @@ class TSNativeTestsConan(ConanFile):
         ts_std_dep = self.dependencies["tsnative-std"]
         copy(self, "*.ts", ts_std_dep.cpp_info.builddirs[0], os.path.join(self.build_folder, "imports"))
 
-    def generate(self):
-        self.import_ts()
-
+    def toUnixPath(self, path):
         # TODO: check if os.path.as_posix() works
         to_unix = lambda path: path.replace("\\", "/") #tools.unix_path(path, path_flavor="MSYS2")
+        return to_unix(path)
+
+    def generate(self):
+        self.import_ts()
 
         # By default, the generator is 'MinGW Makefiles' on windows but it breaks some paths
         tc = CMakeToolchain(self)
@@ -66,9 +73,10 @@ class TSNativeTestsConan(ConanFile):
             tc.variables["CMAKE_VERBOSE_MAKEFILE"]="ON"
 
         # Variables for compiled tests
-        tc.variables["PROJECT_BASE_URL"] = to_unix(os.path.join(self.build_folder, "imports", "declarations"))
+        tc.variables["PROJECT_BASE_URL"] = self.toUnixPath(os.path.join(self.build_folder, "imports", "declarations"))
         tc.variables["IS_TEST"] = True
         tc.variables["RUN_EVENT_LOOP"] = "oneshot"
+        tc.variables["TEST_FILTER"] = self.options.test_filter
 
         if self.settings.get_safe("build_type") == "Debug":
             tc.variables["TS_DEBUG"] = True
@@ -78,8 +86,11 @@ class TSNativeTestsConan(ConanFile):
         tc.variables["TS_PROFILE_BUILD"] = bool(self.options.profile_build)
         tc.variables["OPT_LEVEL"] = "-O%s" % self.options.opt_level
 
+        absolute_cpp_tests_path = self.toUnixPath(os.path.join(self.build_folder, self.getRelativeCppIntegrationTestsPath()))
+        tc.variables["CPP_INTEGRATION_TESTS_PATH"] = absolute_cpp_tests_path
+
         # Variables for declarator tests
-        tc.variables["SOURCE_DIR"] = to_unix(self.source_folder)
+        tc.variables["SOURCE_DIR"] = self.toUnixPath(self.source_folder)
 
         print("TOOLCHAIN VARIABLES:\n\t" +
               "\n\t".join(f"{k}={v}" for k, v in tc.variables.items()))
@@ -114,7 +125,6 @@ class TSNativeTestsConan(ConanFile):
         cmake.build()
 
     def buildCompiledTests(self):
-        src_path = Path("src/compiler/cases")
         out_dir = "compiler_tests"
         # first - build pure ts tests
         excludes = [".d.ts", "cpp_integration"]
@@ -132,15 +142,13 @@ class TSNativeTestsConan(ConanFile):
                     self.output.warn("Excluding test %s" % path)
                     return True
 
-        cases = list(filter(lambda x: not in_excludes(x), src_path.rglob('*.ts')))
+        cases = list(filter(lambda x: not in_excludes(x), self.src_path.rglob('*.ts')))
 
         test_filter = re.compile(str(self.options.test_filter))
         def apply_filter(in_list: list, pattern = test_filter):
             return list(filter(lambda x: pattern.search(str(x)), in_list))
 
         cases = apply_filter(cases)
-
-        # print(cases)
 
         # For pure ts code we use CMakeLists.txt located in compiler package folder
         for require, dependency in self.dependencies.items():
@@ -164,13 +172,15 @@ class TSNativeTestsConan(ConanFile):
             )
             cmake.build()
 
-        # build ts-cpp intgration tests
-        cpp_tests = apply_filter(["cpp_integration"])
+        # build ts-cpp integration tests
+        cpp_integration_tests_path_object = Path(self.getRelativeCppIntegrationTestsPath())
+        all_cpp_tests = list(map(lambda x: Path(x).stem, cpp_integration_tests_path_object.glob('*.ts')))
+        cpp_tests = apply_filter(all_cpp_tests)
         for test in cpp_tests:
             self.output.info("==== Compiling %s" % test)
-            self.folders.build = os.path.join(out_dir, test)
+            self.folders.build = os.path.join(out_dir, "cpp_integration")
             cmake = CMake(self)
-            cmake.configure(build_script_folder=os.path.join(src_path, test))
+            cmake.configure(build_script_folder=os.path.join(self.src_path, "cpp_integration"))
             cmake.build(build_tool_args=["-j1"] if is_ci() else [])
 
         # clean up
