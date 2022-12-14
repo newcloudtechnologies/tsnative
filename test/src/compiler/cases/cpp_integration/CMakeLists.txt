@@ -26,26 +26,23 @@ add_subdirectory(cpp ${extTarget})
 
 enable_testing()
 
-set(TESTS 
-    aggregate.ts
-    array_of_ambient_class_elements.ts
-    closures.ts
-    enum.ts
-    generics.ts
-    inher.ts
-    nested_namespaces.ts
-    optional_arguments.ts
-    point.ts
-    printable.ts
-    union_narrowing.ts
-    virtual_method_override.ts
-)
-foreach(TEST IN LISTS TESTS)
-    get_filename_component(TEST_NAME ${TEST} NAME_WLE)
-    get_filename_component(TEST_FILENAME ${TEST} NAME)
+if (NOT DEFINED CPP_INTEGRATION_TESTS_PATH)
+    message(FATAL_ERROR "CPP_INTEGRATION_TESTS_PATH is not set") 
+endif()
+
+file(GLOB CPP_INTEGRATION_TESTS "${CPP_INTEGRATION_TESTS_PATH}/*.ts")
+
+foreach(TEST_PATH IN LISTS CPP_INTEGRATION_TESTS)
+    get_filename_component(TEST_NAME ${TEST_PATH} NAME_WLE)
+    if (NOT ${TEST_NAME} MATCHES "${TEST_FILTER}")
+        continue()
+    endif()
+
+    get_filename_component(TEST_FILENAME ${TEST_PATH} NAME)
+
     set (TS_TARGET ${TEST_NAME}_ts)
     add_ts_library(${TS_TARGET}
-        SRC ${TEST}
+        SRC ${TEST_FILENAME}
         BASE_URL ${PROJECT_BASE_URL}
         TS_CONFIG tsconfig.json
         LIBRARIES ${extTarget}
