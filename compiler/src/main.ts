@@ -126,6 +126,8 @@ async function main() {
     stdlib.SET_TIMEOUT_DEFINITION,
     stdlib.EVENT_LOOP_DEFINITION,
     stdlib.PROMISE_DEFINITION,
+    stdlib.PARSE_INT_DEFINITION,
+    stdlib.PARSE_FLOAT_DEFINITION,
   ];
   options.types = [];
 

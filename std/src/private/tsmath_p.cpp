@@ -26,7 +26,8 @@ const double LN10 = 2.30258509299404568402;
 const double PI = M_PI;
 const double SQRT2 = 1.41421356237309504880;
 const double SQRT1_2 = 0.707106781186547524401;
-constexpr double pow2of32 = 1ull << 32; // 2^32
+constexpr const double pow2of32 = 1ull << 32;  // 2^32
+constexpr const uint32_t pow2of31 = 1ul << 31; // 2^31
 } // namespace constants
 
 double MathPrivate::E() noexcept
@@ -185,12 +186,11 @@ double MathPrivate::hypot(double x, double y) noexcept
 
 double MathPrivate::imul(double x, double y) noexcept
 {
-    constexpr static uint32_t pow2of31 = 1ul << 31;
     const auto a = toUint32(x);
     const auto b = toUint32(y);
 
     const auto product = modulo(a * b, constants::pow2of32);
-    if (product >= pow2of31)
+    if (product >= constants::pow2of31)
     {
         return product - constants::pow2of32;
     }
@@ -341,4 +341,15 @@ uint32_t MathPrivate::toUint32(double x) noexcept
         return 0;
     }
     return static_cast<uint32_t>(modulo(toInteger(x), constants::pow2of32));
+}
+
+int32_t MathPrivate::toInt32(double x) noexcept
+{
+    const auto ui32 = toUint32(x);
+
+    if (ui32 >= constants::pow2of31)
+    {
+        return static_cast<int32_t>(ui32 - constants::pow2of32);
+    }
+    return static_cast<int32_t>(ui32);
 }

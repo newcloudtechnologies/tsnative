@@ -23,6 +23,7 @@
 #include <ostream>
 
 class String;
+class Union;
 
 class NumberPrivate;
 
@@ -42,6 +43,10 @@ public:
     TS_METHOD static Boolean* isFinite(Object* value) noexcept;
     TS_METHOD static Boolean* isInteger(Object* value) noexcept;
     TS_METHOD static Boolean* isSafeInteger(Object* value) noexcept;
+
+    TS_METHOD TS_SIGNATURE("parseInt(s: string, radix?: number): number") static Number* parseInt(
+        String* str, Union* radix) noexcept;
+    TS_METHOD static Number* parseFloat(String* str) noexcept;
 
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("constructor(_: any)") Number(double v);
     Number(Number* v);

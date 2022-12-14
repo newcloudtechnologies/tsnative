@@ -42,7 +42,9 @@ set(HEADERS
     include/std/set_timeout.h
     include/std/set_interval.h
     include/std/event_loop.h
-    include/std/tspromise.h)
+    include/std/tspromise.h
+    include/std/parse_int.h
+    include/std/parse_float.h)
 
 set(SOURCES
     src/gc.cpp
@@ -65,6 +67,8 @@ set(SOURCES
     src/set_interval.cpp
     src/event_loop.cpp
     src/tspromise.cpp
+    src/parse_int.cpp
+    src/parse_float.cpp
 
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
@@ -84,7 +88,8 @@ set(SOURCES
     src/private/promise/promise_p.cpp
     src/private/promise/shared_promise_internal_state.cpp
     src/private/promise/promise_callback.cpp
-    src/private/default_executor.cpp)
+    src/private/default_executor.cpp
+    src/private/number_parser.cpp)
 
 if(ENABLE_LOGS)
     add_definitions( -DENABLE_LOGS )
