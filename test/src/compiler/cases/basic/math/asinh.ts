@@ -19,6 +19,6 @@ import {equals} from "./utils"
     console.assert(Number.isNaN(Math.asinh(NaN)), "Math: asinh(NaN) failed");
     console.assert(Math.asinh(-Infinity) === -Infinity, "Math: asinh(-Infinity) failed");
     console.assert(Math.asinh(+Infinity) === +Infinity, "Math: asinh(+Infinity) failed");
-    console.assert(1 / Math.asinh(-0) === -Infinity, "Math: asinh(-Infinity) failed");
-    console.assert(1 / Math.asinh(0) === +Infinity, "Math: asinh(+Infinity) failed");
+    console.assert(1 / Math.asinh(-0) === -Infinity, "Math: 1/asinh(-0) failed");
+    console.assert(1 / Math.asinh(+0) === +Infinity, "Math: 1/asinh(+0) failed");
 }
