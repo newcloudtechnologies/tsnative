@@ -92,6 +92,10 @@ double MathPrivate::asin(double x) noexcept
 
 double MathPrivate::asinh(double x) noexcept
 {
+    if (!NumberPrivate::isFinite(x) || x == +0.0 || x == -0.0)
+    {
+        return x;
+    }
     return std::asinh(x);
 }
 
@@ -102,6 +106,22 @@ double MathPrivate::atan(double x) noexcept
 
 double MathPrivate::atanh(double x) noexcept
 {
+    if (NumberPrivate::isNaN(x) || x == +0.0 || x == -0.0)
+    {
+        return x;
+    }
+    if (x > 1 || x < -1)
+    {
+        return NumberPrivate::NaN();
+    }
+    if (x == 1)
+    {
+        return NumberPrivate::POSITIVE_INFINITY();
+    }
+    if (x == -1)
+    {
+        return NumberPrivate::NEGATIVE_INFINITY();
+    }
     return std::atanh(x);
 }
 
