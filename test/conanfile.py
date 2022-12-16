@@ -131,7 +131,6 @@ class TSNativeTestsConan(ConanFile):
 
 
         if self.settings.os == "Windows":
-            excludes.append("date.ts"      )   # FIXME: TSN-163
             excludes.append("runtime.ts"   )   # FIXME: TSN-165
 
         def in_excludes(path: str):
