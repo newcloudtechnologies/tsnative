@@ -72,11 +72,14 @@ export class GC {
 
     private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
-        const size = type.getTypeSize();
+        // Ensure that the allocated memory will at least fit for Object (>=sizeof(Object)).
+        // E.g., when hoisting comes to play, Object constructor may be called on memory allocated for lazy_closure (1 byte-sized struct)
+        // and this MAY lead to heap corruption.
+        const size = Math.max(type.getTypeSize(), this.generator.ts.obj.getLLVMType().unwrapPointer().getTypeSize());
         const returnValue = this.generator.builder.createSafeCall(callable,
             [
                 gcAddress,
-                LLVMConstantFP.get(this.generator, size || 1),
+                LLVMConstantFP.get(this.generator, size),
             ]);
 
         return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
