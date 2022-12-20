@@ -72,10 +72,7 @@ export class GC {
 
     private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
-        // Ensure that the allocated memory will at least fit for Object (>=sizeof(Object)).
-        // E.g., when hoisting comes to play, Object constructor may be called on memory allocated for lazy_closure (1 byte-sized struct)
-        // and this MAY lead to heap corruption.
-        const size = Math.max(type.getTypeSize(), this.generator.ts.obj.getLLVMType().unwrapPointer().getTypeSize());
+        const size = this.getAllocationSize(type);
         const returnValue = this.generator.builder.createSafeCall(callable,
             [
                 gcAddress,
@@ -83,6 +80,17 @@ export class GC {
             ]);
 
         return this.generator.builder.createBitCast(returnValue, type.getPointer(), name);
+    }
+
+    private getAllocationSize(type: LLVMType) {
+        if (type.isPointer()) {
+            return type.getTypeSize();
+        }
+        
+        // Ensure that the allocated memory will at least fit for Object (>=sizeof(Object)).
+        // E.g., when hoisting comes to play, Object constructor may be called on memory allocated for lazy_closure (1 byte-sized struct)
+        // and this MAY lead to heap corruption.
+        return Math.max(type.getTypeSize(), this.generator.ts.obj.getLLVMType().unwrapPointer().getTypeSize());
     }
 
     private findRootOpFunction(declaration: Declaration, name: string) {
