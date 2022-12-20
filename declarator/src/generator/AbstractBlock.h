@@ -107,6 +107,8 @@ public:
 
 std::string typeToString(AbstractBlock::Type type);
 
+std::ostream& operator<<(std::ostream& os, const AbstractBlock& item);
+
 } // namespace ts
 
 } // namespace generator

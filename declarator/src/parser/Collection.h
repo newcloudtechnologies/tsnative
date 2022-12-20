@@ -106,7 +106,7 @@ public:
     std::optional<const_abstract_item_t> findItem(const std::string& parentPath, const std::string& name) const;
 
     void visit(std::function<void(const_abstract_item_t item)> handler) const;
-    void print(const std::string& filename = "collection.txt") const;
+    void print(const std::string& filename = "collection.txt", bool usePadding = true) const;
 };
 
 } //  namespace parser

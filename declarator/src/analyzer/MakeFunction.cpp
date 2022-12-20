@@ -41,18 +41,8 @@ void makeFunction(parser::const_function_item_t item,
 
     function_block_t functionBlock;
 
-    bool isExport = false;
-    bool isDeclare = false;
-
-    if (annotations.exist(TS_DECLARE))
-    {
-        isDeclare = true;
-    }
-
-    if (annotations.exist(TS_EXPORT))
-    {
-        isExport = true;
-    }
+    const bool isExport = annotations.exist(TS_EXPORT);
+    const bool isDeclare = annotations.exist(TS_DECLARE);
 
     if (!isExport && !isDeclare)
     {
