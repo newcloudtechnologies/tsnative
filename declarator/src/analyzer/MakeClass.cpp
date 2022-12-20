@@ -47,18 +47,8 @@ void makeClass(parser::const_class_item_t item, const TypeMapper& typeMapper, ge
 
     std::string name = (annotations.exist(TS_NAME)) ? annotations.values(TS_NAME).at(0) : item->name();
 
-    bool isExport = false;
-    bool isDeclare = false;
-
-    if (annotations.exist(TS_EXPORT))
-    {
-        isExport = true;
-    }
-
-    if (annotations.exist(TS_DECLARE))
-    {
-        isDeclare = true;
-    }
+    const bool isExport = annotations.exist(TS_EXPORT);
+    const bool isDeclare = annotations.exist(TS_DECLARE);
 
     if (!isExport && !isDeclare)
     {

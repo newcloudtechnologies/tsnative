@@ -815,7 +815,7 @@ void Collection::addVariable(
 }
 
 // TODO extract this to separate new class CollectionPriter
-void Collection::print(const std::string& filename) const
+void Collection::print(const std::string& filename, bool usePadding) const
 {
     struct Row
     {
@@ -827,6 +827,8 @@ void Collection::print(const std::string& filename) const
     std::vector<Row> rows;
 
     std::ofstream ofs{filename, std::ofstream::out};
+
+    ofs << "# Collection of records: Item.prefix() | Item.name() | Item.type()";
 
     Collection::ref().visit(
         [&rows](const_abstract_item_t item) {
@@ -850,11 +852,20 @@ void Collection::print(const std::string& filename) const
 
     for (const auto& it : rows)
     {
-        ofs.width(prefix_max_size + 3);
+        if (usePadding)
+        {
+            ofs.width(prefix_max_size + 3);
+        }
         ofs << it.prefix << " | ";
-        ofs.width(name_max_size + 3);
+        if (usePadding)
+        {
+            ofs.width(name_max_size + 3);
+        }
         ofs << it.name << " | ";
-        ofs.width(type_max_size);
+        if (usePadding)
+        {
+            ofs.width(type_max_size);
+        }
         ofs << it.type << "\n";
     }
 }

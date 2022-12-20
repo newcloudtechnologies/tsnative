@@ -99,7 +99,7 @@ std::vector<TsSignature::Argument> TsSignature::parseArgumentList(const std::str
     std::vector<Argument> result;
 
     std::regex regexp(
-        R"(((\.\.\.)?[\w]+(\[\])?(\?)?\s*\:\s*)((\([^)]+\)\s*\=\>\s[\w\[\]_]+)|((readonly\b)?\s*[\w\[\]\<\>\.]+)))");
+        R"(((\.\.\.)?[\w]+(\[\])?(\?)?\s*\:\s*)((\([^)]*\)\s*\=\>\s[\w\[\]_]+)|((readonly\b)?\s*[\w\[\]\<\>\.]+)))");
 
     auto _begin = std::sregex_iterator(args.begin(), args.end(), regexp);
     auto _end = std::sregex_iterator();
@@ -116,7 +116,7 @@ std::vector<TsSignature::Argument> TsSignature::parseArgumentList(const std::str
 TsSignature::Argument TsSignature::parseArgument(const std::string& arg)
 {
     std::regex regexp(
-        R"((\.\.\.)?([\w]+)(\?)?\s*\:\s*((\([^)]+\)\s*\=\>\s*[\w\[\]]+)|((readonly\b)?\s*[\w\[\]\<\>\.]+)))");
+        R"((\.\.\.)?([\w]+)(\?)?\s*\:\s*((\([^)]*\)\s*\=\>\s*[\w\[\]]+)|((readonly\b)?\s*[\w\[\]\<\>\.]+)))");
     std::smatch match;
 
     if (!std::regex_search(arg.begin(), arg.end(), match, regexp))

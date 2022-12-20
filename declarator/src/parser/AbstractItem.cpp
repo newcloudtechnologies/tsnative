@@ -106,4 +106,12 @@ std::string typeToString(AbstractItem::Type type)
     return types.at(type);
 }
 
+std::ostream& operator<<(std::ostream& os, const AbstractItem& item)
+{
+    std::string local = item.isLocal() ? " (local)" : "";
+    std::string type = typeToString(item.type());
+    os << type << " " << item.name() << local << " pfx:" << item.prefix();
+    return os;
+}
+
 } //  namespace parser

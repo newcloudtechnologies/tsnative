@@ -141,6 +141,13 @@ std::string typeToString(AbstractBlock::Type type)
     return types.at(type);
 }
 
+std::ostream& operator<<(std::ostream& os, const AbstractBlock& block)
+{
+    std::string type = typeToString(block.type());
+    os << "AbstractBlock " << type << " " << block.name();
+    return os;
+}
+
 } // namespace ts
 
 } // namespace generator

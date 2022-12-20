@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -89,5 +90,7 @@ public:
 };
 
 std::string typeToString(AbstractItem::Type type);
+
+std::ostream& operator<<(std::ostream& os, const AbstractItem& item);
 
 } //  namespace parser
