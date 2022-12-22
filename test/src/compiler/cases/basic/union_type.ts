@@ -262,3 +262,141 @@ import createStore2 from "./union_type_imports"
         console.assert(true, "Comparison T | undefined");
     }
 }
+
+{
+    type DataAction_ut = string | number;
+
+    function foo(arg: DataAction_ut) {
+        switch(arg) {
+            case '213': {
+                console.assert(arg === '213', "Switch on Union type 1");
+                break;
+            }
+            case 5: {
+                console.assert(arg === 5, "Switch on Union type 2");
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+
+    let val: DataAction_ut = '213';
+    foo(val);
+    let val2: DataAction_ut = 5;
+    foo(val2);
+}
+
+{
+    type DataAction_ut = string | number | undefined;
+
+    function foo(arg: DataAction_ut) {
+        switch(arg) {
+            case '213': {
+                console.assert(arg === '213', "Switch on Union type 3");
+                break;
+            }
+            case 5: {
+                console.assert(arg === 5, "Switch on Union type 4");
+                break;
+            }
+            case undefined: {
+                console.assert(arg === undefined, "Switch on Union type 5");
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+
+    let val: DataAction_ut = '213';
+    foo(val);
+    let val2: DataAction_ut = 5;
+    foo(val2);
+    let val3: DataAction_ut = undefined;
+    foo(val3);
+}
+
+{
+    type DataAction_ut = string | number | null;
+
+    function foo(arg: DataAction_ut) {
+        switch(arg) {
+            case '213': {
+                console.assert(arg === '213', "Switch on Union type 6");
+                break;
+            }
+            case 5: {
+                console.assert(arg === 5, "Switch on Union type 7");
+                break;
+            }
+            case null: {
+                console.assert(arg === null, "Switch on Union type 8");
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+
+    let val: DataAction_ut = '213';
+    foo(val);
+    let val2: DataAction_ut = 5;
+    foo(val2);
+    let val3: DataAction_ut = null;
+    foo(val3);
+}
+
+{
+    enum DataActionTypes_e {
+        Load,
+        Stash, //! @unused
+        Flush, //! @unused
+        Save,
+    }
+
+    interface SaveDataAction_t {
+        type: DataActionTypes_e.Save,
+        urlToSave?: string,
+    }
+
+    interface LoadDataAction_t {
+        type: DataActionTypes_e.Load,
+        num: number,
+    }
+
+    type DataAction_ut = SaveDataAction_t | LoadDataAction_t;
+
+    function foo(arg: DataAction_ut) {
+        switch(arg.type) {
+            case DataActionTypes_e.Save: {
+                console.assert(arg.type === DataActionTypes_e.Save, "Switch on Enum type: 1");
+                console.assert(arg.urlToSave === "11", "Switch on Enum type: 2");
+                break;
+            }
+            case DataActionTypes_e.Load: {
+                console.assert(arg.type === DataActionTypes_e.Load, "Switch on Enum type: 3");
+                console.assert(arg.num === 11, "Switch on Enum type: 4");
+
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+
+    let val: DataAction_ut = {
+        type: DataActionTypes_e.Save,
+        urlToSave: "11"
+    }
+    foo(val);
+    let val2: DataAction_ut = {
+        type: DataActionTypes_e.Load,
+        num: 11
+    }
+    foo(val2);
+}
