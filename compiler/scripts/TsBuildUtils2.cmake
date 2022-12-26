@@ -71,7 +71,7 @@ function (add_ts_library ARG_NAME ...)
         message(FATAL_ERROR "You have unparsed arguments: '${ARG_UNPARSED_ARGUMENTS}'")
     endif()
 
-    _requiredArgs(ARG_SRC ARG_TS_CONFIG ARG_BASE_URL ARG_LIBRARIES)
+    _requiredArgs(ARG_SRC ARG_TS_CONFIG)
 
     get_filename_component(ARG_SRC ${ARG_SRC} ABSOLUTE)
     get_filename_component(ARG_TS_CONFIG ${ARG_TS_CONFIG} ABSOLUTE)
@@ -79,8 +79,17 @@ function (add_ts_library ARG_NAME ...)
     set(targetName ${ARG_NAME})
     set(mainTs ${ARG_SRC})
     set(definitions ${ARG_DEFINES})
-    set(libraries ${ARG_LIBRARIES};tsnative-std::tsnative-std)
-    set(baseFlags --baseUrl;${ARG_BASE_URL};--tsconfig;${ARG_TS_CONFIG})
+
+    set(libraries tsnative-std::tsnative-std)
+    if (DEFINED ARG_LIBRARIES)
+        list(PREPEND libraries ${ARG_LIBRARIES})
+    endif()
+
+    set(baseFlags --tsconfig;${ARG_TS_CONFIG})
+    if (DEFINED ARG_BASE_URL)
+        list (APPEND baseFlags --baseUrl;${ARG_BASE_URL})
+    endif()
+
     set(extraFlags 
         $<$<BOOL:${ARG_PRINT_IR}>:--printIR;>
         $<$<BOOL:${ARG_TS_DEBUG}>:--debug;>
