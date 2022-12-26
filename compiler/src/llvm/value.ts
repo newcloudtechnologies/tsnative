@@ -63,60 +63,6 @@ export class LLVMValue {
     return value;
   }
 
-  adjustToType(type: LLVMType): LLVMValue {
-    let value = this as LLVMValue;
-
-    if (value.type.isPointer() && type.isPointer() && this.isInt8PtrType(type)) {
-      value = this.generator.builder.createBitCast(value, type);
-    }
-
-    if (value.type.equals(type)) {
-      return value;
-    }
-
-    if (value.type.isTSNumber() && type.isIntegerType()) {
-      return value.asLLVMInteger();
-    }
-
-    if (value.type.isDeeperPointerLevel(type)) {
-      value = this.generator.builder.createLoad(value);
-
-      return value.adjustToType(type);
-    } else if (value.type.isSamePointerLevel(type)) {
-      if (!value.type.equals(type)) {
-        if (value.type.isPointer() && value.type.getPointerElementType().isIntegerType(8)) {
-          value = this.generator.builder.createBitCast(value, type);
-        } else if (
-          value.type.unwrapPointer().isStructType() &&
-          (value.type.unwrapPointer() as LLVMStructType).isSameStructs(type)
-        ) {
-          if (!value.type.isPointer() && !type.isPointer()) {
-            // allocate -> cast -> load
-            const allocated = this.generator.gc.allocate(value.type);
-            this.generator.builder.createSafeStore(value, allocated);
-
-            value = this.generator.builder.createBitCast(allocated, type.getPointer());
-            value = this.generator.builder.createLoad(value);
-          } else {
-            value = this.generator.builder.createBitCast(value, type);
-          }
-        } else if (type.isUnion()) {
-          value = this.generator.ts.union.create(value);
-        }
-
-        if (value.type.equals(type)) {
-          return value;
-        }
-      }
-
-      throw new Error(`Cannot adjust '${value.type.toString()}' to '${type.toString()}'`);
-    }
-
-    const allocated = this.generator.gc.allocate(value.type);
-    this.generator.builder.createSafeStore(value, allocated);
-    return allocated.adjustToType(type);
-  }
-
   isTSPrimitivePtr() {
     const type = this.type;
     if (!type.isPointer()) {
@@ -150,18 +96,19 @@ export class LLVMValue {
       this.generator.ts.union.set(value, other);
       return value;
     }
-    const isSame = value.type.getPointerElementType() === other.type.getPointerElementType();
-    const int8PtrTy = LLVMType.getInt8Type(this.generator).getPointer();
 
-    if (!isSame) {
-      if (other.type.equals(int8PtrTy)) {
-        other = this.generator.builder.createBitCast(other, value.type);
-      } else if (value.type.equals(int8PtrTy)) {
-        value = this.generator.builder.createBitCast(value, other.type);
-      }
+    if (other.type.getPointerLevel() !== 1) {
+      throw new Error(`Assignment source expected to be of pointer type, got: '${value.type.toString()}'`);
     }
 
-    other = other.adjustToType(value.type.getPointerElementType());
+    if (value.type.getPointerLevel() !== 2) {
+      throw new Error(`Assignment destination expected to be of pointer-to-pointer type, got: '${value.type.toString()}'`);
+    }
+
+    if (other.type.isUnion() && !value.type.getPointerElementType().isUnion()) {
+      other = this.generator.ts.union.get(other);
+      other = this.generator.builder.createBitCast(other, value.type.getPointerElementType());
+    }
 
     this.generator.builder.createSafeStore(other, value);
     return value;

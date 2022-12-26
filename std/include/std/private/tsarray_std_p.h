@@ -44,6 +44,8 @@ public:
     std::vector<T> splice(int start) override;
     std::vector<T> splice(int start, int deleteCount) override;
 
+    void setElementAtIndex(int index, T value) override;
+
     std::vector<T> concat(const std::vector<T>& other) const override;
     std::vector<int> keys() const override;
 
@@ -179,6 +181,12 @@ std::vector<T> DequeueBackend<T>::splice(int start, int deleteCount)
 
     storage_.erase(begin, end);
     return removed;
+}
+
+template <typename T>
+void DequeueBackend<T>::setElementAtIndex(int index, T value)
+{
+    storage_[index] = value;
 }
 
 template <typename T>

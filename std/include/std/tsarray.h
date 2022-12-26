@@ -68,6 +68,8 @@ public:
     template <typename... Ts>
     Number* push(Array<T>* t, Ts... ts);
 
+    TS_METHOD void setElementAtIndex(Number* index, T value);
+
     TS_METHOD TS_GETTER Number* length() const;
     TS_METHOD TS_SETTER void length(Number* value);
 
@@ -338,6 +340,13 @@ Number* Array<T>::push(Array<T>* t, Ts... ts)
     push(ts...);
 
     return length();
+}
+
+template <typename T>
+void Array<T>::setElementAtIndex(Number* index, T value)
+{
+    int indexUnwrapped = static_cast<int>(index->unboxed());
+    _d->setElementAtIndex(indexUnwrapped, value);
 }
 
 template <typename T>
