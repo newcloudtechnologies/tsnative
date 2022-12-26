@@ -13,7 +13,6 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
 
 export class AssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -57,21 +56,45 @@ export class AssignmentHandler extends AbstractExpressionHandler {
             return this.handleTupleDestructuring(left, right, env);
           }
 
-          const lhs = this.generator.handleExpression(left, env).derefToPtrLevel1();
-          let rhs;
-
-          if (isSetAccessor(left)) {
-            return lhs;
-          }
-
-          rhs =
+          let rhs =
             right.kind === ts.SyntaxKind.NullKeyword
               ? this.generator.ts.union.create(this.generator.ts.null.get())
               : this.generator.handleExpression(right, env).derefToPtrLevel1();
 
-          if (!left.getText().startsWith("this.")) {
-            if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
-              this.generator.gc.deallocate(lhs);
+          if (ts.isElementAccessExpression(left)) {
+            const type = this.generator.ts.checker.getTypeAtLocation(left);
+            if (type.isUnion() && !rhs.type.isUnion()) {
+              rhs = this.generator.ts.union.create(rhs);
+            }
+
+            const accessSource = this.generator.handleExpression(left.expression, env).derefToPtrLevel1();
+
+            if (accessSource.type.isArray() || accessSource.type.isTuple()) {
+              const index = this.generator.handleExpression(left.argumentExpression, env).derefToPtrLevel1();
+
+              if (accessSource.type.isArray()) {
+                this.generator.ts.array.setElementAtIndex(left.expression, accessSource, index, rhs);
+              } else if (accessSource.type.isTuple()) {
+                this.generator.ts.tuple.setElementAtIndex(accessSource, index, rhs);
+              }
+
+              return rhs;
+            } else if (accessSource.type.isObject()) {
+              const argumentExpressionText = left.argumentExpression.getText().replace(/['"]+/g, '');
+
+              const objectType = this.generator.ts.checker.getTypeAtLocation(left.expression);
+              const propertySymbol = objectType.getProperty(argumentExpressionText);
+
+              if (!propertySymbol.isStatic()) {
+                if ((propertySymbol.valueDeclaration?.type.isUnion() || propertySymbol.isOptional()) && !rhs.type.isUnion()) {
+                  rhs = this.generator.ts.union.create(rhs);
+                }
+
+                const lhs = this.generator.handleExpression(left, env).derefToPtrLevel1();
+
+                this.generator.ts.obj.set(lhs, argumentExpressionText, rhs);
+                return rhs;
+              }
             }
           }
 
@@ -84,10 +107,24 @@ export class AssignmentHandler extends AbstractExpressionHandler {
                 rhs = this.generator.ts.union.create(rhs);
               }
 
+              const lhs = this.generator.handleExpression(left, env).derefToPtrLevel1();
+
               const propertyName = left.name.getText();
               this.generator.ts.obj.set(lhs, propertyName, rhs);
               return rhs;
             }
+          }
+
+          const lhs = this.generator.handleExpression(left, env);
+
+          if (!left.getText().startsWith("this.")) {
+            if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
+              this.generator.gc.deallocate(lhs);
+            }
+          }
+
+          if (isSetAccessor(left)) {
+            return lhs;
           }
 
           return lhs.makeAssignment(rhs);

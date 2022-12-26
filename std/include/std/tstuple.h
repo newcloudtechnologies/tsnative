@@ -36,6 +36,8 @@ public:
 
     TS_METHOD TS_SIGNATURE("push(item: Object): void") void push(Object* item);
 
+    TS_METHOD void setElementAtIndex(Number* index, Object* value);
+
     TS_METHOD String* toString() const override;
 
     void markChildren() override;

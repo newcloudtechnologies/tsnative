@@ -37,6 +37,8 @@ public:
 
     virtual std::vector<T> concat(const std::vector<T>& other) const = 0;
 
+    virtual void setElementAtIndex(int index, T value) = 0;
+
     virtual std::vector<int> keys() const = 0;
 
     virtual std::vector<T> toStdVector() const = 0;

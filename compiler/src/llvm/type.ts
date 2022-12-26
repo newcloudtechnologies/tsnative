@@ -135,6 +135,11 @@ export class LLVMType {
     return Boolean(nakedType.type.isStructTy() && nakedType.type.name === "array");
   }
 
+  isTuple() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.type.isStructTy() && nakedType.type.name === "tuple");
+  }
+
   isLLVMArray() {
     const nakedType = this.unwrapPointer();
     return nakedType.type.isArrayTy();
@@ -194,6 +199,10 @@ export class LLVMType {
   isClosure() {
     const nakedType = this.unwrapPointer();
     return Boolean(nakedType.isStructType() && nakedType.name === "closure");
+  }
+
+  isCXXVoidStar() {
+    return this.isPointer() && this.getPointerElementType().isIntegerType(8);
   }
 
   getTypeSize() {

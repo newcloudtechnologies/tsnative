@@ -13,7 +13,6 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMValue, MathFlags } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
 
 export class CompoundAssignmentHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -22,7 +21,7 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       this.generator.emitLocation(expression.left);
       this.generator.emitLocation(expression.right);
 
-      const left = this.generator.handleExpression(expression.left, env).derefToPtrLevel1();
+      const left = this.generator.handleExpression(expression.left, env);
       const right = this.generator.handleExpression(expression.right, env).derefToPtrLevel1();
 
       this.generator.gc.deallocate(left);

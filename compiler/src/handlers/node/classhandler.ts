@@ -46,6 +46,10 @@ export class ClassHandler extends AbstractNodeHandler {
           const baseClassScope = parentScope.get(qualifiedName) as Scope;
 
           baseClassScope?.thisData?.staticProperties?.forEach((value, key) => {
+            if (value.type.getPointerLevel() !== 2) {
+              throw new Error(`Expected static property to be of pointer-to-pointer type, got '${value.type.toString()}' (base scope)`);
+            }
+
             staticProperties.set(key, value);
           });
         }
@@ -54,7 +58,17 @@ export class ClassHandler extends AbstractNodeHandler {
 
     for (const memberDecl of declaration.members) {
       if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStatic()) {
-        const initializerValue = this.generator.handleExpression(memberDecl.initializer).derefToPtrLevel1();
+        let initializerValue = this.generator.handleExpression(memberDecl.initializer);
+        if (initializerValue.type.getPointerLevel() !== 1 && initializerValue.type.getPointerLevel() !== 2) {
+          throw new Error(`Expected static property initializer to be of pointer or pointer-to-pointer type, got '${initializerValue.type.toString()}', error at: '${memberDecl.getText()}'`);
+        }
+
+        if (initializerValue.type.getPointerLevel() !== 2) {
+          const initializerValuePtrPtr = this.generator.gc.allocate(initializerValue.type);
+          this.generator.builder.createSafeStore(initializerValue, initializerValuePtrPtr);
+          initializerValue = initializerValuePtrPtr;
+        }
+
         staticProperties.set(memberDecl.name!.getText(), initializerValue);
       }
     }

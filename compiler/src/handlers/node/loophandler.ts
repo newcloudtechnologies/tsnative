@@ -260,7 +260,7 @@ export class LoopHandler extends AbstractNodeHandler {
           const elementTypes = bindingPattern.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
 
           const subscription = this.generator.ts.tuple.getSubscriptionFn();
-          updated = this.generator.builder.asVoidStar(updated);
+          updated = this.generator.builder.asVoidStar(updated.derefToPtrLevel1());
 
           for (let i = 0; i < identifiers.length; ++i) {
             const llvmIntegralIndex = LLVMConstantFP.get(this.generator, i);
@@ -272,12 +272,14 @@ export class LoopHandler extends AbstractNodeHandler {
               updated,
               llvmNumberIndex,
             ]);
-            const destructedValue = this.generator.builder.createBitCast(
+            const destructedValuePtr = this.generator.builder.createBitCast(
               destructedValueUntyped,
               elementType.getLLVMType()
             );
+            const destructedValuePtrPtr = this.generator.gc.allocate(destructedValuePtr.type);
+            this.generator.builder.createSafeStore(destructedValuePtr, destructedValuePtrPtr);
 
-            this.generator.symbolTable.currentScope.set(identifiers[i].getText(), destructedValue);
+            this.generator.symbolTable.currentScope.set(identifiers[i].getText(), destructedValuePtrPtr);
           }
         } else {
           // Unreachable
@@ -337,15 +339,13 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.setInsertionPoint(incrementor);
 
         const valueFn = this.generator.iteratorResult.getValueGetter();
-        let value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
-        value = this.generator.builder.createBitCast(value, variableType.getLLVMType());
+        let valuePtr = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
+        valuePtr = this.generator.builder.createBitCast(valuePtr, variableType.getLLVMType());
 
-        // Iteration source have to be immutable.
-        // Make a value clone regardless if iterable value is 'let' or 'const'.
-        let clone = this.generator.gc.allocate(value.type.getPointerElementType());
-        clone = clone.makeAssignment(value);
+        let valuePtrPtr = this.generator.gc.allocate(valuePtr.type);
+        valuePtrPtr = valuePtrPtr.makeAssignment(valuePtr);
 
-        updateScope(clone);
+        updateScope(valuePtrPtr);
 
         builder.createBr(body);
 
@@ -442,15 +442,13 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.setInsertionPoint(incrementor);
 
         const valueFn = this.generator.iteratorResult.getValueGetter();
-        let value = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
-        value = this.generator.builder.createBitCast(value, variableType.getLLVMType());
+        let valuePtr = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
+        valuePtr = this.generator.builder.createBitCast(valuePtr, variableType.getLLVMType());
 
-        // Iteration source have to be immutable.
-        // Make a value clone regardless if iterable value is 'let' or 'const'.
-        let clone = this.generator.gc.allocate(value.type.getPointerElementType());
-        clone = clone.makeAssignment(value);
+        let valuePtrPtr = this.generator.gc.allocate(valuePtr.type);
+        valuePtrPtr = valuePtrPtr.makeAssignment(valuePtr);
 
-        updateScope(clone);
+        updateScope(valuePtrPtr);
 
         builder.createBr(body);
 

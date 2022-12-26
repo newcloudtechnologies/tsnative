@@ -27,6 +27,7 @@ export class TSTuple {
   private constructorFn: LLVMValue | undefined;
   private pushFn: LLVMValue | undefined;
   private subscriptFn: LLVMValue | undefined;
+  private setElementAtIndexFn: LLVMValue | undefined;;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -164,6 +165,46 @@ export class TSTuple {
     return this.constructorFn;
   }
 
+  private initSetElementAtIndexFn() {
+    const symbol = this.getTSType().getProperty("setElementAtIndex");
+    const declaration = symbol.valueDeclaration;
+
+    if (!declaration) {
+      throw new Error("No declaration for Tuple.setElementAtIndex found");
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      declaration,
+      undefined,
+      this.getTSType(),
+      [this.generator.builtinNumber.getTSType(), this.generator.ts.obj.getTSType()],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error("Unable to find Tuple.setElementAtIndex in external symbols");
+    }
+
+    const llvmReturnType = LLVMType.getVoidType(this.generator);
+    const llvmArgumentTypes = [this.getLLVMType(), this.generator.builtinNumber.getLLVMType(), this.generator.ts.obj.getLLVMType()];
+
+    const { fn: setElementAtIndex } = this.generator.llvm.function.create(
+      llvmReturnType,
+      llvmArgumentTypes,
+      qualifiedName
+    );
+
+    return setElementAtIndex;
+  }
+
+  private getSetElementAtIndexFn() {
+    if (!this.setElementAtIndexFn) {
+      this.setElementAtIndexFn = this.initSetElementAtIndexFn();
+    }
+
+    return this.setElementAtIndexFn;
+  }
+
   getLLVMType() {
     return this.llvmType;
   }
@@ -193,6 +234,12 @@ export class TSTuple {
     }
 
     return this.subscriptFn;
+  }
+
+  setElementAtIndex(thisValue: LLVMValue, index: LLVMValue, value: LLVMValue) {
+    const fn = this.getSetElementAtIndexFn();
+    value = this.generator.builder.createBitCast(value, this.generator.ts.obj.getLLVMType());
+    this.generator.builder.createSafeCall(fn, [thisValue, index, value]);
   }
 
   // Actually a better place for this method is in ts.Node's wrapper which is yet not written

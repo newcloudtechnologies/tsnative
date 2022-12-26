@@ -51,6 +51,12 @@ void Tuple::push(Object* item)
     (void)_d->push(item);
 }
 
+void Tuple::setElementAtIndex(Number* index, Object* value)
+{
+    int indexUnwrapped = static_cast<int>(index->unboxed());
+    _d->setElementAtIndex(indexUnwrapped, value);
+}
+
 String* Tuple::toString() const
 {
     return new String(_d->toString());

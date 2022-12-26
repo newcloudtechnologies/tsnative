@@ -87,10 +87,15 @@ export class Builder {
     }
   }
 
-  createSafeStore(value: LLVMValue, ptr: LLVMValue, isVolatile?: boolean) {
-    value = value.adjustToType(ptr.type.getPointerElementType());
-    this.checkStore(value, ptr);
-    return this.builder.createStore(value.unwrapped, ptr.unwrapped, isVolatile);
+  createSafeStore(valuePtr: LLVMValue, destinationPtrPtr: LLVMValue, isVolatile?: boolean) {
+    if (destinationPtrPtr.type.getPointerElementType().isCXXVoidStar()) {
+      valuePtr = this.generator.builder.asVoidStar(valuePtr);
+    } else if (valuePtr.type.isCXXVoidStar()) {
+      valuePtr = this.generator.builder.createBitCast(valuePtr, destinationPtrPtr.type.getPointerElementType());
+    }
+
+    this.checkStore(valuePtr, destinationPtrPtr);
+    return this.builder.createStore(valuePtr.unwrapped, destinationPtrPtr.unwrapped, isVolatile);
   }
 
   checkExtractValue(aggregate: LLVMValue, idxList: number[]) {

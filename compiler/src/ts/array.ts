@@ -31,6 +31,7 @@ export class TSArray {
   private readonly concatFns = new Map<string, LLVMValue>();
   private readonly toStringFns = new Map<string, LLVMValue>();
   private readonly iteratorFns = new Map<string, LLVMValue>();
+  private readonly setElementAtIndexFns = new Map<string, LLVMValue>();
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -396,5 +397,64 @@ export class TSArray {
     this.iteratorFns.set(arrayTypename, result);
 
     return result;
+  }
+
+  private getOrCreateSetElementAtIndexFn(array: ts.Expression) {
+    const arrayType = this.generator.ts.checker.getTypeAtLocation(array);
+    const arrayTypename = arrayType.toString();
+
+    if (this.setElementAtIndexFns.has(arrayTypename)) {
+      return this.setElementAtIndexFns.get(arrayTypename)!;
+    }
+
+    const symbol = arrayType.getProperty("setElementAtIndex");
+    if (!symbol) {
+      throw new Error(`Unable to find 'setElementAtIndex' for type '${arrayType.toString()}'`);
+    }
+
+    const declaration = symbol.valueDeclaration;
+
+    if (!declaration) {
+      throw new Error(`Unable to find declaration for 'Array.setElementAtIndex'. Error at type: '${arrayType.toString()}'`);
+    }
+
+    let elementType = arrayType.getTypeGenericArguments()[0];
+    if (!elementType.isSupported()) {
+      elementType = this.generator.symbolTable.currentScope.typeMapper.get(elementType.toString());
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      declaration,
+      array,
+      arrayType,
+      [this.generator.builtinNumber.getTSType(), elementType],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Array 'setElementAtIndex' for type '${arrayType.toString()}' not found`);
+    }
+
+    const llvmReturnType = LLVMType.getVoidType(this.generator);
+    const argumentTypes = [
+      arrayType.getLLVMType(),
+      this.generator.builtinNumber.getLLVMType(),
+      elementType.getLLVMType()
+    ];
+
+    const { fn: result } = this.generator.llvm.function.create(
+      llvmReturnType,
+      argumentTypes,
+      qualifiedName
+    );
+
+    this.setElementAtIndexFns.set(arrayTypename, result);
+
+    return result;
+  }
+
+  setElementAtIndex(arrayExpression: ts.Expression, thisValue: LLVMValue, index: LLVMValue, value: LLVMValue) {
+    const fn = this.getOrCreateSetElementAtIndexFn(arrayExpression);
+    this.generator.builder.createSafeCall(fn, [thisValue, index, value]);
   }
 }
