@@ -207,3 +207,162 @@
         console.assert(true, "Optional interface property: always");
     }
 }
+
+// Interface inheritance, TSN-62
+{
+    interface VoidState {
+        num: number;
+    }
+
+    interface MyState extends VoidState {
+        str: string;
+    }
+
+    let state1: MyState = {
+        num: 555,
+        str: "777"
+    };
+    console.assert(state1.num === 555, "Interface inheritance 1")
+    console.assert(state1.str === "777", "Interface inheritance 2")
+}
+
+// FIXME: uncomment this test
+// Interface inheritance with methods
+// {
+//     interface Mailable {
+//         send(email: string): boolean
+//     }
+//     interface FutureMailable extends Mailable {
+//         later(email: string, after: number): boolean
+//     }
+//     let b: FutureMailable = {
+//         send(email: string): boolean {
+//             return true;
+//         },
+//         later(email: string, after: number): boolean {
+//             return true;
+//         }
+//     };
+//     console.assert(b.send("") === true, "Interface inheritance with methods 1")
+//     console.assert(b.later("", 5) === true, "Interface inheritance with methods 2")
+// }
+
+// Multiple interface inheritance
+{
+    interface A {
+        a(): void
+    }
+    interface B {
+        b(): void
+    }
+    interface C {
+        c(): void
+    }
+    interface D extends B, C {
+        d(): void
+    }
+}
+
+// Interface extends class
+{
+    class Control {
+        private state: boolean = false;
+    }
+
+    interface StatefulControl extends Control {
+        enable(): void
+    }
+
+    class Button extends Control implements StatefulControl {
+        enable() { }
+    }
+    class TextBox extends Control implements StatefulControl {
+        enable() { }
+    }
+    class Label extends Control { }
+
+}
+
+{
+    interface Person {
+        name: string;
+        age: number;
+    }
+
+    interface ReadonlyPerson {
+        readonly name: string;
+        readonly age: number;
+    }
+
+    let writablePerson: Person = {
+        name: "Person McPersonface",
+        age: 42,
+    };
+
+    let readonlyPerson: ReadonlyPerson = writablePerson;
+    console.assert(readonlyPerson.age === 42, "Interface with readonly properties 1");
+    writablePerson.age++;
+    console.assert(readonlyPerson.age === 43, "Interface with readonly properties 2");
+}
+
+{
+    interface Colorful {
+        color: string;
+    }
+
+    interface Circle {
+        radius: number;
+    }
+
+    interface ColorfulCircle extends Colorful, Circle {}
+
+    const cc: ColorfulCircle = {
+        color: "red",
+        radius: 42,
+    };
+    console.assert(cc.color === "red", "Interface multiple inheritance 1");
+    console.assert(cc.radius === 42, "Interface multiple inheritance 2");
+}
+
+{
+    interface Colorful {
+        color: string;
+    }
+    interface Circle {
+        radius: number;
+    }
+
+    type ColorfulCircle = Colorful & Circle;
+
+    let cc: Colorful & Circle = { color: "blue", radius: 42 };
+    console.assert(cc.color === "blue", "Interface intersection 1");
+    console.assert(cc.radius === 42, "Interface intersection 2");
+}
+
+{
+    interface Box<Type> {
+        contents: Type;
+    }
+
+    interface ColorBox<Type> extends Box<Type> {
+        color:  string;
+    }
+
+    let cb: ColorBox<number> = {contents: 42, color: "red"};
+    console.assert(cb.color === "red", "Interface generic and inheritance 1");
+    console.assert(cb.contents === 42, "Interface generic and inheritance 2");
+}
+
+{
+    interface Box {
+        height: number;
+        width: number;
+    }
+    interface Box {
+        scale: number;
+    }
+    let box: Box = { height: 5, width: 6, scale: 10 };
+    console.assert(box.height === 5, "Interface merging 1");
+    console.assert(box.width === 6, "Interface merging 2");
+    console.assert(box.scale === 10, "Interface merging 3");
+}
