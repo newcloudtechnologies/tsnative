@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "std/private/logger.h"
 #include "std/private/tsarray_p.h"
 #include "std/tsobject.h"
 
@@ -28,15 +29,15 @@ public:
     DequeueBackend() = default;
     ~DequeueBackend() = default;
 
-    int push(T v) override;
+    std::size_t push(T v) override;
 
     template <typename... Ts>
-    int push(T t, Ts... ts);
+    std::size_t push(T t, Ts... ts);
 
-    int length() const override;
-    void length(int len) override;
+    std::size_t length() const override;
+    void length(std::size_t len) override;
 
-    T operator[](int index) const override;
+    T operator[](std::size_t index) const override;
 
     int indexOf(T value) const override;
     int indexOf(T value, int fromIndex) const override;
@@ -44,10 +45,10 @@ public:
     std::vector<T> splice(int start) override;
     std::vector<T> splice(int start, int deleteCount) override;
 
-    void setElementAtIndex(int index, T value) override;
+    void setElementAtIndex(std::size_t index, T value) override;
 
     std::vector<T> concat(const std::vector<T>& other) const override;
-    std::vector<int> keys() const override;
+    std::vector<std::size_t> keys() const override;
 
     std::vector<T> toStdVector() const override;
     std::string toString() const override;
@@ -56,44 +57,41 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const DequeueBackend<U>* array);
 
 private:
-    std::deque<T> storage_;
+    std::vector<T> doSplice(std::size_t start, std::size_t deleteCount);
+    std::size_t computeStartArgForSplice(int start) const;
+
+private:
+    std::deque<T> _storage;
 };
 
 template <typename T>
-int DequeueBackend<T>::push(T t)
+std::size_t DequeueBackend<T>::push(T t)
 {
-    storage_.push_back(t);
+    _storage.push_back(t);
     return length();
 }
 
 template <typename T>
-int DequeueBackend<T>::length() const
+std::size_t DequeueBackend<T>::length() const
 {
-    return static_cast<int>(storage_.size());
+    return _storage.size();
 }
 
 template <typename T>
-void DequeueBackend<T>::length(int len)
+void DequeueBackend<T>::length(std::size_t len)
 {
-    if (len < 0)
-    {
-        throw std::invalid_argument("Invalid array length");
-    }
-
-    auto size = storage_.size();
-
-    if (len == size)
+    if (_storage.size() == len)
     {
         return;
     }
 
-    storage_.resize(len);
+    _storage.resize(len);
 }
 
 template <typename T>
-T DequeueBackend<T>::operator[](int index) const
+T DequeueBackend<T>::operator[](std::size_t index) const
 {
-    return storage_.at(static_cast<size_t>(index));
+    return _storage.at(index);
 }
 
 template <typename T>
@@ -105,95 +103,137 @@ int DequeueBackend<T>::indexOf(T value) const
 template <typename T>
 int DequeueBackend<T>::indexOf(T value, int fromIndex) const
 {
-    if (fromIndex >= length())
+    const auto len = length();
+
+    std::size_t startIndex = 0u;
+
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf
+    if (fromIndex > 0)
     {
-        return -1;
-    }
-    else if (fromIndex < 0 && abs(fromIndex) >= length())
-    {
-        fromIndex = 0;
-    }
-    else if (fromIndex > 0)
-    {
-        fromIndex = fromIndex > length() - 1 ? length() - 1 : fromIndex;
+        startIndex = static_cast<std::size_t>(fromIndex);
+        // If fromIndex >= array.length, the array is not searched and -1 is returned.
+        if (startIndex >= len)
+        {
+            return -1;
+        }
     }
     else if (fromIndex < 0)
     {
-        fromIndex = fromIndex < -length() - 1 ? -length() - 1 : fromIndex;
-        fromIndex = length() + fromIndex;
+        // If fromIndex < -array.length or fromIndex is omitted, 0 is used, causing the entire array to be searched.
+        const auto positiveFromIndex = static_cast<std::size_t>(-1 * fromIndex);
+        if (positiveFromIndex >= len)
+        {
+            startIndex = 0;
+        }
+        // Negative index counts back from the end of the array — if fromIndex < 0, fromIndex + array.length is used.
+        // Note, the array is still searched from front to back in this case.
+        else
+        {
+            startIndex = len - positiveFromIndex;
+        }
     }
 
     auto it = std::find_if(
-        storage_.begin() + fromIndex, storage_.end(), [&value](T v) { return std::equal_to<T>()(v, value); });
+        _storage.begin() + startIndex, _storage.end(), [&value](T v) { return std::equal_to<T>()(v, value); });
 
-    if (it == storage_.cend())
+    if (it == _storage.cend())
     {
         return -1;
     }
 
-    return static_cast<int>(std::distance(storage_.cbegin(), it));
+    return static_cast<int>(std::distance(_storage.cbegin(), it));
 }
 
+template <typename T>
+std::vector<T> DequeueBackend<T>::doSplice(std::size_t start, std::size_t deleteCount)
+{
+    auto beginIt = start > length() ? _storage.end() : (_storage.begin() + start);
+    auto endIt = (start + deleteCount) > length() ? _storage.end() : (_storage.begin() + start + deleteCount);
+
+    std::vector<T> removed(beginIt, endIt);
+    _storage.erase(beginIt, endIt);
+
+    return removed;
+}
+
+template <typename T>
+std::size_t DequeueBackend<T>::computeStartArgForSplice(int start) const
+{
+    const auto positiveStart = static_cast<std::size_t>(std::abs(start));
+    const auto len = length();
+
+    if (start < 0)
+    {
+        // Negative index counts back from the end of the array — if start < 0, start + array.length is used.
+        // If start < -array.length or start is omitted, 0 is used.
+        return positiveStart < len ? len - positiveStart : 0u;
+    }
+    // If start >= array.length, no element will be deleted,
+    // but the method will behave as an adding function, adding as many elements as provided.
+    else if (positiveStart >= length())
+    {
+        // This case simply returns current vector because the signature does not have item1..itemN argument
+        return len;
+    }
+
+    // 0u <= start < len
+    return static_cast<std::size_t>(start);
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice
 template <typename T>
 std::vector<T> DequeueBackend<T>::splice(int start)
 {
-    auto begin = (start >= 0 ? storage_.begin() : storage_.end()) + start;
-    auto end = storage_.end();
+    const auto begin = computeStartArgForSplice(start);
+    // If deleteCount is omitted,
+    // or if its value is greater than or equal to the number of elements after the position specified by start,
+    // then all the elements from start to the end of the array will be deleted.
+    const auto deleteCount = length() - begin;
 
-    if (start < 0)
-    {
-        begin = std::max(begin, storage_.begin());
-    }
-
-    if (start >= 0 && begin >= end)
-    {
-        return {};
-    }
-
-    std::vector<T> removed;
-    std::move(begin, end, std::back_inserter(removed));
-
-    storage_.erase(begin, end);
-    return removed;
+    return doSplice(begin, deleteCount);
 }
 
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice
 template <typename T>
 std::vector<T> DequeueBackend<T>::splice(int start, int deleteCount)
 {
-    std::vector<T> removed;
+    static const std::vector<T> emptyVector;
 
-    auto begin = (start >= 0 ? storage_.begin() : storage_.end()) + start;
-    auto end = begin + deleteCount;
-
-    if (start < 0)
+    // If deleteCount is 0 or negative, no elements are removed.
+    // In this case, you should specify at least one new element (see below).
+    if (deleteCount <= 0)
     {
-        begin = std::max(begin, storage_.begin());
+        return emptyVector;
     }
 
-    end = std::min(begin + deleteCount, storage_.end());
+    const auto unsignedStart = computeStartArgForSplice(start);
 
-    if (start >= 0 && begin >= end)
+    const auto unsignedDeleteCount = [unsignedStart, deleteCount, this]() -> std::size_t
     {
-        return removed;
-    }
+        // If deleteCount is omitted, or if its value is greater than or equal to the number of elements
+        // after the position specified by start,
+        // then all the elements from start to the end of the array will be deleted.
+        const auto unsignedDeleteCount = static_cast<std::size_t>(deleteCount);
+        const auto elementsCountAfterBegin = length() - unsignedStart;
 
-    std::move(begin, end, std::back_inserter(removed));
+        return std::min(unsignedDeleteCount, elementsCountAfterBegin);
+    }();
 
-    storage_.erase(begin, end);
-    return removed;
+    return doSplice(unsignedStart, unsignedDeleteCount);
 }
 
 template <typename T>
-void DequeueBackend<T>::setElementAtIndex(int index, T value)
+void DequeueBackend<T>::setElementAtIndex(std::size_t index, T value)
 {
-    storage_[index] = value;
+    _storage[index] = value;
 }
 
 template <typename T>
 std::vector<T> DequeueBackend<T>::concat(const std::vector<T>& other) const
 {
     std::vector<T> result;
-    for (auto element : this->storage_)
+    result.reserve(this->_storage.size() + other.size());
+    for (auto element : this->_storage)
     {
         result.push_back(element);
     }
@@ -209,7 +249,7 @@ std::vector<T> DequeueBackend<T>::concat(const std::vector<T>& other) const
 template <typename T>
 std::vector<T> DequeueBackend<T>::toStdVector() const
 {
-    return {storage_.cbegin(), storage_.cend()};
+    return {_storage.cbegin(), _storage.cend()};
 }
 
 template <typename T>
@@ -222,17 +262,17 @@ std::string DequeueBackend<T>::toString() const
 
 template <typename T>
 template <typename... Ts>
-int DequeueBackend<T>::push(T t, Ts... ts)
+std::size_t DequeueBackend<T>::push(T t, Ts... ts)
 {
-    storage_.push_back(t);
+    _storage.push_back(t);
     return push(ts...);
 }
 
 template <typename T>
-std::vector<int> DequeueBackend<T>::keys() const
+std::vector<std::size_t> DequeueBackend<T>::keys() const
 {
-    std::vector<int> indexes(storage_.size());
-    std::iota(indexes.begin(), indexes.end(), 0);
+    std::vector<std::size_t> indexes(_storage.size());
+    std::iota(indexes.begin(), indexes.end(), 0u);
 
     return indexes;
 }
@@ -242,10 +282,10 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
 {
     os << std::boolalpha;
     os << "[ ";
-    if (!array->storage_.empty())
+    if (!array->_storage.empty())
     {
-        std::for_each(array->storage_.cbegin(),
-                      array->storage_.cend() - 1,
+        std::for_each(array->_storage.cbegin(),
+                      array->_storage.cend() - 1,
                       [&os](T value)
                       {
                           if (value)
@@ -259,7 +299,7 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
                           }
                       });
 
-        auto last = array->storage_.back();
+        auto last = array->_storage.back();
         if (last)
         {
             os << Object::asObject(last)->toString();
