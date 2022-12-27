@@ -91,7 +91,6 @@ public:
     TS_METHOD TS_SIGNATURE("map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U): U[]")
         Array<U>* map(TSClosure* closure);
 
-    Array<T>* splice(Number* start);
     TS_METHOD TS_SIGNATURE("splice(start: number, deleteCount?: number): T[]") Array<T>* splice(
         Number* start, Union* maybeDeleteCount);
 
@@ -160,7 +159,7 @@ Array<T>::~Array()
 template <typename T>
 Number* Array<T>::push(T t)
 {
-    int result = _d->push(t);
+    const auto result = _d->push(t);
     return new Number(static_cast<double>(result));
 }
 
@@ -182,36 +181,44 @@ Number* Array<T>::push(Array<T>* other)
 template <typename T>
 Number* Array<T>::length() const
 {
-    int result = _d->length();
+    const auto result = _d->length();
     return new Number(static_cast<double>(result));
 }
 
 template <typename T>
 void Array<T>::length(Number* value)
 {
-    _d->length(static_cast<int>(value->unboxed()));
+    if (value->unboxed() < 0)
+    {
+        throw std::runtime_error("Invalid array length");
+    }
+    _d->length(static_cast<std::size_t>(value->unboxed()));
 }
 
 template <typename T>
 T Array<T>::operator[](Number* index) const
 {
-    return _d->operator[](static_cast<int>(index->unboxed()));
+    if (index->unboxed() < 0)
+    {
+        throw std::runtime_error("Invalid array index");
+    }
+
+    return _d->operator[](static_cast<std::size_t>(index->unboxed()));
 }
 
 template <typename T>
 T Array<T>::operator[](size_t index) const
 {
-    return _d->operator[](static_cast<int>(index));
+    return _d->operator[](index);
 }
 
 template <typename T>
 void Array<T>::forEach(TSClosure* closure) const
 {
-    auto numArgs = closure->getNumArgs()->unboxed();
+    const auto numArgs = closure->getNumArgs()->unboxed();
+    const auto length = _d->length();
 
-    size_t length = static_cast<size_t>(_d->length());
-
-    for (size_t i = 0; i < length; ++i)
+    for (std::size_t i = 0; i < length; ++i)
     {
         if (numArgs > 0)
         {
@@ -252,19 +259,38 @@ Number* Array<T>::indexOf(T value, Union* maybeFromIndex) const
 template <typename T>
 Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
 {
-    std::vector<T> result;
+    const auto integralStart = static_cast<int>(start->unboxed());
+    const auto deleteCountValue = maybeDeleteCount->getValue();
 
-    if (!maybeDeleteCount->hasValue())
+    if (deleteCountValue->isUndefined())
     {
-        result = _d->splice(static_cast<int>(start->unboxed()));
+        return Array<T>::fromStdVector(_d->splice(integralStart));
     }
-    else
+    else if (deleteCountValue->isBoolean())
     {
-        auto deleteCount = static_cast<Number*>(maybeDeleteCount->getValue());
-        result = _d->splice(static_cast<int>(start->unboxed()), static_cast<int>(deleteCount->unboxed()));
+        const auto b = static_cast<const Boolean*>(deleteCountValue)->unboxed();
+        if (!b)
+        {
+            return Array<T>::fromStdVector(std::vector<T>{});
+        }
+    }
+    else if (!deleteCountValue->isNumber())
+    {
+        return Array<T>::fromStdVector(std::vector<T>{});
     }
 
-    return Array<T>::fromStdVector(result);
+    const auto integralDeleteCount = [deleteCountValue]() -> int
+    {
+        if (deleteCountValue->isBoolean())
+        {
+            return 1; // true bool
+        }
+
+        const auto n = static_cast<const Number*>(deleteCountValue);
+        return static_cast<int>(n->unboxed());
+    }();
+
+    return Array<T>::fromStdVector(_d->splice(integralStart, integralDeleteCount));
 }
 
 template <typename T>
@@ -294,11 +320,11 @@ Array<U>* Array<T>::map(TSClosure* closure)
     static_assert(std::is_pointer<U>::value, "TS Array elements expected to be of pointer type");
 
     auto transformedArray = new Array<U>();
-    auto numArgs = closure->getNumArgs()->unboxed();
+    const auto numArgs = closure->getNumArgs()->unboxed();
 
-    size_t length = static_cast<size_t>(_d->length());
+    const auto length = _d->length();
 
-    for (size_t i = 0; i < length; ++i)
+    for (std::size_t i = 0; i < length; ++i)
     {
         if (numArgs > 0)
         {
@@ -345,8 +371,14 @@ Number* Array<T>::push(Array<T>* t, Ts... ts)
 template <typename T>
 void Array<T>::setElementAtIndex(Number* index, T value)
 {
-    int indexUnwrapped = static_cast<int>(index->unboxed());
-    _d->setElementAtIndex(indexUnwrapped, value);
+    const auto idx = index->unboxed();
+    if (idx < 0)
+    {
+        throw std::runtime_error("Can not set value at negative index");
+    }
+
+    const auto unwrappedIndex = static_cast<std::size_t>(idx);
+    _d->setElementAtIndex(unwrappedIndex, value);
 }
 
 template <typename T>
@@ -358,7 +390,7 @@ IterableIterator<T>* Array<T>::iterator()
 template <typename T>
 IterableIterator<Number*>* Array<T>::keys()
 {
-    auto keys = _d->keys();
+    const auto keys = _d->keys();
     auto keysArray = new Array<Number*>();
 
     for (auto key : keys)
@@ -394,7 +426,7 @@ template <typename T>
 void Array<T>::markChildren()
 {
     LOG_ADDRESS("Calling Array::markChildren on ", this);
-    auto elements = _d->toStdVector();
+    const auto elements = _d->toStdVector();
     for (auto& e : elements)
     {
         auto* object = Object::asObject(e);

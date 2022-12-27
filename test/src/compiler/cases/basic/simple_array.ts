@@ -107,8 +107,11 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   console.assert(numbers.indexOf(32) === 2, "array: indexOf: numbers.indexOf(32) === 2 failed");
   console.assert(numbers.indexOf(8, 1) === -1, "array: indexOf: numbers.indexOf(8, 1) === -1 failed");
   console.assert(numbers.indexOf(16, 10) === -1, "array: indexOf: numbers.indexOf(16, 10) === -1 failed");
-  console.assert(numbers.indexOf(128, -1) === 4, "array: indexOf: numbers.indexOf(8, 1) === -1 failed");
+  console.assert(numbers.indexOf(128, -1) === 4, "array: indexOf: numbers.indexOf(128, 1) === -1 failed");
   console.assert(numbers.indexOf(8, -40) === 0, "array: indexOf: numbers.indexOf(8, -40) === 0 failed");
+  console.assert(numbers.indexOf(64, -2) === 3, "array: indexOf: numbers.indexOf(64, -2) === 3 failed");
+  console.assert(numbers.indexOf(8, -5) === 0, "array: indexOf: numbers.indexOf(8, -5) === 0 failed");
+  console.assert(numbers.indexOf(8, -7) === 0, "array: indexOf: numbers.indexOf(8, -7) === 0 failed");
 }
 
 {
@@ -142,6 +145,37 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   let slpice_2_9: number[] = numbers_2_9.splice(2, 9);
   console.assert(is_equal(slpice_2_9, slpice_2_9_expected), "array: splice(2, 9) === 0 failed");
   console.assert(is_equal(numbers_2_9, numbers_2_9_expected), "array: is_equal(numbers_2_9, numbers_2_9_expected) failed");
+
+}
+
+// start < 0 deleteCount > 0
+{
+  const numbers: number[] = [8, 16, 32, 64, 128];
+  const numbers_expected: number[] = [8, 16, 32, 64];
+  const splice_expected: number[] = [128];
+  const splice: number[] = numbers.splice(-1, 1);
+  console.assert(is_equal(splice, splice_expected), "array: splice(-1, 1) === 0 failed");
+  console.assert(is_equal(numbers, numbers_expected), "array: is_equal(numbers, numbers_expected) failed");
+}
+
+// start > 0 deleteCount < 0
+{
+  const numbers: number[] = [8, 16, 32, 64, 128];
+  const numbers_expected: number[] = [8, 16, 32, 64, 128];
+  const splice_expected: number[] = [];
+  const splice: number[] = numbers.splice(1, -1);
+  console.assert(is_equal(splice, splice_expected), "array: splice(1, -1) === 0 failed");
+  console.assert(is_equal(numbers, numbers_expected), "array: is_equal(numbers, numbers_expected) failed");
+}
+
+// deleteCount is omitted
+{
+  const numbers: number[] = [8, 16, 32, 64, 128];
+  const numbers_expected: number[] = [8];
+  const splice_expected: number[] = [16, 32, 64, 128];
+  const splice: number[] = numbers.splice(1);
+  console.assert(is_equal(splice, splice_expected), "array: splice(1, -1) === 0 failed");
+  console.assert(is_equal(numbers, numbers_expected), "array: is_equal(numbers, numbers_expected) failed");
 }
 
 {
