@@ -67,7 +67,7 @@ export class LLVMFunction {
     try {
       llvm.verifyFunction(fn.unwrapped as llvm.Function);
     } catch (err) {
-      console.log(fn.generator.module.print())
+      // console.log(fn.generator.module.print())
       console.error(`Function verification failed at: '${source.getText()}'`);
       throw err;
     }

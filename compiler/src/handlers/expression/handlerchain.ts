@@ -67,7 +67,7 @@ export class ExpressionHandlerChain {
       return this.root.handle(expression, env);
     }
     catch (e) {
-      console.log(this.generator.module.print());
+      // console .log(this.generator.module.print());
 
       const location = DebugInfo.getSourceLocation(expression);
       console.log(`File: '${expression.getSourceFile().fileName}'\n` +

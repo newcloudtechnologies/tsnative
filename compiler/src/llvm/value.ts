@@ -156,11 +156,11 @@ export class LLVMValue {
   }
 
   private createUnaryNumberOperation(name: string) {
-      // @todo: check type
-      const thisPtr = this.derefToPtrLevel1();
-      const fn = this.generator.builtinNumber.createMathFn(name, OperationFlags.Unary);
-      const thisUntyped = this.generator.builder.asVoidStar(thisPtr);
-      return this.generator.builder.createSafeCall(fn, [thisUntyped]);
+    // @todo: check type
+    const thisPtr = this.derefToPtrLevel1();
+    const fn = this.generator.builtinNumber.createMathFn(name, OperationFlags.Unary);
+    const thisUntyped = this.generator.builder.asVoidStar(thisPtr);
+    return this.generator.builder.createSafeCall(fn, [thisUntyped]);
   }
 
   createAdd(other: LLVMValue, flags?: MathFlags): LLVMValue {
@@ -224,7 +224,7 @@ export class LLVMValue {
     return this.createNumberArithmeticOperation(other, "bitwiseRightShift", flags);
   }
 
-  private createNumberArithmeticOperation(other: LLVMValue, name: string, flags?: MathFlags) : LLVMValue {
+  private createNumberArithmeticOperation(other: LLVMValue, name: string, flags?: MathFlags): LLVMValue {
     if (this.type.isTSNumber() && other.type.isTSNumber()) {
       const lhs = this.derefToPtrLevel1();
       const rhs = other.derefToPtrLevel1();
@@ -276,16 +276,16 @@ export class LLVMValue {
   }
 
   private createComparisonOperation(other: LLVMValue, name: string): LLVMValue {
-      // operand type is intentionally not checked
-      if (this.type.isTSNumber()) {
-        const lhs = this.derefToPtrLevel1();
-        const rhs = other.derefToPtrLevel1();
-        const fn = this.generator.builtinNumber.createBooleanFn(name);
-        const lhsUntyped = this.generator.builder.asVoidStar(lhs);
-        return this.generator.builder.createSafeCall(fn, [lhsUntyped, rhs]);
-      }
-  
-      throw new Error(`Invalid operand types to ${name} than: 
+    // operand type is intentionally not checked
+    if (this.type.isTSNumber()) {
+      const lhs = this.derefToPtrLevel1();
+      const rhs = other.derefToPtrLevel1();
+      const fn = this.generator.builtinNumber.createBooleanFn(name);
+      const lhsUntyped = this.generator.builder.asVoidStar(lhs);
+      return this.generator.builder.createSafeCall(fn, [lhsUntyped, rhs]);
+    }
+
+    throw new Error(`Invalid operand types to ${name} than: 
                               lhs: ${this.type.toString()} ${this.type.typeIDName}
                               rhs: ${other.type.toString()} ${other.type.typeIDName}`);
   }
@@ -318,7 +318,7 @@ export class LLVMValue {
   }
 
   private isInt8PtrType(type: LLVMType) {
-    while(type.getPointerLevel() != 1) {
+    while (type.getPointerLevel() != 1) {
       type = type.getPointerElementType();
     }
 
@@ -331,7 +331,7 @@ export class LLVMValue {
     }
 
     let result = this.generator.builder.createLoad(this);
-    while(result.type.getPointerLevel() !== n) {
+    while (result.type.getPointerLevel() !== n) {
       result = this.generator.builder.createLoad(result);
     }
     return result;
@@ -407,5 +407,30 @@ export class LLVMGlobalVariable extends LLVMValue {
 
   static make(generator: LLVMGenerator, type: LLVMType, constant: boolean, initializer?: LLVMValue, name?: string) {
     return new LLVMGlobalVariable(generator, type, constant, initializer, name);
+  }
+}
+
+export class PhiNode extends LLVMValue {
+  readonly elementType: LLVMType;
+
+  protected constructor(
+    generator: LLVMGenerator,
+    type: LLVMType,
+    numReservedValues: number,
+    name?: string
+  ) {
+    const value = generator.builder.unwrap().createPhi(type.unwrapped, numReservedValues, name);
+
+    super(value, generator);
+
+    this.elementType = type;
+  }
+
+  static make(generator: LLVMGenerator, type: LLVMType, numReservedValues: number, name?: string): PhiNode {
+    return new PhiNode(generator, type, numReservedValues, name);
+  }
+
+  addIncoming(value: LLVMValue, basicBlock: llvm.BasicBlock): void {
+    (this.value as llvm.PhiNode).addIncoming(value.unwrapped, basicBlock);
   }
 }
