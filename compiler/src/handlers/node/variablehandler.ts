@@ -68,7 +68,9 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     const type = this.generator.ts.checker.getTypeAtLocation(declaration);
-    if (initializer.type.isCXXVoidStar()) {
+
+    if (!type.isUnion() && initializer.type.isUnion()) {
+      initializer = this.generator.ts.union.get(initializer);
       initializer = this.generator.builder.createBitCast(initializer, type.getLLVMType());
     }
 

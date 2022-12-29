@@ -56,7 +56,7 @@ class TSNativePlayground(ConanFile):
         tc.variables["PROJECT_BASE_URL"] = to_unix(os.path.join(self.build_folder, "imports/declarations"))
         tc.variables["IS_TEST"] = True
         tc.variables["RUN_EVENT_LOOP"] = "oneshot"
-        tc.variables["PRINT_IR"] = False
+        tc.variables["PRINT_IR"] = True
         tc.variables["TRACE_IMPORT"] = False
 
         if self.settings.get_safe("build_type") == "Debug":
