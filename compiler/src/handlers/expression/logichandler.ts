@@ -42,8 +42,9 @@ export class LogicHandler extends AbstractExpressionHandler {
       const conditionValue = this.generator.handleExpression(expression.condition, env).derefToPtrLevel1();
       const condition = conditionValue.makeBoolean().derefToPtrLevel1();
 
-      // TODO Use alloca here?
-      let result = this.generator.builder.createAlloca(LLVMType.getInt8Type(this.generator).getPointer());
+      const tsType = this.generator.ts.checker.getTypeAtLocation(expression);
+
+      let result = this.generator.builder.createAlloca(tsType.getLLVMType());
 
       const trueBlock = llvm.BasicBlock.create(this.generator.context, "trueTernary", this.generator.currentFunction);
       const falseBlock = llvm.BasicBlock.create(this.generator.context, "falseTernary", this.generator.currentFunction);
@@ -52,20 +53,32 @@ export class LogicHandler extends AbstractExpressionHandler {
 
       this.generator.builder.setInsertionPoint(trueBlock);
       let thenResult = this.generator.handleExpression(expression.whenTrue, env).derefToPtrLevel1();
+
+      if (tsType.isUnion() && !thenResult.type.isUnion()) {
+        thenResult = this.generator.ts.union.create(thenResult);
+      } else if (!tsType.isUnion() && thenResult.type.isUnion()) {
+        thenResult = this.generator.ts.union.get(thenResult);
+        thenResult = this.generator.builder.createBitCast(thenResult, tsType.getLLVMType());
+      }
+
       this.generator.builder.createSafeStore(thenResult, result);
       this.generator.builder.createBr(endBlock);
 
       this.generator.builder.setInsertionPoint(falseBlock);
       let elseResult = this.generator.handleExpression(expression.whenFalse, env).derefToPtrLevel1();
+
+      if (tsType.isUnion() && !elseResult.type.isUnion()) {
+        elseResult = this.generator.ts.union.create(elseResult);
+      } else if (!tsType.isUnion() && elseResult.type.isUnion()) {
+        elseResult = this.generator.ts.union.get(elseResult);
+        elseResult = this.generator.builder.createBitCast(elseResult, tsType.getLLVMType());
+      }
+
       this.generator.builder.createSafeStore(elseResult, result);
       this.generator.builder.createBr(endBlock);
 
       this.generator.builder.setInsertionPoint(endBlock);
 
-      if (thenResult.type.isUnion() || elseResult.type.isUnion()) {
-        const type = thenResult.type.isUnion() ? thenResult.type : elseResult.type;
-        result = this.generator.builder.createBitCast(result.derefToPtrLevel1(), type);
-      }
 
       return result;
     }

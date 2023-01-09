@@ -111,6 +111,8 @@ export class LiteralHandler extends AbstractExpressionHandler {
 
           if (propertyContextType?.isUnion() && !propVal.type.isUnion()) {
             propVal = this.generator.ts.union.create(propVal)
+          } else if (!propertyContextType?.isUnion() && propVal.type.isUnion()) {
+            propVal = this.generator.ts.union.get(propVal);
           }
 
           llvmValues.set(propertyName, propVal);
