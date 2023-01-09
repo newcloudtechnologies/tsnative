@@ -134,6 +134,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|windows.*mingw.*|windows.*clang.*|.*msvc.*'),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-b missing --build=llvm"),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: true)
                             ]
                         }
