@@ -118,3 +118,28 @@
 
     console.assert(rxText.text === "title1", "Ternary: text property is not equal");
 }
+
+{
+    const AUTOSELECTED_RENDER_TYPE = 22;
+
+    function getAutoselectedRenderType() {
+        return AUTOSELECTED_RENDER_TYPE;
+    }
+
+    type AType = {
+        renderType?: number
+    }
+
+    function f(args: AType) {
+        const renderType = args.renderType ? args.renderType : getAutoselectedRenderType();
+        return renderType;
+    }
+
+    const defaultRenderType = f({});
+    console.assert(defaultRenderType === AUTOSELECTED_RENDER_TYPE, "Non-provided optional property in ternary should behave correctly");
+
+    const CUSTOM_RENDER_TYPE = 901;
+    const customRenderType = f({ renderType: CUSTOM_RENDER_TYPE });
+
+    console.assert(customRenderType === CUSTOM_RENDER_TYPE, "Provided optional property in ternary should be narrowed correctly");
+}
