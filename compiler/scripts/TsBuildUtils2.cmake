@@ -31,6 +31,7 @@ endif()
 
 set(_noop               true)
 set(_isProfiling        $<BOOL:${TS_PROFILE_BUILD}>)
+set(_isCrossCompilation $<BOOL:${CMAKE_CXX_COMPILER_TARGET}>)
 set(PROFILER_CMD_START  $<IF:${_isProfiling},${BUILD_TIME_PROFILER_CMD} --start --tag,${_noop}>)
 set(PROFILER_CMD_END    $<IF:${_isProfiling},${BUILD_TIME_PROFILER_CMD} --end --tag,${_noop}>)
 set(PROFILER_CMD_RESULT $<IF:${_isProfiling},${BUILD_TIME_PROFILER_CMD} --calculate --tag,${_noop}>)
@@ -157,6 +158,18 @@ function (add_ts_library ARG_NAME ...)
     # Stage 3
 
     string(REPLACE ".ll" ".cpp.o" objFile "${llFile}")
+
+    set(llcFlags
+        ${ARG_OPT_LEVEL};
+        -relocation-model=pic;
+        -filetype=obj;
+        -o ${objFile};
+    )
+
+    if (${_isCrossCompilation})
+        list(APPEND llcFlags -mtriple ${CMAKE_CXX_COMPILER_TARGET})
+    endif()
+
     add_custom_command(
         OUTPUT ${objFile}
         DEPENDS ${llFile}
@@ -164,11 +177,7 @@ function (add_ts_library ARG_NAME ...)
         COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_START}" ${objFile}
         COMMAND ${llcBin}
             ${llFile}
-            ${ARG_OPT_LEVEL}
-            -relocation-model=pic
-            -filetype=obj
-            -mtriple ${CMAKE_CXX_COMPILER_TARGET}
-            -o ${objFile}
+            ${llcFlags}
         COMMAND ${CMAKE_COMMAND} -E "${PROFILER_CMD_END}" ${objFile}
         COMMAND_EXPAND_LISTS
     )
