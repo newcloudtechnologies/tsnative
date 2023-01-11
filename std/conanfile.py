@@ -13,7 +13,7 @@ required_conan_version = "==1.50"
 class TSNativeStdConan(ConanFile):
     name = "tsnative-std"
     description = "Typescript standard library implementation"
-    settings = "os", "compiler", "build_type", "arch", "target_abi"
+    settings = "os", "compiler", "build_type", "arch"
     exports_sources = "*"
 
     options = {
@@ -41,12 +41,6 @@ class TSNativeStdConan(ConanFile):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        if self.settings.target_abi is None:
-            self.output.error(
-                "Target ABI is not specified. Please provide settings.target_abi value")
-        else:
-            self.output.info("Target ABI is %s" % self.settings.target_abi)
-            tc.variables["CMAKE_CXX_COMPILER_TARGET"] = self.settings.target_abi
 
         tc.variables["GENERATE_DECLARATIONS"] = True
         tc.variables["BUILD_TEST"] = self.options.build_tests
@@ -59,7 +53,6 @@ class TSNativeStdConan(ConanFile):
         tc.generate()
 
         cmake = CMakeDeps(self)
-        cmake.build_context_activated = ["tsnative-declarator"]
         cmake.generate()
 
     def build(self):

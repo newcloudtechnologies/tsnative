@@ -214,7 +214,12 @@ CXTranslationUnit ClassTemplateInstantiator::createTranslationUnit(const std::st
                                                                    const std::string& compiler_abi,
                                                                    const std::string& sys_root)
 {
-    std::string target = utils::strprintf("--target=%s", compiler_abi.c_str());
+    std::string target;
+    if (!compiler_abi.empty())
+    {
+        target = utils::strprintf("--target=%s", compiler_abi.c_str());
+    }
+
     std::string sysroot = !sys_root.empty() ? utils::strprintf("--sysroot=%s", sys_root.c_str()) : "";
 
     std::vector<std::string> Is;
@@ -232,7 +237,11 @@ CXTranslationUnit ClassTemplateInstantiator::createTranslationUnit(const std::st
         Ds.push_back(it);
     }
 
-    std::vector<const char*> args = {"-x", "c++", target.c_str()};
+    std::vector<const char*> args = {"-x", "c++"};
+    if (!target.empty())
+    {
+        args.push_back(target.c_str());
+    }
 
     if (!sysroot.empty())
     {
