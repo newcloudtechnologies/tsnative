@@ -147,8 +147,6 @@ int Runtime::init(int ac, char* av[])
     Allocator::Callbacks allocatorCallbacks;
     allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()](Object* o) { gc->addObject(o); };
 
-    allocatorCallbacks.beforeMemoryDeallocated = [gc = defaultGC.get()](void* m) { gc->untrackIfObject(m); };
-
     _gcImpl = std::move(defaultGC);
     _allocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
 

@@ -117,12 +117,6 @@ export class AssignmentHandler extends AbstractExpressionHandler {
 
           const lhs = this.generator.handleExpression(left, env);
 
-          if (!left.getText().startsWith("this.")) {
-            if (!ts.isVariableDeclaration(left) && !ts.isVariableDeclarationList(left)) {
-              this.generator.gc.deallocate(lhs);
-            }
-          }
-
           if (isSetAccessor(left)) {
             return lhs;
           }

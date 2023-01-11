@@ -372,8 +372,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       this.generator.ts.obj.copyProps(tsThisValuePtr, cxxObject);
 
-      this.generator.gc.deallocate(tsThisValuePtr);
-
       return cxxObject;
     }
 

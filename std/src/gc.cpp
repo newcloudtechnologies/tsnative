@@ -45,15 +45,6 @@ void* GC::allocate(double numBytes)
     return _allocator->allocate(static_cast<std::size_t>(numBytes));
 }
 
-void GC::deallocate(void* m)
-{
-    if (!_allocator)
-    {
-        throw std::runtime_error("Allocator cannot be nullptr");
-    }
-    _allocator->deallocate(m);
-}
-
 void* GC::allocateObject(double numBytes)
 {
     if (!_allocator)
