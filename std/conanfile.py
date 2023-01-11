@@ -26,11 +26,7 @@ class TSNativeStdConan(ConanFile):
         "enable_logs": False
     }
 
-    def requirements(self):
-        self.requires("abseil/20211102.0#0")
-        self.requires("gtest/1.11.0#0")
-        self.requires("libuv/1.43.0#0")
-
+    def build_requirements(self):
         # 'if self.user and self.channel:' ends up in exception when no user and channel values are provided
         if self._conan_user and self._conan_channel:
             self.requires("tsnative-declarator/%s@%s/%s" %
@@ -38,7 +34,10 @@ class TSNativeStdConan(ConanFile):
         else:
             self.requires("tsnative-declarator/%s" % self.version)
 
-        self.requires("llvm/11.1.0#0", private=True)
+    def requirements(self):
+        self.requires("abseil/20211102.0#0")
+        self.requires("gtest/1.11.0#0")
+        self.requires("libuv/1.43.0#0")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -61,6 +60,7 @@ class TSNativeStdConan(ConanFile):
         tc.generate()
 
         cmake = CMakeDeps(self)
+        cmake.build_context_activated = ["tsnative-declarator"]
         cmake.generate()
 
     def build(self):
