@@ -102,25 +102,6 @@ pipeline {
                     }
                 }
 
-                stage("Build compiler") {
-                    steps {
-                        script {
-                            echo "Build compiler"
-                            build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
-                                    string(name: 'PKG_REPO', value: projectName),
-                                    string(name: 'PKG_BRANCH_OR_TAG', value: branch),
-                                    string(name: 'PKG_CONAN_NAME', value: "tsnative-compiler"),
-                                    string(name: 'PKG_CONANFILE_PATH', value: "compiler"),
-                                    string(name: 'PKG_CONAN_VERSION', value: version),
-                                    string(name: 'PKG_CONAN_USER', value: user),
-                                    string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*msvc.*'),
-                                    booleanParam(name: 'PKG_IS_BUILD_TOOL', value: true)
-                            ]
-                        }
-                    }
-                }
-
                 stage("Build declarator") {
                     steps {
                         script {
@@ -155,6 +136,25 @@ pipeline {
                                     string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True"),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
+                            ]
+                        }
+                    }
+                }
+
+                stage("Build compiler") {
+                    steps {
+                        script {
+                            echo "Build compiler"
+                            build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
+                                    string(name: 'PKG_REPO', value: projectName),
+                                    string(name: 'PKG_BRANCH_OR_TAG', value: branch),
+                                    string(name: 'PKG_CONAN_NAME', value: "tsnative-compiler"),
+                                    string(name: 'PKG_CONANFILE_PATH', value: "compiler"),
+                                    string(name: 'PKG_CONAN_VERSION', value: version),
+                                    string(name: 'PKG_CONAN_USER', value: user),
+                                    string(name: 'PKG_CONAN_CHANNEL', value: channel),
+                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*msvc.*'),
+                                    booleanParam(name: 'PKG_IS_BUILD_TOOL', value: true)
                             ]
                         }
                     }

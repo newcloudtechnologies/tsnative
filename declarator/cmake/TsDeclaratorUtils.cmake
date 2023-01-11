@@ -15,18 +15,6 @@ define_property(TARGET PROPERTY TS_NO_IMPORT_STD
     FULL_DOCS "Whether or not import std [true/false]"
 )
 
-macro (_find_program VAR NAME)
-    if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
-        find_program(${VAR} ${NAME})
-        if (NOT ${VAR})
-            message(FATAL_ERROR "${NAME} not found")
-        endif()
-    else()
-        find_program(${VAR} ${NAME} REQUIRED)
-    endif()
-endmacro()
-
-# _find_program(TS_DECLARATOR tsnative-declarator)
 find_program(TS_DECLARATOR tsnative-declarator REQUIRED PATHS "${tsnative-declarator_INCLUDE_DIR}/../bin") # TODO: remove if possible
 find_program(TS_INDEXER tsnative-indexer.py REQUIRED PATHS "${tsnative-declarator_INCLUDE_DIR}/../bin") # TODO: remove if possible
 

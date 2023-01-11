@@ -38,6 +38,8 @@ class TSNativeStdConan(ConanFile):
         else:
             self.requires("tsnative-declarator/%s" % self.version)
 
+        self.requires("llvm/11.1.0#0", private=True)
+
     def generate(self):
         tc = CMakeToolchain(self)
 
