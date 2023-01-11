@@ -24,7 +24,6 @@ const stdlib = require("std/constants");
 export class GC {
     private readonly allocateFn: LLVMValue;
     private readonly allocateObjectFn: LLVMValue;
-    private readonly deallocateFn: LLVMValue;
     private readonly generator: LLVMGenerator;
     private readonly runtime: Runtime;
     private readonly gcType: LLVMType;
@@ -39,7 +38,6 @@ export class GC {
 
         this.allocateFn = this.findAllocateFunction(declaration, "allocate");
         this.allocateObjectFn = this.findAllocateFunction(declaration, "allocateObject");
-        this.deallocateFn = this.findDeallocateFunction(declaration, "deallocate");
 
         this.addRootFn = this.findRootOpFunction(declaration, "addRoot");
         this.removeRootFn = this.findRootOpFunction(declaration, "removeRoot");
@@ -57,17 +55,6 @@ export class GC {
 
     allocateObject(type: LLVMType, name?: string) : LLVMValue {
         return this.doAllocate(this.allocateObjectFn, type, name);
-    }
-
-    deallocate(mem: LLVMValue): LLVMValue {
-        const gcAddress = this.runtime.getGCAddress();
-        const voidStarMem = this.generator.builder.asVoidStar(mem.derefToPtrLevel1());
-
-        return this.generator.builder.createSafeCall(this.deallocateFn,
-            [
-                gcAddress,
-                voidStarMem
-            ]);
     }
 
     private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
@@ -135,31 +122,6 @@ export class GC {
 
         const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();
         const llvmArgumentTypes = [thisType.getLLVMType(), LLVMType.getDoubleType(this.generator)];
-
-        return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
-    }
-
-    private findDeallocateFunction(declaration: Declaration, name: string) {
-        const deallocateDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === name);
-        if (!deallocateDeclaration) {
-            throw Error("Unable to find gc.deallocate function");
-        }
-
-        const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-        const { qualifiedName } = FunctionMangler.mangle(
-            deallocateDeclaration,
-            undefined,
-            thisType,
-            [],
-            this.generator,
-            undefined,
-            ["void*"]
-        );
-
-        const voidType = LLVMType.getVoidType(this.generator);
-        const voidStarType = LLVMType.getInt8Type(this.generator).getPointer();
-        const llvmReturnType = voidType;
-        const llvmArgumentTypes = [thisType.getLLVMType(), voidStarType];
 
         return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }

@@ -24,8 +24,6 @@ export class CompoundAssignmentHandler extends AbstractExpressionHandler {
       const left = this.generator.handleExpression(expression.left, env);
       const right = this.generator.handleExpression(expression.right, env).derefToPtrLevel1();
 
-      this.generator.gc.deallocate(left);
-
       switch (expression.operatorToken.kind) {
         case ts.SyntaxKind.PlusEqualsToken:
           return left.createAdd(right, MathFlags.Inplace);

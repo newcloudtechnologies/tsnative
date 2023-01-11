@@ -43,14 +43,3 @@ void* Allocator::allocateObject(std::size_t n)
 
     return memory;
 }
-
-void Allocator::deallocate(void* m)
-{
-    LOG_ADDRESS("Deallocating memory: ", m);
-    _callbacks.beforeMemoryDeallocated(m);
-
-    // TODO This causes SEGFAULT in case of running set.ts test
-    // The crash is associated with closures, avoid for now
-    // Jira: AN-1113
-    // free(m);
-}
