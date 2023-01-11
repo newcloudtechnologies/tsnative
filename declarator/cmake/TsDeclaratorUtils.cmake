@@ -96,8 +96,8 @@ function(run_declarator2 NAME ...)
         message(FATAL_ERROR "You have unparsed arguments: '${ARG_UNPARSED_ARGUMENTS}'")
     endif()
 
-    _requiredArgs(ARG_SOURCE ARG_DEST ARG_TARGET_COMPILER_ABI ARG_NO_IMPORT_STD)
-    _nonEmptyArgs(ARG_TARGET_COMPILER_ABI ARG_OUTPUT_DIR)
+    _requiredArgs(ARG_SOURCE ARG_DEST ARG_NO_IMPORT_STD)
+    _nonEmptyArgs(ARG_OUTPUT_DIR)
 
     set(sysroot )
     set(envVariables )
@@ -144,7 +144,7 @@ function(run_declarator2 NAME ...)
         COMMAND ${CMAKE_COMMAND} -E env "${envVariables}"
         ${TS_DECLARATOR}
             -nobuiltininc -x c++
-            --target=${abi}
+            "$<$<BOOL:${abi}>:--target=${abi}>"
             "-D$<JOIN:${definitions},;-D>"
             "-I$<JOIN:$<REMOVE_DUPLICATES:${includeDirs}>,;-I>"
             ${sysroot}
@@ -195,7 +195,7 @@ endfunction()
 ### Generate TS declarations for given c++ sources
 ### Args:
 # NAME - target name
-# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu")
+# TARGET_COMPILER_ABI - target compiler abi (e.g. "x86_64-linux-gnu"). Use it only when cross-compiling. Host compiler abi will be used as a target if value is not provided.
 # TS_HEADERS - list of C++ headers that should be converted to declarations
 # TS_IMPORT - import instructions(s) that should be inserted in generated declarations
 # OUTPUT_DIR - absolute path to output directory
@@ -211,10 +211,6 @@ function(ts_generate_declarations NAME ...)
 
     if (ARG_UNPARSED_ARGUMENTS)
         message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
-    endif ()
-
-    if (NOT ARG_TARGET_COMPILER_ABI OR ARG_TARGET_COMPILER_ABI STREQUAL "")
-        message (FATAL_ERROR "TARGET_COMPILER_ABI is not specified")
     endif ()
 
     if (NOT ARG_OUTPUT_DIR OR ARG_OUTPUT_DIR STREQUAL "")

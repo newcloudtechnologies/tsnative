@@ -48,7 +48,7 @@ function(runScenario target dep_target ...)
         message (FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
     endif()
 
-    _requiredArgs(ARG_SCENARIO_NAME ARG_TARGET_COMPILER_ABI)
+    _requiredArgs(ARG_SCENARIO_NAME)
 
     set(outputs )
     set(outputDir "${CMAKE_CURRENT_BINARY_DIR}/out/declarator/${ARG_SCENARIO_NAME}")
