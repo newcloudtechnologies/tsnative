@@ -28,7 +28,7 @@ endmacro()
 
 # _find_program(TS_DECLARATOR tsnative-declarator)
 find_program(TS_DECLARATOR tsnative-declarator REQUIRED PATHS "${tsnative-declarator_INCLUDE_DIR}/../bin") # TODO: remove if possible
-_find_program(TS_INDEXER tsnative-indexer.py)
+find_program(TS_INDEXER tsnative-indexer.py REQUIRED PATHS "${tsnative-declarator_INCLUDE_DIR}/../bin") # TODO: remove if possible
 
 message(STATUS "Found TS_DECLARATOR: ${TS_DECLARATOR}")
 message(STATUS "Found TS_INDEXER: ${TS_INDEXER}")
