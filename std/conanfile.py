@@ -31,13 +31,12 @@ class TSNativeStdConan(ConanFile):
         self.requires("gtest/1.11.0#0")
         self.requires("libuv/1.43.0#0")
 
-    def build_requirements(self):
         # 'if self.user and self.channel:' ends up in exception when no user and channel values are provided
         if self._conan_user and self._conan_channel:
-            self.build_requires("tsnative-declarator/%s@%s/%s" %
+            self.requires("tsnative-declarator/%s@%s/%s" %
                                 (self.version, self.user, self.channel))
         else:
-            self.build_requires("tsnative-declarator/%s" % self.version)
+            self.requires("tsnative-declarator/%s" % self.version)
 
     def generate(self):
         tc = CMakeToolchain(self)
