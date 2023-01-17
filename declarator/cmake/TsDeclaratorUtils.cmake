@@ -10,6 +10,12 @@
 
 message(STATUS "Found TsDeclaratorUtils in ${CMAKE_CURRENT_LIST_DIR}")
 
+if (NOT TARGET tsnative-declarator)
+    add_library(tsnative-declarator INTERFACE)
+endif()
+get_filename_component(TS_DECLARATOR_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+target_include_directories(tsnative-declarator BEFORE INTERFACE "${TS_DECLARATOR_ROOT}/include")
+
 define_property(TARGET PROPERTY TS_NO_IMPORT_STD
     BRIEF_DOCS "Whether or not import std"
     FULL_DOCS "Whether or not import std [true/false]"
@@ -18,7 +24,7 @@ define_property(TARGET PROPERTY TS_NO_IMPORT_STD
 macro (_find_program VAR NAME)
     if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
         find_program(${VAR} ${NAME})
-        if (NOT ${VAR})
+        if ("${VAR}" STREQUAL "${VAR}-NOTFOUND")
             message(FATAL_ERROR "${NAME} not found")
         endif()
     else()

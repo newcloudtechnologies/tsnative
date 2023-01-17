@@ -58,7 +58,7 @@ class TSNativeCompilerConan(ConanFile):
         self.run("npx pkg compiler/ -t host -o bin/tsnative-compiler")
 
     def package(self):
-        self.copy("*", src="bin")
+        self.copy("*", src="bin", dst="bin")
         self.copy("*", src="seed", dst="seed")
         self.copy("*", src="scripts", excludes="tsnative-compiler*")
         self.copy("tsconfig.json")
@@ -68,8 +68,9 @@ class TSNativeCompilerConan(ConanFile):
             binext = ".exe"
 
         llvm_path = self.dependencies["llvm"].cpp_info.bindirs[0]
-        llc_path = os.path.join(llvm_path, "llc%s" % binext)
-        shutil.copy2(llc_path, os.path.join(self.package_folder, "tsnative-llc%s" % binext))
+        llc_path_src = os.path.join(llvm_path, "llc%s" % binext)
+        llc_path_dst = os.path.join(self.package_folder, "bin")
+        shutil.copy2(llc_path_src, os.path.join(llc_path_dst, "tsnative-llc%s" % binext))
 
         if (self.settings.build_type == self.debug_build_type):
             self.copy("package.json")
@@ -89,6 +90,7 @@ class TSNativeCompilerConan(ConanFile):
 
     def package_info(self):
         self.env_info.path.append(self.package_folder)
+        self.cpp_info.bindirs = ["bin"]
 
     # TODO: common python lib required - use python_requires?
     # keep in sync with test/conanfile.py
