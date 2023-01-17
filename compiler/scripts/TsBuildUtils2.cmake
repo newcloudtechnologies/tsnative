@@ -234,7 +234,11 @@ function (_add_ts_command ARG_SRC ...)
     get_filename_component(outputDir ${outputFile} DIRECTORY)
 
     # Globals
-    set(tsCompiler tsnative-compiler)
+    unset(tsCompiler) # avoid using result from the cache
+    find_program(tsCompiler tsnative-compiler REQUIRED)
+    if ("${tsCompiler}" STREQUAL "tsCompiler-NOTFOUND")
+        message(FATAL_ERROR ${tsCompiler})
+    endif()
     set(tsCompilerEnv ${TS_COMPILER_ENV})
 
     if (DEFINED TS_COMPILER)
