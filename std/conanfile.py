@@ -9,7 +9,6 @@ import os
 
 required_conan_version = "==1.50"
 
-
 class TSNativeStdConan(ConanFile):
     name = "tsnative-std"
     description = "Typescript standard library implementation"
@@ -18,12 +17,16 @@ class TSNativeStdConan(ConanFile):
 
     options = {
         "build_tests": [True, False],
-        "enable_logs": [True, False]
+        "enable_logs": [True, False],
+        "run_tests_with_memcheck": [True, False],
+        "fail_test_on_mem_leak": [True, False],
     }
 
     default_options = {
         "build_tests": False,
-        "enable_logs": False
+        "enable_logs": False,
+        "run_tests_with_memcheck": False,
+        "fail_test_on_mem_leak": False,
     }
 
     def requirements(self):
@@ -51,6 +54,7 @@ class TSNativeStdConan(ConanFile):
         tc.variables["GENERATE_DECLARATIONS"] = True
         tc.variables["BUILD_TEST"] = self.options.build_tests
         tc.variables["ENABLE_LOGS"] = self.options.enable_logs
+        tc.variables["FAIL_TESTS_ON_MEM_LEAK"] = self.options.fail_test_on_mem_leak
         # tc.variables["CMAKE_VERBOSE_MAKEFILE"]="ON"
 
         print("TOOLCHAIN VARIABLES:\n\t" +
@@ -71,7 +75,11 @@ class TSNativeStdConan(ConanFile):
 
         if self.options.build_tests and self.settings.os != "Android":
             with environment_append({'CTEST_OUTPUT_ON_FAILURE': '1'}):
-                cmake.test()
+                if self.options.run_tests_with_memcheck:
+                    tests_with_memcheck_target = "test_memcheck";
+                    cmake.build(target=tests_with_memcheck_target);
+                else:
+                    cmake.test()
 
     def package(self):
         self.copy("constants.*", "declarations/tsnative/std")
@@ -79,6 +87,8 @@ class TSNativeStdConan(ConanFile):
     def package_id(self):
         del self.info.options.build_tests
         del self.info.options.enable_logs
+        del self.info.options.run_tests_with_memcheck
+        del self.info.options.fail_test_on_mem_leak
 
     @property
     def base_cmake_module_path(self: ConanFile):

@@ -26,6 +26,8 @@ class TSNativeTestsConan(ConanFile):
         "print_ir" : [True, False],
         "trace_import" : [True, False],
         "profile_build" : [True, False],
+        "run_tests_with_memcheck" : [True, False],
+        "fail_test_on_mem_leak" : [True, False],
     }
 
     default_options = {
@@ -36,6 +38,8 @@ class TSNativeTestsConan(ConanFile):
         "print_ir" : False,
         "trace_import" : False,
         "profile_build" : False,
+        "run_tests_with_memcheck" : False,
+        "fail_test_on_mem_leak" : False,
     }
 
     src_path = Path("src/compiler/cases")
@@ -124,6 +128,40 @@ class TSNativeTestsConan(ConanFile):
         cmake.configure(build_script_folder=os.path.join("src", "declarator"))
         cmake.build()
 
+    def runCompiledTests(self, out_dir):
+        test_options = "--output_on_failure"
+
+        if self.options.run_tests_with_memcheck:
+            test_options += " -D ExperimentalMemCheck"
+
+            if self.options.fail_test_on_mem_leak:
+                # https://stackoverflow.com/a/56116311
+                test_options += " --overwrite MemoryCheckCommandOptions=\"--leak-check=full --error-exitcode=1\""
+
+            # copy cmake tests configuration file to run tests with memcheck
+            cmake_configs = Path(out_dir).rglob("DartConfiguration.tcl")
+
+            # changing BuildDirectory to compile_tests
+            for config in cmake_configs:
+                config_content = load(self, config)
+                build_dir_re = re.compile(r"BuildDirectory: (.*)")
+                res = build_dir_re.search(config_content)
+                if res != None:
+                    new_dir = str(Path(out_dir).absolute())
+                    config_content = config_content.replace(res.groups()[0], new_dir)
+
+                with open(os.path.join(out_dir, "DartConfiguration.tcl"), "a") as common_config:
+                    common_config.write(config_content)
+
+                break
+
+        # --test-dir option is only available since cmake 3.20
+        # so we have to change current dir to be able to find tests
+        prev_dir = os.getcwd()
+        os.chdir(out_dir)
+        self.run("ctest " + test_options)
+        os.chdir(prev_dir)
+
     def buildCompiledTests(self):
         out_dir = "compiler_tests"
         # first - build pure ts tests
@@ -187,8 +225,6 @@ class TSNativeTestsConan(ConanFile):
 
         self.output.highlight("=== Built compiler tests in %s s" % str(round(time.time() - t)))
 
-        # run tests
-
         # hack: concatenate CTestTestfile.cmake from each test into a single file
         # to have a nice report output
         ctestfile_common = os.path.join(out_dir, "CTestTestfile.cmake")
@@ -198,13 +234,9 @@ class TSNativeTestsConan(ConanFile):
                 content = load(self, file)
                 common.write(content)
 
+        # run tests
         if self.settings.os != "Android":
-        # --test-dir option is only available since cmake 3.20
-        # so we have to change current dir to be able to find tests
-            prev_dir = os.getcwd()
-            os.chdir(out_dir)
-            self.run("ctest --output-on-failure")
-            os.chdir(prev_dir)
+            self.runCompiledTests(out_dir)
 
     def build(self):
         if self.settings.target_abi is None:
@@ -256,6 +288,7 @@ class TSNativeTestsConan(ConanFile):
         del self.info.options.trace_import
         del self.info.options.print_ir
         del self.info.options.profile_build
+        del self.info.options.run_tests_with_memcheck
 
     def setup_npm(self):
         self.init_npm_env()

@@ -189,6 +189,8 @@ install(
 )
 
 if (BUILD_TEST)
+    include (CTest)
+
     enable_testing()
     find_package(GTest REQUIRED)
     include(GoogleTest)
@@ -229,5 +231,19 @@ if (BUILD_TEST)
                             GTest::gmock)
 
     gtest_add_tests(TARGET ${PROJECT_NAME}_GTEST)
+
+    # https://stackoverflow.com/a/56116311
+    if (FAIL_TESTS_ON_MEM_LEAK)
+        add_custom_target(test_memcheck
+                            COMMAND ${CMAKE_CTEST_COMMAND} 
+                            --overwrite MemoryCheckCommandOptions=\"--leak-check=full --error-exitcode=1\" --test-action memcheck
+                            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+    else()
+        add_custom_target(test_memcheck
+                            COMMAND ${CMAKE_CTEST_COMMAND} 
+                            --test-action memcheck 
+                            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+    endif()
+
 endif()
 

@@ -54,6 +54,8 @@ add_executable(${PROJECT_NAME} WIN32 ${PROJECT_ENTRY_NAME})
 target_link_libraries(${PROJECT_NAME} PRIVATE ts_main ts)
 
 if (IS_TEST)
+    include(CTest)
+
     enable_testing()
     add_test(
         NAME ${PROJECT_NAME}
