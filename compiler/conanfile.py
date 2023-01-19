@@ -63,15 +63,6 @@ class TSNativeCompilerConan(ConanFile):
         self.copy("*", src="scripts", excludes="tsnative-compiler*")
         self.copy("tsconfig.json")
 
-        binext = ""
-        if self.settings.os == "Windows":
-            binext = ".exe"
-
-        llvm_path = self.dependencies["llvm"].cpp_info.bindirs[0]
-        llc_path_src = os.path.join(llvm_path, "llc%s" % binext)
-        llc_path_dst = os.path.join(self.package_folder, "bin")
-        shutil.copy2(llc_path_src, os.path.join(llc_path_dst, "tsnative-llc%s" % binext))
-
         if (self.settings.build_type == self.debug_build_type):
             self.copy("package.json")
             
@@ -82,11 +73,20 @@ class TSNativeCompilerConan(ConanFile):
             self.copy("*", src="node_modules", dst="node_modules")
 
             # Copy tsnative-compiler script which is used by tsnative.sh
-            self.copy("tsnative-compiler", src="scripts")
+            self.copy("tsnative-compiler", src="scripts", dst="bin")
 
             # Copy source maps for the code. 
             # It is important to give a name of folder exactly equal to a name in the tsconfig.json.
             self.copy("*", src="sourceMaps", dst="sourceMaps")
+
+        binext = ""
+        if self.settings.os == "Windows":
+            binext = ".exe"
+
+        llvm_path = self.dependencies["llvm"].cpp_info.bindirs[0]
+        llc_path_src = os.path.join(llvm_path, "llc%s" % binext)
+        llc_path_dst = os.path.join(self.package_folder, "bin")
+        shutil.copy2(llc_path_src, os.path.join(llc_path_dst, "tsnative-llc%s" % binext))
 
     def package_info(self):
         self.env_info.path.append(self.package_folder)
