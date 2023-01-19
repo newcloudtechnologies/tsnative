@@ -51,6 +51,7 @@ pipeline {
         stage('Check formatting') {
             agent {
                 docker {
+                    label 'antiq_docker'
                     image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/clang-format:14-ubuntu20"
                     registryUrl "${JENKINS_DOCKER_REGISTRY_URL}"
                     registryCredentialsId "${JENKINS_DOCKER_REGISTRY_CI_AUTHENTICATION_TOKEN}"
@@ -80,6 +81,7 @@ pipeline {
         stage("Build packages") {
             agent {
                 docker {
+                    label 'antiq_docker'
                     image "${JENKINS_ANTIQ_DOCKER_REGISTRY_REPO}/tiny-tools:alpine-3.15"
                     registryUrl "${JENKINS_DOCKER_REGISTRY_URL}"
                     registryCredentialsId "${JENKINS_DOCKER_REGISTRY_CI_AUTHENTICATION_TOKEN}"
