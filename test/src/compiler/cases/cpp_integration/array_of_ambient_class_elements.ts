@@ -9,7 +9,7 @@
  *
  */
 
-import { exts } from "cpp_integration_exts";
+import { exts, Point } from "cpp_integration_exts";
 
 const empty0: exts.FileInfo_t[] = [];
 const empty1 = new Array<exts.FileInfo_t>();
@@ -33,3 +33,44 @@ console.assert(!empty4.length, "Empty array initializer (4)");
 console.assert(!empty5.length, "Empty array initializer (5)");
 console.assert(!empty6.length, "Empty array initializer (6)");
 console.assert(!empty7.length, "Empty array initializer (7)");
+
+
+export function doIterate<TParam>(model: Array<TParam>) {
+    let len = model.length;
+    let doubledArr = new Array<TParam>();
+
+    for (let i = len - 1; i >= 0; i--) {
+        let item = model[i];
+        // won't compile. See https://jira.ncloudtech.ru:8090/browse/TSN-346
+        //doubledArr.push(item);
+
+        doubledArr.push(item, item);
+    }
+
+    // will cause crash. See https://jira.ncloudtech.ru:8090/browse/TSN-346
+    // console.assert(doubledArr.length === arr.length, "Iterate through array using a template function");
+    console.assert(true, "Compile check"); // TODO repalce me with the commented line ⇧
+}
+
+let arr: Point[] = [];
+arr.push(new Point(1, 1));
+arr.push(new Point(20, 10));
+arr.push(new Point(300, -1));
+
+doIterate(arr);
+
+
+class MyType{
+    private n: number;
+
+    constructor()
+    {
+        this.n = 125;
+    }
+}
+
+let arr2: MyType[] = [];
+arr2.push(new MyType());
+arr2.push(new MyType());
+
+doIterate(arr2);

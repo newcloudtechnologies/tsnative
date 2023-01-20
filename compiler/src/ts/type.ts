@@ -755,6 +755,11 @@ export class TSType {
 
     let typename = this.toString();
 
+    if (this.isAmbient()){
+      const symbol = this.getSymbol();
+      typename = symbol.name;
+    }
+
     if (this.isClassOrInterface()) {
       typename += "*";
     }
