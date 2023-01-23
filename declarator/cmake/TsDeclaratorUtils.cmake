@@ -38,6 +38,16 @@ _find_program(TS_INDEXER tsnative-indexer.py)
 message(STATUS "Found TS_DECLARATOR: ${TS_DECLARATOR}")
 message(STATUS "Found TS_INDEXER: ${TS_INDEXER}")
 
+# Note: during it's work declarator relies on presence of libstdc++ headers of exactly
+# same version which was used to compile declarator. Therefore it relies on mingw on Windows.
+# Mixing compile-time and run-time libstdc++ of different versions can cause declarator fails.
+# For safety reasons read include directories and target ABI stored when declarator was built.
+get_filename_component(DECLARATOR_PATH "${TS_DECLARATOR}" DIRECTORY)
+get_filename_component(DECLARATOR_INCLUDE_DIRECTORIES_FILE ${DECLARATOR_PATH}/include_directories.txt ABSOLUTE)
+file(READ "${DECLARATOR_INCLUDE_DIRECTORIES_FILE}" DECLARATOR_INCLUDE_DIRECTORIES)
+get_filename_component(DECLARATOR_TARGET_ABI_FILE ${DECLARATOR_PATH}/declarator_target_abi.txt ABSOLUTE)
+file(READ "${DECLARATOR_TARGET_ABI_FILE}" DECLARATOR_TARGET_ABI)
+
 macro (_requiredArgs ...)
     foreach(arg ${ARGV})
         if (NOT DEFINED ${arg})
@@ -129,7 +139,7 @@ function(run_declarator2 NAME ...)
 
     list(APPEND includeDirs $<TARGET_PROPERTY:${NAME},INTERFACE_INCLUDE_DIRECTORIES>)
     list(APPEND includeDirs $<$<TARGET_EXISTS:${tsStd}>:$<TARGET_PROPERTY:${tsStd},INTERFACE_INCLUDE_DIRECTORIES>>)
-    list(APPEND includeDirs ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+    list(APPEND includeDirs ${DECLARATOR_INCLUDE_DIRECTORIES})
 
     if (NOT $ENV{SYSROOT_DIR} STREQUAL "")
         set(sysroot "--sysroot=$ENV{SYSROOT_DIR}")
@@ -150,7 +160,7 @@ function(run_declarator2 NAME ...)
         COMMAND ${CMAKE_COMMAND} -E env "${envVariables}"
         ${TS_DECLARATOR}
             -nobuiltininc -x c++
-            --target=${abi}
+	    --target=${DECLARATOR_TARGET_ABI}
             "-D$<JOIN:${definitions},;-D>"
             "-I$<JOIN:$<REMOVE_DUPLICATES:${includeDirs}>,;-I>"
             ${sysroot}
