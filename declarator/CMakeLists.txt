@@ -79,3 +79,19 @@ install(
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     PUBLIC_HEADER DESTINATION include
 )
+
+# Note: during it's work declarator relies on presence of libstdc++ headers of exactly
+# same version which was used to compile declarator. Therefore it relies on mingw on Windows.
+# Mixing compile-time and run-time libstdc++ of different versions can cause declarator fails.
+file(WRITE include_directories.txt "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
+install(FILES include_directories.txt
+	DESTINATION ${CMAKE_INSTALL_BINDIR}
+	)
+
+# FIXME: WARNING: hardcoded build target! It should be taken from cmake or conan,
+# but for unknown reason ${CMAKE_CXX_COMPILER_TARGET} at this point has empty value.
+#message(DEBUG: TARGET_ABI="${CMAKE_CXX_COMPILER_TARGET}")
+file(WRITE declarator_target_abi.txt x86_64-w64-mingw32)
+install(FILES declarator_target_abi.txt
+	DESTINATION ${CMAKE_INSTALL_BINDIR}
+	)

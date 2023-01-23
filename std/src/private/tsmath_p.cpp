@@ -8,6 +8,7 @@
  * at http://ncloudtech.com/contact.html
  *
  */
+#define _USE_MATH_DEFINES
 
 #include "std/private/tsmath_p.h"
 
