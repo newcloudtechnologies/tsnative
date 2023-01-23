@@ -152,6 +152,20 @@ generator::print::printer_t makePrinter(const std::string& filename)
     return Printer::make(generator::print::PT_preset2, sheet);
 }
 
+void printDeclaratorParameters(int argc, char** argv) {
+    std::string av = "Declarator is called with parameters: ";
+            for (int i = 0; i < argc; ++i)
+            {
+                av += argv[i];
+                av += " ";
+    }
+    std::cout << av << std::endl;
+    std::cout << "DECLARATOR_NO_IMPORT_STD=" << utils::getEnv("DECLARATOR_NO_IMPORT_STD") << std::endl;
+    std::cout << "DECLARATOR_NO_HEAD=" << utils::getEnv("DECLARATOR_NO_HEAD") << std::endl;
+    std::cout << "DECLARATOR_OUTPUT_DIR=" << utils::getEnv("DECLARATOR_OUTPUT_DIR") << std::endl;
+    std::cout << "DECLARATOR_IMPORT=" << utils::getEnv("DECLARATOR_IMPORT") << std::endl;
+}
+
 int main(int argc, char** argv)
 {
     using namespace global;
@@ -159,6 +173,9 @@ int main(int argc, char** argv)
     using namespace parser;
     using namespace analyzer;
     using namespace utils;
+
+    // FIXME: make -v flag to control this, TBD in TSN-270
+    //printDeclaratorParameters(argc, argv);
 
     try
     {
