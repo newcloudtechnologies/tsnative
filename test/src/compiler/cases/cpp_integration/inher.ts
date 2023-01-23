@@ -12,6 +12,7 @@
 import { CXXBase } from "cpp_integration_exts";
 import { DerivedFromBaseInOtherNamespace } from "cpp_integration_exts";
 import { DerivedFromVirtualBase } from "cpp_integration_exts";
+import { Point } from "cpp_integration_exts";
 
 const derivedFromVirtualBase = new DerivedFromVirtualBase();
 console.assert(derivedFromVirtualBase.virtualMethod() === "base virtual method", "'DerivedFromVirtualBase.virtualMethod' test failed");
@@ -41,4 +42,48 @@ console.assert(obj.callMemberClosure() === "Hello from CXX", "CXX derived class 
 
     const obj = new InheritorWithConstructor();
     console.assert(obj.value === 42, "CXX derived class may provide its own constructor");
+}
+
+{
+    class BasePoint extends Point {
+        static tag = "BasePoint"
+
+        constructor(expectedTag: string) {
+            super(1, 1);
+
+            const finishTag = this.finish();
+            console.assert(finishTag === expectedTag, `Methods:
+                    'this' in polymorphic call have to refer to most derived class (CXX-inheritance)
+                    and all of its non-polymorphic methods have to be available through call chain.
+                    Expected tag: ${expectedTag}, received: ${finishTag}`
+            );
+        }
+
+        private finish() {
+            return this.render();
+        }
+
+        render() {
+            return BasePoint.tag;
+        }
+    }
+
+    class DerivedPoint extends BasePoint {
+        static tag = "DerivedPoint"
+
+        constructor(expectedTag: string) {
+            super(expectedTag);
+        }
+
+        render() {
+            return this.getTag();
+        }
+
+        private getTag() {
+            return DerivedPoint.tag;
+        }
+    }
+
+    new BasePoint(BasePoint.tag)
+    new DerivedPoint(DerivedPoint.tag)
 }
