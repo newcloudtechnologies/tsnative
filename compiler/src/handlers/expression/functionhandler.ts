@@ -359,14 +359,18 @@ export class FunctionHandler extends AbstractExpressionHandler {
         LLVMConstantInt.get(this.generator, 0),
         LLVMConstantInt.get(this.generator, thisValueIdx),
       ]);
-      const thisValuePtrPtr = this.generator.builder.createLoad(thisValuePtrPtrPtr);
-      const tsThisValuePtr = this.generator.builder.createLoad(thisValuePtrPtr);
 
       const cxxObjectType = valueDeclaration.type.getLLVMType();
-      let memory = this.generator.gc.allocate(cxxObjectType.getPointerElementType());
-      memory = this.generator.builder.createBitCast(memory, this.generator.ts.obj.getLLVMType());
+      const memoryPtr = this.generator.gc.allocate(cxxObjectType.getPointerElementType());
+      let memoryPtrPtr = this.generator.gc.allocate(cxxObjectType);
 
-      this.generator.builder.createSafeStore(memory, thisValuePtrPtr);
+      this.generator.builder.createSafeStore(memoryPtr, memoryPtrPtr);
+
+      memoryPtrPtr = this.generator.builder.createBitCast(memoryPtrPtr, this.generator.ts.obj.getLLVMType().getPointer());
+
+      const tsThisValuePtr = thisValuePtrPtrPtr.derefToPtrLevel1();
+
+      this.generator.builder.createSafeStore(memoryPtrPtr, thisValuePtrPtrPtr);
 
       const cxxObject = this.sysVFunctionHandler.handleNewExpression(expression, qualifiedName, outerEnv)
 
@@ -915,14 +919,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
         );
       }
 
-      const thisValuePtr = this.generator.builder.createInBoundsGEP(outerEnv.typed, [
+      const thisValuePtrPtrPtr = this.generator.builder.createInBoundsGEP(outerEnv.typed, [
         LLVMConstantInt.get(this.generator, 0),
         LLVMConstantInt.get(this.generator, thisValueIdx!),
       ]);
 
-      const thisValue = this.generator.builder.createLoad(thisValuePtr);
-
-      object = this.generator.ts.obj.get(thisValue, "super");
+      const thisValuePtrPtr = this.generator.builder.createLoad(thisValuePtrPtrPtr);
+      const thisValuePtr = this.generator.builder.createLoad(thisValuePtrPtr);
+      object = this.generator.ts.obj.get(thisValuePtr, "super");
     } else {
       object = this.generator.handleExpression(propertyAccessExpression.expression, outerEnv).derefToPtrLevel1();
 
@@ -1702,35 +1706,35 @@ export class FunctionHandler extends AbstractExpressionHandler {
               LLVMConstantInt.get(this.generator, thisValueIdx),
             ]);
 
-            const thisValuePtrPtr = this.generator.builder.createLoad(thisValuePtrPtrPtr);
-
             const isSuperCall =
               ts.isCallExpression(expression) && expression.expression.kind === ts.SyntaxKind.SuperKeyword;
 
-            const originalThisValue = this.generator.builder.createLoad(thisValuePtrPtr);
-            let thisValue = originalThisValue;
+            const originalThisValuePtr = thisValuePtrPtrPtr.derefToPtrLevel1();
+            let thisValuePtr = originalThisValuePtr;
 
             if (isSuperCall) {
-              thisValue = this.generator.ts.obj.get(thisValue, "super");
+              thisValuePtr = this.generator.ts.obj.get(thisValuePtr, "super");
             } else {
               this.generator.meta.setCurrentClassDeclaration(classDeclaration);
             }
 
             if (classDeclaration.isDerived) {
               const superValue = this.generator.ts.obj.create();
-              this.generator.ts.obj.set(superValue, "parent", thisValue);
-              this.generator.ts.obj.set(thisValue, "super", superValue);
+              this.generator.ts.obj.set(superValue, "parent", thisValuePtr);
+              this.generator.ts.obj.set(thisValuePtr, "super", superValue);
             }
 
             if (isSuperCall) {
               this.generator.meta.enterSuperCall();
             }
 
-            this.handleClassOwnProperties(expression, classDeclaration, thisValue, environment!);
-            this.handleClassOwnMethods(expression, classDeclaration, thisValue, bodyScope, environment!);
+            this.handleClassOwnProperties(expression, classDeclaration, thisValuePtr, environment!);
+            this.handleClassOwnMethods(expression, classDeclaration, thisValuePtr, bodyScope, environment!);
 
             if (isSuperCall) {
-              this.generator.builder.createSafeStore(thisValue, thisValuePtrPtr);
+              const thisValuePtrPtr = this.generator.gc.allocate(thisValuePtr.type);
+              this.generator.builder.createSafeStore(thisValuePtr, thisValuePtrPtr);
+              this.generator.builder.createSafeStore(thisValuePtrPtr, thisValuePtrPtrPtr);
             }
 
             if (constructorDeclaration) {
@@ -1749,7 +1753,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
             }
 
             if (isSuperCall) {
-              this.generator.builder.createSafeStore(originalThisValue, thisValuePtrPtr);
+              const originalThisValuePtrPtr = this.generator.gc.allocate(originalThisValuePtr.type);
+              this.generator.builder.createSafeStore(originalThisValuePtr, originalThisValuePtrPtr);
+              this.generator.builder.createSafeStore(originalThisValuePtrPtr, thisValuePtrPtrPtr);
             } else {
               this.generator.meta.exitSuperCall();
               this.generator.meta.resetCurrentClassDeclaration();
