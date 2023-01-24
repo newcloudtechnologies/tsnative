@@ -12,20 +12,30 @@
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
+import { LLVMGenerator } from "../../generator";
 
 export class BlockHandler extends AbstractNodeHandler {
+  private readonly prepare?: () => void;
+
+  constructor(gen: LLVMGenerator, prepare? : () => void) {
+    super(gen);
+    this.prepare = prepare;
+  }
+
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
     switch (node.kind) {
       case ts.SyntaxKind.Block:
         const block = node as ts.Block;
 
         this.generator.symbolTable.withLocalScope((scope) => {
+          if (this.prepare) {
+            this.prepare();
+          }
+
           scope.initializeVariablesAndFunctionDeclarations(block, this.generator);
           this.hoistFunctionDeclarations(block, scope, env);
 
           this.handleBlock(block, scope, env);
-
-          scope.deinitialize();
         }, this.generator.symbolTable.currentScope);
         return true;
       default:

@@ -15,7 +15,7 @@ import { LLVMType } from "../llvm/type";
 import * as ts from "typescript";
 import { Declaration } from "./declaration";
 import { Environment } from "../scope";
-import { LLVMValue } from "../llvm/value";
+import { LLVMConstantFP, LLVMValue } from "../llvm/value";
 
 const stdlib = require("std/constants");
 
@@ -213,22 +213,61 @@ export class TSTuple {
     return this.declaration;
   }
 
-  create(elements: ts.NodeArray<ts.Expression>, env?: Environment) {
+  createDefault(): LLVMValue {
     const constructor = this.getLLVMConstructor();
-    const allocated = this.generator.gc.allocate(this.getLLVMType().getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.getLLVMType().getPointerElementType());
     this.generator.builder.createSafeCall(constructor, [allocated]);
+    return allocated;
+  }
+
+  createFromArray(values: LLVMValue[]): LLVMValue {
+    const tuplePtr = this.createDefault();
+
+    for (const v of values) {
+      this.generator.ts.tuple.createPushCall(tuplePtr, v);
+    }
+
+    return tuplePtr;
+  }
+
+  create(elements: ts.NodeArray<ts.Expression>, env?: Environment) {
+    const tuplePtr = this.createDefault();
 
     const push = this.getLLVMPush();
 
     for (const element of elements) {
       const initializer = this.generator.handleExpression(element, env).derefToPtrLevel1();
-      this.generator.builder.createSafeCall(push, [allocated, this.generator.builder.asVoidStar(initializer)]);
+      this.generator.builder.createSafeCall(push, [tuplePtr, this.generator.builder.asVoidStar(initializer)]);
     }
 
-    return allocated;
+    return tuplePtr;
   }
 
-  getSubscriptionFn() {
+  createPushCall(thisValue: LLVMValue, toPush: LLVMValue) {
+    const push = this.getLLVMPush();
+    toPush = this.generator.builder.asVoidStar(toPush.derefToPtrLevel1());
+    thisValue = thisValue.derefToPtrLevel1();
+    this.generator.builder.createSafeCall(push, [thisValue, toPush]);
+  }
+
+  createSubscriptionCallForNumber(thisValue: LLVMValue, index: number): LLVMValue {
+    const llvmIntegralIndex = LLVMConstantFP.get(this.generator, index);
+    const llvmNumberIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
+
+    return this.createSubscriptionCallForLLVMValue(thisValue, llvmNumberIndex);
+  }
+
+  createSubscriptionCallForLLVMValue(thisValue: LLVMValue, index: LLVMValue): LLVMValue {
+    const subscription = this.generator.ts.tuple.getSubscriptionFn();
+    thisValue = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
+
+    return this.generator.builder.createSafeCall(subscription, [
+      thisValue,
+      index,
+    ]);
+  }
+
+  private getSubscriptionFn() {
     if (!this.subscriptFn) {
       this.subscriptFn = this.initSubscriptFn();
     }

@@ -15,6 +15,7 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 Null::Null()
     : Object(TSTypeID::Null)
@@ -29,10 +30,12 @@ Null* Null::instance()
     return &inst;
 }
 
-String* Null::toString() const
+std::string Null::toStdString() const
 {
-    return new String("null");
+    return "null";
 }
+
+DEFAULT_TO_STRING_IMPL(Null)
 
 Boolean* Null::toBool() const
 {

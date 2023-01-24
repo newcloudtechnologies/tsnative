@@ -15,9 +15,10 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { last } from "lodash";
-import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
+import { LLVMValue } from "../../llvm/value";
 import { LoopHelper } from "./loophelper";
 import { ExitingBlocks } from "../../llvm/exiting_blocks";
+import { LLVMType } from "../../llvm/type";
 
 export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -234,6 +235,32 @@ export class LoopHandler extends AbstractNodeHandler {
         throw new Error(`Allowed initializers in for..of are identifiers and tuples (at '${initializer.getText()}')`);
       }
 
+      const collectTupleIdentifiers = () => {
+        if (!isTupleInitializer()) {
+          throw new Error("collectTupleIdentifiers is called on non tuple");
+        }
+
+        const bindingPattern = initializer.name as ts.ArrayBindingPattern;
+
+        const identifiers: ts.Identifier[] = [];
+        bindingPattern.elements.forEach((element) => {
+          if (!ts.isBindingElement(element) || element.initializer) {
+            throw new Error("Array destructuring is not support omitting nor default initializers.");
+          }
+
+          if (!ts.isIdentifier(element.name)) {
+            throw new Error(
+              `Array destructuring is not support non-identifiers, got '${ts.SyntaxKind[element.kind]
+              }' at '${element.getText()}'`
+            );
+          }
+
+          identifiers.push(element.name);
+        });
+
+        return identifiers;
+      };
+
       const updateScope = (updated: LLVMValue) => {
         if (isSingleVariableInitializer()) {
           const name = initializer.name.getText();
@@ -241,45 +268,20 @@ export class LoopHandler extends AbstractNodeHandler {
         } else if (isTupleInitializer()) {
           const bindingPattern = initializer.name as ts.ArrayBindingPattern;
 
-          const identifiers: ts.Identifier[] = [];
-          bindingPattern.elements.forEach((element) => {
-            if (!ts.isBindingElement(element) || element.initializer) {
-              throw new Error("Array destructuring is not support omitting nor default initializers.");
-            }
-
-            if (!ts.isIdentifier(element.name)) {
-              throw new Error(
-                `Array destructuring is not support non-identifiers, got '${ts.SyntaxKind[element.kind]
-                }' at '${element.getText()}'`
-              );
-            }
-
-            identifiers.push(element.name);
-          });
-
           const elementTypes = bindingPattern.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
-
-          const subscription = this.generator.ts.tuple.getSubscriptionFn();
-          updated = this.generator.builder.asVoidStar(updated.derefToPtrLevel1());
-
+          updated = updated.derefToPtrLevel1();
+          const identifiers = collectTupleIdentifiers();
+          
           for (let i = 0; i < identifiers.length; ++i) {
-            const llvmIntegralIndex = LLVMConstantFP.get(this.generator, i);
-            const llvmNumberIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
-
             const elementType = elementTypes[i];
-
-            const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
-              updated,
-              llvmNumberIndex,
-            ]);
+            const destructedValueUntyped = this.generator.ts.tuple.createSubscriptionCallForNumber(updated, i);
             const destructedValuePtr = this.generator.builder.createBitCast(
               destructedValueUntyped,
               elementType.getLLVMType()
             );
-            const destructedValuePtrPtr = this.generator.gc.allocate(destructedValuePtr.type);
-            this.generator.builder.createSafeStore(destructedValuePtr, destructedValuePtrPtr);
 
-            this.generator.symbolTable.currentScope.set(identifiers[i].getText(), destructedValuePtrPtr);
+            // Tuple is a root, do not make elements roots
+            this.generator.symbolTable.currentScope.setOrAssign(identifiers[i].getText(), destructedValuePtr, false);
           }
         } else {
           // Unreachable
@@ -317,6 +319,20 @@ export class LoopHandler extends AbstractNodeHandler {
           throw new Error(`Unable to find value declaration for type: '${type.toString()}'. Error at: '${statement.getText()}'`);
         }
 
+        let incPlaceholderPtrPtr = this.generator.gc.allocate(variableType.getLLVMType());
+        if (isTupleInitializer()) {
+          const bindingPattern = initializer.name as ts.ArrayBindingPattern;
+
+          const objectPtrs = new Array(bindingPattern.elements.length).fill(this.generator.ts.obj.create());
+
+          const tuplePtr = this.generator.ts.tuple.createFromArray(objectPtrs);
+
+          incPlaceholderPtrPtr = incPlaceholderPtrPtr.makeAssignment(tuplePtr);
+          this.generator.gc.addRoot(incPlaceholderPtrPtr);
+        }
+
+        updateScope(incPlaceholderPtrPtr);
+
         const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(declaration);
         const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [iterableTypeless]);
         const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
@@ -336,16 +352,18 @@ export class LoopHandler extends AbstractNodeHandler {
         const isDone = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
 
         builder.createCondBr(isDone, exiting, incrementor);
+        
         builder.setInsertionPoint(incrementor);
 
         const valueFn = this.generator.iteratorResult.getValueGetter();
         let valuePtr = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
         valuePtr = this.generator.builder.createBitCast(valuePtr, variableType.getLLVMType());
 
-        let valuePtrPtr = this.generator.gc.allocate(valuePtr.type);
-        valuePtrPtr = valuePtrPtr.makeAssignment(valuePtr);
-
-        updateScope(valuePtrPtr);
+        incPlaceholderPtrPtr = incPlaceholderPtrPtr.makeAssignment(valuePtr);
+        if (isTupleInitializer()) {
+          // Update scope with tuple element values
+          updateScope(incPlaceholderPtrPtr);
+        }
 
         builder.createBr(body);
 
@@ -360,6 +378,10 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(end);
 
         builder.setInsertionPoint(end);
+
+        if (isTupleInitializer()) {
+          this.generator.gc.removeRoot(incPlaceholderPtrPtr);
+        }
 
         ExitingBlocks.pop();
       };
@@ -426,6 +448,9 @@ export class LoopHandler extends AbstractNodeHandler {
         const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
         const iteratorNextMethod = this.generator.ts.iterator.getNext(arrayDeclaration, variableType);
 
+        let incPlaceholderPtrPtr = this.generator.gc.allocate(variableType.getLLVMType());
+        updateScope(incPlaceholderPtrPtr);
+
         builder.createBr(bodyLatch);
         builder.setInsertionPoint(bodyLatch);
 
@@ -439,16 +464,14 @@ export class LoopHandler extends AbstractNodeHandler {
         const isDone = this.generator.builder.createSafeCall(doneFn, [nextTypeless]);
 
         builder.createCondBr(isDone, exiting, incrementor);
+        
         builder.setInsertionPoint(incrementor);
 
         const valueFn = this.generator.iteratorResult.getValueGetter();
         let valuePtr = this.generator.builder.createSafeCall(valueFn, [nextTypeless]);
         valuePtr = this.generator.builder.createBitCast(valuePtr, variableType.getLLVMType());
 
-        let valuePtrPtr = this.generator.gc.allocate(valuePtr.type);
-        valuePtrPtr = valuePtrPtr.makeAssignment(valuePtr);
-
-        updateScope(valuePtrPtr);
+        incPlaceholderPtrPtr = incPlaceholderPtrPtr.makeAssignment(valuePtr);
 
         builder.createBr(body);
 

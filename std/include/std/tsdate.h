@@ -156,6 +156,8 @@ public:
 
     TS_METHOD Number* valueOf() const noexcept;
 
+    std::string toStdString() const override;
+
 private:
     DatePrivate* _d = nullptr;
 };

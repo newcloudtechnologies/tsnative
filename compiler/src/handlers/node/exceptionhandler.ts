@@ -11,6 +11,7 @@
 
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
+import { BlockHandler } from "./blockhandler";
 import { Scope, Environment } from "../../scope";
 import * as llvm from "llvm-node";
 import {
@@ -133,16 +134,28 @@ export class ExceptionHandler extends AbstractNodeHandler {
         [0],
         "exception.slot"
       );
-      const exceptionValue = builder.createSafeCall(
-        ExceptionHandler.beginCatch.fn,
-        [selector],
-        "begin_catch"
-      );
 
-      if (node.variableDeclaration) {
-        parentScope.set(node.variableDeclaration.name.getText(), exceptionValue);
+      // HACK!
+      // 1. try { scope1 } catch(e) { scope 2} - e actually belongs to a scope2
+      // 2. scope 2 does not exist at this point
+      // 3. we know for sure than node.block will be a block hence we can call BlockHandler
+      // 4. Lambda postpones creation of e to set it into scope 2
+      const prepare = (): void => {
+        const exceptionValue = builder.createSafeCall(
+          ExceptionHandler.beginCatch.fn,
+          [selector],
+          "begin_catch"
+        );
+
+        if (node.variableDeclaration) {
+          this.generator.symbolTable.currentScope.set(node.variableDeclaration.name.getText(), exceptionValue);
+        }
+      };
+
+      const blockHandler = new BlockHandler(this.generator, prepare);
+      if (!blockHandler.handle(node.block, parentScope, env)) {
+          throw new Error("Catch does not contain Block! Probably syntax error");
       }
-      this.generator.handleNode(node.block, parentScope, env);
 
       const currentBB = this.generator.builder.getInsertBlock();
       if (currentBB && !currentBB.getTerminator()) {

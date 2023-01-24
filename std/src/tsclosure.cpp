@@ -15,6 +15,7 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 TSClosure::TSClosure(void* fn, void*** env, Number* envLength, Number* numArgs, Number* optionals)
     : Object(TSTypeID::Closure)
@@ -68,25 +69,25 @@ void* TSClosure::call() const
     return operator()();
 }
 
-String* TSClosure::toString() const
+std::string TSClosure::toStdString() const
 {
-    return new String("[Function]");
+    return "[Function]";
 }
 
-void TSClosure::markChildren()
-{
-    LOG_ADDRESS("Calling Closure::markChildren on ", this);
+DEFAULT_TO_STRING_IMPL(TSClosure)
 
-    if (_numArgs && !_numArgs->isMarked())
+std::vector<Object*> TSClosure::getChildObjects() const
+{
+    auto result = Object::getChildObjects();
+
+    if (_numArgs)
     {
-        LOG_ADDRESS("Mark num args ", _numArgs);
-        _numArgs->mark();
+        result.push_back(_numArgs);
     }
 
-    if (_envLength && !_envLength->isMarked())
+    if (_envLength)
     {
-        LOG_ADDRESS("Mark env length args ", _envLength);
-        _envLength->mark();
+        result.push_back(_envLength);
     }
 
     const auto envLength = static_cast<std::size_t>(_envLength->unboxed());
@@ -94,10 +95,11 @@ void TSClosure::markChildren()
     {
         auto voidStarStar = _env[i];
         auto* o = static_cast<Object*>(*voidStarStar);
-        if (o && !o->isMarked())
+        if (o)
         {
-            LOG_ADDRESS("Mark child ", o);
-            o->mark();
+            result.push_back(o);
         }
     }
+
+    return result;
 }

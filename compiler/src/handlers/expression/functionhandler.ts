@@ -81,11 +81,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         return this.generator.symbolTable.withLocalScope(
-          (localScope: Scope) => {
-            const result = this.handleCallExpression(call, env);
-            localScope.deinitialize();
-            return result;
-          },
+          (_: Scope) => this.handleCallExpression(call, env),
           this.generator.symbolTable.currentScope,
           this.generator.internalNames.FunctionScope
         );
@@ -104,11 +100,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         );
       case ts.SyntaxKind.FunctionExpression:
         return this.generator.symbolTable.withLocalScope(
-          (localScope: Scope) => {
-            const result = this.handleFunctionExpression(expression as ts.FunctionExpression, env);
-            localScope.deinitialize();
-            return result;
-          },
+          (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
           this.generator.symbolTable.currentScope,
           this.generator.internalNames.FunctionScope
         );
@@ -1438,25 +1430,27 @@ export class FunctionHandler extends AbstractExpressionHandler {
       let { fn: virtualFn } = this.generator.llvm.function.create(llvmReturnType, [], this.generator.randomString);
 
       this.generator.withInsertBlockKeeping(() => {
-        const entryBlock = llvm.BasicBlock.create(
-          this.generator.context,
-          "entry",
-          virtualFn.unwrapped as llvm.Function
-        );
-        this.generator.builder.setInsertionPoint(entryBlock);
+        return this.generator.symbolTable.withLocalScope((_: Scope) => {
+          const entryBlock = llvm.BasicBlock.create(
+            this.generator.context,
+            "entry",
+            virtualFn.unwrapped as llvm.Function
+          );
+          this.generator.builder.setInsertionPoint(entryBlock);
 
-        const closureCall = this.generator.tsclosure.getLLVMCall();
+          const closureCall = this.generator.tsclosure.getLLVMCall();
 
-        let callResult = this.generator.builder.createSafeCall(closureCall, [
-          this.generator.builder.createLoad(closureGlobal),
-        ]);
-        if (!llvmReturnType.isVoid()) {
-          callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
-          this.generator.builder.createSafeRet(callResult);
-        } else {
-          this.generator.builder.createRetVoid();
-        }
-      });
+          let callResult = this.generator.builder.createSafeCall(closureCall, [
+            this.generator.builder.createLoad(closureGlobal),
+          ]);
+          if (!llvmReturnType.isVoid()) {
+            callResult = this.generator.builder.createBitCast(callResult, llvmReturnType);
+            this.generator.builder.createSafeRet(callResult);
+          } else {
+            this.generator.builder.createRetVoid();
+          }
+      },
+      this.generator.symbolTable.currentScope)});
 
       const virtualMethodClassDeclaration = virtualMethods.find(({ method: virtualMethod }) => {
         return virtualMethod.name!.getText() === method.name!.getText();
@@ -1482,7 +1476,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       const vtableIdx = virtualMethods.findIndex((v) => v.method.name!.getText() === method.name!.getText());
       const virtualDestructorsOffset = 2; // @todo: handcoded cause all the CXX class expected to be derived from Object and thus have virtual destructor
-      const objectVirtualMethodsCount = 5; // @todo: how this can be non-handcoded?
+      const objectVirtualMethodsCount = 6; // @todo: how this can be non-handcoded?
 
       const virtualFnPtr = this.generator.builder.createSafeInBoundsGEP(vtableAsArray, [
         0,

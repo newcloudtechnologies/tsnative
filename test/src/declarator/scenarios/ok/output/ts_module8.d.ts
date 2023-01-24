@@ -4,7 +4,7 @@ declare module "poc" {
         //@ts-ignore
         @Size(3)
         //@ts-ignore
-        @VTableSize(9)
+        @VTableSize(10)
         //@ts-ignore
         @VirtualDestructor
         export class MyWidget extends ts.Widget {

@@ -12,17 +12,18 @@
 #include "std/runtime.h"
 
 #include "std/diagnostics.h"
+#include "std/event_loop.h"
 #include "std/gc.h"
 #include "std/memory_diagnostics.h"
 #include "std/tsarray.h"
 #include "std/tsstring.h"
 
-#include "std/event_loop.h"
 #include "std/private/allocator.h"
 #include "std/private/default_executor.h"
 #include "std/private/default_gc.h"
 #include "std/private/logger.h"
 #include "std/private/memory_diagnostics_storage.h"
+#include "std/private/to_string_impl.h"
 #include "std/private/uv_loop_adapter.h"
 
 #include <cstdlib>
@@ -207,17 +208,12 @@ void Runtime::destroy()
     LOG_INFO("Runtime destroy finished");
 }
 
-String* Runtime::toString() const
+std::string Runtime::toStdString() const
 {
-    checkInitialization();
-
-    auto header = new String{"GlobalRuntimeObject:"};
-    auto separator = new String{"\n"};
-    auto cmdArgsHeader = new String{"CmdArgs:"};
-    auto cmdArgsStr = getCmdArgs()->toString();
-
-    return header->concat(separator)->concat(cmdArgsHeader)->concat(separator)->concat(cmdArgsStr)->concat(separator);
+    return "GlobalRuntimeObject";
 }
+
+DEFAULT_TO_STRING_IMPL(Runtime)
 
 Boolean* Runtime::toBool() const
 {

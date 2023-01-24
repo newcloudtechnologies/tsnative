@@ -19,6 +19,7 @@
 
 #include "std/private/logger.h"
 #include "std/private/number_parser.h"
+#include "std/private/to_string_impl.h"
 
 #include <cassert>
 #include <limits>
@@ -286,7 +287,7 @@ Number* Number::clone() const
     return new Number(this->unboxed());
 }
 
-String* Number::toString() const
+std::string Number::toStdString() const
 {
     std::ostringstream oss;
 
@@ -303,5 +304,7 @@ String* Number::toString() const
     {
         oss << this->unboxed();
     }
-    return new String(oss.str());
+    return oss.str();
 }
+
+DEFAULT_TO_STRING_IMPL(Number)

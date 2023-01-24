@@ -90,6 +90,7 @@ public:
         return static_cast<T>(get(key));
     }
 
+    // virtual because compiler tries to find it using vtable
     TS_METHOD virtual String* toString() const;
     TS_METHOD virtual Boolean* toBool() const;
 
@@ -99,14 +100,18 @@ public:
 
     TS_METHOD void copyPropsTo(Object* target);
 
+    virtual std::string toStdString() const;
+
     bool isMarked() const;
     void mark();
     void unmark();
 
-    virtual void markChildren();
+    virtual std::vector<Object*> getChildObjects() const;
+
+    void markChildren();
 
     template <typename T>
-    static Object* asObject(T value)
+    static Object* asObjectPtr(T value)
     {
         /*
         hard cast 'value' to Object
@@ -114,6 +119,17 @@ public:
         checks use reinterpret_cast in assumption that T is a pointer of class derived from Object
         */
         return reinterpret_cast<Object*>(value);
+    }
+
+    template <typename T>
+    static Object** asObjectPtrPtr(T value)
+    {
+        /*
+        hard cast 'value' to Object
+        std's containers may contain forward declared types so it's impossible to use static_cast and perform any static
+        checks use reinterpret_cast in assumption that T is a pointer of class derived from Object
+        */
+        return reinterpret_cast<Object**>(value);
     }
 
     void* operator new(std::size_t n);

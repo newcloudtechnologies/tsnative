@@ -49,7 +49,8 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    void markChildren() override;
+    std::vector<Object*> getChildObjects() const override;
+    std::string toStdString() const override;
 
 private:
     void* _fn = nullptr;
@@ -68,7 +69,7 @@ void TSClosure::setEnvironmentElement(T value, int index)
     if ((this->_optionals & (1 << index)) != 0)
     {
         Union* optional = static_cast<Union*>(*objectStarAddress);
-        optional->setValue(Object::asObject(value));
+        optional->setValue(Object::asObjectPtr(value));
         return;
     }
 

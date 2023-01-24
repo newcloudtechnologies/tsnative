@@ -1,7 +1,7 @@
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(9)
+@VTableSize(10)
 //@ts-ignore
 @VirtualDestructor
 export class Collection {
@@ -15,7 +15,7 @@ export class Collection {
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(9)
+@VTableSize(10)
 //@ts-ignore
 @VirtualDestructor
 export class Rope {

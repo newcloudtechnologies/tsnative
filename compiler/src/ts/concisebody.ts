@@ -354,7 +354,7 @@ export class ConciseBody {
             const dummyValue = LLVMConstantInt.getFalse(this.generator);
             const fakeVariable = new HeapVariableDeclaration(dummyValue, dummyValue, "");
 
-            scope.set(variableName, fakeVariable);
+            scope.set(variableName, fakeVariable, false);
           }
 
           // skip function body

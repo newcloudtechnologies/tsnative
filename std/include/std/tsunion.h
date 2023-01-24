@@ -44,11 +44,13 @@ public:
 
     bool hasValue();
 
-    void markChildren() override;
+    std::vector<Object*> getChildObjects() const override;
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
     TS_METHOD Boolean* equals(Object* other) const override;
+
+    std::string toStdString() const override;
 
 private:
     Object* _value = Undefined::instance();

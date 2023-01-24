@@ -1,7 +1,7 @@
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(9)
+@VTableSize(10)
 //@ts-ignore
 @VirtualDestructor
 export class Event {
@@ -12,7 +12,7 @@ export class Event {
 //@ts-ignore
 @Size(4)
 //@ts-ignore
-@VTableSize(9)
+@VTableSize(10)
 //@ts-ignore
 @VirtualDestructor
 export class CustomEvent extends Event {

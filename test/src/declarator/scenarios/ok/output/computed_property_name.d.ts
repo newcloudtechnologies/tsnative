@@ -10,7 +10,7 @@ declare module "global" {
         @Size(3)
         export class Iterator<T> {
             //@ts-ignore
-            @VTableIndex(7)
+            @VTableIndex(8)
             next(): IteratorResult<T>;
         }
 
@@ -18,7 +18,7 @@ declare module "global" {
         @Size(3)
         export class Iterable<T> {
             //@ts-ignore
-            @VTableIndex(7)
+            @VTableIndex(8)
             iterator(): Iterator<T>;
         }
 

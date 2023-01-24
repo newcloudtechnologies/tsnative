@@ -69,6 +69,8 @@ export class Runtime {
 
     const gcAddress = this.callGetGC();
     this.generator.builder.createSafeStore(gcAddress, this.globalGCAddress);
+
+    this.generator.symbolTable.currentScope.set("GlobalGC", this.globalGCAddress);
   }
 
   private callGetGC(): LLVMValue {
@@ -136,6 +138,8 @@ export class Runtime {
 
     const eventLoopAddress = this.callGetLoop();
     this.generator.builder.createSafeStore(eventLoopAddress, this.globalEventLoopAddress);
+
+    this.generator.symbolTable.currentScope.set("GlobalEventLoop", this.globalEventLoopAddress);
   }
 
   getEventLoopAddress(): LLVMValue {

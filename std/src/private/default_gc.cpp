@@ -16,6 +16,8 @@
 
 #include "std/private/logger.h"
 
+#include "std/private/gc_printer.h"
+
 DefaultGC::DefaultGC(Callbacks&& callbacks)
     : _rootsMutex{}
     , _heapMutex{}
@@ -48,7 +50,7 @@ std::size_t DefaultGC::getAliveObjectsCount() const
     return _heap.size();
 }
 
-void DefaultGC::addRoot(Object* o)
+void DefaultGC::addRoot(Object** o)
 {
     if (!o)
     {
@@ -60,7 +62,7 @@ void DefaultGC::addRoot(Object* o)
     _roots.insert(o);
 }
 
-void DefaultGC::removeRoot(Object* o)
+void DefaultGC::removeRoot(Object** o)
 {
     if (!o)
     {
@@ -92,12 +94,12 @@ void DefaultGC::collect()
 
 void DefaultGC::mark()
 {
-    for (auto* r : _roots)
+    for (auto** r : _roots)
     {
-        if (r && !r->isMarked())
+        if (r && *r && !(*r)->isMarked())
         {
             LOG_ADDRESS("Marking root: ", r);
-            r->mark();
+            (*r)->mark();
         }
     }
 }
@@ -127,30 +129,9 @@ void DefaultGC::sweep()
     }
 }
 
-void DefaultGC::untrackIfObject(void* mem)
+void DefaultGC::print() const
 {
-    if (!mem)
-    {
-        return;
-    }
-
-    std::lock(_heapMutex, _rootsMutex);
-    std::lock_guard<std::mutex> heapLock(_heapMutex, std::adopt_lock);
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex, std::adopt_lock);
-
-    auto* maybeObject = (Object*)mem;
-
-    auto heapIt = _heap.find(maybeObject);
-    if (heapIt != _heap.end())
-    {
-        LOG_ADDRESS("Untracking object ", maybeObject);
-        _heap.erase(heapIt);
-    }
-
-    auto rootIt = _roots.find(maybeObject);
-    if (rootIt != _roots.end())
-    {
-        LOG_ADDRESS("Untracking root ", maybeObject);
-        _roots.erase(rootIt);
-    }
+#ifdef ENABLE_GC_LOGS
+    GCPrinter().print(_heap, _roots);
+#endif // ENABLE_GC_LOGS
 }

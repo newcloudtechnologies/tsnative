@@ -13,9 +13,9 @@
 #include "std/tsarray.h"
 #include "std/tsstring.h"
 
-#include "std/private/tsarray_std_p.h"
-
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
+#include "std/private/tsarray_std_p.h"
 
 Tuple::Tuple()
     : Object(TSTypeID::Tuple)
@@ -57,21 +57,24 @@ void Tuple::setElementAtIndex(Number* index, Object* value)
     _d->setElementAtIndex(indexUnwrapped, value);
 }
 
-String* Tuple::toString() const
+std::string Tuple::toStdString() const
 {
-    return new String(_d->toString());
+    return _d->toString();
 }
 
-void Tuple::markChildren()
+DEFAULT_TO_STRING_IMPL(Tuple)
+
+std::vector<Object*> Tuple::getChildObjects() const
 {
-    LOG_INFO("Calling Tuple::markChildren");
+    auto result = Object::getChildObjects();
     for (int i = 0; i < _d->length(); ++i)
     {
         auto* o = static_cast<Object*>(_d->operator[](i));
-        if (o && !o->isMarked())
+        if (o)
         {
-            LOG_ADDRESS("Mark child: ", o);
-            o->mark();
+            result.push_back(o);
         }
     }
+
+    return result;
 }

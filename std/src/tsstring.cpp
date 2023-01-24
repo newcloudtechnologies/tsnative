@@ -21,6 +21,7 @@
 #endif
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -285,19 +286,21 @@ IterableIterator<String*>* String::iterator()
     return new StringIterator<String*>(this);
 }
 
-String* String::toString() const
+const std::string& String::cpp_str() const
 {
-    return clone();
+    return _d->cpp_str();
 }
+
+std::string String::toStdString() const
+{
+    return cpp_str();
+}
+
+DEFAULT_TO_STRING_IMPL(String)
 
 Boolean* String::toBool() const
 {
     return new Boolean(_d->toBool());
-}
-
-const std::string& String::cpp_str() const
-{
-    return _d->cpp_str();
 }
 
 String* String::clone() const

@@ -17,14 +17,14 @@ class TSNativeStdConan(ConanFile):
 
     options = {
         "build_tests": [True, False],
-        "enable_logs": [True, False],
+        "enable_logs": ["all", "gc", "none"],
         "run_tests_with_memcheck": [True, False],
         "fail_test_on_mem_leak": [True, False],
     }
 
     default_options = {
         "build_tests": False,
-        "enable_logs": False,
+        "enable_logs": "none",
         "run_tests_with_memcheck": False,
         "fail_test_on_mem_leak": False,
     }

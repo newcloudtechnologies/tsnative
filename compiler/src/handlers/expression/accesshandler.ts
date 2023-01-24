@@ -182,12 +182,9 @@ export class AccessHandler extends AbstractExpressionHandler {
   }
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
-    const subscription = this.generator.ts.tuple.getSubscriptionFn();
     const tuple = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
-    const tupleUntyped = this.generator.builder.asVoidStar(tuple);
     const index = this.generator.handleExpression(expression.argumentExpression, env).derefToPtrLevel1();
-
-    const element = this.generator.builder.createSafeCall(subscription, [tupleUntyped, index]);
+    const element = this.generator.ts.tuple.createSubscriptionCallForLLVMValue(tuple, index);
     const elementIndex = parseInt(expression.argumentExpression.getText(), 10);
 
     // Handle case with runtime index access.

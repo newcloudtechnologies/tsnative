@@ -34,11 +34,13 @@ public:
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("allocateObject(numBytes: any): void") void* allocateObject(double numBytes);
     TS_METHOD void collect();
 
-    TS_METHOD TS_SIGNATURE("addRoot(void): void") void addRoot(void* root);
-    TS_METHOD TS_SIGNATURE("removeRoot(void): void") void removeRoot(void* root);
+    TS_METHOD TS_SIGNATURE("addRoot(void): void") void addRoot(void** root);
+    TS_METHOD TS_SIGNATURE("removeRoot(void): void") void removeRoot(void** root);
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
+
+    std::string toStdString() const override;
 
 private:
     IGCImpl* _gcImpl;
