@@ -21,6 +21,7 @@
 #endif
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 Boolean::Boolean()
     : Object(TSTypeID::Boolean)
@@ -74,12 +75,14 @@ Boolean* Boolean::equals(Object* other) const
     return new Boolean(_d->value() == asBoolean->unboxed());
 }
 
-String* Boolean::toString() const
+std::string Boolean::toStdString() const
 {
     std::ostringstream oss;
     oss << std::boolalpha << this->unboxed();
-    return new String(oss.str());
+    return oss.str();
 }
+
+DEFAULT_TO_STRING_IMPL(Boolean)
 
 Boolean* Boolean::toBool() const
 {

@@ -15,6 +15,7 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 Union::Union()
     : Object(TSTypeID::Union)
@@ -43,15 +44,15 @@ void Union::setValue(Object* value)
 
 bool Union::hasValue()
 {
-    // mkrv @todo: i would prefer to introduce ID's system for every std builtin to avoid string comparison... later
-    const std::string& asString = toString()->cpp_str();
-    return asString != "null" && asString != "undefined";
+    return _value && !_value->isNull() && !_value->isUndefined();
 }
 
-String* Union::toString() const
+std::string Union::toStdString() const
 {
-    return _value->toString();
+    return _value->toStdString();
 }
+
+DEFAULT_TO_STRING_IMPL(Union)
 
 Boolean* Union::toBool() const
 {
@@ -68,13 +69,14 @@ Boolean* Union::equals(Object* other) const
     return getValue()->equals(other);
 }
 
-void Union::markChildren()
+std::vector<Object*> Union::getChildObjects() const
 {
-    LOG_ADDRESS("Calling Union::markChildren on ", this);
+    auto result = Object::getChildObjects();
 
-    if (_value && !_value->isMarked())
+    if (_value)
     {
-        LOG_ADDRESS("Mark child: ", _value);
-        _value->mark();
+        result.push_back(_value);
     }
+
+    return result;
 }

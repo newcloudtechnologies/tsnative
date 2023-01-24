@@ -66,7 +66,8 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    void markChildren() override;
+    std::vector<Object*> getChildObjects() const override;
+    std::string toStdString() const override;
 
     friend class Object;
 
@@ -180,8 +181,8 @@ IterableIterator<Tuple*>* Map<K, V>::iterator()
     for (const K& key : keys)
     {
         auto tuple = new Tuple();
-        tuple->push(Object::asObject(key));
-        tuple->push(Object::asObject(get(key)));
+        tuple->push(Object::asObjectPtr(key));
+        tuple->push(Object::asObjectPtr(get(key)));
 
         zipped->push(tuple);
     }
@@ -190,9 +191,15 @@ IterableIterator<Tuple*>* Map<K, V>::iterator()
 }
 
 template <typename K, typename V>
+std::string Map<K, V>::toStdString() const
+{
+    return _d->toString();
+}
+
+template <typename K, typename V>
 String* Map<K, V>::toString() const
 {
-    return new String(_d->toString());
+    return new String(toStdString());
 }
 
 template <typename K, typename V>
@@ -203,24 +210,25 @@ IterableIterator<K>* Map<K, V>::keys()
 }
 
 template <typename K, typename V>
-void Map<K, V>::markChildren()
+std::vector<Object*> Map<K, V>::getChildObjects() const
 {
-    LOG_ADDRESS("Calling Map::markChildren on ", this);
-    const auto callable = [](std::pair<K, V>& entry)
-    {
-        auto* key = Object::asObject(entry.first);
-        auto* value = Object::asObject(entry.second);
+    auto result = Object::getChildObjects();
 
-        if (key && !key->isMarked())
+    const auto callable = [&result](std::pair<K, V>& entry)
+    {
+        auto* key = Object::asObjectPtr(entry.first);
+        auto* value = Object::asObjectPtr(entry.second);
+
+        if (key)
         {
-            LOG_ADDRESS("Mark key: ", key);
-            key->mark();
+            result.push_back(key);
         }
-        if (value && !value->isMarked())
+        if (value)
         {
-            LOG_ADDRESS("Mark value: ", value);
-            value->mark();
+            result.push_back(value);
         }
     };
     _d->forEachEntry(callable);
+
+    return result;
 }

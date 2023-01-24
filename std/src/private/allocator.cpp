@@ -35,7 +35,7 @@ void* Allocator::doAllocate(std::size_t n)
 void* Allocator::allocateObject(std::size_t n)
 {
     auto* memory = doAllocate(n);
-    auto* object = Object::asObject(memory);
+    auto* object = Object::asObjectPtr(memory);
 
     LOG_ADDRESS("Allocated " + std::to_string(n) + " bytes using allocateObject ", memory);
 

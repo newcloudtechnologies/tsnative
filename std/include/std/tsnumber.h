@@ -98,6 +98,8 @@ public:
 
     TS_METHOD Number* clone() const;
 
+    std::string toStdString() const override;
+
 private:
     NumberPrivate* _d = nullptr;
 };

@@ -14,6 +14,7 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 Undefined::Undefined()
     : Object(TSTypeID::Undefined)
@@ -28,10 +29,12 @@ Undefined* Undefined::instance()
     return &inst;
 }
 
-String* Undefined::toString() const
+std::string Undefined::toStdString() const
 {
-    return new String("undefined");
+    return "undefined";
 }
+
+DEFAULT_TO_STRING_IMPL(Undefined)
 
 Boolean* Undefined::toBool() const
 {

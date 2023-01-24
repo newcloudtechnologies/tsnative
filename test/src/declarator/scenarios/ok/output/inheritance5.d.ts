@@ -1,7 +1,7 @@
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(9)
+@VTableSize(10)
 //@ts-ignore
 @VirtualDestructor
 export class Entity {
@@ -11,7 +11,7 @@ export class Entity {
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(11)
+@VTableSize(12)
 //@ts-ignore
 @VirtualDestructor
 export class DerivedPointer extends Iterable<Entity> {

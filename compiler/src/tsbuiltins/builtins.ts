@@ -610,7 +610,7 @@ export class BuiltinNumber extends Builtin {
     const casted = this.generator.builder.createBitCast(instance, this.llvmType);
     this.generator.builder.createSafeStore(casted, globalConstant);
 
-    this.generator.symbolTable.globalScope.set(globalScopeKey, globalConstant);
+    this.generator.symbolTable.globalScope.set(globalScopeKey, globalConstant, false);
   }
 
   getToStringFn() {

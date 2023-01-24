@@ -27,10 +27,10 @@
 #include "std/private/tsarray_std_p.h"
 #endif
 
+#include "std/private/logger.h"
+
 #include <sstream>
 #include <vector>
-
-#include "std/private/logger.h"
 
 template <typename T>
 class ArrayPrivate;
@@ -98,13 +98,14 @@ public:
 
     std::vector<T> toStdVector() const;
     TS_METHOD String* toString() const override;
+    std::string toStdString() const override;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>")
         TS_DECORATOR("MapsTo('iterator')") IterableIterator<T>* iterator() override;
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<number>") IterableIterator<Number*>* keys();
     TS_METHOD TS_RETURN_TYPE("ArrayIterator<T>") IterableIterator<T>* values();
 
-    void markChildren() override;
+    std::vector<Object*> getChildObjects() const override;
 
 private:
     ArrayPrivate<T>* _d = nullptr;
@@ -306,10 +307,15 @@ std::vector<T> Array<T>::toStdVector() const
 }
 
 template <typename T>
+std::string Array<T>::toStdString() const
+{
+    return _d->toString();
+}
+
+template <typename T>
 String* Array<T>::toString() const
 {
-    std::string result = _d->toString();
-    return new String(result);
+    return new String(toStdString());
 }
 
 template <typename T>
@@ -423,17 +429,18 @@ Array<String*>* Array<T>::getKeysArray() const
 }
 
 template <typename T>
-void Array<T>::markChildren()
+std::vector<Object*> Array<T>::getChildObjects() const
 {
-    LOG_ADDRESS("Calling Array::markChildren on ", this);
+    auto result = Object::getChildObjects();
     const auto elements = _d->toStdVector();
     for (auto& e : elements)
     {
-        auto* object = Object::asObject(e);
-        if (object && !object->isMarked())
+        auto* object = Object::asObjectPtr(e);
+        if (object)
         {
-            LOG_ADDRESS("Mark: ", object);
-            object->mark();
+            result.push_back(object);
         }
     }
+
+    return result;
 }

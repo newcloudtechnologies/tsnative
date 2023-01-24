@@ -32,6 +32,10 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
+    TS_METHOD void printGCState() const;
+
+    std::string toStdString() const override;
+
 private:
     const MemoryDiagnosticsStorage& _storage;
     const IGCImpl& _gc;

@@ -63,7 +63,8 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    void markChildren() override;
+    std::vector<Object*> getChildObjects() const override;
+    std::string toStdString() const override;
 
 private:
     SetPrivate<T>* _d = nullptr;
@@ -165,24 +166,31 @@ IterableIterator<T>* Set<T>::keys()
 }
 
 template <typename T>
-String* Set<T>::toString() const
+std::string Set<T>::toStdString() const
 {
-    return new String(_d->toString());
+    return _d->toString();
 }
 
 template <typename T>
-void Set<T>::markChildren()
+String* Set<T>::toString() const
 {
-    LOG_INFO("Calling Set::markChildren");
-    const auto callable = [](T& entry)
+    return new String(toStdString());
+}
+
+template <typename T>
+std::vector<Object*> Set<T>::getChildObjects() const
+{
+    auto result = Object::getChildObjects();
+    const auto callable = [&result](T& entry)
     {
-        auto* object = Object::asObject(entry);
-        if (object && !object->isMarked())
+        auto* object = Object::asObjectPtr(entry);
+        if (object)
         {
-            LOG_ADDRESS("Mark set element: ", object);
-            object->mark();
+            result.push_back(object);
         }
     };
 
     _d->forEach(callable);
+
+    return result;
 }

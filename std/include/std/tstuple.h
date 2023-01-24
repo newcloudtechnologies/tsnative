@@ -40,7 +40,9 @@ public:
 
     TS_METHOD String* toString() const override;
 
-    void markChildren() override;
+    std::vector<Object*> getChildObjects() const override;
+
+    std::string toStdString() const override;
 
 private:
     ArrayPrivate<Object*>* _d = nullptr;

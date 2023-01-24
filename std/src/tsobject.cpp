@@ -14,6 +14,7 @@
 #include "std/tsobject.h"
 
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 #include "std/private/tsmap_p.h"
 
 #include "std/tsarray.h"
@@ -247,7 +248,7 @@ void Object::set(const std::string& key, void* value)
     _props->set(keyWrapped, static_cast<Object*>(value));
 }
 
-String* Object::toString() const
+std::string Object::toStdString() const
 {
     std::ostringstream oss;
 
@@ -273,7 +274,7 @@ String* Object::toString() const
         }
         else
         {
-            oss << obj->toString();
+            oss << obj->toStdString();
         }
 
         oss << "\n";
@@ -282,8 +283,10 @@ String* Object::toString() const
     depth--;
     oss << std::string(depth * PADDING_WIDTH, ' ') + "}";
 
-    return new String(oss.str());
+    return oss.str();
 }
+
+DEFAULT_TO_STRING_IMPL(Object);
 
 Boolean* Object::toBool() const
 {
@@ -323,27 +326,42 @@ void Object::unmark()
     _isMarked = false;
 }
 
-void Object::markChildren()
+std::vector<Object*> Object::getChildObjects() const
 {
-    LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
+    std::vector<Object*> result;
+    result.reserve(_props->size());
 
-    const auto callable = [](auto& entry)
+    const auto callable = [&result](auto& entry)
     {
         auto* key = entry.first;
         auto* value = entry.second;
 
-        if (key && !key->isMarked())
+        if (key)
         {
-            LOG_ADDRESS("Mark key child: ", key);
-            key->mark();
+            result.push_back(key);
         }
-        if (value && !value->isMarked())
+        if (value)
         {
-            LOG_ADDRESS("Mark value child: ", value);
-            value->mark();
+            result.push_back(value);
         }
     };
+
     _props->forEachEntry(callable);
+
+    return result;
+}
+
+void Object::markChildren()
+{
+    LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
+    auto children = getChildObjects();
+    for (auto* c : children)
+    {
+        if (!c->isMarked())
+        {
+            c->mark();
+        }
+    }
 
     LOG_INFO("Finished calling OBJECT::markChildren");
 }

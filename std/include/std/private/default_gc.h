@@ -38,12 +38,11 @@ public:
 
     std::size_t getAliveObjectsCount() const override;
 
-    void addRoot(Object* object) override;
-    void removeRoot(Object* object) override;
+    void addRoot(Object** object) override;
+    void removeRoot(Object** object) override;
 
     void collect() override;
-
-    void untrackIfObject(void* mem);
+    void print() const override;
 
 private:
     void mark();
@@ -55,6 +54,6 @@ private:
 
     // TODO Use absl::uset
     std::unordered_set<Object*> _heap;
-    std::unordered_set<Object*> _roots;
+    std::unordered_set<Object**> _roots;
     Callbacks _callbacks;
 };

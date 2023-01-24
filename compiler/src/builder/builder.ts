@@ -198,6 +198,7 @@ export class Builder {
   }
 
   createSafeRet(value: LLVMValue) {
+    this.generator.symbolTable.currentScope.deinitialize();
     this.checkRet(value);
     return this.builder.createRet(value.unwrapped);
   }
@@ -261,7 +262,9 @@ export class Builder {
     return LLVMValue.create(br, this.generator);
   }
 
-  createCondBr(condition: LLVMValue, then: llvm.BasicBlock, elseBlock: llvm.BasicBlock) {
+  createCondBr(condition: LLVMValue, 
+               then: llvm.BasicBlock, 
+               elseBlock: llvm.BasicBlock) {
     if (!condition.type.isTSBoolean()) {
       throw new Error(`Expected boolean condition, got ${condition.type.toString()}`);
     }
@@ -272,6 +275,7 @@ export class Builder {
   }
 
   createRetVoid() {
+    this.generator.symbolTable.currentScope.deinitialize();
     this.builder.createRetVoid();
   }
 

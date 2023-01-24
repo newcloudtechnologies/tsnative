@@ -50,7 +50,7 @@ TS_CODE(
 template <typename T>
 void console::log(T value)
 {
-    std::cout << std::boolalpha << Object::asObject(value)->toString() << std::endl;
+    std::cout << std::boolalpha << Object::asObjectPtr(value)->toStdString() << std::endl;
 }
 
 template <typename T, typename... Ts>
@@ -62,7 +62,7 @@ void console::log(T v, Ts... ts)
 template <typename T, typename... Ts>
 void console::logImpl(T v, Ts... ts)
 {
-    std::cout << std::boolalpha << Object::asObject(v)->toString() << " ";
+    std::cout << std::boolalpha << Object::asObjectPtr(v)->toStdString() << " ";
     console::log(ts...);
 }
 
@@ -71,7 +71,7 @@ static String* assertionFailedMessage = new String("Assertion failed:");
 template <typename T, typename... Ts>
 void console::assert(T assumption, Ts... ts)
 {
-    if (!Object::asObject(assumption)->toBool()->unboxed())
+    if (!Object::asObjectPtr(assumption)->toBool()->unboxed())
     {
         console::log(assertionFailedMessage, ts...);
         std::terminate();

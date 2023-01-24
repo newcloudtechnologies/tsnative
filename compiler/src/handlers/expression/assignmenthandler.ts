@@ -151,16 +151,9 @@ export class AssignmentHandler extends AbstractExpressionHandler {
     const tupleUntyped = this.generator.builder.asVoidStar(tupleInitializer);
     const elementTypes = rhs.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
 
-    const subscription = this.generator.ts.tuple.getSubscriptionFn();
-
     identifiers.forEach((identifier, index) => {
-      const llvmDoubleIndex = LLVMConstantFP.get(this.generator, index);
-      const llvmNumberIndex = this.generator.builtinNumber.create(llvmDoubleIndex);
+      const destructedValueUntyped = this.generator.ts.tuple.createSubscriptionCallForNumber(tupleUntyped, index);
 
-      const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
-        tupleUntyped,
-        llvmNumberIndex,
-      ]);
       const destructedValue = this.generator.builder.createBitCast(
         destructedValueUntyped,
         elementTypes[index].getLLVMType()

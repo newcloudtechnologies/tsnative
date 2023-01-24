@@ -10,10 +10,13 @@
  */
 
 #include "std/event_loop.h"
-#include "std/private/logger.h"
+
 #include <std/tsboolean.h>
 #include <std/tsnumber.h>
 #include <std/tsstring.h>
+
+#include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 EventLoop::EventLoop(IEventLoop& eventLoop)
     : _eventLoop{eventLoop}
@@ -53,11 +56,12 @@ void EventLoop::enqueue(IEventLoop::Callback&& callback)
     _eventLoop.enqueue(std::move(callback));
 }
 
-String* EventLoop::toString() const
+std::string EventLoop::toStdString() const
 {
-    LOG_METHOD_CALL;
-    return new String{"Global event loop object"};
+    return "Global event loop object";
 }
+
+DEFAULT_TO_STRING_IMPL(EventLoop)
 
 Boolean* EventLoop::toBool() const
 {

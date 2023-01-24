@@ -44,6 +44,8 @@ public:
 
     TS_METHOD TS_NO_CHECK TS_RETURN_TYPE("number") bool unboxed() const;
 
+    std::string toStdString() const override;
+
 private:
     BooleanPrivate* _d = nullptr;
 };

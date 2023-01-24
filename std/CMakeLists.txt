@@ -89,10 +89,14 @@ set(SOURCES
     src/private/promise/shared_promise_internal_state.cpp
     src/private/promise/promise_callback.cpp
     src/private/default_executor.cpp
-    src/private/number_parser.cpp)
+    src/private/number_parser.cpp
+    src/private/gc_printer.cpp)
 
-if(ENABLE_LOGS)
+if("${ENABLE_LOGS}" STREQUAL "all")
     add_definitions( -DENABLE_LOGS )
+    add_definitions( -DENABLE_GC_LOGS )
+elseif ("${ENABLE_LOGS}" STREQUAL "gc")
+    add_definitions( -DENABLE_GC_LOGS )
 endif()
 
 add_library(${PROJECT_NAME}

@@ -575,6 +575,7 @@ export class Scope {
 
   private generator: LLVMGenerator;
   private isHoisted = false;
+  private isDeinitialized = false;
 
   constructor(name: string | undefined,
     mangledName: string | undefined,
@@ -603,7 +604,23 @@ export class Scope {
   }
 
   deinitialize() {
-    // Removing roots code will be here
+    if (this.isDeinitialized) {
+      return;
+    }
+
+    for (const identifier of this.map.keys()) {
+      const value = this.get(identifier);
+      if (!value || value instanceof Scope) {
+        continue
+      }
+
+      const ptrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
+      if (ptrPtr.type.getPointerLevel() == 2) {
+        this.generator.gc.removeRoot(ptrPtr);
+      }
+    }
+
+    this.isDeinitialized = true;
   }
 
   initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
@@ -645,7 +662,7 @@ export class Scope {
       }
 
       const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocate(llvmType.getPointerElementType());
+      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
       const inplaceAllocatedPtr = generator.ts.obj.createInplace(allocated, undefined);
       const inplaceAllocatedPtrPtr = generator.gc.allocate(inplaceAllocatedPtr.type);
       generator.builder.createSafeStore(inplaceAllocatedPtr, inplaceAllocatedPtrPtr);
@@ -709,35 +726,49 @@ export class Scope {
     return;
   }
 
-  setOrAssign(identifier: string, valuePtr: ScopeValue) {
+  setOrAssign(identifier: string, valuePtr: ScopeValue, makeRoot: boolean = true) {
     if (this.get(identifier)) {
       this.assign(identifier, valuePtr);
     }
     else {
-      this.set(identifier, valuePtr);
+      this.set(identifier, valuePtr, makeRoot);
     }
   }
 
-  set(identifier: string, valuePtr: ScopeValue) {
+  set(identifier: string, value: ScopeValue, makeRoot: boolean = true) {
     if (this.get(identifier)) {
       throw new Error(`Identifier '${identifier}' already exists. Use 'Scope.assign' instead of 'Scope.set'`);
     }
 
-    if (valuePtr instanceof Scope) {
-      this.map.set(identifier, valuePtr);
+    if (value instanceof Scope) {
+      this.map.set(identifier, value);
       return;
     }
 
-    const vPtr = valuePtr instanceof HeapVariableDeclaration ? valuePtr.allocated : valuePtr;
-    if (vPtr.type.getPointerLevel() === 2) {
-      this.map.set(identifier, vPtr);
+    const extractedValue = value instanceof HeapVariableDeclaration ? value.allocated : value;
+
+    if (extractedValue.type.getPointerLevel() === 2) {
+
+      if (makeRoot) {
+        this.generator.gc.addRoot(extractedValue);
+      }
+
+      this.map.set(identifier, extractedValue);
       return;
     }
+    else if (extractedValue.type.getPointerLevel() === 1) {
+      const vPtrPtr = this.generator.gc.allocate(extractedValue.type);
+      this.generator.builder.createSafeStore(extractedValue, vPtrPtr);
+  
+      this.map.set(identifier, vPtrPtr);
 
-    const vPtrPtr = this.generator.gc.allocate(vPtr.type);
-    this.generator.builder.createSafeStore(vPtr, vPtrPtr);
-
-    this.map.set(identifier, vPtrPtr);
+      if (makeRoot) {
+        this.generator.gc.addRoot(vPtrPtr);
+      }
+    }
+    else {
+      this.map.set(identifier, extractedValue);
+    }
   }
 
   replace(identifier: string, newValue: LLVMValue) {
@@ -797,6 +828,12 @@ export class Scope {
   }
 
   remove(identifier: string) {
+    const value = this.get(identifier);
+    if (value && !(value instanceof Scope)) {
+      const ptrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
+      this.generator.gc.removeRoot(ptrPtr);
+    }
+
     this.map.delete(identifier);
   }
 

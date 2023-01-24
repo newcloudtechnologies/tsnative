@@ -33,17 +33,20 @@ struct TreeNodeBase : public Object
     {
     }
 
-    void markChildren() override
+    std::vector<Object*> getChildObjects() const override
     {
-        if (left && !left->isMarked())
+        auto result = Object::getChildObjects();
+        if (left)
         {
-            left->mark();
+            result.push_back(left);
         }
 
-        if (right && !right->isMarked())
+        if (right)
         {
-            right->mark();
+            result.push_back(right);
         }
+
+        return result;
     }
 
     char name;
@@ -117,18 +120,18 @@ TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        getGC().addRoot(B);
-        getGC().addRoot(C);
+        getGC().addRoot(Object::asObjectPtrPtr(&B));
+        getGC().addRoot(Object::asObjectPtrPtr(&C));
 
         B->left = C;
         suspensionPoint = B;
 
-        getGC().removeRoot(B);
-        getGC().removeRoot(C);
+        getGC().removeRoot(Object::asObjectPtrPtr(&B));
+        getGC().removeRoot(Object::asObjectPtrPtr(&C));
     };
 
     auto A = new TreeNode{'A'};
-    getGC().addRoot(A);
+    getGC().addRoot(Object::asObjectPtrPtr(&A));
 
     garbageMaker(A->left);
 
@@ -157,24 +160,26 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
 {
     const auto garbageMaker = [this]
     {
-        auto A = new TreeNode{'A'};
+        // Memory leak is here. Will be fixed after
+        // https://jira.ncloudtech.ru:8090/browse/TSN-231
+        auto A = new TreeNode* {new TreeNode{'A'}};
         auto B = new TreeNode{'B'};
 
-        getGC().addRoot(A);
-        getGC().addRoot(B);
+        getGC().addRoot(Object::asObjectPtrPtr(A));
+        getGC().addRoot(Object::asObjectPtrPtr(&B));
 
-        A->left = B;
-        B->left = A;
+        (*A)->left = B;
+        B->left = *A;
 
         // Do not remove A since it is a return value
-        getGC().removeRoot(B);
+        getGC().removeRoot(Object::asObjectPtrPtr(&B));
 
         return A;
     };
 
-    auto* A = garbageMaker();
+    auto** A = garbageMaker();
 
-    A->left = nullptr; // Loose garbage
+    (*A)->left = nullptr; // Loose garbage
 
     EXPECT_EQ(2u, getGC().getAliveObjectsCount());
 
@@ -183,7 +188,7 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
     const auto actual = getActualAliveObjects();
-    const std::vector<const Object*> expectedAliveObjects{A};
+    const std::vector<const Object*> expectedAliveObjects{*A};
     EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
 }
 
@@ -199,8 +204,8 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleNoBreak)
     auto A = new TreeNode{'A'};
     auto B = new TreeNode{'B'};
 
-    getGC().addRoot(A);
-    getGC().addRoot(B);
+    getGC().addRoot(Object::asObjectPtrPtr(&A));
+    getGC().addRoot(Object::asObjectPtrPtr(&B));
 
     A->left = B;
     B->left = A;
@@ -230,19 +235,19 @@ TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
-        getGC().addRoot(C);
-        getGC().addRoot(D);
+        getGC().addRoot(Object::asObjectPtrPtr(&C));
+        getGC().addRoot(Object::asObjectPtrPtr(&D));
 
         C->right = D;
 
-        getGC().removeRoot(C);
-        getGC().removeRoot(D);
+        getGC().removeRoot(Object::asObjectPtrPtr(&C));
+        getGC().removeRoot(Object::asObjectPtrPtr(&D));
     };
 
     auto A = new TreeNode{'A'};
     auto B = new TreeNode{'B'};
-    getGC().addRoot(A);
-    getGC().addRoot(B);
+    getGC().addRoot(Object::asObjectPtrPtr(&A));
+    getGC().addRoot(Object::asObjectPtrPtr(&B));
 
     A->left = B;
     garbageMaker();
@@ -287,13 +292,13 @@ private:
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
-        _gc.addRoot(C);
-        _gc.addRoot(D);
+        _gc.addRoot(Object::asObjectPtrPtr(&C));
+        _gc.addRoot(Object::asObjectPtrPtr(&D));
 
         C->right = D;
 
-        _gc.removeRoot(C);
-        _gc.removeRoot(D);
+        _gc.removeRoot(Object::asObjectPtrPtr(&C));
+        _gc.removeRoot(Object::asObjectPtrPtr(&D));
     }
 
     DefaultGC& _gc;
@@ -311,8 +316,8 @@ TEST_F(TreeNodeGCTestFixture, detectDeepGarbage)
     auto B = new TreeNode{'B'};
     A->left = B;
 
-    getGC().addRoot(A);
-    getGC().addRoot(B);
+    getGC().addRoot(Object::asObjectPtrPtr(&A));
+    getGC().addRoot(Object::asObjectPtrPtr(&B));
 
     DeepGarbageMaker deepGarbageMaker{getGC()};
     deepGarbageMaker.make();
@@ -339,28 +344,30 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
 {
     const auto createNodes = [this]
     {
-        auto A = new TreeNode{'A'};
+        // Memory leak is here. Will be fixed after
+        // https://jira.ncloudtech.ru:8090/browse/TSN-231
+        auto A = new TreeNode* {new TreeNode{'A'}};
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        getGC().addRoot(A);
-        getGC().addRoot(B);
-        getGC().addRoot(C);
+        getGC().addRoot(Object::asObjectPtrPtr(A));
+        getGC().addRoot(Object::asObjectPtrPtr(&B));
+        getGC().addRoot(Object::asObjectPtrPtr(&C));
 
-        A->left = B;
+        (*A)->left = B;
         B->left = C;
-        A->right = C;
+        (*A)->right = C;
 
         // Do not remove A since it is a return value
-        getGC().removeRoot(B);
-        getGC().removeRoot(C);
+        getGC().removeRoot(Object::asObjectPtrPtr(&B));
+        getGC().removeRoot(Object::asObjectPtrPtr(&C));
 
         return A;
     };
 
-    auto* A = createNodes();
+    auto** A = createNodes();
 
-    A->left->left = nullptr; // B X-> C
+    (*A)->left->left = nullptr; // B X-> C
 
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
@@ -369,7 +376,7 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
     EXPECT_EQ(3u, getGC().getAliveObjectsCount());
 
     const auto actual = getActualAliveObjects();
-    const std::vector<const Object*> expectedAliveObjects{A, A->left, A->right};
+    const std::vector<const Object*> expectedAliveObjects{*A, (*A)->left, (*A)->right};
     EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
 }
 
@@ -388,9 +395,9 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        getGC().addRoot(A);
-        getGC().addRoot(B);
-        getGC().addRoot(C);
+        getGC().addRoot(Object::asObjectPtrPtr(&A));
+        getGC().addRoot(Object::asObjectPtrPtr(&B));
+        getGC().addRoot(Object::asObjectPtrPtr(&C));
 
         A->left = B;
         B->left = C;
@@ -399,19 +406,19 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
         auto E = new TreeNode{'E'};
         auto F = new TreeNode{'F'};
 
-        getGC().addRoot(D);
-        getGC().addRoot(E);
-        getGC().addRoot(F);
+        getGC().addRoot(Object::asObjectPtrPtr(&D));
+        getGC().addRoot(Object::asObjectPtrPtr(&E));
+        getGC().addRoot(Object::asObjectPtrPtr(&F));
 
         D->right = E;
         E->right = F;
 
-        getGC().removeRoot(A);
-        getGC().removeRoot(B);
-        getGC().removeRoot(C);
-        getGC().removeRoot(D);
-        getGC().removeRoot(E);
-        getGC().removeRoot(F);
+        getGC().removeRoot(Object::asObjectPtrPtr(&A));
+        getGC().removeRoot(Object::asObjectPtrPtr(&B));
+        getGC().removeRoot(Object::asObjectPtrPtr(&C));
+        getGC().removeRoot(Object::asObjectPtrPtr(&D));
+        getGC().removeRoot(Object::asObjectPtrPtr(&E));
+        getGC().removeRoot(Object::asObjectPtrPtr(&F));
     };
 
     createNodes();
@@ -437,10 +444,12 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 {
     const auto createNodes = [this]
     {
-        auto A = new TreeNode{'A'};
-        getGC().addRoot(A);
+        // Memory leak is here. Will be fixed after
+        // https://jira.ncloudtech.ru:8090/browse/TSN-231
+        auto A = new TreeNode* {new TreeNode{'A'}};
+        getGC().addRoot(Object::asObjectPtrPtr(A));
 
-        A->left = A;
+        (*A)->left = *A;
 
         // Do not remove A since it is a return value
         return A;
@@ -450,14 +459,14 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
-    A->left = nullptr;
+    (*A)->left = nullptr;
 
     getGC().collect();
 
     EXPECT_EQ(1u, getGC().getAliveObjectsCount());
 
     const auto actual = getActualAliveObjects();
-    const std::vector<const Object*> expectedAliveObjects{A};
+    const std::vector<const Object*> expectedAliveObjects{*A};
     EXPECT_THAT(actual, ::testing::UnorderedElementsAreArray(expectedAliveObjects));
 }
 
@@ -472,11 +481,11 @@ TEST_F(TreeNodeGCTestFixture, lostSelfCycleNode)
     const auto createNodes = [this]
     {
         auto A = new TreeNode{'A'};
-        getGC().addRoot(A);
+        getGC().addRoot(Object::asObjectPtrPtr(&A));
 
         A->left = A;
 
-        getGC().removeRoot(A);
+        getGC().removeRoot(Object::asObjectPtrPtr(&A));
     };
 
     createNodes();
@@ -511,10 +520,10 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
-        getGC().addRoot(A);
-        getGC().addRoot(B);
-        getGC().addRoot(C);
-        getGC().addRoot(D);
+        getGC().addRoot(Object::asObjectPtrPtr(&A));
+        getGC().addRoot(Object::asObjectPtrPtr(&B));
+        getGC().addRoot(Object::asObjectPtrPtr(&C));
+        getGC().addRoot(Object::asObjectPtrPtr(&D));
 
         A->left = B;
         B->left = C;
@@ -524,16 +533,16 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
         AA = A;
         BB = B;
 
-        getGC().removeRoot(A);
-        getGC().removeRoot(B);
-        getGC().removeRoot(C);
-        getGC().removeRoot(D);
+        getGC().removeRoot(Object::asObjectPtrPtr(&A));
+        getGC().removeRoot(Object::asObjectPtrPtr(&B));
+        getGC().removeRoot(Object::asObjectPtrPtr(&C));
+        getGC().removeRoot(Object::asObjectPtrPtr(&D));
     };
 
     createNodes();
 
-    getGC().addRoot(AA);
-    getGC().addRoot(BB);
+    getGC().addRoot(Object::asObjectPtrPtr(&AA));
+    getGC().addRoot(Object::asObjectPtrPtr(&BB));
 
     EXPECT_EQ(4u, getGC().getAliveObjectsCount());
 

@@ -57,6 +57,30 @@ export class GC {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
+    addRoot(value: LLVMValue): LLVMValue {
+        if (value.type.getPointerLevel() !== 2) {
+            return value; // This is not a root, just do nothing
+        }
+
+        const i8PtrPtrType = LLVMType.getInt8Type(this.generator).getPointer().getPointer();
+        const i8PtrPtr = this.generator.builder.createBitCast(value, i8PtrPtrType);
+        const gcAddress = this.runtime.getGCAddress(); // TODO Should that be a global constant?
+
+        return this.generator.builder.createSafeCall(this.addRootFn, [gcAddress, i8PtrPtr]);
+    }
+
+    removeRoot(value: LLVMValue): LLVMValue {
+        if (value.type.getPointerLevel() !== 2) {
+            return value; // This is not a root, just do nothing
+        }
+
+        const i8PtrPtrType = LLVMType.getInt8Type(this.generator).getPointer().getPointer();
+        const i8PtrPtr = this.generator.builder.createBitCast(value, i8PtrPtrType);
+        const gcAddress = this.runtime.getGCAddress();
+
+        return this.generator.builder.createSafeCall(this.removeRootFn, [gcAddress, i8PtrPtr]);
+    }
+
     private doAllocate(callable: LLVMValue, type: LLVMType, name?: string) : LLVMValue {
         const gcAddress = this.runtime.getGCAddress();
         const size = this.getAllocationSize(type);
@@ -94,11 +118,11 @@ export class GC {
             [],
             this.generator,
             undefined,
-            ["void*"]
+            ["void**"]
         );
 
         const llvmReturnType = LLVMType.getVoidType(this.generator);
-        const llvmArgumentTypes = [thisType.getLLVMType(), LLVMType.getInt8Type(this.generator).getPointer()];
+        const llvmArgumentTypes = [thisType.getLLVMType(), LLVMType.getInt8Type(this.generator).getPointer().getPointer()];
 
         return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
     }

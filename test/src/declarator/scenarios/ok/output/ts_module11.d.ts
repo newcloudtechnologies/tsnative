@@ -4,7 +4,7 @@ declare module "mgtts" {
         //@ts-ignore
         @Size(3)
         //@ts-ignore
-        @VTableSize(9)
+        @VTableSize(10)
         //@ts-ignore
         @VirtualDestructor
         export class Entity_t {
@@ -14,7 +14,7 @@ declare module "mgtts" {
         //@ts-ignore
         @Size(3)
         //@ts-ignore
-        @VTableSize(9)
+        @VTableSize(10)
         //@ts-ignore
         @VirtualDestructor
         export class Base2_t {
@@ -24,7 +24,7 @@ declare module "mgtts" {
         //@ts-ignore
         @Size(3)
         //@ts-ignore
-        @VTableSize(9)
+        @VTableSize(10)
         //@ts-ignore
         @VirtualDestructor
         export class Entity extends Entity_t {
@@ -34,7 +34,7 @@ declare module "mgtts" {
         //@ts-ignore
         @Size(3)
         //@ts-ignore
-        @VTableSize(9)
+        @VTableSize(10)
         //@ts-ignore
         @VirtualDestructor
         export class Derived2_t extends Base2_t {

@@ -12,6 +12,7 @@
 #include "std/tsdate.h"
 
 #include "private/tsdate_absl_p.h"
+#include "std/private/to_string_impl.h"
 #include "std/private/tsdate_p.h"
 
 #include <std/gc.h>
@@ -364,11 +365,12 @@ Number* Date::setUTCMilliseconds(Number* new_utc_milliseconds)
     return setMilliseconds(new_utc_milliseconds);
 }
 
-String* Date::toString() const
+std::string Date::toStdString() const
 {
-    auto string = _d->toString();
-    return new String(string);
+    return _d->toString();
 }
+
+DEFAULT_TO_STRING_IMPL(Date)
 
 String* Date::toDateString() const noexcept
 {

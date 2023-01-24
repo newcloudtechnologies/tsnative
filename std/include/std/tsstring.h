@@ -84,6 +84,7 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
+    std::string toStdString() const override;
     const std::string& cpp_str() const;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): StringIterator<string>")

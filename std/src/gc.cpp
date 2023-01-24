@@ -17,6 +17,7 @@
 
 #include "std/private/allocator.h"
 #include "std/private/logger.h"
+#include "std/private/to_string_impl.h"
 
 GC::GC(IGCImpl* gcImpl, Allocator* allocator)
     : _gcImpl{gcImpl}
@@ -65,30 +66,32 @@ void GC::collect()
     return _gcImpl->collect();
 }
 
-void GC::addRoot(void* root)
+void GC::addRoot(void** root)
 {
     if (!_gcImpl)
     {
-        throw std::runtime_error("GC cannot be nullptr");
+        throw std::runtime_error("GCImpl cannot be nullptr");
     }
 
-    _gcImpl->addRoot(static_cast<Object*>(root));
+    _gcImpl->addRoot(Object::asObjectPtrPtr(root));
 }
 
-void GC::removeRoot(void* root)
+void GC::removeRoot(void** root)
 {
     if (!_gcImpl)
     {
-        throw std::runtime_error("GC cannot be nullptr");
+        throw std::runtime_error("GCImpl cannot be nullptr");
     }
 
-    _gcImpl->removeRoot(static_cast<Object*>(root));
+    _gcImpl->removeRoot(Object::asObjectPtrPtr(root));
 }
 
-String* GC::toString() const
+std::string GC::toStdString() const
 {
-    return new String("Global GC object");
+    return "Global GC object";
 }
+
+DEFAULT_TO_STRING_IMPL(GC)
 
 Boolean* GC::toBool() const
 {
