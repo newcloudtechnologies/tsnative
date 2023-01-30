@@ -97,3 +97,13 @@ Boolean* GC::toBool() const
 {
     return new Boolean(_gcImpl && _allocator);
 }
+
+void GC::saveMemoryGraph() const
+{
+    if (!_gcImpl)
+    {
+        throw std::runtime_error("GCImpl cannot be nullptr");
+    }
+
+    _gcImpl->print();
+}
