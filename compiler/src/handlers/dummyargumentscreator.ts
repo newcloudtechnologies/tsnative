@@ -18,11 +18,12 @@ export class DummyArgumentsCreator {
           throw new Error("Function argument types should be *");
         }
 
-        let nullArg = LLVMConstant.createNullValue(t.unwrapPointer(), this.generator);
+        //let nullArg = LLVMConstant.createNullValue(t.unwrapPointer(), this.generator);
 
-        const allocatedPtr = this.generator.gc.allocate(nullArg.type.unwrapPointer());
-        this.generator.builder.createSafeStore(nullArg, allocatedPtr);
-        nullArg = allocatedPtr;
+        // TODO is it ok?
+        const allocatedPtr = this.generator.gc.allocate(t.getPointerElementType());
+        this.generator.ts.obj.createInplace(allocatedPtr);
+        let nullArg = allocatedPtr;
 
         if (nullArg.type.isUnion()) {
           nullArg = this.generator.ts.union.create();
