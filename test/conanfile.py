@@ -129,7 +129,7 @@ class TSNativeTestsConan(ConanFile):
         cmake.build()
 
     def runCompiledTests(self, out_dir):
-        test_options = "--output_on_failure"
+        test_options = "--output-on-failure"
 
         if self.options.run_tests_with_memcheck:
             test_options += " -D ExperimentalMemCheck"
