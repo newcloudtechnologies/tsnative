@@ -42,6 +42,8 @@ public:
 
     std::string toStdString() const override;
 
+    TS_METHOD void saveMemoryGraph() const;
+
 private:
     IGCImpl* _gcImpl;
     Allocator* _allocator;
