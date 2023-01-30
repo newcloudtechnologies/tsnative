@@ -15,6 +15,51 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     {
         const myStr : string = "abacaba";
         myStr.trim(); // Use this memory to prove it is alive
+
+        class A {
+            static a: number = 0;
+            constructor() { }
+          }
+        
+          class B extends A {
+            static a: number = 0;
+        
+            constructor() {
+              super();
+              A.a++;
+            }
+        
+            setStatic(v: number) {
+              A.a = v;
+            }
+          }
+        
+          const inst = new B();
+          inst.setStatic(1);
+
+          class Node {
+            private name: string;
+        
+            constructor() {
+              this.name = "";
+            }
+        
+            setName(name: string) {
+              this.name = name;
+            }
+        
+            getName(): string {
+              return this.name;
+            }
+          }
+        
+          let node1 = new Node();
+          node1.setName("Node1");
+        
+          let node2 = new Node();
+          node2.setName("Node2");
+
+        gc.saveMemoryGraph();
     }
 
     gc.collect();
