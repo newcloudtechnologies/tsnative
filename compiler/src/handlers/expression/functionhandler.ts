@@ -23,7 +23,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
-import { last } from "lodash";
+import {invoke, last} from "lodash";
 import { TSType } from "../../ts/type";
 import { LLVMConstant, LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMStructType, LLVMType } from "../../llvm/type";
@@ -35,6 +35,7 @@ import { LLVMFunction } from "../../llvm/function";
 import { getInvocableBody, needUnwind } from "../../builder/builder";
 import { TSSymbol } from "../../ts/symbol";
 import { DummyArgumentsCreator } from "../dummyargumentscreator";
+import {createFunctionTypeNode} from "typescript";
 
 export class FunctionHandler extends AbstractExpressionHandler {
   private readonly sysVFunctionHandler: SysVFunctionHandler;
@@ -187,6 +188,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
     args: LLVMValue[],
     closure: LLVMValue
   ) {
+    console.log(
+      "========================== handleTSClosureCall: ",
+      expression.getText(),
+      "=========================="
+    );
+    console.log("ADDRESS: ", closure.address);
     const withRestParameters = last(signature.getDeclaredParameters())?.dotDotDotToken;
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
 
@@ -222,8 +229,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
         return typeMapper.get(tsType.toString()).getLLVMType();
       });
 
-    let adjustedArgs: LLVMValue[] = []
+    let adjustedArgs: LLVMValue[] = [];
     if (withRestParameters) {
+      console.log("With Rest");
       adjustedArgs = args.map((arg, index) => {
         const llvmArgType = types[index];
         if (!arg.type.equals(llvmArgType)) {
@@ -234,6 +242,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
         return arg;
       });
     } else {
+      console.log("No With Rest");
       adjustedArgs = types.map((type, index) => {
         let arg = args[index];
         if (!arg) {
@@ -261,8 +270,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
         fixedArgsCount + args.length
       ).getPointer()
     );
-
     this.storeActualArguments(adjustedArgs, environmentAsArray, fixedArgsCount);
+
+    console.log("ENV ADRR: ", environment.address);
 
     const closureCall = this.generator.tsclosure.getLLVMCall();
 
@@ -274,8 +284,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
       llvmReturnType = this.generator.ts.undef.getLLVMType();
     }
 
+    console.log("valueDeclaration: ", valueDeclaration?.getText());
+
+    console.log("IS BIND FUNCTION: ", fixedArgsCount !== 0);
+
+    console.log("DECL VAL FOR CLOSURE: ", valueDeclaration?.getText());
+
     llvmReturnType = llvmReturnType.ensurePointer();
     const callResult = this.invoke(expression, body, closureCall, [closure]);
+
+    console.log(
+      "========================== END handleTSClosureCall: ",
+      expression.getText(),
+      "=========================="
+    );
 
     return this.generator.builder.createBitCast(callResult, llvmReturnType);
   }
@@ -710,22 +732,45 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private handleFunctionBind(expression: ts.CallExpression, outerEnv?: Environment) {
+
+    console.log(
+      "========================== handleFunctionBind: ",
+      expression.getText(),
+      "=========================="
+    );
+
     if (!ts.isPropertyAccessExpression(expression.expression)) {
-      throw new Error(`Expected property access expression in function bind. Error at '${expression.getText()}'`);
-    }
-
-    const bindable = expression.expression.expression;
-
-    const symbol = this.generator.ts.checker.getTypeAtLocation(bindable).getSymbol();
-    const valueDeclaration = symbol.valueDeclaration;
-
-    if (!valueDeclaration) {
       throw new Error(
-        `Unable to find value declaration for callable '${bindable.getText()}'. Error at: '${expression.getText()}'`
+        `Expected property access expression in function bind. Error at '${expression.getText()}'`
       );
     }
 
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration)!;
+    const targetFunctionDeclaration = expression.expression.expression; // someFunction.bind(23) --> someFunction
+
+    const symbol = this.generator.ts.checker
+      .getTypeAtLocation(targetFunctionDeclaration)
+      .getSymbol();
+
+    const valueDeclaration = symbol.valueDeclaration;
+
+    console.log("DECL: ", valueDeclaration?.getText());
+
+    const callIdentifier = ts.createIdentifier(
+      targetFunctionDeclaration.getText()
+    );
+    console.log("IDENTIFIER: ", callIdentifier.escapedText);
+
+
+    if (!valueDeclaration) {
+      throw new Error(
+        `Unable to find value declaration for callable '${targetFunctionDeclaration.getText()}'. Error at: '${expression.getText()}'`
+      );
+    }
+
+    const signature =
+      this.generator.ts.checker.getSignatureFromDeclaration(valueDeclaration)!;
+
+    console.log("SIG: ", signature.parameters.length);
 
     let originalThisValue: LLVMValue | undefined;
     let thisValuePtrPtr: LLVMValue | undefined;
@@ -738,44 +783,189 @@ export class FunctionHandler extends AbstractExpressionHandler {
     ) {
       const thisValueIdx = outerEnv!.getVariableIndex("this");
       if (thisValueIdx === -1) {
-        throw new Error(`Expected 'this' to be provided to constructor. Error at '${expression.getText()}'`);
+        throw new Error(
+          `Expected 'this' to be provided to constructor. Error at '${expression.getText()}'`
+        );
       }
 
-      thisValuePtrPtr = this.generator.builder.createInBoundsGEP(outerEnv!.typed, [
-        LLVMConstantInt.get(this.generator, 0),
-        LLVMConstantInt.get(this.generator, thisValueIdx),
-      ]);
+      thisValuePtrPtr = this.generator.builder.createInBoundsGEP(
+        outerEnv!.typed,
+        [
+          LLVMConstantInt.get(this.generator, 0),
+          LLVMConstantInt.get(this.generator, thisValueIdx),
+        ]
+      );
       thisValuePtr = this.generator.builder.createLoad(thisValuePtrPtr);
 
       originalThisValue = thisValuePtr.derefToPtrLevel1();
-      let thisValue = this.generator.handleExpression(expression.expression.expression.expression, outerEnv).derefToPtrLevel1();
+      let thisValue = this.generator
+        .handleExpression(expression.expression.expression.expression, outerEnv)
+        .derefToPtrLevel1();
       thisValue = this.generator.ts.obj.get(thisValue, "parent");
 
       this.generator.builder.createSafeStore(thisValue, thisValuePtr);
     }
 
-    const args = this.generator.symbolTable.withLocalScope((localScope: Scope) => {
-      return this.handleCallArguments(expression, signature, localScope, outerEnv, !valueDeclaration.isMethod());
-    }, this.generator.symbolTable.currentScope);
+    const args = this.generator.symbolTable.withLocalScope(
+      (localScope: Scope) => {
+        return this.handleCallArguments(
+          expression,
+          signature,
+          localScope,
+          outerEnv,
+          !valueDeclaration.isMethod()
+        );
+      },
+      this.generator.symbolTable.currentScope
+    );
 
-    const functionToBind = this.generator.handleExpression(bindable, outerEnv).derefToPtrLevel1();
+    const handledBindArgs = this.generator.symbolTable.withLocalScope(
+      (localScope: Scope) => {
+        return this.handleCallArguments(
+          expression,
+          signature,
+          localScope,
+          outerEnv,
+          !valueDeclaration.isMethod()
+        );
+      },
+      this.generator.symbolTable.currentScope
+    );
+
+    console.log("BIND ARGS: ", handledBindArgs.length);
+
+    const targetFunctionLLVMValue = this.generator
+      .handleExpression(targetFunctionDeclaration, outerEnv)
+      .derefToPtrLevel1();
+
+    console.log(
+      "targetFunctionDeclaration: ",
+      targetFunctionDeclaration.getText()
+    );
 
     if (originalThisValue && thisValuePtr) {
       this.generator.builder.createSafeStore(originalThisValue, thisValuePtr);
     }
 
-    const getEnvironment = this.generator.tsclosure.getLLVMGetEnvironment();
-    const environment = this.generator.builder.createSafeCall(getEnvironment, [functionToBind]);
-    const environmentAsArray = this.generator.builder.createBitCast(
-      environment,
-      LLVMArrayType.get(this.generator, LLVMType.getInt8Type(this.generator).getPointer().getPointer(), args.length).getPointer()
+    const scope = this.generator.symbolTable.currentScope;
+    const body = valueDeclaration.body;
+
+    const environmentVariables = ConciseBody.create(
+      body!,
+      this.generator
+    ).getEnvironmentVariables(signature, scope, outerEnv);
+
+    const tsArgumentTypes = !valueDeclaration.typeParameters
+      ? valueDeclaration.parameters.map((parameter) => {
+          return this.generator.ts.checker.getTypeAtLocation(parameter);
+        })
+      : [];
+
+    const llvmArgumentTypes = tsArgumentTypes.map((argType) => {
+      return argType.getLLVMType();
+    });
+
+    const restDummyArguments = this.dummyArgsCreator.create(llvmArgumentTypes);
+
+    const env = createEnvironment(
+      scope,
+      [],
+      this.generator,
+      {
+        args: restDummyArguments,
+        signature,
+      },
+      outerEnv
     );
 
-    this.storeActualArguments(args, environmentAsArray);
+    const tsReturnType = signature.getReturnType();
+    const llvmReturnType = tsReturnType.getLLVMReturnType();
+    const functionName =
+      "__bind__" +
+      this.generator.randomString +
+      "_" +
+      targetFunctionDeclaration.getText();
 
-    this.generator.meta.registerFixedArgsCount(functionToBind, args.length);
+    const { fn } = this.generator.llvm.function.create(
+      llvmReturnType,
+      [env.voidStar],
+      functionName
+    );
 
-    return functionToBind;
+    // this.generator.withInsertBlockKeeping(() => {
+    //   this.generator.symbolTable.withLocalScope((bodyScope: Scope) => {
+    //     FunctionHandler.withEnvironmentPointerFromArguments((withEnv) => {
+    //       const entryBlock = llvm.BasicBlock.create(
+    //         this.generator.context,
+    //         "entry",
+    //         fn.unwrapped as llvm.Function
+    //       );
+    //       this.generator.builder.setInsertionPoint(entryBlock);
+    //
+    //       const closureCall = this.generator.tsclosure.getLLVMCall();
+    //
+    //       const targetFunctionLLVMValue = this.generator
+    //         .handleExpression(targetFunctionDeclaration, withEnv)
+    //         .derefToPtrLevel1();
+    //
+    //       const res = this.generator.builder.createSafeCall(closureCall, [
+    //         targetFunctionLLVMValue,
+    //       ]);
+    //       this.generator.builder.createSafeRet(
+    //         this.generator.builder.createBitCast(res, llvmReturnType)
+    //       );
+    //     }, (fn.unwrapped as llvm.Function)
+    //         .getArguments()
+    //         .map((argument) => LLVMValue.create(argument, this.generator)), env);
+    //   }, this.generator.symbolTable.currentScope);
+    // });
+
+    FunctionHandler.handleFunctionBody(
+      valueDeclaration,
+      fn,
+      this.generator,
+      env
+    );
+
+    LLVMFunction.verify(fn, expression);
+
+    setLLVMFunctionScope(fn, scope, this.generator, expression);
+
+    const result = this.makeClosure(fn, valueDeclaration, env);
+
+    this.storeActualArguments(handledBindArgs, env.typed);
+    this.generator.meta.registerFixedArgsCount(result, handledBindArgs.length);
+
+    // const getEnvironment = this.generator.tsclosure.getLLVMGetEnvironment();
+    // const environment = this.generator.builder.createSafeCall(getEnvironment, [
+    //   targetFunctionLLVMValue,
+    // ]);
+    //
+    //
+    // const environmentAsArray = this.generator.builder.createBitCast(
+    //   environment,
+    //   LLVMArrayType.get(
+    //     this.generator,
+    //     LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
+    //     args.length
+    //   ).getPointer()
+    // );
+    //
+    // this.storeActualArguments(args, environmentAsArray);
+    //
+    // this.generator.meta.registerFixedArgsCount(
+    //   targetFunctionLLVMValue,
+    //   args.length
+    // );
+
+    console.log(
+      "========================== END handleFunctionBind: ",
+      expression.getText(),
+      "=========================="
+    );
+
+    return result;
+    // return targetFunctionLLVMValue;
   }
 
   private tryCallMethod(expression: ts.CallExpression, outerEnv?: Environment) {
@@ -806,6 +996,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   private handleCallExpression(expression: ts.CallExpression, outerEnv?: Environment): LLVMValue {
+    console.log(
+        "========================== handleCallExpression: ",
+        expression.getText(),
+        "=========================="
+    );
     const maybeMethodCalled = this.tryCallMethod(expression, outerEnv);
     if (maybeMethodCalled) {
       return maybeMethodCalled;
@@ -815,6 +1010,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     let thisType: TSType | undefined;
 
     if (isMethod) {
+      console.log("IS METHOD");
       const propertyAccess = expression.expression as ts.PropertyAccessExpression;
       thisType = this.generator.ts.checker.getTypeAtLocation(propertyAccess.expression);
     }
@@ -866,6 +1062,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const functionToCallPtrPtr = this.generator.handleExpression(expression.expression, outerEnv);
+    console.log("[expression.expression: ", expression.expression.getText(), ", functionToCallPtrPtr: ", functionToCallPtrPtr.address);
     let functionToCall = functionToCallPtrPtr.derefToPtrLevel1();
     if (functionToCall.type.isUnion()) {
       functionToCall = this.generator.ts.union.get(functionToCall);
@@ -884,6 +1081,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     const declaredLLVMFunctionType = this.generator.tsclosure.getLLVMType();
+
+    console.log("functionToCall: ", functionToCall.address);
+
+    console.log(
+        "========================== END handleCallExpression: ",
+        expression.getText(),
+        "=========================="
+    );
+
     return this.handleTSClosureCall(
       expression,
       resolvedSignature,
@@ -1023,7 +1229,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
   private handleCallArguments(
     expression: ts.CallExpression | ts.NewExpression,
-    signature: Signature,
+    signature: Signature | TSSymbol[],
     scope: Scope,
     outerEnv?: Environment,
     contextThis?: boolean
@@ -1036,7 +1242,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const handledArgs: LLVMValue[] = [];
 
-    const parameters = signature.getParameters();
+    const parameters =
+      signature instanceof Signature ? signature.getParameters() : signature;
     const lastParameter = parameters[parameters.length - 1];
 
     // rest parameters for cxx-declared functions are considered to be variadic templates
