@@ -29,6 +29,8 @@ class Map;
 template <typename K, typename V>
 class MapPrivate;
 
+class GCStringConverter;
+
 enum class TSTypeID
 {
     Object = 1 << 3,
@@ -100,8 +102,6 @@ public:
 
     TS_METHOD void copyPropsTo(Object* target);
 
-    virtual std::string toStdString() const;
-
     bool isMarked() const;
     void mark();
     void unmark();
@@ -143,4 +143,7 @@ private:
     TSTypeID _typeid = TSTypeID::Object;
 
     bool _isMarked = false;
+
+private:
+    friend class GCStringConverter;
 };

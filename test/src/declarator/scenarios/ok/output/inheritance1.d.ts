@@ -4,7 +4,7 @@ declare module "test" {
         //@ts-ignore
         @Size(3)
         //@ts-ignore
-        @VTableSize(10)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Entity {
@@ -14,7 +14,7 @@ declare module "test" {
         //@ts-ignore
         @Size(4)
         //@ts-ignore
-        @VTableSize(10)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Base extends Entity {
@@ -24,7 +24,7 @@ declare module "test" {
         //@ts-ignore
         @Size(4)
         //@ts-ignore
-        @VTableSize(10)
+        @VTableSize(9)
         //@ts-ignore
         @VirtualDestructor
         export class Derived extends Base {

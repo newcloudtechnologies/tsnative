@@ -40,8 +40,6 @@ public:
 
     TS_METHOD Boolean* toBool() const override;
 
-    std::string toStdString() const override;
-
 private:
     IEventLoop& _eventLoop;
 };

@@ -17,7 +17,6 @@
 
 #include "std/private/allocator.h"
 #include "std/private/logger.h"
-#include "std/private/to_string_impl.h"
 
 GC::GC(IGCImpl* gcImpl, Allocator* allocator)
     : _gcImpl{gcImpl}
@@ -86,12 +85,10 @@ void GC::removeRoot(void** root)
     _gcImpl->removeRoot(Object::asObjectPtrPtr(root));
 }
 
-std::string GC::toStdString() const
+String* GC::toString() const
 {
-    return "Global GC object";
+    return new String("Global GC object");
 }
-
-DEFAULT_TO_STRING_IMPL(GC)
 
 Boolean* GC::toBool() const
 {

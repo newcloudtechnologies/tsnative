@@ -23,7 +23,6 @@
 #include "std/private/default_gc.h"
 #include "std/private/logger.h"
 #include "std/private/memory_diagnostics_storage.h"
-#include "std/private/to_string_impl.h"
 #include "std/private/uv_loop_adapter.h"
 
 #include <cstdlib>
@@ -208,12 +207,10 @@ void Runtime::destroy()
     LOG_INFO("Runtime destroy finished");
 }
 
-std::string Runtime::toStdString() const
+String* Runtime::toString() const
 {
-    return "GlobalRuntimeObject";
+    return new String("GlobalRuntimeObject");
 }
-
-DEFAULT_TO_STRING_IMPL(Runtime)
 
 Boolean* Runtime::toBool() const
 {

@@ -23,6 +23,7 @@ class ArrayPrivate;
 
 class String;
 class Number;
+class GCStringConverter;
 
 class TS_DECLARE Tuple : public Object
 {
@@ -42,8 +43,9 @@ public:
 
     std::vector<Object*> getChildObjects() const override;
 
-    std::string toStdString() const override;
-
 private:
     ArrayPrivate<Object*>* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };

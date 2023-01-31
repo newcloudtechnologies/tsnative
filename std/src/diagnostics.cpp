@@ -16,7 +16,6 @@
 
 #include "std/private/logger.h"
 #include "std/private/memory_diagnostics_storage.h"
-#include "std/private/to_string_impl.h"
 
 Diagnostics::Diagnostics(const IGCImpl& gcImpl, const MemoryDiagnosticsStorage& memoryDiagnosticsStorage)
     : _gcImpl{gcImpl}
@@ -30,12 +29,10 @@ MemoryDiagnostics* Diagnostics::getMemoryDiagnostics() const
     return new MemoryDiagnostics(_memoryDiagnosticsStorage, _gcImpl);
 }
 
-std::string Diagnostics::toStdString() const
+String* Diagnostics::toString() const
 {
-    return "Global diagnostics object";
+    return new String("Global diagnostics object");
 }
-
-DEFAULT_TO_STRING_IMPL(Diagnostics)
 
 Boolean* Diagnostics::toBool() const
 {

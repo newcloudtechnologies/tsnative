@@ -28,6 +28,7 @@ class Number;
 class Union;
 
 class StringPrivate;
+class GCStringConverter;
 
 // add TS_DECLARE to template specialization
 template class TS_DECLARE Iterable<String*>;
@@ -84,7 +85,6 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
-    std::string toStdString() const override;
     const std::string& cpp_str() const;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): StringIterator<string>")
@@ -96,6 +96,9 @@ public:
 
 private:
     StringPrivate* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };
 
 TS_CODE("// @ts-ignore\n"

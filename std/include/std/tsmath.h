@@ -97,6 +97,4 @@ public:
     TS_METHOD static Number* trunc(Number* x) noexcept;
 
     TS_METHOD String* toString() const override;
-
-    std::string toStdString() const override;
 };

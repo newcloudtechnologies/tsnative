@@ -20,6 +20,7 @@
 #include <ostream>
 
 class Boolean;
+class GCStringConverter;
 
 class TS_DECLARE Union : public Object
 {
@@ -50,8 +51,9 @@ public:
     TS_METHOD Boolean* toBool() const override;
     TS_METHOD Boolean* equals(Object* other) const override;
 
-    std::string toStdString() const override;
-
 private:
     Object* _value = Undefined::instance();
+
+private:
+    friend class GCStringConverter;
 };

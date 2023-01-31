@@ -11,7 +11,6 @@
 
 #include "std/tsmath.h"
 
-#include "std/private/to_string_impl.h"
 #include "std/private/tsmath_p.h"
 
 #include "std/tsnumber.h"
@@ -80,9 +79,7 @@ DEFINE_MATH_METHOD1(tanh)
 DEFINE_MATH_METHOD1(trunc)
 DEFINE_MATH_METHOD0(random)
 
-std::string Math::toStdString() const
+String* Math::toString() const
 {
-    return "Global Math Object";
+    return new String("Global Math Object");
 }
-
-DEFAULT_TO_STRING_IMPL(Math)

@@ -290,7 +290,7 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
                       {
                           if (value)
                           {
-                              os << Object::asObjectPtr(value)->toStdString() << ", ";
+                              os << Object::asObjectPtr(value)->toString()->cpp_str() << ", ";
                           }
                           else
                           {
@@ -302,7 +302,7 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
         auto last = array->_storage.back();
         if (last)
         {
-            os << Object::asObjectPtr(last)->toStdString();
+            os << Object::asObjectPtr(last)->toString()->cpp_str();
         }
         else
         {

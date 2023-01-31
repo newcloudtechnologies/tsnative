@@ -24,6 +24,8 @@ public:
     bool value() const;
     void setValue(bool value);
 
+    std::string toString() const override;
+
 private:
     bool _value = false;
 };

@@ -19,7 +19,6 @@
 
 #include "std/private/logger.h"
 #include "std/private/number_parser.h"
-#include "std/private/to_string_impl.h"
 
 #include <cassert>
 #include <limits>
@@ -287,24 +286,7 @@ Number* Number::clone() const
     return new Number(this->unboxed());
 }
 
-std::string Number::toStdString() const
+String* Number::toString() const
 {
-    std::ostringstream oss;
-
-    const double unboxedValue = this->unboxed();
-    if (NumberPrivate::isNaN(unboxedValue))
-    {
-        oss << "NaN";
-    }
-    else if (!NumberPrivate::isFinite(unboxedValue))
-    {
-        oss << (NumberPrivate::POSITIVE_INFINITY() == unboxedValue ? "Infinity" : "-Infinity");
-    }
-    else
-    {
-        oss << this->unboxed();
-    }
-    return oss.str();
+    return new String(_d->toString());
 }
-
-DEFAULT_TO_STRING_IMPL(Number)

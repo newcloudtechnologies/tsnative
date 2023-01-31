@@ -90,7 +90,8 @@ set(SOURCES
     src/private/promise/promise_callback.cpp
     src/private/default_executor.cpp
     src/private/number_parser.cpp
-    src/private/gc_printer.cpp)
+    src/private/gc_printer.cpp
+    src/private/gc_string_converter.cpp)
 
 if("${ENABLE_LOGS}" STREQUAL "all")
     add_definitions( -DENABLE_LOGS )

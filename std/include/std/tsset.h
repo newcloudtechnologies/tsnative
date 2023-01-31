@@ -35,6 +35,8 @@
 template <typename T>
 class SetPrivate;
 
+class GCStringConverter;
+
 template <typename T>
 class TS_DECLARE Set : public Iterable<T>
 {
@@ -64,10 +66,12 @@ public:
     TS_METHOD String* toString() const override;
 
     std::vector<Object*> getChildObjects() const override;
-    std::string toStdString() const override;
 
 private:
     SetPrivate<T>* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };
 
 template <typename T>
@@ -166,15 +170,9 @@ IterableIterator<T>* Set<T>::keys()
 }
 
 template <typename T>
-std::string Set<T>::toStdString() const
-{
-    return _d->toString();
-}
-
-template <typename T>
 String* Set<T>::toString() const
 {
-    return new String(toStdString());
+    return new String(_d->toString());
 }
 
 template <typename T>

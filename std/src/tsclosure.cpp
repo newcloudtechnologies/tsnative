@@ -15,7 +15,6 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
-#include "std/private/to_string_impl.h"
 
 TSClosure::TSClosure(void* fn, void*** env, Number* envLength, Number* numArgs, Number* optionals)
     : Object(TSTypeID::Closure)
@@ -69,12 +68,10 @@ void* TSClosure::call() const
     return operator()();
 }
 
-std::string TSClosure::toStdString() const
+String* TSClosure::toString() const
 {
-    return "[Function]";
+    return new String("[Function]");
 }
-
-DEFAULT_TO_STRING_IMPL(TSClosure)
 
 std::vector<Object*> TSClosure::getChildObjects() const
 {
