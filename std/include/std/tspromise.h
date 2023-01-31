@@ -25,6 +25,7 @@ class Union;
 class TSClosure;
 
 class PromisePrivate;
+class GCStringConverter;
 
 class TS_DECLARE Promise : public Object, public EmitterBase<Promise, ReadyEvent>
 {
@@ -61,7 +62,6 @@ public:
     TS_METHOD Boolean* equals(Object* other) const override;
 
     TS_METHOD String* toString() const override;
-    std::string toStdString() const override;
 
     TS_METHOD Boolean* toBool() const override;
 
@@ -72,4 +72,7 @@ private:
 
 private:
     PromisePrivate* _d;
+
+private:
+    friend class GCStringConverter;
 };

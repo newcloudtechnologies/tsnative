@@ -25,6 +25,7 @@
 
 class Number;
 class String;
+class GCStringConverter;
 
 TS_CODE("// @ts-ignore\n"
         "export type TSClosure = Function;\n");
@@ -50,7 +51,6 @@ public:
     TS_METHOD String* toString() const override;
 
     std::vector<Object*> getChildObjects() const override;
-    std::string toStdString() const override;
 
 private:
     void* _fn = nullptr;
@@ -58,6 +58,9 @@ private:
     Number* _envLength = nullptr;
     Number* _numArgs = nullptr;
     int64_t _optionals = 0;
+
+private:
+    friend class GCStringConverter;
 };
 
 template <typename T>

@@ -61,6 +61,7 @@ public:
     bool toBool() const override;
 
     double unboxed() const override;
+    std::string toString() const override;
 
 private:
     double _value = 0.0;

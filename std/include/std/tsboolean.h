@@ -24,6 +24,7 @@ class Number;
 class String;
 
 class BooleanPrivate;
+class GCStringConverter;
 
 class TS_DECLARE Boolean : public Object
 {
@@ -44,10 +45,11 @@ public:
 
     TS_METHOD TS_NO_CHECK TS_RETURN_TYPE("number") bool unboxed() const;
 
-    std::string toStdString() const override;
-
 private:
     BooleanPrivate* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };
 
 TS_CODE("// @ts-ignore\n"

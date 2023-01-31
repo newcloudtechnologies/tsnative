@@ -14,7 +14,6 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
-#include "std/private/to_string_impl.h"
 #include "std/private/tsarray_std_p.h"
 
 Tuple::Tuple()
@@ -57,12 +56,10 @@ void Tuple::setElementAtIndex(Number* index, Object* value)
     _d->setElementAtIndex(indexUnwrapped, value);
 }
 
-std::string Tuple::toStdString() const
+String* Tuple::toString() const
 {
-    return _d->toString();
+    return new String(_d->toString());
 }
-
-DEFAULT_TO_STRING_IMPL(Tuple)
 
 std::vector<Object*> Tuple::getChildObjects() const
 {

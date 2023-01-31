@@ -14,7 +14,6 @@
 #include "std/tsobject.h"
 
 #include "std/private/logger.h"
-#include "std/private/to_string_impl.h"
 #include "std/private/tsmap_p.h"
 
 #include "std/tsarray.h"
@@ -248,7 +247,7 @@ void Object::set(const std::string& key, void* value)
     _props->set(keyWrapped, static_cast<Object*>(value));
 }
 
-std::string Object::toStdString() const
+String* Object::toString() const
 {
     std::ostringstream oss;
 
@@ -274,7 +273,7 @@ std::string Object::toStdString() const
         }
         else
         {
-            oss << obj->toStdString();
+            oss << obj->toString()->cpp_str();
         }
 
         oss << "\n";
@@ -283,10 +282,8 @@ std::string Object::toStdString() const
     depth--;
     oss << std::string(depth * PADDING_WIDTH, ' ') + "}";
 
-    return oss.str();
+    return new String{oss.str()};
 }
-
-DEFAULT_TO_STRING_IMPL(Object);
 
 Boolean* Object::toBool() const
 {

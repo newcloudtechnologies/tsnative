@@ -35,6 +35,8 @@
 template <typename T>
 class ArrayPrivate;
 
+class GCStringConverter;
+
 template <typename T>
 class TS_DECLARE Array : public Iterable<T>
 {
@@ -98,7 +100,6 @@ public:
 
     std::vector<T> toStdVector() const;
     TS_METHOD String* toString() const override;
-    std::string toStdString() const override;
 
     TS_METHOD TS_SIGNATURE("[Symbol.iterator](): ArrayIterator<T>")
         TS_DECORATOR("MapsTo('iterator')") IterableIterator<T>* iterator() override;
@@ -109,6 +110,9 @@ public:
 
 private:
     ArrayPrivate<T>* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };
 
 template <typename T>
@@ -307,15 +311,9 @@ std::vector<T> Array<T>::toStdVector() const
 }
 
 template <typename T>
-std::string Array<T>::toStdString() const
-{
-    return _d->toString();
-}
-
-template <typename T>
 String* Array<T>::toString() const
 {
-    return new String(toStdString());
+    return new String(_d->toString());
 }
 
 template <typename T>

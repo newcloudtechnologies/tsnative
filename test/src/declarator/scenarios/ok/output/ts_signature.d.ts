@@ -1,7 +1,7 @@
 //@ts-ignore
 @Size(4)
 //@ts-ignore
-@VTableSize(10)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class FileInfo_t {
@@ -10,7 +10,7 @@ export class FileInfo_t {
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(10)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class AnyWidget {
@@ -36,7 +36,7 @@ export function someFunc2(n: number, m: number): data.FileInfo_t[];
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(10)
+@VTableSize(9)
 //@ts-ignore
 @VirtualDestructor
 export class Multiline {

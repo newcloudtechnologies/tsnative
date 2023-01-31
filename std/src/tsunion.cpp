@@ -15,7 +15,6 @@
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
-#include "std/private/to_string_impl.h"
 
 Union::Union()
     : Object(TSTypeID::Union)
@@ -47,12 +46,10 @@ bool Union::hasValue()
     return _value && !_value->isNull() && !_value->isUndefined();
 }
 
-std::string Union::toStdString() const
+String* Union::toString() const
 {
-    return _value->toStdString();
+    return _value->toString();
 }
-
-DEFAULT_TO_STRING_IMPL(Union)
 
 Boolean* Union::toBool() const
 {

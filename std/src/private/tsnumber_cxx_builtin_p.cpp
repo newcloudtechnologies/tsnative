@@ -12,6 +12,8 @@
 #include "std/private/tsnumber_cxx_builtin_p.h"
 
 #include <cmath>
+#include <sstream>
+#include <string>
 
 NumberCXXBuiltinPrivate::NumberCXXBuiltinPrivate(double v)
     : _value(v)
@@ -182,4 +184,24 @@ bool NumberCXXBuiltinPrivate::toBool() const
 double NumberCXXBuiltinPrivate::unboxed() const
 {
     return _value;
+}
+
+std::string NumberCXXBuiltinPrivate::toString() const
+{
+    std::ostringstream oss;
+
+    const double unboxedValue = this->unboxed();
+    if (NumberPrivate::isNaN(unboxedValue))
+    {
+        oss << "NaN";
+    }
+    else if (!NumberPrivate::isFinite(unboxedValue))
+    {
+        oss << (NumberPrivate::POSITIVE_INFINITY() == unboxedValue ? "Infinity" : "-Infinity");
+    }
+    else
+    {
+        oss << this->unboxed();
+    }
+    return oss.str();
 }

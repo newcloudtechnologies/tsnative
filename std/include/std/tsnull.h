@@ -33,6 +33,4 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
     TS_METHOD Boolean* equals(Object* other) const override;
-
-    std::string toStdString() const override;
 };

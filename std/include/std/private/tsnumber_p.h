@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 namespace constants
 {
@@ -150,4 +151,5 @@ public:
     virtual bool toBool() const = 0;
 
     virtual double unboxed() const = 0;
+    virtual std::string toString() const = 0;
 };

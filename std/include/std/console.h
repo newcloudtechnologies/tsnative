@@ -50,7 +50,7 @@ TS_CODE(
 template <typename T>
 void console::log(T value)
 {
-    std::cout << std::boolalpha << Object::asObjectPtr(value)->toStdString() << std::endl;
+    std::cout << std::boolalpha << Object::asObjectPtr(value)->toString()->cpp_str() << std::endl;
 }
 
 template <typename T, typename... Ts>
@@ -62,7 +62,7 @@ void console::log(T v, Ts... ts)
 template <typename T, typename... Ts>
 void console::logImpl(T v, Ts... ts)
 {
-    std::cout << std::boolalpha << Object::asObjectPtr(v)->toStdString() << " ";
+    std::cout << std::boolalpha << Object::asObjectPtr(v)->toString()->cpp_str() << " ";
     console::log(ts...);
 }
 

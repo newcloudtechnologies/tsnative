@@ -18,7 +18,6 @@
 
 #include "std/private/logger.h"
 #include "std/private/memory_diagnostics_storage.h"
-#include "std/private/to_string_impl.h"
 
 MemoryDiagnostics::MemoryDiagnostics(const MemoryDiagnosticsStorage& storage, const IGCImpl& gc)
     : _storage{storage}
@@ -40,12 +39,10 @@ Number* MemoryDiagnostics::getDeletedObjectsCount() const
     return new Number(static_cast<double>(_storage.getDeletedObjectsCount()));
 }
 
-std::string MemoryDiagnostics::toStdString() const
+String* MemoryDiagnostics::toString() const
 {
-    return "Global memory diagnostics object";
+    return new String("Global memory diagnostics object");
 }
-
-DEFAULT_TO_STRING_IMPL(MemoryDiagnostics)
 
 Boolean* MemoryDiagnostics::toBool() const
 {

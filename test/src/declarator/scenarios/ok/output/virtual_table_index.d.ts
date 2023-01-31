@@ -1,16 +1,16 @@
 //@ts-ignore
 @Size(3)
 //@ts-ignore
-@VTableSize(12)
+@VTableSize(11)
 //@ts-ignore
 @VirtualDestructor
 export class WithVirtualMethods {
     constructor();
     //@ts-ignore
-    @VTableIndex(8)
+    @VTableIndex(7)
     methodOne(): void;
     methodTwo(): void;
     //@ts-ignore
-    @VTableIndex(9)
+    @VTableIndex(8)
     methodThree(): void;
 }

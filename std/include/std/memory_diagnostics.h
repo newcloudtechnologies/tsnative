@@ -34,8 +34,6 @@ public:
 
     TS_METHOD void printGCState() const;
 
-    std::string toStdString() const override;
-
 private:
     const MemoryDiagnosticsStorage& _storage;
     const IGCImpl& _gc;

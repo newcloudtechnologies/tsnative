@@ -9,8 +9,14 @@
  *
  */
 
-#define DEFAULT_TO_STRING_IMPL(Clazz)     \
-    String* Clazz::toString() const       \
-    {                                     \
-        return new String(toStdString()); \
-    }
+#pragma once
+
+#include <string>
+
+class Object;
+
+class GCStringConverter
+{
+public:
+    static std::string convert(const Object* obj);
+};

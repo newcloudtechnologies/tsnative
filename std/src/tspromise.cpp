@@ -20,7 +20,6 @@
 #include "std/private/logger.h"
 #include "std/private/make_closure_from_lambda.h"
 #include "std/private/promise/promise_p.h"
-#include "std/private/to_string_impl.h"
 
 #include <sstream>
 
@@ -164,15 +163,13 @@ Boolean* Promise::equals(Object* other) const
     return new Boolean(result);
 }
 
-std::string Promise::toStdString() const
+String* Promise::toString() const
 {
-    auto msg = (_d->ready() ? getResult()->toStdString() : "<pending>");
+    auto msg = (_d->ready() ? getResult()->toString()->cpp_str() : "<pending>");
     std::stringstream ss;
     ss << "{ " << msg << "}";
-    return ss.str();
+    return new String(ss.str());
 }
-
-DEFAULT_TO_STRING_IMPL(Promise)
 
 Boolean* Promise::toBool() const
 {

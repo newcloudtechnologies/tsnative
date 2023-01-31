@@ -12,7 +12,8 @@
 #include "std/private/gc_printer.h"
 
 #include "std/tsobject.h"
-#include "std/tsstring.h"
+
+#include "std/private/gc_string_converter.h"
 
 #include <iostream>
 
@@ -38,7 +39,7 @@ void GCPrinter::printHeap(const std::unordered_set<Object*>& heap) const
         }
 
         std::cout << "Obj: " << std::hex << ((void*)h) << std::endl;
-        std::cout << (h->toStdString() + "\n\n");
+        std::cout << (GCStringConverter::convert(h) + "\n\n");
     }
 }
 

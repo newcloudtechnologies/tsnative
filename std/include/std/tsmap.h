@@ -34,6 +34,7 @@
 
 // add TS_DECLARE to template specialization
 template class TS_DECLARE Iterable<Tuple*>;
+class GCStringConverter;
 
 template <typename K, typename V>
 class TS_DECLARE Map : public Iterable<Tuple*>
@@ -67,12 +68,14 @@ public:
     TS_METHOD String* toString() const override;
 
     std::vector<Object*> getChildObjects() const override;
-    std::string toStdString() const override;
 
     friend class Object;
 
 private:
     MapPrivate<K, V>* _d;
+
+private:
+    friend class GCStringConverter;
 };
 
 template <typename K, typename V>
@@ -191,15 +194,9 @@ IterableIterator<Tuple*>* Map<K, V>::iterator()
 }
 
 template <typename K, typename V>
-std::string Map<K, V>::toStdString() const
-{
-    return _d->toString();
-}
-
-template <typename K, typename V>
 String* Map<K, V>::toString() const
 {
-    return new String(toStdString());
+    return new String(_d->toString());
 }
 
 template <typename K, typename V>

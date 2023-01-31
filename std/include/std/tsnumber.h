@@ -26,6 +26,7 @@ class String;
 class Union;
 
 class NumberPrivate;
+class GCStringConverter;
 
 class TS_DECLARE Number : public Object
 {
@@ -98,10 +99,11 @@ public:
 
     TS_METHOD Number* clone() const;
 
-    std::string toStdString() const override;
-
 private:
     NumberPrivate* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };
 
 TS_CODE("// @ts-ignore\n"

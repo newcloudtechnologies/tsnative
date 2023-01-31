@@ -21,7 +21,6 @@
 #endif
 
 #include "std/private/logger.h"
-#include "std/private/to_string_impl.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -291,12 +290,10 @@ const std::string& String::cpp_str() const
     return _d->cpp_str();
 }
 
-std::string String::toStdString() const
+String* String::toString() const
 {
-    return cpp_str();
+    return new String(cpp_str());
 }
-
-DEFAULT_TO_STRING_IMPL(String)
 
 Boolean* String::toBool() const
 {

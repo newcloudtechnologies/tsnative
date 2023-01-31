@@ -69,7 +69,6 @@ public:
 
     static TS_METHOD Array<String*>* getCmdArgs();
 
-    std::string toStdString() const override;
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 

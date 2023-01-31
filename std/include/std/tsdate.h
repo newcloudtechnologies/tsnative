@@ -23,6 +23,7 @@ class String;
 class Union;
 
 class DatePrivate;
+class GCStringConverter;
 
 class TS_DECLARE Date : public Object
 {
@@ -156,8 +157,9 @@ public:
 
     TS_METHOD Number* valueOf() const noexcept;
 
-    std::string toStdString() const override;
-
 private:
     DatePrivate* _d = nullptr;
+
+private:
+    friend class GCStringConverter;
 };
