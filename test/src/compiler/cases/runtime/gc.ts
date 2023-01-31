@@ -28,6 +28,14 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     const gc = Runtime.getGC();
 
     gc.collect();
+
+    class A {
+    }
+
+    class B extends A {
+    }
+
+    const instB = new B();
     
     function eee(v: number) {
 
