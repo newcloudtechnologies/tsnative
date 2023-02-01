@@ -11,59 +11,96 @@
 
 #include "std/private/gc_printer.h"
 
+#include "std/private/gc_string_converter.h"
 #include "std/tsobject.h"
 
-#include "std/private/gc_string_converter.h"
-
+#include <fstream>
 #include <iostream>
+#include <sstream>
 
-void GCPrinter::print(const std::unordered_set<Object*>& heap, const std::unordered_set<Object**>& roots)
+#include <include/gvl.h>
+
+void GCPrinter::print(const objects_t& heap, const roots_t& roots)
 {
-    std::cout << "\n----------------GC_STATE-----------------\n";
-    std::cout << "\n----------------GRAPH--------------------\n";
-    printGraph(roots);
+    static int i = 0;
 
-    std::cout << "\n----------------HEAP---------------------\n";
-    printHeap(heap);
-    std::cout << "\n----------------END_GC_STATE-------------\n";
+    gvl::Graph graph("Roots");
+    graph.AddGraphProperty("rankdir", "LR");
+    graph.AddCommonNodeProperty("shape", "box");
+
+    graph.AddNode(formatHeapInfo(heap), {gvl::Property("color", "red")});
+
+    fillRootsGraph(graph, roots);
+
+    std::ofstream out("gc_print_" + std::to_string(i++) + ".gv");
+    graph.RenderDot(out);
 }
 
-void GCPrinter::printHeap(const std::unordered_set<Object*>& heap) const
+std::string GCPrinter::formatHeapInfo(const objects_t& heap)
 {
-    std::cout << ("Heap size: " + std::to_string(heap.size()) + "\n");
-    for (auto* h : heap)
+    std::stringstream ss;
+    ss << "===== Heap =====" << std::endl << "Object count: " << heap.size() << std::endl << std::endl;
+
+    for (const auto* el : heap)
     {
-        if (!h)
+        if (!el)
         {
             throw std::runtime_error("Heap value is nullptr");
         }
 
-        std::cout << "Obj: " << std::hex << ((void*)h) << std::endl;
-        std::cout << (GCStringConverter::convert(h) + "\n\n");
+        ss << "Obj: " << std::hex << el << std::endl;
+        ss << GCStringConverter::convert(el) << std::endl << std::endl;
     }
+
+    return ss.str();
 }
 
-void GCPrinter::printGraph(const std::unordered_set<Object**>& roots)
+static std::string formatRootInfo(Object** root)
+{
+    std::stringstream ss;
+    ss << "Root**: " << std::hex << root << std::endl;
+    return ss.str();
+}
+
+static std::string formatObjInfo(const Object* obj)
+{
+    std::stringstream ss;
+    ss << "Obj: " << std::hex << obj << std::endl;
+    ss << GCStringConverter::convert(obj);
+
+    return ss.str();
+}
+
+void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots)
 {
     std::cout << ("Roots count: " + std::to_string(roots.size()) + "\n");
+
+    visited_nodes_t visited;
+
     for (auto** o : roots)
     {
-        if (!o)
+        if (!o || !*o)
         {
             throw std::runtime_error("Root value is nullptr");
         }
 
-        std::cout << "Root**: " << std::hex << ((void*)o) << std::endl;
-        std::cout << "Root*: " << std::hex << ((void*)(*o)) << std::endl;
+        auto rootId = gvl::NodeId(formatRootInfo(o));
+        graph.AddNode(rootId, {gvl::Property("style", "bold"), gvl::Property("shape", "component")});
 
-        _visited.insert(*o);
-        printChildren("\t", *o);
+        auto id = gvl::NodeId(formatObjInfo(*o));
+        graph.AddNode(id, {gvl::Property("shape", "component")});
+        graph.AddEdge(rootId, id);
 
-        std::cout << std::endl;
+        visited.insert({*o, id});
+
+        fillChildrenGraph(graph, id, *o, visited);
     }
 }
 
-void GCPrinter::printChildren(const std::string& prefix, Object* object)
+void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
+                                  const gvl::NodeId& parentNode,
+                                  Object* object,
+                                  visited_nodes_t& visited)
 {
     if (!object)
     {
@@ -78,14 +115,18 @@ void GCPrinter::printChildren(const std::string& prefix, Object* object)
             throw std::runtime_error("Heap object child value is nullptr");
         }
 
-        std::cout << prefix << " Obj: " << std::hex << ((void*)c) << std::endl;
-        if (_visited.find(c) != _visited.cend())
+        auto id = gvl::NodeId(formatObjInfo(c));
+
+        if (visited.find(c) != visited.end())
         {
-            std::cout << "Cycle break\n";
+            graph.AddEdge(parentNode, id);
             continue;
         }
+        visited.insert({c, id});
 
-        _visited.insert(c);
-        printChildren(prefix + "\t", c);
+        graph.AddNode(id);
+        graph.AddEdge(parentNode, id);
+
+        fillChildrenGraph(graph, id, c, visited);
     }
 }
