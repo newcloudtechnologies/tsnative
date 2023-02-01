@@ -65,14 +65,15 @@ void GC::collect()
     return _gcImpl->collect();
 }
 
-void GC::addRoot(void** root)
+void GC::addRoot(void** root, void* associatedName)
 {
+    LOG_METHOD_CALL
     if (!_gcImpl)
     {
         throw std::runtime_error("GCImpl cannot be nullptr");
     }
 
-    _gcImpl->addRoot(Object::asObjectPtrPtr(root));
+    _gcImpl->addRoot(Object::asObjectPtrPtr(root), static_cast<const String *>(associatedName));
 }
 
 void GC::removeRoot(void** root)
