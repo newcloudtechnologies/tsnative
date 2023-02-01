@@ -88,8 +88,6 @@ export class LLVMGenerator {
     }
     this.runEventLoop = runEventLoop;
     this._useGCVariableNames = useGCVariableNames;
-
-    console.log("useGCVariableNames: ", this.useGCVariableNames);
   }
 
   init() {
