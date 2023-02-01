@@ -18,6 +18,7 @@
 #include <functional>
 #include <mutex>
 #include <unordered_set>
+#include <vector>
 
 class Object;
 class IMemoryDiagnosticsImpl;
@@ -38,7 +39,7 @@ public:
 
     std::size_t getAliveObjectsCount() const override;
 
-    void addRoot(Object** object) override;
+    void addRoot(Object** object, const String* associatedName) override;
     void removeRoot(Object** object) override;
 
     void collect() override;
