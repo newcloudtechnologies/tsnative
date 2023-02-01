@@ -13,8 +13,10 @@
 
 #include "std/private/gc_string_converter.h"
 #include "std/tsobject.h"
+#include "std/private/gc_string_converter.h"
 
 #include <fstream>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
