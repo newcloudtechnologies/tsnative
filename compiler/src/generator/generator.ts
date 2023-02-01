@@ -69,7 +69,9 @@ export class LLVMGenerator {
 
   private runEventLoop: string | undefined;
 
-  constructor(program: ts.Program, runEventLoop?: string, generateDebugInfo = false) {
+  private readonly _useGCVariableNames: boolean;
+
+  constructor(program: ts.Program, runEventLoop?: string, useGCVariableNames: boolean = false, generateDebugInfo = false) {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
@@ -85,6 +87,9 @@ export class LLVMGenerator {
       this.debugInfo = new DebugInfo(this);
     }
     this.runEventLoop = runEventLoop;
+    this._useGCVariableNames = useGCVariableNames;
+
+    console.log("useGCVariableNames: ", this.useGCVariableNames);
   }
 
   init() {
@@ -382,5 +387,9 @@ export class LLVMGenerator {
 
   applyLocation(callInst: llvm.CallInst, decl: ts.Node) {
     this.getDebugInfo()?.applyLocation(callInst, decl);
+  }
+
+  get useGCVariableNames() {
+    return this._useGCVariableNames;
   }
 }

@@ -60,6 +60,7 @@ argv
   )
   .option("--debug", "Generate debug information")
   .option("--runEventLoop <[lock|oneshot]>", "Run event loop and lock execution (lock) or exit immediately (oneshot)")
+  .option("--useGCVariableNames", "GC: Use associated variable names associated with heap")
   .parse(process.argv);
 
 function parseTSConfig(): any {
@@ -223,7 +224,7 @@ async function main() {
 
   let llvmModule;
   try {
-    llvmModule = new LLVMGenerator(program, argv.runEventLoop, argv.debug).init().createModule();
+    llvmModule = new LLVMGenerator(program, argv.runEventLoop, argv.useGCVariableNames, argv.debug).init().createModule();
   } catch (e) {
     console.log(files);
     console.log(e);
