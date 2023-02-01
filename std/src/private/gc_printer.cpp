@@ -13,16 +13,16 @@
 
 #include "std/private/gc_string_converter.h"
 #include "std/tsobject.h"
-#include "std/private/gc_string_converter.h"
+#include "std/tsstring.h"
 
-#include <fstream>
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 
 #include <include/gvl.h>
 
-void GCPrinter::print(const objects_t& heap, const roots_t& roots)
+void GCPrinter::print(const objects_t& heap, const roots_t& roots, const variables_t& variables)
 {
     static int i = 0;
 
@@ -30,7 +30,7 @@ void GCPrinter::print(const objects_t& heap, const roots_t& roots)
     graph.AddGraphProperty("rankdir", "LR");
     graph.AddCommonNodeProperty("shape", "box");
 
-    graph.AddNode(formatHeapInfo(heap), {gvl::Property("color", "red")});
+    graph.AddNode(formatHeapInfo(heap, variables), {gvl::Property("color", "red")});
 
     fillRootsGraph(graph, roots);
 
@@ -38,7 +38,7 @@ void GCPrinter::print(const objects_t& heap, const roots_t& roots)
     graph.RenderDot(out);
 }
 
-std::string GCPrinter::formatHeapInfo(const objects_t& heap)
+std::string GCPrinter::formatHeapInfo(const objects_t& heap, const variables_t& variables)
 {
     std::stringstream ss;
     ss << "===== Heap =====" << std::endl << "Object count: " << heap.size() << std::endl << std::endl;
@@ -51,7 +51,21 @@ std::string GCPrinter::formatHeapInfo(const objects_t& heap)
         }
 
         ss << "Obj: " << std::hex << el << std::endl;
-        ss << GCStringConverter::convert(el) << std::endl << std::endl;
+        ss << "Value: " << GCStringConverter::convert(el) << std::endl;
+
+        const auto found = std::find_if(variables.cbegin(),
+                                        variables.cend(),
+                                        [el](const auto& p)
+                                        {
+                                            if (!p.root && !(*p.root))
+                                                return false;
+                                            return *(p.root) == el;
+                                        });
+        if (found != variables.cend() && found->associatedVariableName != nullptr)
+        {
+            ss << "Associated name: " << GCStringConverter::convert(found->associatedVariableName) << std::endl;
+        }
+        ss << std::endl;
     }
 
     return ss.str();

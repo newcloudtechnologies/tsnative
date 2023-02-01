@@ -11,12 +11,11 @@
 
 #pragma once
 
-#include "std/private/gc_variable_names.h"
+#include "std/private/gc_variable_name.h"
 
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 class Object;
@@ -32,12 +31,13 @@ class GCPrinter
 public:
     using roots_t = std::unordered_set<Object**>;
     using objects_t = std::unordered_set<Object*>;
+    using variables_t = std::vector<GCVariableName>;
 
-    void print(const objects_t& heap, const roots_t& roots);
+    void print(const objects_t& heap, const roots_t& roots, const variables_t& variables);
 
 private:
     static void fillRootsGraph(gvl::Graph& graph, const roots_t& roots);
-    static std::string formatHeapInfo(const objects_t& heap);
+    static std::string formatHeapInfo(const objects_t& heap, const variables_t& variables);
 
     using visited_nodes_t = std::unordered_map<Object*, gvl::NodeId>;
 
