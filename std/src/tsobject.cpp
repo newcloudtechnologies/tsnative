@@ -256,7 +256,7 @@ String* Object::toString() const
     static size_t depth = 0;
     static const int8_t PADDING_WIDTH = 2;
 
-    oss << size_t(this) << ": {\n";
+    oss << std::hex << size_t(this) << ": {\n";
 
     ++depth;
 

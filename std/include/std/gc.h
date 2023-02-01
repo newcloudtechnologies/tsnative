@@ -40,6 +40,8 @@ public:
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
+    TS_METHOD void saveMemoryGraph() const;
+
 private:
     IGCImpl* _gcImpl;
     Allocator* _allocator;

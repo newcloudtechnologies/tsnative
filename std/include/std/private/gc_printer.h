@@ -12,21 +12,33 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 class Object;
 
+namespace gvl
+{
+class Graph;
+class NodeId;
+} // namespace gvl
+
 class GCPrinter
 {
 public:
-    void print(const std::unordered_set<Object*>& heap, const std::unordered_set<Object**>& roots);
+    using roots_t = std::unordered_set<Object**>;
+    using objects_t = std::unordered_set<Object*>;
+
+    void print(const objects_t& heap, const roots_t& roots);
 
 private:
-    void printGraph(const std::unordered_set<Object**>& roots);
-    void printHeap(const std::unordered_set<Object*>& heap) const;
+    static void fillRootsGraph(gvl::Graph& graph, const roots_t& roots);
+    static std::string formatHeapInfo(const objects_t& heap);
 
-    void printChildren(const std::string& prefix, Object* object);
+    using visited_nodes_t = std::unordered_map<Object*, gvl::NodeId>;
 
-private:
-    std::unordered_set<Object*> _visited;
+    static void fillChildrenGraph(gvl::Graph& graph,
+                                  const gvl::NodeId& parentNode,
+                                  Object* object,
+                                  visited_nodes_t& visited);
 };

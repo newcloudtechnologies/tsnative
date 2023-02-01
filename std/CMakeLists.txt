@@ -9,6 +9,7 @@ option(GENERATE_DECLARATIONS "Allows generating TypeScript declarations" OFF)
 find_package(absl)
 find_package(libuv)
 find_package(tsnative-declarator)
+find_package(graphvizlib)
 
 include(TsDeclaratorUtils)
 
@@ -92,6 +93,7 @@ set(SOURCES
     src/private/number_parser.cpp
     src/private/gc_printer.cpp
     src/private/gc_string_converter.cpp)
+    
 
 if("${ENABLE_LOGS}" STREQUAL "all")
     add_definitions( -DENABLE_LOGS )
@@ -120,6 +122,7 @@ target_link_libraries(${PROJECT_NAME}
         absl::bad_optional_access
         absl::bad_variant_access
         uv_a
+        graphvizlib
 )
 
 if (GENERATE_DECLARATIONS)

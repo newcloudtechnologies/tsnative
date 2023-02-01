@@ -33,6 +33,7 @@ class TSNativeStdConan(ConanFile):
         self.requires("abseil/20211102.0#0")
         self.requires("gtest/1.11.0#0")
         self.requires("libuv/1.43.0#0")
+        self.requires("graphvizlib/1.0.0")
 
     def build_requirements(self):
         # 'if self.user and self.channel:' ends up in exception when no user and channel values are provided
