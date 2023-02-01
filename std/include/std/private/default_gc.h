@@ -14,12 +14,11 @@
 #include <TS.h>
 
 #include "std/igc_impl.h"
-#include "std/private/gc_variable_names.h"
+#include "std/private/gc_variable_name.h"
 
 #include <functional>
 #include <mutex>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 class Object;
