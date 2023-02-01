@@ -12,7 +12,7 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
 import { Declaration } from "../ts/declaration";
-import { LLVMConstantFP, LLVMValue } from "../llvm/value";
+import {LLVMConstant, LLVMConstantFP, LLVMConstantInt, LLVMValue} from "../llvm/value";
 import { LLVMType } from "../llvm/type";
 
 import { Runtime } from "../tsbuiltins/runtime"
@@ -66,10 +66,12 @@ export class GC {
         const i8PtrPtrRoot = this.generator.builder.createBitCast(value, i8PtrPtrType);
         const gcAddress = this.runtime.getGCAddress(); // TODO Should that be a global constant?
 
-        const strObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "");
         const i8PtrType = LLVMType.getInt8Type(this.generator).getPointer();
-        const i8PtrAssociatedName = this.generator.builder.createBitCast(strObj, i8PtrType);
-
+        let i8PtrAssociatedName = LLVMConstant.createNullValue(i8PtrType, this.generator);
+        if (this.generator.useGCVariableNames) {
+            const strObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "");
+            i8PtrAssociatedName = this.generator.builder.createBitCast(strObj, i8PtrType);
+        }
         return this.generator.builder.createSafeCall(this.addRootFn, [gcAddress, i8PtrPtrRoot, i8PtrAssociatedName]);
     }
 
