@@ -14,6 +14,7 @@
 #include <TS.h>
 
 #include "std/igc_impl.h"
+#include "std/private/gc_variable_names.h"
 
 #include <functional>
 #include <mutex>
@@ -57,6 +58,6 @@ private:
     // TODO Use absl::uset
     std::unordered_set<Object*> _heap;
     std::unordered_set<Object**> _roots;
-    std::vector<std::pair<const String*, Object**>> _names;
+    std::vector<GCVariableName> _names;
     Callbacks _callbacks;
 };

@@ -61,7 +61,7 @@ void DefaultGC::addRoot(Object** o, const String* associatedName)
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
     LOG_ADDRESS("Adding root: ", o);
     _roots.insert(o);
-    _names.push_back({associatedName, o});
+    _names.push_back({o, associatedName});
 }
 
 void DefaultGC::removeRoot(Object** o)
