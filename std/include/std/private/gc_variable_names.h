@@ -20,12 +20,6 @@ class String;
 class GCVariableNames
 {
 public:
-    struct Entry
-    {
-        Object** root{nullptr};
-        const String* associatedVariableName{nullptr};
-    };
-
     void addAssociatedVariable(Object** root, const String* associatedVariable);
 
     void removeAssociatedVariableByRoot(Object** root);
@@ -33,5 +27,11 @@ public:
     const String* getAssociatedVariableWithHeap(const Object* object) const;
 
 private:
+    struct Entry
+    {
+        Object** root{nullptr};
+        const String* associatedVariableName{nullptr};
+    };
+
     std::vector<Entry> _associatedVariables{};
 };
