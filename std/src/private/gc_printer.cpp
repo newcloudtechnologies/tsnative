@@ -24,7 +24,7 @@
 
 GCPrinter::GCPrinter(const GCPrinter::objects_t& heap,
                      const GCPrinter::roots_t& roots,
-                     const GCPrinter::variables_t& variables)
+                     const GCVariableNames& variables)
     : _heap(heap)
     , _roots(roots)
     , _variables(variables)
@@ -62,7 +62,7 @@ std::string GCPrinter::formatHeapInfo(const objects_t& heap) const
         ss << "Obj: " << std::hex << el << std::endl;
         ss << "Value: " << GCStringConverter::convert(el) << std::endl;
 
-        const String* variable = getAssociatedVariableWithHeap(el);
+        const String* variable = _variables.getAssociatedVariableWithHeap(el);
         if (variable != nullptr)
         {
             ss << "Associated name: " << GCStringConverter::convert(variable) << std::endl;
@@ -147,22 +147,4 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
 
         fillChildrenGraph(graph, id, c, visited);
     }
-}
-
-const String* GCPrinter::getAssociatedVariableWithHeap(const Object* object) const
-{
-    const auto found = std::find_if(_variables.cbegin(),
-                                    _variables.cend(),
-                                    [object](const auto& p)
-                                    {
-                                        if (!p.root && !(*p.root))
-                                            return false;
-                                        return *(p.root) == object;
-                                    });
-
-    if (found == _variables.cend())
-    {
-        return nullptr;
-    }
-    return found->associatedVariableName;
 }

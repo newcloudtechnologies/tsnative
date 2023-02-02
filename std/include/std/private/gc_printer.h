@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "std/private/gc_variable_name.h"
+#include "std/private/gc_variable_names.h"
 
 #include <string>
 #include <unordered_map>
@@ -32,9 +32,8 @@ class GCPrinter
 public:
     using roots_t = std::unordered_set<Object**>;
     using objects_t = std::unordered_set<Object*>;
-    using variables_t = std::vector<GCVariableName>;
 
-    GCPrinter(const objects_t& heap, const roots_t& roots, const variables_t& variables);
+    GCPrinter(const objects_t& heap, const roots_t& roots, const GCVariableNames& variables);
 
     void print() const;
 
@@ -49,10 +48,8 @@ private:
                            Object* object,
                            visited_nodes_t& visited) const;
 
-    const String* getAssociatedVariableWithHeap(const Object* object) const;
-
 private:
     const objects_t& _heap;
     const roots_t& _roots;
-    const variables_t& _variables;
+    const GCVariableNames& _variables;
 };
