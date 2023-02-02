@@ -80,11 +80,16 @@ static std::string formatRootInfo(Object** root)
     return ss.str();
 }
 
-static std::string formatObjInfo(const Object* obj)
+std::string GCPrinter::formatObjInfo(const Object* obj) const
 {
     std::stringstream ss;
     ss << "Obj: " << std::hex << obj << std::endl;
-    ss << GCStringConverter::convert(obj);
+    ss << "Value: " << GCStringConverter::convert(obj) << std::endl;
+    const String* variable = _variables.getAssociatedVariableWithHeap(obj);
+    if (variable != nullptr)
+    {
+        ss << "Associated name: " << GCStringConverter::convert(variable) << std::endl;
+    }
 
     return ss.str();
 }
