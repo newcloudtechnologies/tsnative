@@ -14,10 +14,11 @@
 #include <TS.h>
 
 #include "std/igc_impl.h"
-#include "std/private/gc_variable_name.h"
+#include "std/private/gc_variable_names.h"
 
 #include <functional>
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -57,6 +58,6 @@ private:
     // TODO Use absl::uset
     std::unordered_set<Object*> _heap;
     std::unordered_set<Object**> _roots;
-    std::vector<GCVariableName> _names;
+    GCVariableNames _names;
     Callbacks _callbacks;
 };
