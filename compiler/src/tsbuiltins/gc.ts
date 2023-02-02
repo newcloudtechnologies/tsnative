@@ -57,7 +57,7 @@ export class GC {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
-    addRoot(value: LLVMValue, associatedName?: string): LLVMValue {
+    addRoot(value: LLVMValue, associatedName?: string, scopeName?: string): LLVMValue {
         if (value.type.getPointerLevel() !== 2) {
             return value; // This is not a root, just do nothing
         }
@@ -67,12 +67,19 @@ export class GC {
         const gcAddress = this.runtime.getGCAddress(); // TODO Should that be a global constant?
 
         const i8PtrType = LLVMType.getInt8Type(this.generator).getPointer();
-        let i8PtrAssociatedName = LLVMConstant.createNullValue(i8PtrType, this.generator);
+        let i8PtrAssociatedVarName = LLVMConstant.createNullValue(i8PtrType, this.generator);
         if (this.generator.useGCVariableNames) {
-            const strObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "");
-            i8PtrAssociatedName = this.generator.builder.createBitCast(strObj, i8PtrType);
+            const allocatedObj = this.generator.ts.obj.create();
+
+            const variableNameObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "__no_name__");
+            this.generator.ts.obj.set(allocatedObj, "__variable_name__", variableNameObj);
+
+            const scopeNameObj = this.generator.ts.str.create(scopeName !== undefined ? scopeName : "__no_name__");
+            this.generator.ts.obj.set(allocatedObj, "__scope_name__", scopeNameObj);
+
+            i8PtrAssociatedVarName = this.generator.builder.createBitCast(allocatedObj, i8PtrType);
         }
-        return this.generator.builder.createSafeCall(this.addRootFn, [gcAddress, i8PtrPtrRoot, i8PtrAssociatedName]);
+        return this.generator.builder.createSafeCall(this.addRootFn, [gcAddress, i8PtrPtrRoot, i8PtrAssociatedVarName]);
     }
 
     removeRoot(value: LLVMValue): LLVMValue {

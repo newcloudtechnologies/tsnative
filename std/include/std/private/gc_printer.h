@@ -50,6 +50,8 @@ private:
 
     std::string formatObjInfo(const Object* obj) const;
 
+    std::string formatVariableNames(const Object* object) const;
+
 private:
     const objects_t& _heap;
     const roots_t& _roots;

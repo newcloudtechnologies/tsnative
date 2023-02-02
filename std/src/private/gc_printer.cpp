@@ -61,12 +61,8 @@ std::string GCPrinter::formatHeapInfo(const objects_t& heap) const
 
         ss << "Obj: " << std::hex << el << std::endl;
         ss << "Value: " << GCStringConverter::convert(el) << std::endl;
+        ss << formatVariableNames(el) << std::endl;
 
-        const String* variable = _variables.getAssociatedVariableWithHeap(el);
-        if (variable != nullptr)
-        {
-            ss << "Associated name: " << GCStringConverter::convert(variable) << std::endl;
-        }
         ss << std::endl;
     }
 
@@ -85,11 +81,7 @@ std::string GCPrinter::formatObjInfo(const Object* obj) const
     std::stringstream ss;
     ss << "Obj: " << std::hex << obj << std::endl;
     ss << "Value: " << GCStringConverter::convert(obj) << std::endl;
-    const String* variable = _variables.getAssociatedVariableWithHeap(obj);
-    if (variable != nullptr)
-    {
-        ss << "Associated name: " << GCStringConverter::convert(variable) << std::endl;
-    }
+    ss << formatVariableNames(obj) << std::endl;
 
     return ss.str();
 }
@@ -152,4 +144,20 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
 
         fillChildrenGraph(graph, id, c, visited);
     }
+}
+
+std::string GCPrinter::formatVariableNames(const Object* object) const
+{
+    std::stringstream ss;
+    const String* variableName = _variables.getAssociatedVariableWithHeap(object);
+    if (variableName != nullptr)
+    {
+        ss << "Associated variable name: " << GCStringConverter::convert(variableName) << std::endl;
+    }
+    const String* scopeName = _variables.getAssociatedScopeWithHeap(object);
+    if (scopeName != nullptr)
+    {
+        ss << "Associated scope name: " << GCStringConverter::convert(scopeName) << std::endl;
+    }
+    return ss.str();
 }

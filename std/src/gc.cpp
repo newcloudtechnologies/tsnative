@@ -73,7 +73,7 @@ void GC::addRoot(void** root, void* associatedName)
         throw std::runtime_error("GCImpl cannot be nullptr");
     }
 
-    _gcImpl->addRoot(Object::asObjectPtrPtr(root), static_cast<const String*>(associatedName));
+    _gcImpl->addRoot(Object::asObjectPtrPtr(root), static_cast<const Object*>(associatedName));
 }
 
 void GC::removeRoot(void** root)

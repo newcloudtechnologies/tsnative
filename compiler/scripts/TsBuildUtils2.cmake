@@ -51,14 +51,16 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 #  LIBRARIES Targets for libraries that has cpp extensions code. See MGT::ts library for example.
 #
 # Optional args:
-#  TS_DEBUG       Compile user code in the debug mode
-#  PRINT_IR       Print IR code to console.
-#  TRACE_IMPORT   Enable ts module resolution tracing
-#  OPT_LEVEL      Optimization level that will be passed to llc "as is"
-#  RUN_EVENT_LOOP <lock|oneshot> Make compiler embed code that starts internal event loop automatically.
-#  WATCH_SOURCES  List of files, because of changes in which, it is necessary to rebuild the project.
-#                 If not provided, the all sources from the directory containing main ts file will be used as
-#                 the files from TS_HEADERS property defined in LIBRARIES targets.
+#  TS_DEBUG             Compile user code in the debug mode
+#  PRINT_IR             Print IR code to console.
+#  TRACE_IMPORT         Enable ts module resolution tracing
+#  OPT_LEVEL            Optimization level that will be passed to llc "as is"
+#  RUN_EVENT_LOOP       <lock|oneshot> Make compiler embed code that starts internal event loop automatically.
+#  WATCH_SOURCES        List of files, because of changes in which, it is necessary to rebuild the project.
+#                       If not provided, the all sources from the directory containing main ts file will be used as
+#                       the files from TS_HEADERS property defined in LIBRARIES targets.
+#
+# USE_GC_VARIABLE_NAMES Use associated variable names and scope names associated with heap
 #
 function (add_ts_library ARG_NAME ...)
     set(options )
