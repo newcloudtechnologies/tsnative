@@ -48,6 +48,8 @@ private:
                            Object* object,
                            visited_nodes_t& visited) const;
 
+    std::string formatObjInfo(const Object* obj) const;
+
 private:
     const objects_t& _heap;
     const roots_t& _roots;
