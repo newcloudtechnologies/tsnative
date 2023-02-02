@@ -41,7 +41,7 @@ public:
 
     std::size_t getAliveObjectsCount() const override;
 
-    void addRoot(Object** object, const String* associatedName) override;
+    void addRoot(Object** object, const Object* associatedName) override;
     void removeRoot(Object** object) override;
 
     void collect() override;

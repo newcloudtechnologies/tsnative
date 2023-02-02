@@ -34,7 +34,7 @@ public:
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("allocateObject(numBytes: any): void") void* allocateObject(double numBytes);
     TS_METHOD void collect();
 
-    TS_METHOD TS_SIGNATURE("addRoot(root: any, associatedName: string): void") void addRoot(void** root,
+    TS_METHOD TS_SIGNATURE("addRoot(root: any, associatedName: Object): void") void addRoot(void** root,
                                                                                             void* associatedName);
     TS_METHOD TS_SIGNATURE("removeRoot(void): void") void removeRoot(void** root);
 

@@ -10,10 +10,11 @@
  */
 
 #include "std/private/gc_variable_names.h"
+#include "std/tsstring.h"
 
 #include <algorithm>
 
-void GCVariableNames::setRootName(Object** root, const String* associatedVariable)
+void GCVariableNames::setRootName(Object** root, const Object* associatedVariable)
 {
     _associatedVariables.push_back({root, associatedVariable});
 }
@@ -30,6 +31,28 @@ void GCVariableNames::unsetRootName(Object** root)
 
 const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* object) const
 {
+    const Object* entry = getObjectEntryWithHeap(object);
+    if (entry == nullptr)
+    {
+        return nullptr;
+    }
+    const String* variableName = entry->get<String*>("__variable_name__");
+    return variableName;
+}
+
+const String* GCVariableNames::getAssociatedScopeWithHeap(const Object* object) const
+{
+    const Object* entry = getObjectEntryWithHeap(object);
+    if (entry == nullptr)
+    {
+        return nullptr;
+    }
+    const String* scopeName = entry->get<String*>("__scope_name__");
+    return scopeName;
+}
+
+const Object* GCVariableNames::getObjectEntryWithHeap(const Object* object) const
+{
     const auto found = std::find_if(_associatedVariables.cbegin(),
                                     _associatedVariables.cend(),
                                     [object](const auto& p)
@@ -40,7 +63,6 @@ const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* objec
                                         }
                                         return *(p.root) == object;
                                     });
-
     if (found == _associatedVariables.cend())
     {
         return nullptr;

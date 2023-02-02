@@ -51,7 +51,7 @@ std::size_t DefaultGC::getAliveObjectsCount() const
     return _heap.size();
 }
 
-void DefaultGC::addRoot(Object** o, const String* associatedName)
+void DefaultGC::addRoot(Object** o, const Object* associatedName)
 {
     if (!o)
     {
