@@ -13,12 +13,12 @@
 
 #include <algorithm>
 
-void GCVariableNames::addAssociatedVariable(Object** root, const String* associatedVariable)
+void GCVariableNames::setRootName(Object** root, const String* associatedVariable)
 {
     _associatedVariables.push_back({root, associatedVariable});
 }
 
-void GCVariableNames::removeAssociatedVariableByRoot(Object** root)
+void GCVariableNames::unsetRootName(Object** root)
 {
     auto found = std::find_if(
         _associatedVariables.cbegin(), _associatedVariables.cend(), [root](const auto& p) { return p.root == root; });
@@ -35,7 +35,9 @@ const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* objec
                                     [object](const auto& p)
                                     {
                                         if (!p.root && !(*p.root))
+                                        {
                                             return false;
+                                        }
                                         return *(p.root) == object;
                                     });
 

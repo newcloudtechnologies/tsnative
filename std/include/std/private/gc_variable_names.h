@@ -17,17 +17,17 @@
 class Object;
 class String;
 
-class GCVariableNames
+class GCVariableNames final
 {
 public:
-    void addAssociatedVariable(Object** root, const String* associatedVariable);
+    void setRootName(Object** root, const String* associatedVariable);
 
-    void removeAssociatedVariableByRoot(Object** root);
+    void unsetRootName(Object** root);
 
     const String* getAssociatedVariableWithHeap(const Object* object) const;
 
 private:
-    struct Entry
+    struct Entry final
     {
         Object** root{nullptr};
         const String* associatedVariableName{nullptr};
