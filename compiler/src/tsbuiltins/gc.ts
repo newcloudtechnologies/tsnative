@@ -12,7 +12,7 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
 import { Declaration } from "../ts/declaration";
-import {LLVMConstant, LLVMConstantFP, LLVMConstantInt, LLVMValue} from "../llvm/value";
+import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { LLVMType } from "../llvm/type";
 
 import { Runtime } from "../tsbuiltins/runtime"
