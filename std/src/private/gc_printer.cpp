@@ -22,7 +22,16 @@
 
 #include <include/gvl.h>
 
-void GCPrinter::print(const objects_t& heap, const roots_t& roots, const variables_t& variables)
+GCPrinter::GCPrinter(const GCPrinter::objects_t& heap,
+                     const GCPrinter::roots_t& roots,
+                     const GCPrinter::variables_t& variables)
+    : _heap(heap)
+    , _roots(roots)
+    , _variables(variables)
+{
+}
+
+void GCPrinter::print() const
 {
     static int i = 0;
 
@@ -30,15 +39,15 @@ void GCPrinter::print(const objects_t& heap, const roots_t& roots, const variabl
     graph.AddGraphProperty("rankdir", "LR");
     graph.AddCommonNodeProperty("shape", "box");
 
-    graph.AddNode(formatHeapInfo(heap, variables), {gvl::Property("color", "red")});
+    graph.AddNode(formatHeapInfo(_heap), {gvl::Property("color", "red")});
 
-    fillRootsGraph(graph, roots);
+    fillRootsGraph(graph, _roots);
 
     std::ofstream out("gc_print_" + std::to_string(i++) + ".gv");
     graph.RenderDot(out);
 }
 
-std::string GCPrinter::formatHeapInfo(const objects_t& heap, const variables_t& variables)
+std::string GCPrinter::formatHeapInfo(const objects_t& heap) const
 {
     std::stringstream ss;
     ss << "===== Heap =====" << std::endl << "Object count: " << heap.size() << std::endl << std::endl;
@@ -53,17 +62,10 @@ std::string GCPrinter::formatHeapInfo(const objects_t& heap, const variables_t& 
         ss << "Obj: " << std::hex << el << std::endl;
         ss << "Value: " << GCStringConverter::convert(el) << std::endl;
 
-        const auto found = std::find_if(variables.cbegin(),
-                                        variables.cend(),
-                                        [el](const auto& p)
-                                        {
-                                            if (!p.root && !(*p.root))
-                                                return false;
-                                            return *(p.root) == el;
-                                        });
-        if (found != variables.cend() && found->associatedVariableName != nullptr)
+        const String* variable = getAssociatedVariableWithHeap(el);
+        if (variable != nullptr)
         {
-            ss << "Associated name: " << GCStringConverter::convert(found->associatedVariableName) << std::endl;
+            ss << "Associated name: " << GCStringConverter::convert(variable) << std::endl;
         }
         ss << std::endl;
     }
@@ -87,7 +89,7 @@ static std::string formatObjInfo(const Object* obj)
     return ss.str();
 }
 
-void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots)
+void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const
 {
     std::cout << ("Roots count: " + std::to_string(roots.size()) + "\n");
 
@@ -116,7 +118,7 @@ void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots)
 void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
                                   const gvl::NodeId& parentNode,
                                   Object* object,
-                                  visited_nodes_t& visited)
+                                  visited_nodes_t& visited) const
 {
     if (!object)
     {
@@ -145,4 +147,22 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
 
         fillChildrenGraph(graph, id, c, visited);
     }
+}
+
+const String* GCPrinter::getAssociatedVariableWithHeap(const Object* object) const
+{
+    const auto found = std::find_if(_variables.cbegin(),
+                                    _variables.cend(),
+                                    [object](const auto& p)
+                                    {
+                                        if (!p.root && !(*p.root))
+                                            return false;
+                                        return *(p.root) == object;
+                                    });
+
+    if (found == _variables.cend())
+    {
+        return nullptr;
+    }
+    return found->associatedVariableName;
 }

@@ -19,6 +19,7 @@
 #include <vector>
 
 class Object;
+class String;
 
 namespace gvl
 {
@@ -33,16 +34,25 @@ public:
     using objects_t = std::unordered_set<Object*>;
     using variables_t = std::vector<GCVariableName>;
 
-    void print(const objects_t& heap, const roots_t& roots, const variables_t& variables);
+    GCPrinter(const objects_t& heap, const roots_t& roots, const variables_t& variables);
+
+    void print() const;
 
 private:
-    static void fillRootsGraph(gvl::Graph& graph, const roots_t& roots);
-    static std::string formatHeapInfo(const objects_t& heap, const variables_t& variables);
+    void fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const;
+    std::string formatHeapInfo(const objects_t& heap) const;
 
     using visited_nodes_t = std::unordered_map<Object*, gvl::NodeId>;
 
-    static void fillChildrenGraph(gvl::Graph& graph,
-                                  const gvl::NodeId& parentNode,
-                                  Object* object,
-                                  visited_nodes_t& visited);
+    void fillChildrenGraph(gvl::Graph& graph,
+                           const gvl::NodeId& parentNode,
+                           Object* object,
+                           visited_nodes_t& visited) const;
+
+    const String* getAssociatedVariableWithHeap(const Object* object) const;
+
+private:
+    const objects_t& _heap;
+    const roots_t& _roots;
+    const variables_t& _variables;
 };

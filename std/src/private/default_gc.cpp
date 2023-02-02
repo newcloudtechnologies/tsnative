@@ -134,6 +134,6 @@ void DefaultGC::sweep()
 void DefaultGC::print() const
 {
 #ifdef ENABLE_GC_LOGS
-    GCPrinter().print(_heap, _roots, _names);
+    GCPrinter{_heap, _roots, _names}.print();
 #endif // ENABLE_GC_LOGS
 }
