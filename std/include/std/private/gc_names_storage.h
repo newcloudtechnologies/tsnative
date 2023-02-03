@@ -17,7 +17,7 @@
 class Object;
 class String;
 
-class GCVariableNames final
+class GCNamesStorage final
 {
 public:
     void setRootName(Object** root, const Object* associatedVariable);

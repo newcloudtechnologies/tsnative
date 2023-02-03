@@ -22,9 +22,7 @@
 
 #include <include/gvl.h>
 
-GCPrinter::GCPrinter(const GCPrinter::objects_t& heap,
-                     const GCPrinter::roots_t& roots,
-                     const GCVariableNames& variables)
+GCPrinter::GCPrinter(const GCPrinter::objects_t& heap, const GCPrinter::roots_t& roots, const GCNamesStorage& variables)
     : _heap(heap)
     , _roots(roots)
     , _variables(variables)
