@@ -68,7 +68,7 @@ export class GC {
 
         const i8PtrType = LLVMType.getInt8Type(this.generator).getPointer();
         let i8PtrAssociatedVarName = LLVMConstant.createNullValue(i8PtrType, this.generator);
-        if (this.generator.useGCVariableNames) {
+        if (!this.generator.enableOptimizations) {
             const allocatedObj = this.generator.ts.obj.create();
 
             const variableNameObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "__no_name__");
