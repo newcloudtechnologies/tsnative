@@ -33,14 +33,20 @@ void GCVariableNames::unsetRootName(Object** root)
 
 const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* entry) const
 {
-    assert(objet != nullptr && "Invalid object");
+    if (entry == nullptr)
+    {
+        return nullptr;
+    }
     const String* variableName = entry->get<String*>("__variable_name__");
     return variableName;
 }
 
 const String* GCVariableNames::getAssociatedScopeWithHeap(const Object* entry) const
 {
-    assert(objet != nullptr && "Invalid object");
+    if (entry == nullptr)
+    {
+        return nullptr;
+    }
     const String* scopeName = entry->get<String*>("__scope_name__");
     return scopeName;
 }
