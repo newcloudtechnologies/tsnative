@@ -9,18 +9,18 @@
  *
  */
 
-#include "std/private/gc_variable_names.h"
+#include "std/private/gc_names_storage.h"
 #include "std/tsstring.h"
 
 #include <algorithm>
 #include <cassert>
 
-void GCVariableNames::setRootName(Object** root, const Object* associatedVariable)
+void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable)
 {
     _associatedVariablesAndScopes.push_back({root, associatedVariable});
 }
 
-void GCVariableNames::unsetRootName(Object** root)
+void GCNamesStorage::unsetRootName(Object** root)
 {
     auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
                               _associatedVariablesAndScopes.cend(),
@@ -31,7 +31,7 @@ void GCVariableNames::unsetRootName(Object** root)
     }
 }
 
-const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* entry) const
+const String* GCNamesStorage::getAssociatedVariableWithHeap(const Object* entry) const
 {
     if (entry == nullptr)
     {
@@ -41,7 +41,7 @@ const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* entry
     return variableName;
 }
 
-const String* GCVariableNames::getAssociatedScopeWithHeap(const Object* entry) const
+const String* GCNamesStorage::getAssociatedScopeWithHeap(const Object* entry) const
 {
     if (entry == nullptr)
     {
@@ -51,7 +51,7 @@ const String* GCVariableNames::getAssociatedScopeWithHeap(const Object* entry) c
     return scopeName;
 }
 
-const Object* GCVariableNames::getObjectEntryWithHeap(const Object* object) const
+const Object* GCNamesStorage::getObjectEntryWithHeap(const Object* object) const
 {
     const auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
                                     _associatedVariablesAndScopes.cend(),

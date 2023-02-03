@@ -93,7 +93,7 @@ set(SOURCES
     src/private/number_parser.cpp
     src/private/gc_printer.cpp
     src/private/gc_string_converter.cpp
-    src/private/gc_variable_names.cpp)
+    src/private/gc_names_storage.cpp)
     
 
 if("${ENABLE_LOGS}" STREQUAL "all")

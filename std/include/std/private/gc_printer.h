@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "std/private/gc_variable_names.h"
+#include "std/private/gc_names_storage.h"
 
 #include <string>
 #include <unordered_map>
@@ -33,7 +33,7 @@ public:
     using roots_t = std::unordered_set<Object**>;
     using objects_t = std::unordered_set<Object*>;
 
-    GCPrinter(const objects_t& heap, const roots_t& roots, const GCVariableNames& variables);
+    GCPrinter(const objects_t& heap, const roots_t& roots, const GCNamesStorage& variables);
 
     void print() const;
 
@@ -55,5 +55,5 @@ private:
 private:
     const objects_t& _heap;
     const roots_t& _roots;
-    const GCVariableNames& _variables;
+    const GCNamesStorage& _variables;
 };
