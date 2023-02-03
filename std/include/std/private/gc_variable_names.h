@@ -28,15 +28,15 @@ public:
 
     const String* getAssociatedScopeWithHeap(const Object* object) const;
 
-private:
     const Object* getObjectEntryWithHeap(const Object* object) const;
 
 private:
     struct Entry final
     {
         Object** root{nullptr};
-        const Object* associatedVariableName{nullptr};
+        // Object {__variable_name__: StringObject, __scope_name__: StringObject}
+        const Object* associatedVariableAndScopeName{nullptr};
     };
 
-    std::vector<Entry> _associatedVariables{};
+    std::vector<Entry> _associatedVariablesAndScopes{};
 };
