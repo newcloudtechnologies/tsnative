@@ -15,6 +15,12 @@
 #include <algorithm>
 #include <cassert>
 
+namespace
+{
+constexpr auto g_VariableNameKey = "__variable_name__";
+constexpr auto g_ScopeNameKey = "__scope_name__";
+} // namespace
+
 void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable)
 {
     _associatedVariablesAndScopes.push_back({root, associatedVariable});
@@ -37,7 +43,7 @@ const String* GCNamesStorage::getAssociatedVariableWithHeap(const Object* entry)
     {
         return nullptr;
     }
-    const String* variableName = entry->get<String*>("__variable_name__");
+    const String* variableName = entry->get<String*>(g_VariableNameKey);
     return variableName;
 }
 
@@ -47,7 +53,7 @@ const String* GCNamesStorage::getAssociatedScopeWithHeap(const Object* entry) co
     {
         return nullptr;
     }
-    const String* scopeName = entry->get<String*>("__scope_name__");
+    const String* scopeName = entry->get<String*>(g_ScopeNameKey);
     return scopeName;
 }
 
