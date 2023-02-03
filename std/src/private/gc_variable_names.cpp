@@ -13,48 +13,42 @@
 #include "std/tsstring.h"
 
 #include <algorithm>
+#include <cassert>
 
 void GCVariableNames::setRootName(Object** root, const Object* associatedVariable)
 {
-    _associatedVariables.push_back({root, associatedVariable});
+    _associatedVariablesAndScopes.push_back({root, associatedVariable});
 }
 
 void GCVariableNames::unsetRootName(Object** root)
 {
-    auto found = std::find_if(
-        _associatedVariables.cbegin(), _associatedVariables.cend(), [root](const auto& p) { return p.root == root; });
-    if (found != _associatedVariables.cend())
+    auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
+                              _associatedVariablesAndScopes.cend(),
+                              [root](const auto& p) { return p.root == root; });
+    if (found != _associatedVariablesAndScopes.cend())
     {
-        _associatedVariables.erase(found);
+        _associatedVariablesAndScopes.erase(found);
     }
 }
 
-const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* object) const
+const String* GCVariableNames::getAssociatedVariableWithHeap(const Object* entry) const
 {
-    const Object* entry = getObjectEntryWithHeap(object);
-    if (entry == nullptr)
-    {
-        return nullptr;
-    }
+    assert(objet != nullptr && "Invalid object");
     const String* variableName = entry->get<String*>("__variable_name__");
     return variableName;
 }
 
-const String* GCVariableNames::getAssociatedScopeWithHeap(const Object* object) const
+const String* GCVariableNames::getAssociatedScopeWithHeap(const Object* entry) const
 {
-    const Object* entry = getObjectEntryWithHeap(object);
-    if (entry == nullptr)
-    {
-        return nullptr;
-    }
+    assert(objet != nullptr && "Invalid object");
     const String* scopeName = entry->get<String*>("__scope_name__");
     return scopeName;
 }
 
 const Object* GCVariableNames::getObjectEntryWithHeap(const Object* object) const
 {
-    const auto found = std::find_if(_associatedVariables.cbegin(),
-                                    _associatedVariables.cend(),
+    const auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
+                                    _associatedVariablesAndScopes.cend(),
                                     [object](const auto& p)
                                     {
                                         if (!p.root && !(*p.root))
@@ -63,9 +57,9 @@ const Object* GCVariableNames::getObjectEntryWithHeap(const Object* object) cons
                                         }
                                         return *(p.root) == object;
                                     });
-    if (found == _associatedVariables.cend())
+    if (found == _associatedVariablesAndScopes.cend())
     {
         return nullptr;
     }
-    return found->associatedVariableName;
+    return found->associatedVariableAndScopeName;
 }

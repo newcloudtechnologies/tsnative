@@ -148,15 +148,13 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
 
 std::string GCPrinter::formatVariableNames(const Object* object) const
 {
+    const Object* entry = _variables.getObjectEntryWithHeap(object);
     std::stringstream ss;
-    const String* variableName = _variables.getAssociatedVariableWithHeap(object);
-    if (variableName != nullptr)
+    if (entry != nullptr)
     {
+        const String* variableName = _variables.getAssociatedVariableWithHeap(entry);
+        const String* scopeName = _variables.getAssociatedScopeWithHeap(entry);
         ss << "Associated variable name: " << GCStringConverter::convert(variableName) << std::endl;
-    }
-    const String* scopeName = _variables.getAssociatedScopeWithHeap(object);
-    if (scopeName != nullptr)
-    {
         ss << "Associated scope name: " << GCStringConverter::convert(scopeName) << std::endl;
     }
     return ss.str();
