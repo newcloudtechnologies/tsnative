@@ -88,7 +88,6 @@ export class LLVMGenerator {
     }
     this.runEventLoop = runEventLoop;
     this._enableOptimizations = enableOptimizations;
-    console.log("ENABLE OPTIMIZATIONS: ", this._enableOptimizations);
   }
 
   init() {
