@@ -28,7 +28,7 @@ class TSNativeTestsConan(ConanFile):
         "profile_build" : [True, False],
         "run_tests_with_memcheck" : [True, False],
         "fail_test_on_mem_leak" : [True, False],
-        "use_gc_variable_names": [True, False],
+        "enable_optimizations": [False, True],
     }
 
     default_options = {
@@ -41,7 +41,7 @@ class TSNativeTestsConan(ConanFile):
         "profile_build" : False,
         "run_tests_with_memcheck" : False,
         "fail_test_on_mem_leak" : False,
-        "use_gc_variable_names": False,
+        "enable_optimizations": True,
     }
 
     src_path = Path("src/compiler/cases")
@@ -82,7 +82,7 @@ class TSNativeTestsConan(ConanFile):
         tc.variables["PROJECT_BASE_URL"] = self.toUnixPath(os.path.join(self.build_folder, "imports", "declarations"))
         tc.variables["IS_TEST"] = True
         tc.variables["RUN_EVENT_LOOP"] = "oneshot"
-        tc.variables["USE_GC_VARIABLE_NAMES"] = bool(self.options.use_gc_variable_names)
+        tc.variables["ENABLE_OPTIMIZATIONS"] = bool(self.options.enable_optimizations)
         tc.variables["TEST_FILTER"] = self.options.test_filter
 
         if self.settings.get_safe("build_type") == "Debug":

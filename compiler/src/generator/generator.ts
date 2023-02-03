@@ -69,9 +69,9 @@ export class LLVMGenerator {
 
   private runEventLoop: string | undefined;
 
-  private readonly _useGCVariableNames: boolean;
+  private readonly _enableOptimizations: boolean;
 
-  constructor(program: ts.Program, runEventLoop?: string, useGCVariableNames: boolean = false, generateDebugInfo = false) {
+  constructor(program: ts.Program, runEventLoop?: string, enableOptimizations: boolean = false, generateDebugInfo = false) {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
@@ -87,7 +87,8 @@ export class LLVMGenerator {
       this.debugInfo = new DebugInfo(this);
     }
     this.runEventLoop = runEventLoop;
-    this._useGCVariableNames = useGCVariableNames;
+    this._enableOptimizations = enableOptimizations;
+    console.log("ENABLE OPTIMIZATIONS: ", this._enableOptimizations);
   }
 
   init() {
@@ -387,7 +388,7 @@ export class LLVMGenerator {
     this.getDebugInfo()?.applyLocation(callInst, decl);
   }
 
-  get useGCVariableNames() {
-    return this._useGCVariableNames;
+  get enableOptimizations() {
+    return this._enableOptimizations;
   }
 }
