@@ -45,7 +45,7 @@ class TSNativeCompilerConan(ConanFile):
 
         if (self.settings.build_type == self.debug_build_type):
             # Generate source maps for the code. Paths are relative to build directory.
-            self.run("tsc -p ./tsconfig.json --sourceMap --outDir ./sourceMaps")
+            self.run("npx tsc -p ./tsconfig.json --sourceMap --outDir ./sourceMaps")
             # Rename tsnative-compiler-debug to tsnative-compiler
             self.run("mv scripts/tsnative-compiler-debug scripts/tsnative-compiler")
             return
