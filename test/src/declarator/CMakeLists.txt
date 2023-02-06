@@ -95,7 +95,8 @@ function(runScenario target dep_target ...)
         "SCENARIO=\"${target}\" \
         SCENARIOS_DIR=\"${SCENARIOS_DIR}\" \
         OUTPUTS_FILE=\"${outputsFile}\" \
-        SNIPPETS_FILE=\"${snippetsFile}\""
+        SNIPPETS_FILE=\"${snippetsFile}\" \
+        KNOWN_ISSUES=known_issues"
     )
 
     set(command "${variables} ${SOURCE_DIR}/src/declarator/comparator.py")
@@ -166,7 +167,8 @@ function(runIndexScenario target dep_target ...)
         "SCENARIO=\"${target}\" \
         SCENARIOS_DIR=\"${SCENARIOS_DIR}\" \
         OUTPUTS_FILE=\"${outputsFile}\" \
-        SNIPPETS_FILE=\"${snippetsFile}\""
+        SNIPPETS_FILE=\"${snippetsFile}\" \
+        KNOWN_ISSUES=known_issues"
     )
     
     set(command "${variables} ${SOURCE_DIR}/src/declarator/comparator.py")
@@ -199,7 +201,14 @@ _printVar(SCENARIOS_DIR)
 
 add_custom_target(build_anyway ALL)
 
-runScenario(ok_scenario_target build_anyway
+runScenario(known_issues_scenario_target build_anyway
+    SCENARIO_NAME "known_issues"
+    TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
+    NO_IMPORT_STD "true"
+    IGNORE_ERROR "false"
+)
+
+runScenario(ok_scenario_target known_issues_scenario_target
     SCENARIO_NAME "ok"
     TARGET_COMPILER_ABI "${CMAKE_CXX_COMPILER_TARGET}"
     NO_IMPORT_STD "true"
