@@ -13,14 +13,23 @@
 
 #include "std/private/gc_string_converter.h"
 #include "std/tsobject.h"
+#include "std/tsstring.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
 #include <include/gvl.h>
 
-void GCPrinter::print(const objects_t& heap, const roots_t& roots)
+GCPrinter::GCPrinter(const GCPrinter::objects_t& heap, const GCPrinter::roots_t& roots, const GCNamesStorage& variables)
+    : _heap(heap)
+    , _roots(roots)
+    , _variables(variables)
+{
+}
+
+void GCPrinter::print() const
 {
     static int i = 0;
 
@@ -28,15 +37,15 @@ void GCPrinter::print(const objects_t& heap, const roots_t& roots)
     graph.AddGraphProperty("rankdir", "LR");
     graph.AddCommonNodeProperty("shape", "box");
 
-    graph.AddNode(formatHeapInfo(heap), {gvl::Property("color", "red")});
+    graph.AddNode(formatHeapInfo(_heap), {gvl::Property("color", "red")});
 
-    fillRootsGraph(graph, roots);
+    fillRootsGraph(graph, _roots);
 
     std::ofstream out("gc_print_" + std::to_string(i++) + ".gv");
     graph.RenderDot(out);
 }
 
-std::string GCPrinter::formatHeapInfo(const objects_t& heap)
+std::string GCPrinter::formatHeapInfo(const objects_t& heap) const
 {
     std::stringstream ss;
     ss << "===== Heap =====" << std::endl << "Object count: " << heap.size() << std::endl << std::endl;
@@ -49,7 +58,10 @@ std::string GCPrinter::formatHeapInfo(const objects_t& heap)
         }
 
         ss << "Obj: " << std::hex << el << std::endl;
-        ss << GCStringConverter::convert(el) << std::endl << std::endl;
+        ss << "Value: " << GCStringConverter::convert(el) << std::endl;
+        ss << formatVariableNames(el) << std::endl;
+
+        ss << std::endl;
     }
 
     return ss.str();
@@ -62,16 +74,17 @@ static std::string formatRootInfo(Object** root)
     return ss.str();
 }
 
-static std::string formatObjInfo(const Object* obj)
+std::string GCPrinter::formatObjInfo(const Object* obj) const
 {
     std::stringstream ss;
     ss << "Obj: " << std::hex << obj << std::endl;
-    ss << GCStringConverter::convert(obj);
+    ss << "Value: " << GCStringConverter::convert(obj) << std::endl;
+    ss << formatVariableNames(obj) << std::endl;
 
     return ss.str();
 }
 
-void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots)
+void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const
 {
     std::cout << ("Roots count: " + std::to_string(roots.size()) + "\n");
 
@@ -100,7 +113,7 @@ void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots)
 void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
                                   const gvl::NodeId& parentNode,
                                   Object* object,
-                                  visited_nodes_t& visited)
+                                  visited_nodes_t& visited) const
 {
     if (!object)
     {
@@ -129,4 +142,18 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
 
         fillChildrenGraph(graph, id, c, visited);
     }
+}
+
+std::string GCPrinter::formatVariableNames(const Object* object) const
+{
+    const Object* entry = _variables.getObjectEntryWithHeap(object);
+    std::stringstream ss;
+    if (entry != nullptr)
+    {
+        const String* variableName = _variables.getAssociatedVariableWithHeap(entry);
+        const String* scopeName = _variables.getAssociatedScopeWithHeap(entry);
+        ss << "Associated variable name: " << GCStringConverter::convert(variableName) << std::endl;
+        ss << "Associated scope name: " << GCStringConverter::convert(scopeName) << std::endl;
+    }
+    return ss.str();
 }

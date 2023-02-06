@@ -23,6 +23,7 @@ DefaultGC::DefaultGC(Callbacks&& callbacks)
     , _heapMutex{}
     , _heap{}
     , _roots{}
+    , _names{}
     , _callbacks{std::move(callbacks)}
 {
 }
@@ -50,7 +51,7 @@ std::size_t DefaultGC::getAliveObjectsCount() const
     return _heap.size();
 }
 
-void DefaultGC::addRoot(Object** o)
+void DefaultGC::addRoot(Object** o, const Object* associatedName)
 {
     if (!o)
     {
@@ -60,6 +61,7 @@ void DefaultGC::addRoot(Object** o)
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
     LOG_ADDRESS("Adding root: ", o);
     _roots.insert(o);
+    _names.setRootName(o, associatedName);
 }
 
 void DefaultGC::removeRoot(Object** o)
@@ -77,6 +79,7 @@ void DefaultGC::removeRoot(Object** o)
     std::lock_guard<std::mutex> rootsLock(_rootsMutex);
     LOG_ADDRESS("Removing root: ", o);
     _roots.erase(it);
+    _names.unsetRootName(*it);
 }
 
 void DefaultGC::collect()
@@ -132,6 +135,6 @@ void DefaultGC::sweep()
 void DefaultGC::print() const
 {
 #ifdef ENABLE_GC_LOGS
-    GCPrinter().print(_heap, _roots);
+    GCPrinter{_heap, _roots, _names}.print();
 #endif // ENABLE_GC_LOGS
 }

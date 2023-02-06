@@ -12,7 +12,7 @@
 import { LLVMGenerator } from "../generator";
 import { FunctionMangler } from "../mangling";
 import { Declaration } from "../ts/declaration";
-import { LLVMConstantFP, LLVMValue } from "../llvm/value";
+import { LLVMConstant, LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { LLVMType } from "../llvm/type";
 
 import { Runtime } from "../tsbuiltins/runtime"
@@ -39,8 +39,8 @@ export class GC {
         this.allocateFn = this.findAllocateFunction(declaration, "allocate");
         this.allocateObjectFn = this.findAllocateFunction(declaration, "allocateObject");
 
-        this.addRootFn = this.findRootOpFunction(declaration, "addRoot");
-        this.removeRootFn = this.findRootOpFunction(declaration, "removeRoot");
+        this.addRootFn = this.findAddRootFunction(declaration, "addRoot");
+        this.removeRootFn = this.findRemoveRootFunction(declaration, "removeRoot");
 
         this.gcType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped).getLLVMType();
     }
@@ -57,16 +57,29 @@ export class GC {
         return this.doAllocate(this.allocateObjectFn, type, name);
     }
 
-    addRoot(value: LLVMValue): LLVMValue {
+    addRoot(value: LLVMValue, associatedName?: string, scopeName?: string): LLVMValue {
         if (value.type.getPointerLevel() !== 2) {
             return value; // This is not a root, just do nothing
         }
 
         const i8PtrPtrType = LLVMType.getInt8Type(this.generator).getPointer().getPointer();
-        const i8PtrPtr = this.generator.builder.createBitCast(value, i8PtrPtrType);
+        const i8PtrPtrRoot = this.generator.builder.createBitCast(value, i8PtrPtrType);
         const gcAddress = this.runtime.getGCAddress(); // TODO Should that be a global constant?
 
-        return this.generator.builder.createSafeCall(this.addRootFn, [gcAddress, i8PtrPtr]);
+        const i8PtrType = LLVMType.getInt8Type(this.generator).getPointer();
+        let i8PtrAssociatedVarName = LLVMConstant.createNullValue(i8PtrType, this.generator);
+        if (!this.generator.enableOptimizations) {
+            const allocatedObj = this.generator.ts.obj.create();
+
+            const variableNameObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "__no_name__");
+            this.generator.ts.obj.set(allocatedObj, "__variable_name__", variableNameObj);
+
+            const scopeNameObj = this.generator.ts.str.create(scopeName !== undefined ? scopeName : "__no_name__");
+            this.generator.ts.obj.set(allocatedObj, "__scope_name__", scopeNameObj);
+
+            i8PtrAssociatedVarName = this.generator.builder.createBitCast(allocatedObj, i8PtrType);
+        }
+        return this.generator.builder.createSafeCall(this.addRootFn, [gcAddress, i8PtrPtrRoot, i8PtrAssociatedVarName]);
     }
 
     removeRoot(value: LLVMValue): LLVMValue {
@@ -104,7 +117,31 @@ export class GC {
         return Math.max(type.getTypeSize(), this.generator.ts.obj.getLLVMType().unwrapPointer().getTypeSize());
     }
 
-    private findRootOpFunction(declaration: Declaration, name: string) {
+    private findAddRootFunction(declaration: Declaration, name: string) {
+        const rootOpDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === name);
+        if (!rootOpDeclaration) {
+            throw Error(`Unable to find ${name} function`);
+        }
+
+        const thisType = this.generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
+        const { qualifiedName } = FunctionMangler.mangle(
+            rootOpDeclaration,
+            undefined,
+            thisType,
+            [],
+            this.generator,
+            undefined,
+            ["void**, void*"]
+        );
+
+        const llvmReturnType = LLVMType.getVoidType(this.generator);
+        const llvmArgumentTypes = [thisType.getLLVMType(), LLVMType.getInt8Type(this.generator).getPointer().getPointer(),
+            LLVMType.getInt8Type(this.generator).getPointer()];
+
+        return this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName).fn;
+    }
+
+    private findRemoveRootFunction(declaration: Declaration, name: string) {
         const rootOpDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === name);
         if (!rootOpDeclaration) {
             throw Error(`Unable to find ${name} function`);

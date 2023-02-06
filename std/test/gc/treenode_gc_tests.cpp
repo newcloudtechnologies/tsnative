@@ -120,8 +120,8 @@ TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(&B));
-        getGC().addRoot(Object::asObjectPtrPtr(&C));
+        getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&C), nullptr);
 
         B->left = C;
         suspensionPoint = B;
@@ -131,7 +131,7 @@ TEST_F(TreeNodeGCTestFixture, simpleTreeLooseBranch)
     };
 
     auto A = new TreeNode{'A'};
-    getGC().addRoot(Object::asObjectPtrPtr(&A));
+    getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
 
     garbageMaker(A->left);
 
@@ -165,8 +165,8 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
         auto A = new TreeNode* {new TreeNode{'A'}};
         auto B = new TreeNode{'B'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(A));
-        getGC().addRoot(Object::asObjectPtrPtr(&B));
+        getGC().addRoot(Object::asObjectPtrPtr(A), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
 
         (*A)->left = B;
         B->left = *A;
@@ -204,8 +204,8 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleNoBreak)
     auto A = new TreeNode{'A'};
     auto B = new TreeNode{'B'};
 
-    getGC().addRoot(Object::asObjectPtrPtr(&A));
-    getGC().addRoot(Object::asObjectPtrPtr(&B));
+    getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
+    getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
 
     A->left = B;
     B->left = A;
@@ -235,8 +235,8 @@ TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(&C));
-        getGC().addRoot(Object::asObjectPtrPtr(&D));
+        getGC().addRoot(Object::asObjectPtrPtr(&C), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&D), nullptr);
 
         C->right = D;
 
@@ -246,8 +246,8 @@ TEST_F(TreeNodeGCTestFixture, twoOneRootIslandOneGarbageIsland)
 
     auto A = new TreeNode{'A'};
     auto B = new TreeNode{'B'};
-    getGC().addRoot(Object::asObjectPtrPtr(&A));
-    getGC().addRoot(Object::asObjectPtrPtr(&B));
+    getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
+    getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
 
     A->left = B;
     garbageMaker();
@@ -292,8 +292,8 @@ private:
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
-        _gc.addRoot(Object::asObjectPtrPtr(&C));
-        _gc.addRoot(Object::asObjectPtrPtr(&D));
+        _gc.addRoot(Object::asObjectPtrPtr(&C), nullptr);
+        _gc.addRoot(Object::asObjectPtrPtr(&D), nullptr);
 
         C->right = D;
 
@@ -316,8 +316,8 @@ TEST_F(TreeNodeGCTestFixture, detectDeepGarbage)
     auto B = new TreeNode{'B'};
     A->left = B;
 
-    getGC().addRoot(Object::asObjectPtrPtr(&A));
-    getGC().addRoot(Object::asObjectPtrPtr(&B));
+    getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
+    getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
 
     DeepGarbageMaker deepGarbageMaker{getGC()};
     deepGarbageMaker.make();
@@ -350,9 +350,9 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(A));
-        getGC().addRoot(Object::asObjectPtrPtr(&B));
-        getGC().addRoot(Object::asObjectPtrPtr(&C));
+        getGC().addRoot(Object::asObjectPtrPtr(A), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&C), nullptr);
 
         (*A)->left = B;
         B->left = C;
@@ -395,9 +395,9 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(&A));
-        getGC().addRoot(Object::asObjectPtrPtr(&B));
-        getGC().addRoot(Object::asObjectPtrPtr(&C));
+        getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&C), nullptr);
 
         A->left = B;
         B->left = C;
@@ -406,9 +406,9 @@ TEST_F(TreeNodeGCTestFixture, twoIslandsBothGarbage)
         auto E = new TreeNode{'E'};
         auto F = new TreeNode{'F'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(&D));
-        getGC().addRoot(Object::asObjectPtrPtr(&E));
-        getGC().addRoot(Object::asObjectPtrPtr(&F));
+        getGC().addRoot(Object::asObjectPtrPtr(&D), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&E), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&F), nullptr);
 
         D->right = E;
         E->right = F;
@@ -447,7 +447,7 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
         // Memory leak is here. Will be fixed after
         // https://jira.ncloudtech.ru:8090/browse/TSN-231
         auto A = new TreeNode* {new TreeNode{'A'}};
-        getGC().addRoot(Object::asObjectPtrPtr(A));
+        getGC().addRoot(Object::asObjectPtrPtr(A), nullptr);
 
         (*A)->left = *A;
 
@@ -481,7 +481,7 @@ TEST_F(TreeNodeGCTestFixture, lostSelfCycleNode)
     const auto createNodes = [this]
     {
         auto A = new TreeNode{'A'};
-        getGC().addRoot(Object::asObjectPtrPtr(&A));
+        getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
 
         A->left = A;
 
@@ -520,10 +520,10 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
         auto C = new TreeNode{'C'};
         auto D = new TreeNode{'D'};
 
-        getGC().addRoot(Object::asObjectPtrPtr(&A));
-        getGC().addRoot(Object::asObjectPtrPtr(&B));
-        getGC().addRoot(Object::asObjectPtrPtr(&C));
-        getGC().addRoot(Object::asObjectPtrPtr(&D));
+        getGC().addRoot(Object::asObjectPtrPtr(&A), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&B), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&C), nullptr);
+        getGC().addRoot(Object::asObjectPtrPtr(&D), nullptr);
 
         A->left = B;
         B->left = C;
@@ -541,8 +541,8 @@ TEST_F(TreeNodeGCTestFixture, longCycleBreakEdgeInTheMiddle)
 
     createNodes();
 
-    getGC().addRoot(Object::asObjectPtrPtr(&AA));
-    getGC().addRoot(Object::asObjectPtrPtr(&BB));
+    getGC().addRoot(Object::asObjectPtrPtr(&AA), nullptr);
+    getGC().addRoot(Object::asObjectPtrPtr(&BB), nullptr);
 
     EXPECT_EQ(4u, getGC().getAliveObjectsCount());
 
