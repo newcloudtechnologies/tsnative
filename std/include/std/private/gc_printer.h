@@ -11,11 +11,15 @@
 
 #pragma once
 
+#include "std/private/gc_names_storage.h"
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class Object;
+class String;
 
 namespace gvl
 {
@@ -29,16 +33,27 @@ public:
     using roots_t = std::unordered_set<Object**>;
     using objects_t = std::unordered_set<Object*>;
 
-    void print(const objects_t& heap, const roots_t& roots);
+    GCPrinter(const objects_t& heap, const roots_t& roots, const GCNamesStorage& variables);
+
+    void print() const;
 
 private:
-    static void fillRootsGraph(gvl::Graph& graph, const roots_t& roots);
-    static std::string formatHeapInfo(const objects_t& heap);
+    void fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const;
+    std::string formatHeapInfo(const objects_t& heap) const;
 
     using visited_nodes_t = std::unordered_map<Object*, gvl::NodeId>;
 
-    static void fillChildrenGraph(gvl::Graph& graph,
-                                  const gvl::NodeId& parentNode,
-                                  Object* object,
-                                  visited_nodes_t& visited);
+    void fillChildrenGraph(gvl::Graph& graph,
+                           const gvl::NodeId& parentNode,
+                           Object* object,
+                           visited_nodes_t& visited) const;
+
+    std::string formatObjInfo(const Object* obj) const;
+
+    std::string formatVariableNames(const Object* object) const;
+
+private:
+    const objects_t& _heap;
+    const roots_t& _roots;
+    const GCNamesStorage& _variables;
 };

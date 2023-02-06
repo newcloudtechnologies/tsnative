@@ -14,10 +14,13 @@
 #include <TS.h>
 
 #include "std/igc_impl.h"
+#include "std/private/gc_names_storage.h"
 
 #include <functional>
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class Object;
 class IMemoryDiagnosticsImpl;
@@ -38,7 +41,7 @@ public:
 
     std::size_t getAliveObjectsCount() const override;
 
-    void addRoot(Object** object) override;
+    void addRoot(Object** object, const Object* associatedName) override;
     void removeRoot(Object** object) override;
 
     void collect() override;
@@ -55,5 +58,6 @@ private:
     // TODO Use absl::uset
     std::unordered_set<Object*> _heap;
     std::unordered_set<Object**> _roots;
+    GCNamesStorage _names;
     Callbacks _callbacks;
 };

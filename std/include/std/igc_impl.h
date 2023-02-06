@@ -25,7 +25,7 @@ public:
     // These methods make IGCImpl to be leaky abstraction
     // We can avoid them by notifying gc implementation about adding/removing roots
     // from the compiler level
-    virtual void addRoot(Object** object) = 0;
+    virtual void addRoot(Object** object, const Object* associatedName) = 0;
     virtual void removeRoot(Object** object) = 0;
 
     virtual void collect() = 0;

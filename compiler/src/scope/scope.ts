@@ -750,7 +750,7 @@ export class Scope {
     if (extractedValue.type.getPointerLevel() === 2) {
 
       if (makeRoot) {
-        this.generator.gc.addRoot(extractedValue);
+        this.generator.gc.addRoot(extractedValue, identifier, this.name);
       }
 
       this.map.set(identifier, extractedValue);
@@ -763,7 +763,7 @@ export class Scope {
       this.map.set(identifier, vPtrPtr);
 
       if (makeRoot) {
-        this.generator.gc.addRoot(vPtrPtr);
+        this.generator.gc.addRoot(vPtrPtr, identifier, this.name);
       }
     }
     else {
