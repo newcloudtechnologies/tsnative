@@ -32,7 +32,7 @@ current_launch_number=$?
 script_path_plus_name=$(realpath "$0")
 script_dir=$(dirname "$script_path_plus_name")
 main_ts_path=$script_dir
-main_ts_path+="/src/main.ts"
+main_ts_path+="/../src/main.ts"
 
 echo "[DEBUG MODE] Current script path: ${script_dir}"
 echo "[DEBUG MODE] main.ts path: ${main_ts_path}"
