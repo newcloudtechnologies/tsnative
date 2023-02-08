@@ -36,7 +36,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 1, unit: 'HOURS')   // timeout on whole pipeline job
+        timeout(time: 2, unit: 'HOURS')   // timeout on whole pipeline job
     }
 
     stages {
@@ -154,7 +154,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_VERSION', value: version),
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True"),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True -o run_tests_with_memcheck=True"),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
@@ -174,6 +174,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_VERSION', value: version),
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o run_tests_with_memcheck=True"),
                                     string(name: 'PKG_CONAN_UPLOAD_PATTERN', value: ''),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)

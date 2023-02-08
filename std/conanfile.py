@@ -76,9 +76,9 @@ class TSNativeStdConan(ConanFile):
 
         if self.options.build_tests and self.settings.os != "Android":
             with environment_append({'CTEST_OUTPUT_ON_FAILURE': '1'}):
-                if self.options.run_tests_with_memcheck:
-                    tests_with_memcheck_target = "test_memcheck";
-                    cmake.build(target=tests_with_memcheck_target);
+                if self.options.run_tests_with_memcheck and self.settings.os == "Linux":
+                    tests_with_memcheck_target = "test_memcheck"
+                    cmake.build(target=tests_with_memcheck_target)
                 else:
                     cmake.test()
 

@@ -134,7 +134,7 @@ class TSNativeTestsConan(ConanFile):
     def runCompiledTests(self, out_dir):
         test_options = "--output-on-failure"
 
-        if self.options.run_tests_with_memcheck:
+        if self.options.run_tests_with_memcheck and self.settings.os == "Linux":
             test_options += " -D ExperimentalMemCheck"
 
             if self.options.fail_test_on_mem_leak:
