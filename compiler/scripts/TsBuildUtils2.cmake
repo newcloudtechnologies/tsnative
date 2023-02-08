@@ -92,6 +92,12 @@ function (add_ts_library ARG_NAME ...)
         list (APPEND baseFlags --baseUrl;${ARG_BASE_URL})
     endif()
 
+    if (NOT DEFINED ARG_TS_DEBUG)
+        if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+            set (ARG_TS_DEBUG TRUE)
+        endif ()
+    endif ()
+
     set(extraFlags 
         $<$<BOOL:${ARG_PRINT_IR}>:--printIR;>
         $<$<BOOL:${ARG_TS_DEBUG}>:--debug;>
