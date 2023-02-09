@@ -105,7 +105,10 @@ export class LLVMValue {
       throw new Error(`Assignment destination expected to be of pointer-to-pointer type, got: '${value.type.toString()}'`);
     }
 
-    if (other.type.isUnion() && !value.type.getPointerElementType().isUnion()) {
+    if (other.isTSPrimitivePtr()) {
+      other = other.clone();
+    }
+    else if (other.type.isUnion() && !value.type.getPointerElementType().isUnion()) {
       other = this.generator.ts.union.get(other);
       other = this.generator.builder.createBitCast(other, value.type.getPointerElementType());
     }

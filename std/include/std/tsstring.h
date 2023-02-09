@@ -109,25 +109,3 @@ inline std::ostream& operator<<(std::ostream& os, const String* s)
     os << s->cpp_str();
     return os;
 }
-
-namespace std
-{
-template <>
-struct hash<::String*>
-{
-    size_t operator()(::String* s) const
-    {
-        return hash<string>()(s->cpp_str());
-    }
-};
-
-template <>
-struct equal_to<::String*>
-{
-    bool operator()(::String* const& lhs, ::String* const& rhs) const
-    {
-        return lhs->equals(rhs)->unboxed();
-    }
-};
-
-} // namespace std

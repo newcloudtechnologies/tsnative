@@ -43,6 +43,7 @@
 
 #include "std/diagnostics.h"
 #include "std/event_loop.h"
+#include "std/gc.h"
 #include "std/memory_diagnostics.h"
 #include "std/runtime.h"
 #include "std/tsmath.h"
@@ -74,12 +75,7 @@ template <>
 std::string toString(const ArrayPrivate<Object*>* array)
 {
     std::ostringstream oss;
-
-    for (std::size_t i = 0; i < array->length(); ++i)
-    {
-        const Object* element = array->operator[](i);
-        oss << GCStringConverter::convert(element) << " ";
-    }
+    oss << "Array\n";
 
     return oss.str();
 }
@@ -114,16 +110,6 @@ std::string toString(const MapPrivate<K, V>* mapping)
     std::ostringstream oss;
     oss << "Map:\n";
 
-    mapping->forEachEntry(
-        [&oss](const auto& entry)
-        {
-            const auto& key = entry.first;
-            const auto& value = entry.second;
-
-            oss << "Key: " << GCStringConverter::convert(key) << " Value: " << GCStringConverter::convert(value)
-                << "\n";
-        });
-
     return oss.str();
 }
 
@@ -133,8 +119,6 @@ std::string toString(const SetPrivate<Object*>* set)
     std::ostringstream oss;
     oss << "Set:\n";
 
-    set->forEach([&oss](const auto& entry) { oss << "Value: " << GCStringConverter::convert(entry) << "\n"; });
-
     return oss.str();
 }
 
@@ -142,7 +126,7 @@ template <>
 std::string toString(const Union* u)
 {
     std::ostringstream oss;
-    oss << "Union:\n" << GCStringConverter::convert(u->getValue());
+    oss << "Union:\n";
 
     return oss.str();
 }
@@ -250,7 +234,12 @@ std::string GCStringConverter::convert(const Object* obj)
 
     if (dynamic_cast<const EventLoop*>(obj))
     {
-        return "Event loop";
+        return "Event loop wrapper";
+    }
+
+    if (dynamic_cast<const GC*>(obj))
+    {
+        return "GC Wrapper";
     }
 
     if (obj->isObject())

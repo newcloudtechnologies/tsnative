@@ -423,7 +423,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
     this.handleConstructor(expression, valueDeclaration, constructor, currentScope, env);
 
-    setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
+    setLLVMFunctionScope(constructor, parentScope, this.generator, expression, false);
 
     this.invoke(expression, constructorDeclaration.body, constructor, [env.untyped]);
 
@@ -1296,7 +1296,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       }
 
       this.handleConstructor(expression, valueDeclaration, constructor, scope, env);
-      setLLVMFunctionScope(constructor, scope, this.generator, expression);
+      setLLVMFunctionScope(constructor, scope, this.generator, expression, false);
     }
 
     const body = matchingConstructorDeclaration.isFunctionLike() ? matchingConstructorDeclaration.body : undefined;
