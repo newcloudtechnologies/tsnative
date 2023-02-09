@@ -19,9 +19,7 @@
 #include "std/private/gc_printer.h"
 
 DefaultGC::DefaultGC(Callbacks&& callbacks)
-    : _rootsMutex{}
-    , _heapMutex{}
-    , _heap{}
+    : _heap{}
     , _roots{}
     , _names{}
     , _callbacks{std::move(callbacks)}
@@ -36,7 +34,6 @@ DefaultGC::~DefaultGC()
 
 void DefaultGC::addObject(Object* o)
 {
-    const std::lock_guard<std::mutex> lock{_heapMutex};
     LOG_ADDRESS("Calling add object ", o);
     if (!o)
     {
@@ -58,7 +55,6 @@ void DefaultGC::addRoot(Object** o, const Object* associatedName)
         throw std::runtime_error("GC: root cannot be nullptr");
     }
 
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex);
     LOG_ADDRESS("Adding root: ", o);
     _roots.insert(o);
     _names.setRootName(o, associatedName);
@@ -76,7 +72,6 @@ void DefaultGC::removeRoot(Object** o)
         return;
     }
 
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex);
     LOG_ADDRESS("Removing root: ", o);
     _roots.erase(it);
     _names.unsetRootName(*it);
@@ -84,10 +79,6 @@ void DefaultGC::removeRoot(Object** o)
 
 void DefaultGC::collect()
 {
-    std::lock(_heapMutex, _rootsMutex);
-    std::lock_guard<std::mutex> heapLock(_heapMutex, std::adopt_lock);
-    std::lock_guard<std::mutex> rootsLock(_rootsMutex, std::adopt_lock);
-
     LOG_INFO("Calling mark");
     mark();
     LOG_INFO("Calling sweep");

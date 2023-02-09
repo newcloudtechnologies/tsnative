@@ -54,15 +54,3 @@ private:
 
 TS_CODE("// @ts-ignore\n"
         "declare type boolean = Boolean;\n");
-
-namespace std
-{
-template <>
-struct equal_to<::Boolean*>
-{
-    bool operator()(::Boolean* const& lhs, ::Boolean* const& rhs) const
-    {
-        return lhs->equals(rhs)->unboxed();
-    }
-};
-} // namespace std

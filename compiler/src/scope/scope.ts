@@ -187,14 +187,15 @@ export function setLLVMFunctionScope(
   fn: LLVMValue,
   scope: Scope,
   generator: LLVMGenerator,
-  source: ts.Expression | Declaration
+  source: ts.Expression | Declaration,
+  makeRoot: boolean = true
 ) {
   LLVMFunction.verify(fn, source);
 
   // Function declaration may be in scope with same name.
   // @todo: overwrite?
   if (!scope.get(fn.unwrapped.name)) {
-    scope.set(fn.unwrapped.name, LLVMValue.create(fn.unwrapped, generator));
+    scope.set(fn.unwrapped.name, LLVMValue.create(fn.unwrapped, generator), makeRoot);
   }
 }
 
@@ -664,6 +665,7 @@ export class Scope {
       const llvmType = tsType.getLLVMType();
       const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
       const inplaceAllocatedPtr = generator.ts.obj.createInplace(allocated, undefined);
+
       const inplaceAllocatedPtrPtr = generator.gc.allocate(inplaceAllocatedPtr.type);
       generator.builder.createSafeStore(inplaceAllocatedPtr, inplaceAllocatedPtrPtr);
 

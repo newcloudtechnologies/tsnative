@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "std/private/comparators.h"
 #include "std/private/logger.h"
 #include "std/private/tsarray_p.h"
 #include "std/tsobject.h"

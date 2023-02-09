@@ -110,15 +110,3 @@ TS_CODE("// @ts-ignore\n"
         "declare type number = Number;\n"
         "declare var NaN: number;\n"
         "declare var Infinity: number;\n");
-
-namespace std
-{
-template <>
-struct equal_to<::Number*>
-{
-    bool operator()(::Number* const& lhs, ::Number* const& rhs) const
-    {
-        return lhs->equals(rhs)->unboxed();
-    }
-};
-} // namespace std

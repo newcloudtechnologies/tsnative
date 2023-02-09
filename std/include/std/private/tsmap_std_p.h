@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "std/private/comparators.h"
 #include "std/private/tsmap_p.h"
 
 template <typename K, typename V>

@@ -21,6 +21,8 @@
 
 #include "tsset_p.h"
 
+#include "std/private/comparators.h"
+
 template <typename V>
 class SetStdPrivate : public SetPrivate<V>
 {

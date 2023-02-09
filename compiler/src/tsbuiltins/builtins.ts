@@ -268,7 +268,7 @@ export class BuiltinTSClosure extends Builtin {
 
     const envLength = env.variables.length;
 
-    const thisValue = this.generator.gc.allocate(this.getLLVMType().unwrapPointer());
+    const thisValue = this.generator.gc.allocateObject(this.getLLVMType().unwrapPointer());
     const untypedFn = this.generator.builder.asVoidStar(fn);
     const untypedEnv = this.generator.builder.asVoidStarStarStar(env.untyped);
 

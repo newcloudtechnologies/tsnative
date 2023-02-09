@@ -17,8 +17,6 @@
 #include "std/private/gc_names_storage.h"
 
 #include <functional>
-#include <mutex>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -52,9 +50,6 @@ private:
     void sweep();
 
 private:
-    std::mutex _rootsMutex;
-    std::mutex _heapMutex;
-
     // TODO Use absl::uset
     std::unordered_set<Object*> _heap;
     std::unordered_set<Object**> _roots;

@@ -17,12 +17,10 @@ export class DummyArgumentsCreator {
         if (t.getPointerLevel() !== 1) {
           throw new Error("Function argument types should be *");
         }
-
-        let nullArg = LLVMConstant.createNullValue(t.unwrapPointer(), this.generator);
-
-        const allocatedPtr = this.generator.gc.allocate(nullArg.type.unwrapPointer());
-        this.generator.builder.createSafeStore(nullArg, allocatedPtr);
-        nullArg = allocatedPtr;
+        
+        const allocatedPtr = this.generator.gc.allocateObject(t.getPointerElementType());
+        this.generator.ts.obj.createInplace(allocatedPtr);
+        let nullArg = allocatedPtr;
 
         if (nullArg.type.isUnion()) {
           nullArg = this.generator.ts.union.create();
