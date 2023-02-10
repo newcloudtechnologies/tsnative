@@ -130,7 +130,7 @@ GC* Runtime::getGC()
     return new GC{_gcImpl.get(), _allocator.get()};
 }
 
-int Runtime::init(int ac, char* av[])
+int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop)
 {
     if (_isInitialized)
     {
@@ -160,7 +160,15 @@ int Runtime::init(int ac, char* av[])
         return result;
     }
 
-    initLoop();
+    if (!customEventLoop)
+    {
+        initLoop();
+    }
+    else
+    {
+        _loop.reset(customEventLoop);
+    }
+
     initTimersStorage();
     _isInitialized = true;
 

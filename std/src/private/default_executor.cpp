@@ -11,7 +11,7 @@
 
 #include "std/private/default_executor.h"
 #include "absl/base/internal/invoke.h"
-#include "std/private/ievent_loop.h"
+#include "std/ievent_loop.h"
 
 DefaultExecutor::DefaultExecutor(IEventLoop& eventLoop)
     : _eventLoop{eventLoop}

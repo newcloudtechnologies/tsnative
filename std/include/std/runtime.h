@@ -53,7 +53,7 @@ public:
 
     using Timers = TimersStorage;
 
-    static int init(int argc, char* argv[]);
+    static int init(int argc, char* argv[], IEventLoop* customEventLoop = nullptr);
     static void destroy();
     static bool isInitialized();
 

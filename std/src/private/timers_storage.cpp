@@ -10,7 +10,7 @@
  */
 
 #include "std/private/timers_storage.h"
-#include "std/private/ievent_loop.h"
+#include "std/ievent_loop.h"
 #include "std/private/logger.h"
 #include "std/private/uv_loop_adapter.h"
 
