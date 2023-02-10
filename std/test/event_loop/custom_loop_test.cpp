@@ -9,111 +9,18 @@
  *
  */
 
+#include "../mocks/stub_event_loop.h"
 #include "events.h"
-#include "std/private/emitter.h"
-#include "std/private/ievent_loop.h"
-#include <gmock/gmock.h>
+
 #include <gtest/gtest.h>
 
-#include <condition_variable>
-#include <functional>
-#include <future>
-#include <thread>
-#include <vector>
-
-class CustomEventLoop : public IEventLoop
+namespace
 {
-public:
-    CustomEventLoop()
-        : _thread{&CustomEventLoop::threadFunc, this}
-    {
-    }
-    CustomEventLoop(const CustomEventLoop&) = delete;
-    CustomEventLoop(CustomEventLoop&&) noexcept = delete;
-
-    ~CustomEventLoop() override
-    {
-        stopLoop();
-    }
-
-    CustomEventLoop& operator=(const CustomEventLoop&) = delete;
-    CustomEventLoop& operator=(CustomEventLoop&&) noexcept = delete;
-
-    int run(bool lock = true) override
-    {
-        _running = true;
-        _condVar.notify_one();
-        return 0;
-    }
-
-    void stop() override
-    {
-        stopLoop();
-    }
-
-    bool isRunning() const override
-    {
-        return _running;
-    }
-
-    void enqueue(Callback&& callable) override
-    {
-        {
-            std::lock_guard<std::mutex> guard(_mutex);
-            _writeBuffer.emplace_back(std::move(callable));
-        }
-        _condVar.notify_one();
-    }
-
-    void processEvents() override
-    {
-    }
-
-private:
-    void startLoop()
-    {
-        enqueue([this] { _running = true; });
-    }
-
-    void stopLoop()
-    {
-        enqueue([this] { _running = false; });
-        _thread.join();
-    }
-
-    void threadFunc() noexcept
-    {
-        std::vector<Callback> read_buffer;
-
-        while (_running)
-        {
-            {
-                std::unique_lock<std::mutex> lock(_mutex);
-                _condVar.wait(lock, [this] { return !_writeBuffer.empty(); });
-                std::swap(read_buffer, _writeBuffer);
-            }
-
-            for (Callback& func : read_buffer)
-            {
-                func();
-            }
-            read_buffer.clear();
-        }
-    }
-
-private:
-    std::vector<Callback> _writeBuffer;
-    std::mutex _mutex;
-    std::condition_variable _condVar;
-    std::atomic_bool _running{false};
-    std::thread _thread;
-};
-
 using namespace std::chrono_literals;
 
 TEST(CustomLoop, InitLoop)
 {
-    CustomEventLoop loop;
+    test::StubEventLoop loop;
 
     ASSERT_FALSE(loop.isRunning());
     loop.run();
@@ -122,7 +29,7 @@ TEST(CustomLoop, InitLoop)
 
 TEST(CustomLoop, CheckEmitEventForLoop)
 {
-    CustomEventLoop loop;
+    test::StubEventLoop loop;
     loop.run();
 
     int mouse_event_x = 3;
@@ -162,3 +69,4 @@ TEST(CustomLoop, CheckEmitEventForLoop)
     ASSERT_FALSE(emitter.has<MouseEvent>());
     ASSERT_FALSE(emitter.has<ErrorEvent>());
 }
+} // namespace

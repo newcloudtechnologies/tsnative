@@ -13,7 +13,7 @@
 
 #include <gmock/gmock.h>
 
-#include "std/private/ievent_loop.h"
+#include "std/ievent_loop.h"
 #include "std/private/iexecutor.h"
 
 namespace test

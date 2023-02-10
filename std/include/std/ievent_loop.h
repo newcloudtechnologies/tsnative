@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "itimer.h"
+#include "std/private/itimer.h"
 
 #include <functional>
 #include <memory>
