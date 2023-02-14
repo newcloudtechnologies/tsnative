@@ -587,3 +587,12 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
   console.assert(arr3[0] === "aaa" && arr3[1] === "bbb" && arr3[2] === "bbb", "Adding strings to array should behave as 'value types'");
 }
+
+// Array destructing assignment
+{
+  const arr = [1, 2];
+  const [e1, e2] = arr;
+
+  console.assert(e1 === 1, "Array: destructing assignment element 1 not equal");
+  console.assert(e2 === 2, "Array: destructing assignment element 2 not equal");
+}

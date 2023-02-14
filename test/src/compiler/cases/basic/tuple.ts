@@ -31,3 +31,12 @@
         const _ = tuple[i];
     }
 }
+
+// Tuple destructing assignment
+{
+    const primitivesTuple: [number, string] = [1, "Steve"];
+    const [v1, v2] = primitivesTuple;
+
+    console.assert(v1 === 1, "Tuple: destructing assignment element 1 not equal");
+    console.assert(v2 === "Steve", "Tuple: destructing assignment element 2 not equal");
+}

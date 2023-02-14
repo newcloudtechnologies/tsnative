@@ -188,28 +188,43 @@ export class VariableHandler extends AbstractNodeHandler {
       identifiers.push(element.name);
     });
 
-    const arrayInitializer = this.generator.handleExpression(declaration.initializer, outerEnv).derefToPtrLevel1();
-    const arrayUntyped = this.generator.builder.asVoidStar(arrayInitializer);
+    const rhs = this.generator.handleExpression(declaration.initializer, outerEnv).derefToPtrLevel1();
+    const rhsUntyped = this.generator.builder.asVoidStar(rhs);
+
+    if (rhs.type.isTuple()) {
+      const elementTypes = bindingPattern.elements.map((e) => this.generator.ts.checker.getTypeAtLocation(e));
+
+      identifiers.forEach((identifier, index) => {
+        const destructedValueUntyped = this.generator.ts.tuple.createSubscriptionCallForNumber(rhsUntyped, index);
+
+        const destructedValue = this.generator.builder.createBitCast(
+          destructedValueUntyped,
+          elementTypes[index].getLLVMType()
+        );
+
+        const name = identifier.getText();
+        parentScope.setOrAssign(name, destructedValue);
+      });
+
+      return;
+    }
+
+    if (!rhs.type.isArray()) {
+      throw new Error("Destructing assignment is supported for tuples and arrays only");
+    }
+
     const arrayType = this.generator.ts.checker.getTypeAtLocation(declaration.initializer);
     let elementType = arrayType.getTypeGenericArguments()[0];
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();
     }
 
-    const subscription = this.generator.ts.array.createSubscription(arrayType);
-
     identifiers.forEach((identifier, index) => {
       const name = identifier.getText();
-      const llvmDoubleIndex = LLVMConstantFP.get(this.generator, index);
-      const llvmNumberIndex = this.generator.builtinNumber.create(llvmDoubleIndex);
-
-      const destructedValueUntyped = this.generator.builder.createSafeCall(subscription, [
-        arrayUntyped,
-        llvmNumberIndex,
-      ]);
+      const destructedValueUntyped = this.generator.ts.array.createSubscriptionCall(rhsUntyped, arrayType, index);
       const destructedValue = this.generator.builder.createBitCast(destructedValueUntyped, elementType.getLLVMType());
 
-      parentScope.set(name, destructedValue);
+      parentScope.setOrAssign(name, destructedValue);
     });
   }
 

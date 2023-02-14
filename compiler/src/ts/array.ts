@@ -12,7 +12,7 @@
 import { LLVMGenerator } from "../generator";
 import { TSType } from "./type";
 import * as ts from "typescript";
-import { LLVMValue } from "../llvm/value";
+import { LLVMConstantFP, LLVMValue } from "../llvm/value";
 import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMType } from "../llvm/type";
@@ -241,6 +241,17 @@ export class TSArray {
     this.pushFns.set(arrayTypename, push);
 
     return push;
+  }
+
+  createSubscriptionCall(thisValue: LLVMValue, arrayType: TSType, index: number) {
+    const subscription = this.createSubscription(arrayType);
+    const llvmIntegralIndex = LLVMConstantFP.get(this.generator, index);
+    const llvmNumberIndex = this.generator.builtinNumber.create(llvmIntegralIndex);
+
+    return this.generator.builder.createSafeCall(subscription, [
+      thisValue.derefToPtrLevel1(),
+      llvmNumberIndex,
+    ]);
   }
 
   createSubscription(arrayType: TSType) {
