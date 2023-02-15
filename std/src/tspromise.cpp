@@ -46,11 +46,14 @@ Promise* Promise::reject(Object* rejected)
 Promise::Promise(PromisePrivate* promisePrivate)
     : Object{TSTypeID::Promise}
     , _d{promisePrivate}
+    , _promiseID{IDGenerator{}.createID()}
 {
     if (auto ptr = _d->getReadyConnector().lock())
     {
         ptr->on<ReadyEvent>([this](auto&&...) { this->emit(ReadyEvent{}); });
     }
+
+    Runtime::getMutablePromiseStorage().emplace(getID(), *this);
 }
 
 Promise::Promise(TSClosure* executor)
@@ -90,11 +93,16 @@ Promise::~Promise()
     delete _d;
 }
 
+ID Promise::getID() const
+{
+    return _promiseID;
+}
+
 Promise* Promise::then(Union* onFulfilled, Union* onRejected)
 {
     LOG_METHOD_CALL;
     LOG_ADDRESS("Calling then method for ", this);
-    auto* next = new PromisePrivate{_d->then(onFulfilled->getValue(), onRejected->getValue(), *Runtime::getExecutor())};
+    auto* next = new PromisePrivate{_d->then(onFulfilled->getValue(), onRejected->getValue(), Runtime::getExecutor())};
     return new Promise{next};
 }
 
@@ -102,7 +110,7 @@ Promise* Promise::catchException(Union* onRejected)
 {
     LOG_METHOD_CALL;
     LOG_ADDRESS("Calling fail method for ", this);
-    auto* next = new PromisePrivate{_d->then(Undefined::instance(), onRejected->getValue(), *Runtime::getExecutor())};
+    auto* next = new PromisePrivate{_d->then(Undefined::instance(), onRejected->getValue(), Runtime::getExecutor())};
     return new Promise{next};
 }
 
@@ -110,7 +118,7 @@ Promise* Promise::finally(Union* onFinally)
 {
     LOG_METHOD_CALL;
     LOG_ADDRESS("Calling finally method for ", this);
-    auto* next = new PromisePrivate{_d->then(onFinally->getValue(), onFinally->getValue(), *Runtime::getExecutor())};
+    auto* next = new PromisePrivate{_d->then(onFinally->getValue(), onFinally->getValue(), Runtime::getExecutor())};
     return new Promise{next};
 }
 

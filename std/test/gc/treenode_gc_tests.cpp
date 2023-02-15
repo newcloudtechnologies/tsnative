@@ -9,14 +9,18 @@
  *
  */
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include "std/private/default_gc.h"
-#include "std/tsobject.h"
-
 #include "../infrastructure/global_test_allocator_fixture.h"
 #include "../infrastructure/object_wrappers.h"
+
+#include "../mocks/mock_eventloop.h"
+
+#include "std/private/async_object_storage.h"
+#include "std/private/default_gc.h"
+
+#include "std/tsobject.h"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <memory>
 #include <vector>
@@ -68,7 +72,7 @@ public:
             _actualAliveObjects.erase(it);
         };
 
-        _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks));
+        _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks), _timers, _promises);
 
         TestAllocator::Callbacks allocatorCallbacks;
         allocatorCallbacks.onAllocated = [this](void* o)
@@ -105,6 +109,9 @@ public:
 private:
     std::vector<const Object*> _actualAliveObjects;
     std::unique_ptr<DefaultGC> _gc;
+    test::MockEventLoop _mockEventLoop;
+    TimerStorage _timers;
+    PromiseStorage _promises;
 };
 
 // Init:

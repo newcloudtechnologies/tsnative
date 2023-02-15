@@ -13,6 +13,7 @@
 
 #include <TS.h>
 
+#include "std/id_generator.h"
 #include "std/tsobject.h"
 
 #include "std/private/promise/promise_emitter.h"
@@ -59,6 +60,8 @@ public:
 
     bool isRejected() const;
 
+    ID getID() const;
+
     TS_METHOD Boolean* equals(Object* other) const override;
 
     TS_METHOD String* toString() const override;
@@ -72,6 +75,7 @@ private:
 
 private:
     PromisePrivate* _d;
+    ID _promiseID;
 
 private:
     friend class GCStringConverter;
