@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2023
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
+#pragma once
+
+#include <TS.h>
+
+#include <std/tsclosure.h>
+#include <std/tsnumber.h>
+#include <std/tsobject.h>
+#include <std/tsobject_owner.h>
+
+namespace cpp_integration IS_TS_MODULE
+{
+
+class TS_EXPORT TSObjectCache : public Object
+{
+public:
+    TS_METHOD TSObjectCache();
+
+    TS_METHOD void addNumber(Number* num);
+    TS_METHOD void setClosure(TSClosure* closure);
+    TS_METHOD void setClassClosure(TSClosure* classClosure);
+
+    TS_METHOD Number* getNumbersSum() const;
+
+    TS_METHOD void clear();
+
+    TS_METHOD String* getClosureString() const;
+
+    TS_METHOD void callClassClosure();
+
+private:
+    std::vector<TSObjectOwner<Number>> m_numbers;
+    TSObjectOwner<TSClosure> m_closure;
+    TSObjectOwner<TSClosure> m_classClosure;
+};
+
+} // namespace IS_TS_MODULE

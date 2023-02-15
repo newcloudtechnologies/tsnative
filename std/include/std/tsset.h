@@ -125,7 +125,7 @@ void Set<T>::forEach(TSClosure* visitor) const
             visitor->setEnvironmentElement(const_cast<Set<T>*>(this), 2);
         }
 
-        visitor->operator()();
+        visitor->call();
     }
 }
 

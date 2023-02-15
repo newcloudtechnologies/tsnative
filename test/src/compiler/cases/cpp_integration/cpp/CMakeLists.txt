@@ -30,6 +30,7 @@ set(INCLUDES
     printable.h
     rect.h
     union_narrowing.h
+    ts_object_cache.h
 )
 
 set(SOURCES
@@ -47,6 +48,7 @@ set(SOURCES
     printable.cpp
     rect.cpp
     union_narrowing.cpp
+    ts_object_cache.cpp
 )
 
 list(TRANSFORM SOURCES PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
@@ -72,7 +74,7 @@ ts_generate_declarations(${PROJECT_NAME}
 )
 
 ts_generate_index(${PROJECT_NAME}
-    EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod"
+    EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod, TSObjectCache"
     MODULE_NAME "cpp_integration"
     DECLARATIONS ${TS_DECLARATIONS}
     OUT_DIRECTORY ${PROJECT_BASE_URL}/${PROJECT_NAME}

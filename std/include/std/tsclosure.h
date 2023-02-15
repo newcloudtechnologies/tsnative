@@ -43,10 +43,7 @@ public:
 
     Number* getNumArgs() const;
 
-    // unsutable, legacy in fact
-    TS_METHOD TS_SIGNATURE("call(): void") TS_DECORATOR("MapsTo('operator()()')") void* operator()() const;
-
-    void* call() const;
+    TS_METHOD void* call() const;
 
     TS_METHOD String* toString() const override;
 

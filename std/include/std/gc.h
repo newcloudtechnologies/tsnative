@@ -16,8 +16,6 @@
 #include "std/tsobject.h"
 
 #include <cstdint>
-#include <memory>
-#include <type_traits>
 
 class IGCImpl;
 class Allocator;
@@ -43,50 +41,9 @@ public:
 
     TS_METHOD void saveMemoryGraph() const;
 
+    void addRootWithName(Object** root, const char* name);
+
 private:
     IGCImpl* _gcImpl;
     Allocator* _allocator;
-
-public:
-    // Deprecated API
-    template <typename Source>
-    static Source track(Source value)
-    {
-        static_assert(std::is_pointer<Source>::value, "Value must be a pointer");
-        // @todo: here we start tracking existing pointer
-        return value;
-    }
-
-    // Deprecated API
-    template <typename TsTypePtrT, typename SourceT>
-    static TsTypePtrT track_as(SourceT value)
-    {
-        static_assert(std::is_pointer<TsTypePtrT>::value, "Return type must be a pointer");
-        using TsTypeT = std::remove_pointer_t<TsTypePtrT>;
-        static_assert(std::is_base_of<Object, TsTypeT>::value, "Return type must be Object derived");
-
-        auto* ret = new TsTypeT(value);
-        // @todo here we start tracking ret pointer
-        return ret;
-    }
-
-    // Deprecated API
-    template <typename Source>
-    static Source untrack(Source value)
-    {
-        static_assert(std::is_pointer<Source>::value, "Value must be a pointer");
-        // @todo: here we stop tracking existing pointer
-        return value;
-    }
-
-    // Deprecated API
-    // mkrv @todo: better remove this method
-    template <typename Destination, typename Source>
-    static Destination* createHeapAllocated(Source value)
-    {
-        static_assert(std::is_constructible<Destination, Source>::value,
-                      "DestinationT must be constructible from SourceT");
-
-        return GC::track(new Destination(value));
-    }
 };

@@ -50,6 +50,18 @@ std::size_t DefaultGC::getAliveObjectsCount() const
 
 void DefaultGC::addRoot(Object** o, const Object* associatedName)
 {
+    insertRoot(o);
+    _names.setRootName(o, associatedName);
+}
+
+void DefaultGC::addRootWithName(Object** o, const char* name)
+{
+    insertRoot(o);
+    _names.setCppRootName(o, name);
+}
+
+void DefaultGC::insertRoot(Object** o)
+{
     if (!o)
     {
         throw std::runtime_error("GC: root cannot be nullptr");
@@ -57,7 +69,6 @@ void DefaultGC::addRoot(Object** o, const Object* associatedName)
 
     LOG_ADDRESS("Adding root: ", o);
     _roots.insert(o);
-    _names.setRootName(o, associatedName);
 }
 
 void DefaultGC::removeRoot(Object** o)
@@ -83,6 +94,9 @@ void DefaultGC::collect()
     mark();
     LOG_INFO("Calling sweep");
     sweep();
+    // sweep doesn't remove mark from TSObjectOwner-s . Need to remove it manually
+    LOG_INFO("Unmark marked roots manually");
+    unmarkRoots();
     LOG_INFO("Finished collect call");
 }
 
@@ -120,6 +134,18 @@ void DefaultGC::sweep()
         delete object;
         _callbacks.afterDeleted(object);
         it = _heap.erase(it);
+    }
+}
+
+void DefaultGC::unmarkRoots()
+{
+    for (auto** r : _roots)
+    {
+        if (r && *r && (*r)->isMarked())
+        {
+            LOG_ADDRESS("Unmark root manually: ", r);
+            (*r)->unmark();
+        }
     }
 }
 

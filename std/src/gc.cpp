@@ -76,6 +76,17 @@ void GC::addRoot(void** root, void* associatedName)
     _gcImpl->addRoot(Object::asObjectPtrPtr(root), static_cast<const Object*>(associatedName));
 }
 
+void GC::addRootWithName(Object** root, const char* name)
+{
+    LOG_METHOD_CALL
+    if (!_gcImpl)
+    {
+        throw std::runtime_error("GCImpl cannot be nullptr");
+    }
+
+    _gcImpl->addRootWithName(root, name);
+}
+
 void GC::removeRoot(void** root)
 {
     if (!_gcImpl)
