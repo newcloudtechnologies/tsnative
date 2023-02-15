@@ -58,14 +58,9 @@ Number* TSClosure::getNumArgs() const
     return _numArgs;
 }
 
-void* TSClosure::operator()() const
-{
-    return reinterpret_cast<void* (*)(void***)>(_fn)(_env);
-}
-
 void* TSClosure::call() const
 {
-    return operator()();
+    return reinterpret_cast<void* (*)(void***)>(_fn)(_env);
 }
 
 String* TSClosure::toString() const

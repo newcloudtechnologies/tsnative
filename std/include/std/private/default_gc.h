@@ -40,6 +40,7 @@ public:
     std::size_t getAliveObjectsCount() const override;
 
     void addRoot(Object** object, const Object* associatedName) override;
+    void addRootWithName(Object** object, const char* name) override;
     void removeRoot(Object** object) override;
 
     void collect() override;
@@ -48,6 +49,8 @@ public:
 private:
     void mark();
     void sweep();
+    void unmarkRoots();
+    void insertRoot(Object** root);
 
 private:
     // TODO Use absl::uset

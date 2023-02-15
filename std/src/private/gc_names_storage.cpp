@@ -10,6 +10,7 @@
  */
 
 #include "std/private/gc_names_storage.h"
+#include "std/private/gc_string_converter.h"
 #include "std/tsstring.h"
 
 #include <algorithm>
@@ -23,7 +24,23 @@ constexpr auto g_ScopeNameKey = "__scope_name__";
 
 void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable)
 {
-    _associatedVariablesAndScopes.push_back({root, associatedVariable});
+    Entry entry;
+    entry.root = root;
+
+    if (associatedVariable)
+    {
+        const String* variableName = associatedVariable->get<String*>(g_VariableNameKey);
+        if (variableName)
+        {
+            entry.variableName = GCStringConverter::convert(variableName);
+        }
+        const String* scopeName = associatedVariable->get<String*>(g_ScopeNameKey);
+        if (scopeName)
+        {
+            entry.scopeName = GCStringConverter::convert(scopeName);
+        }
+    }
+    _associatedVariablesAndScopes.push_back(entry);
 }
 
 void GCNamesStorage::unsetRootName(Object** root)
@@ -37,27 +54,15 @@ void GCNamesStorage::unsetRootName(Object** root)
     }
 }
 
-const String* GCNamesStorage::getAssociatedVariableWithHeap(const Object* entry) const
+void GCNamesStorage::setCppRootName(Object** root, const std::string& rootName)
 {
-    if (entry == nullptr)
-    {
-        return nullptr;
-    }
-    const String* variableName = entry->get<String*>(g_VariableNameKey);
-    return variableName;
+    Entry entry;
+    entry.root = root;
+    entry.variableName = rootName;
+    _associatedVariablesAndScopes.push_back(entry);
 }
 
-const String* GCNamesStorage::getAssociatedScopeWithHeap(const Object* entry) const
-{
-    if (entry == nullptr)
-    {
-        return nullptr;
-    }
-    const String* scopeName = entry->get<String*>(g_ScopeNameKey);
-    return scopeName;
-}
-
-const Object* GCNamesStorage::getObjectEntryWithHeap(const Object* object) const
+GCNamesStorage::Entry GCNamesStorage::getObjectEntryWithHeap(const Object* object) const
 {
     const auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
                                     _associatedVariablesAndScopes.cend(),
@@ -71,7 +76,7 @@ const Object* GCNamesStorage::getObjectEntryWithHeap(const Object* object) const
                                     });
     if (found == _associatedVariablesAndScopes.cend())
     {
-        return nullptr;
+        return {};
     }
-    return found->associatedVariableAndScopeName;
+    return *found;
 }

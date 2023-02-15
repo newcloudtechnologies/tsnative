@@ -240,7 +240,7 @@ void Array<T>::forEach(TSClosure* closure) const
             closure->setEnvironmentElement(const_cast<Array<T>*>(this), 2);
         }
 
-        closure->operator()();
+        closure->call();
     }
 }
 
@@ -345,7 +345,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
             closure->setEnvironmentElement(const_cast<Array<T>*>(this), 2);
         }
 
-        U transformed = reinterpret_cast<U>(closure->operator()());
+        U transformed = reinterpret_cast<U>(closure->call());
         transformedArray->push(transformed);
     }
 

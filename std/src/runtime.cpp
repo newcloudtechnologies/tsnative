@@ -233,8 +233,3 @@ IExecutor* Runtime::getExecutor()
     }
     return _executor.get();
 }
-
-void Runtime::setObjectOwnership(Object* resource, Runtime::Ownership ownership)
-{
-    // TODO Write implementation
-}

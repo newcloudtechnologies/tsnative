@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -20,23 +21,23 @@ class String;
 class GCNamesStorage final
 {
 public:
-    void setRootName(Object** root, const Object* associatedVariable);
-
-    void unsetRootName(Object** root);
-
-    const String* getAssociatedVariableWithHeap(const Object* object) const;
-
-    const String* getAssociatedScopeWithHeap(const Object* object) const;
-
-    const Object* getObjectEntryWithHeap(const Object* object) const;
-
-private:
     struct Entry final
     {
         Object** root{nullptr};
-        // Object {__variable_name__: StringObject, __scope_name__: StringObject}
-        const Object* associatedVariableAndScopeName{nullptr};
+        std::string variableName;
+        std::string scopeName;
     };
 
+    // Object {__variable_name__: StringObject, __scope_name__: StringObject}
+    void setRootName(Object** root, const Object* associatedVariable);
+
+    void setCppRootName(Object** root, const std::string& name);
+
+    void unsetRootName(Object** root);
+
+    // use std::optional when c++ standard >= 17
+    Entry getObjectEntryWithHeap(const Object* object) const;
+
+private:
     std::vector<Entry> _associatedVariablesAndScopes{};
 };

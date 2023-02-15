@@ -24,8 +24,6 @@
 #include "std/private/allocator.h"
 #include "std/runtime.h"
 
-#include "std/private/logger.h"
-
 static String* superKey = new String("super");
 static String* parentKey = new String("parent");
 
@@ -375,7 +373,7 @@ void* Object::operator new(std::size_t n)
     }
 
     auto* allocator = Runtime::getAllocator();
-    return allocator->allocateObject(static_cast<double>(n));
+    return allocator->allocateObject(n);
 }
 
 class String;

@@ -129,7 +129,7 @@ void Map<K, V>::forEach(TSClosure* visitor) const
             visitor->setEnvironmentElement(const_cast<Map<K, V>*>(this), 2);
         }
 
-        visitor->operator()();
+        visitor->call();
     }
 }
 

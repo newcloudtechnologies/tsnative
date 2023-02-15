@@ -13,8 +13,16 @@
 #include <gtest/gtest.h>
 
 #include "infrastructure/equality_checkers.h"
+
 #include "mocks/stub_event_loop.h"
 #include "std/event_loop.h"
+
+#include "infrastructure/global_test_allocator_fixture.h"
+
+#include "std/diagnostics.h"
+#include "std/memory_diagnostics.h"
+#include "std/tsobject_owner.h"
+
 #include "std/runtime.h"
 #include "std/tsarray.h"
 
@@ -116,6 +124,102 @@ TEST_F(RuntimeTestFixture, argvSizeLessThanArgs)
     const auto actual = arr->toStdVector();
 
     EXPECT_THAT(actual, ::testing::ElementsAreArray(expected));
+}
+
+TEST_F(RuntimeTestFixture, simpleCheckObjOwner)
+{
+    const int ac = 0;
+    char** av;
+
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
+    const auto createElements = [this]
+    {
+        auto locker = make_object_owner(new Number(44.56));
+        return locker;
+    };
+
+    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getGC());
+
+    gc->collect();
+
+    // 2 - memInfo + gc
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+
+    gc->collect();
+
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+
+    {
+        gc->collect();
+
+        auto locker = createElements();
+        auto locker2 = createElements();
+        auto locker3 = createElements();
+
+        TSObjectOwner<Number> lockerTemp;
+        lockerTemp = make_object_owner(new Number(22));
+
+        double val = locker->unboxed();
+
+        EXPECT_DOUBLE_EQ(val, 44.56);
+
+        gc->collect();
+
+        EXPECT_EQ(2 + 4, memInfo->getAliveObjectsCount()->unboxed());
+
+        // touch memory to check validity
+        gc->saveMemoryGraph();
+    }
+
+    gc->collect();
+
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+}
+
+TEST_F(RuntimeTestFixture, checkDeletingObjectsWithoutOwner)
+{
+    const int ac = 0;
+    char** av;
+
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
+    const auto createElementWithoutOwner = [this] { return new Number(44.56); };
+
+    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getGC());
+
+    gc->collect();
+
+    // 2 - memInfo + gc
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+
+    gc->collect();
+
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+
+    {
+        gc->collect();
+
+        auto el = createElementWithoutOwner();
+        auto el2 = createElementWithoutOwner();
+        auto el3 = createElementWithoutOwner();
+
+        EXPECT_EQ(2 + 3, memInfo->getAliveObjectsCount()->unboxed());
+
+        // deleting elements here
+        // cannot use el, el2 and el3 anymore
+        gc->collect();
+
+        EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+    }
+
+    gc->collect();
+
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
 }
 
 } // namespace
