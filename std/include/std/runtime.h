@@ -13,11 +13,12 @@
 
 #include <TS.h>
 
-#include "std/private/timers_storage.h"
 #include "std/tsobject.h"
 
 #include <memory>
 #include <vector>
+
+#include "std/private/async_object_storage.h"
 
 TS_CODE("import { GC } from './gc' \n");
 TS_CODE("import { Diagnostics } from './diagnostics' \n");
@@ -38,16 +39,16 @@ class EventLoop;
 
 class IEventLoop;
 
-class ITimer;
-
 class IExecutor;
+class ITimerCreator;
 
 class TS_EXPORT TS_DECLARE Runtime final : public Object
 {
 public:
-    using Timers = TimersStorage;
-
-    static int init(int argc, char* argv[], IEventLoop* customEventLoop = nullptr);
+    static int init(int argc,
+                    char* argv[],
+                    IEventLoop* customEventLoop = nullptr,
+                    ITimerCreator* customTimerCreator = nullptr);
     static void destroy();
     static bool isInitialized();
 
@@ -57,24 +58,30 @@ public:
 
     static TS_METHOD EventLoop* getLoop();
 
-    static Timers* getTimersStorage();
+    static IExecutor& getExecutor();
 
-    static IExecutor* getExecutor();
+    static ITimerCreator& getTimerCreator();
 
     static TS_METHOD Array<String*>* getCmdArgs();
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
 
-    static Allocator* getAllocator();
+    static Allocator& getAllocator();
+
+    static TimerStorage& getMutableTimerStorage();
+    static const TimerStorage& getTimerStorage();
+
+    static PromiseStorage& getMutablePromiseStorage();
+    static const PromiseStorage& getPromiseStorage();
 
 private:
     Runtime() = delete;
 
     static void checkInitialization();
     static void initCmdArgs(int ac, char* av[]);
-    static void initLoop();
-    static void initTimersStorage();
+    static void initLoop(IEventLoop* customEventLoop);
+    static void initTimerCreator(ITimerCreator* timerCreator);
 
     static std::vector<std::string> _cmdArgs;
     static std::unique_ptr<IEventLoop> _loop;
@@ -84,6 +91,9 @@ private:
     static std::unique_ptr<IGCImpl> _gcImpl;
     static std::unique_ptr<Allocator> _allocator;
 
-    static std::unique_ptr<Timers> _timersStorage;
     static std::unique_ptr<IExecutor> _executor;
+    static std::unique_ptr<ITimerCreator> _timerCreator;
+
+    static TimerStorage _timers;
+    static PromiseStorage _promises;
 };

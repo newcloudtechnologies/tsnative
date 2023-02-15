@@ -10,13 +10,17 @@
  */
 
 #include "std/private/uv_timer_adapter.h"
+
+#include "std/tsclosure.h"
+
 #include "std/private/logger.h"
 #include "std/private/uv_loop_adapter.h"
 
 using namespace std::chrono_literals;
 
-UVTimerAdapter::UVTimerAdapter(const UVLoopAdapter& uvLoopAdapter, std::size_t timerID)
-    : _timerHandler{uvLoopAdapter.getUVEventHandler<uv::TimerEventHandler>()}
+UVTimerAdapter::UVTimerAdapter(const UVLoopAdapter& uvLoopAdapter, TSClosure* closure, ID timerID)
+    : TimerObject(closure)
+    , _timerHandler{uvLoopAdapter.getUVEventHandler<uv::TimerEventHandler>()}
     , _timerID{timerID}
 {
     LOG_METHOD_CALL;
@@ -44,30 +48,30 @@ std::chrono::milliseconds UVTimerAdapter::due() const
     return _timerHandler->dueIn();
 }
 
-void UVTimerAdapter::setInterval(std::chrono::milliseconds repeat, Callback&& callback)
+void UVTimerAdapter::setInterval(std::chrono::milliseconds repeat)
 {
     LOG_METHOD_CALL;
-    _timerHandler->on<uv::TimerEvent>(
-        [callback = std::move(callback), repeat](auto&, auto& h)
-        {
-            callback();
-            if (!repeat.count())
-            {
-                h.start(0ms, repeat);
-            }
-        });
+    _timerHandler->on<uv::TimerEvent>([this, repeat](auto&&...) { getClosure().call(); });
+    if (repeat.count() <= 0)
+    {
+        repeat = 1ms;
+    }
     _timerHandler->start(0ms, repeat);
 }
 
-void UVTimerAdapter::setTimeout(std::chrono::milliseconds timeout, Callback&& callback)
+void UVTimerAdapter::setTimeout(std::chrono::milliseconds timeout)
 {
     LOG_METHOD_CALL;
     _timerHandler->on<uv::TimerEvent>(
-        [callback = std::move(callback)](auto&, auto& h)
+        [this](auto&, auto& h)
         {
-            callback();
+            getClosure().call();
             h.stop();
         });
+    if (timeout.count() < 0)
+    {
+        timeout = 0ms;
+    }
     _timerHandler->start(timeout, 0ms);
 }
 
@@ -80,13 +84,10 @@ std::chrono::milliseconds UVTimerAdapter::getRepeat() const
 void UVTimerAdapter::stop()
 {
     LOG_METHOD_CALL;
-    if (active())
-    {
-        _timerHandler->stop();
-    }
+    _timerHandler->stop();
 }
 
-std::size_t UVTimerAdapter::getTimerID() const
+ID UVTimerAdapter::getID() const
 {
     return _timerID;
 }

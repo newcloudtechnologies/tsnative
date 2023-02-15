@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "std/private/uv_timer_adapter.h"
 #include "std/tsarray.h"
 #include "std/tsboolean.h"
 #include "std/tsclosure.h"
@@ -51,6 +52,7 @@ using Tuple = GloballyAllocatedObjectWrapper<::Tuple>;
 using Date = GloballyAllocatedObjectWrapper<::Date>;
 using Union = GloballyAllocatedObjectWrapper<::Union>;
 using Closure = GloballyAllocatedObjectWrapper<::TSClosure>;
+using Timer = GloballyAllocatedObjectWrapper<::UVTimerAdapter>;
 
 template <typename T>
 using Array = GloballyAllocatedObjectWrapper<::Array<T>>;

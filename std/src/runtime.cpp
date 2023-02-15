@@ -24,7 +24,9 @@
 #include "std/private/logger.h"
 #include "std/private/memory_diagnostics_storage.h"
 #include "std/private/uv_loop_adapter.h"
+#include "std/private/uv_timer_creator.h"
 
+#include <cassert>
 #include <cstdlib>
 
 bool Runtime::_isInitialized = false;
@@ -33,8 +35,11 @@ std::unique_ptr<IGCImpl> Runtime::_gcImpl{nullptr};
 std::unique_ptr<Allocator> Runtime::_allocator{nullptr};
 std::unique_ptr<MemoryDiagnosticsStorage> Runtime::_memoryDiagnosticsStorage{nullptr};
 std::unique_ptr<IEventLoop> Runtime::_loop{nullptr};
-std::unique_ptr<Runtime::Timers> Runtime::_timersStorage{nullptr};
 std::unique_ptr<IExecutor> Runtime::_executor{nullptr};
+std::unique_ptr<ITimerCreator> Runtime::_timerCreator{nullptr};
+
+AsyncObjectStorage<std::reference_wrapper<TimerObject>> Runtime::_timers{};
+AsyncObjectStorage<std::reference_wrapper<Promise>> Runtime::_promises{};
 
 namespace
 {
@@ -94,19 +99,34 @@ bool Runtime::isInitialized()
     return _isInitialized;
 }
 
-Allocator* Runtime::getAllocator()
+Allocator& Runtime::getAllocator()
 {
     checkInitialization();
-    return _allocator.get();
-}
-void Runtime::initLoop()
-{
-    _loop = std::make_unique<UVLoopAdapter>();
+    return *_allocator;
 }
 
-void Runtime::initTimersStorage()
+void Runtime::initLoop(IEventLoop* customEventLoop)
 {
-    _timersStorage = std::make_unique<Timers>(*(_loop.get()));
+    if (customEventLoop)
+    {
+        _loop.reset(customEventLoop);
+    }
+    else
+    {
+        _loop = std::make_unique<UVLoopAdapter>();
+    }
+}
+
+void Runtime::initTimerCreator(ITimerCreator* customTimerCreator)
+{
+    if (customTimerCreator)
+    {
+        _timerCreator.reset(customTimerCreator);
+        return;
+    }
+    assert(_loop);
+
+    _timerCreator = std::make_unique<UVTimerCreator>(*static_cast<UVLoopAdapter*>(_loop.get()));
 }
 
 Array<String*>* Runtime::getCmdArgs()
@@ -130,7 +150,7 @@ GC* Runtime::getGC()
     return new GC{_gcImpl.get(), _allocator.get()};
 }
 
-int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop)
+int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop, ITimerCreator* customTimerCreator)
 {
     if (_isInitialized)
     {
@@ -139,10 +159,14 @@ int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop)
 
     _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
 
+    initLoop(customEventLoop);
+    initTimerCreator(customTimerCreator);
+
     DefaultGC::Callbacks gcCallbacks;
     gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o)
     { memStorage->onDeleted(o); };
-    auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks));
+
+    auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks), _timers, _promises);
 
     Allocator::Callbacks allocatorCallbacks;
     allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()](Object* o) { gc->addObject(o); };
@@ -159,17 +183,6 @@ int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop)
     {
         return result;
     }
-
-    if (!customEventLoop)
-    {
-        initLoop();
-    }
-    else
-    {
-        _loop.reset(customEventLoop);
-    }
-
-    initTimersStorage();
     _isInitialized = true;
 
     LOG_INFO("Runtime initialized");
@@ -190,10 +203,10 @@ EventLoop* Runtime::getLoop()
     return new EventLoop{*(_loop.get())};
 }
 
-Runtime::Timers* Runtime::getTimersStorage()
+ITimerCreator& Runtime::getTimerCreator()
 {
     checkInitialization();
-    return _timersStorage.get();
+    return *_timerCreator;
 }
 
 void Runtime::destroy()
@@ -206,7 +219,7 @@ void Runtime::destroy()
     LOG_INFO("Calling destroy");
 
     _cmdArgs.clear();
-    _timersStorage = nullptr;
+    _timerCreator = nullptr;
     _loop = nullptr;
     _gcImpl = nullptr;
 
@@ -225,11 +238,31 @@ Boolean* Runtime::toBool() const
     return new Boolean(_isInitialized);
 }
 
-IExecutor* Runtime::getExecutor()
+IExecutor& Runtime::getExecutor()
 {
     if (!_executor)
     {
         _executor = std::make_unique<DefaultExecutor>(*_loop);
     }
-    return _executor.get();
+    return *_executor;
+}
+
+TimerStorage& Runtime::getMutableTimerStorage()
+{
+    return _timers;
+}
+
+const TimerStorage& Runtime::getTimerStorage()
+{
+    return _timers;
+}
+
+PromiseStorage& Runtime::getMutablePromiseStorage()
+{
+    return _promises;
+}
+
+const PromiseStorage& Runtime::getPromiseStorage()
+{
+    return _promises;
 }

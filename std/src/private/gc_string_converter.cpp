@@ -41,6 +41,8 @@
 
 #include "std/tstuple.h"
 
+#include "std/timer_object.h"
+
 #include "std/diagnostics.h"
 #include "std/event_loop.h"
 #include "std/gc.h"
@@ -210,6 +212,12 @@ std::string GCStringConverter::convert(const Object* obj)
     {
         const auto* closure = static_cast<const TSClosure*>(obj);
         return "Closure:\n" + std::string("ArgsCount: ") + GCStringConverter::convert(closure->getNumArgs());
+    }
+
+    if (obj->isTimer())
+    {
+        const auto* timer = static_cast<const TimerObject*>(obj);
+        return "Timer:\n" + std::to_string(timer->due().count());
     }
 
     if (dynamic_cast<const Math*>(obj))

@@ -18,11 +18,13 @@
 
 #include "std/private/gc_printer.h"
 
-DefaultGC::DefaultGC(Callbacks&& callbacks)
+DefaultGC::DefaultGC(Callbacks&& callbacks, TimerStorage& timers, PromiseStorage& promises)
     : _heap{}
     , _roots{}
     , _names{}
     , _callbacks{std::move(callbacks)}
+    , _timers{timers}
+    , _promises{promises}
 {
 }
 
@@ -102,6 +104,11 @@ void DefaultGC::collect()
 
 void DefaultGC::mark()
 {
+    const auto isTimerReady = [](const TimerObject& t) { return !t.active(); };
+    const auto isPromiseReady = [](const Promise& p) { return p.ready(); };
+    markStorage(_timers, isTimerReady);
+    markStorage(_promises, isPromiseReady);
+
     for (auto** r : _roots)
     {
         if (r && *r && !(*r)->isMarked())

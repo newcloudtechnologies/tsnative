@@ -11,7 +11,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <tuple>
+#include <unordered_map>
 
 namespace details
 {
@@ -40,4 +42,20 @@ template <class Tuple, class UnaryFunction>
 void forEachInTuple(Tuple&& tp, UnaryFunction f)
 {
     details::DoForEachInTuple<Tuple, 0u>::apply(std::forward<Tuple>(tp), f);
+}
+
+template <typename Key, typename T, typename Compare, typename Alloc, typename Pred>
+void eraseIf(std::unordered_map<Key, T, Compare, Alloc>& c, Pred pred)
+{
+    for (auto i = c.begin(), last = c.end(); i != last;)
+    {
+        if (pred(*i))
+        {
+            i = c.erase(i);
+        }
+        else
+        {
+            ++i;
+        }
+    }
 }

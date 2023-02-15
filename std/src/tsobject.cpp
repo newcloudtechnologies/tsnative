@@ -105,6 +105,11 @@ bool Object::isSet() const
     return _typeid == TSTypeID::Set;
 }
 
+bool Object::isTimer() const
+{
+    return _typeid == TSTypeID::Timer;
+}
+
 bool Object::isMap() const
 {
     return _typeid == TSTypeID::Map;
@@ -372,8 +377,7 @@ void* Object::operator new(std::size_t n)
         return ::operator new(n);
     }
 
-    auto* allocator = Runtime::getAllocator();
-    return allocator->allocateObject(n);
+    return Runtime::getAllocator().allocateObject(n);
 }
 
 class String;

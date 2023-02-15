@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2022
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
+
+#pragma once
+
+class TimerObject;
+class TSClosure;
+
+class ITimerCreator
+{
+public:
+    virtual ~ITimerCreator() = default;
+
+    virtual TimerObject* create(TSClosure* closure) const = 0;
+};

@@ -37,7 +37,6 @@ set(HEADERS
     include/std/tsmath.h
     include/std/runtime.h
     include/std/gc.h
-    include/std/igc_impl.h
     include/std/diagnostics.h
     include/std/memory_diagnostics.h
     include/std/set_timeout.h
@@ -70,6 +69,8 @@ set(SOURCES
     src/tspromise.cpp
     src/parse_int.cpp
     src/parse_float.cpp
+    src/timer_object.cpp
+    src/id_generator.cpp
 
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
@@ -85,7 +86,6 @@ set(SOURCES
     src/private/memory_diagnostics_storage.cpp
     src/private/uv_loop_adapter.cpp
     src/private/uv_timer_adapter.cpp
-    src/private/timers_storage.cpp
     src/private/promise/promise_p.cpp
     src/private/promise/shared_promise_internal_state.cpp
     src/private/promise/promise_callback.cpp
@@ -93,7 +93,8 @@ set(SOURCES
     src/private/number_parser.cpp
     src/private/gc_printer.cpp
     src/private/gc_string_converter.cpp
-    src/private/gc_names_storage.cpp)
+    src/private/gc_names_storage.cpp
+    src/private/uv_timer_creator.cpp)
     
 
 if("${ENABLE_LOGS}" STREQUAL "all")
@@ -218,9 +219,9 @@ if (BUILD_TEST)
                      test/gc/treenode_gc_tests.cpp
                      test/gc/marking_tests.cpp
                      test/runtime_tests.cpp
-                     test/event_loop/uv_loop_test.cpp
-                     test/event_loop/custom_loop_test.cpp
-                     test/event_loop/timers.cpp
+                     test/event_loop/uv_loop_tests.cpp
+                     test/event_loop/custom_loop_tests.cpp
+                     test/event_loop/uv_timer_tests.cpp
                      test/primitive_types/string/replace_tests.cpp
                      test/primitive_types/number/unary.cpp
                      test/promise/expected_tests.cpp

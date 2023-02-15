@@ -18,7 +18,6 @@
 
 #include <memory>
 
-class ITimer;
 class Number;
 
 class TS_EXPORT TS_DECLARE EventLoop : public Object

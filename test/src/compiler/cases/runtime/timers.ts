@@ -24,7 +24,7 @@
         count = count + 1;
     }, 0);
 
-    console.assert(count === 0, "EventLoop. Clearing the timer by calling clearTimeout after the condition. Assert: eval does not blocking")
+    console.assert(count === 0, "Timers case[1-A]. Clearing the timer by calling clearTimeout after the condition. Assert: eval does not blocking")
 }
 
 {
@@ -32,7 +32,7 @@
 
     const foo = (): void => {
         num = 33;
-        console.assert(num === 33, "EventLoop. Value is not equal 33");
+        console.assert(num === 33, "Timers case[2-A]. Value is not equal 33");
     }
     const id = setTimeout(foo, 0);
     console.assert(num !== 33);
@@ -43,7 +43,7 @@
 
     const f = (a: number, b: number): void => {
         setTimeout(() => {
-            console.assert(c === 3, "EventLoop. Make async function expects a value equal 3");
+            console.assert(c === 3, "Timers case[1-A]. Make async function expects a value equal 3");
 
         }, 0);
         c = a + b;
@@ -57,7 +57,7 @@
 {
     setTimeout(() => {
         const id = setTimeout(() => {
-            console.assert(false, "EventLoop. Clearing time out. Assert: Do nothing");
+            console.assert(false, "Timers case[3-A]. Clearing time out. Assert: Do nothing");
         }, 0);
         clearTimeout(id);
         setTimeout(() => {
@@ -73,13 +73,11 @@
         }
         ++i;
         setTimeout(f, 0);
-        console.assert(i <= 5, "EventLoop. Recursive call. Assert: i cannot be more than 5");
+        console.assert(i <= 5, "Timers case[4-A]. Recursive call. Assert: i cannot be more than 5");
     }
     f();
 }
 
-/*
-FIXME: (AN-926): link error on Windows: undefined reference to `__gxx_personality_v0'
 {
     const f = (i: number): number | never => {
         if (i === 1) throw 23;
@@ -94,10 +92,9 @@ FIXME: (AN-926): link error on Windows: undefined reference to `__gxx_personalit
     };
 
     setTimeout(() => {
-        console.assert(o(1) === 23 && o(2) === 2, "EventLoop. Check exception handling. Assert: mismatch");
+        console.assert(o(1) === 23 && o(2) === 2, "Timers case[5-A]. Check exception handling. Assert: mismatch");
     }, 0);
 }
-*/
 
 let count = 0;
 {
@@ -108,10 +105,41 @@ let count = 0;
                 ++count;
                 setTimeout(() => {
                     ++count;
-                    console.assert(count === 3, "EventLoop. the number of timeout calls must be 3")
+                    console.assert(count === 3, "Timers case[6-A]. the number of timeout calls must be 3")
                 }, 0);
             }, 0)
         }, 0);
     }
     f();
+}
+
+{
+    let flag = false;
+
+    const setFlag = () => {
+        flag = true;
+    }
+
+    setTimeout(() => {
+        setFlag();
+        console.assert(flag === true, "Timers case[7-A]. flag expects true");
+    }, -5000);
+
+    flag = false;
+    setTimeout(() => {
+        setFlag();
+        console.assert(flag === true, "Timers case[7-B]. flag expects true");
+    }, NaN);
+
+    flag = false;
+    setTimeout(() => {
+        setFlag();
+        console.assert(flag === true, "Timers case[7-C]. flag expects true");
+    }, +Infinity);
+
+    flag = false;
+    setTimeout(() => {
+        setFlag();
+        console.assert(flag === true, "Timers case[7-E]. flag expects true");
+    }, -Infinity);
 }

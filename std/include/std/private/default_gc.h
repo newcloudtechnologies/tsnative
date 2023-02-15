@@ -14,6 +14,9 @@
 #include <TS.h>
 
 #include "std/igc_impl.h"
+
+#include "std/private/algorithms.h"
+#include "std/private/async_object_storage.h"
 #include "std/private/gc_names_storage.h"
 
 #include <functional>
@@ -32,7 +35,7 @@ public:
         std::function<void(const void*)> afterDeleted = [](const void*) {};
     };
 
-    DefaultGC(Callbacks&& callbacks);
+    DefaultGC(Callbacks&& callbacks, TimerStorage& timers, PromiseStorage& promises);
     ~DefaultGC();
 
     void addObject(Object* o);
@@ -52,10 +55,29 @@ private:
     void unmarkRoots();
     void insertRoot(Object** root);
 
+    template <typename Element, typename Condition>
+    void markStorage(AsyncObjectStorage<Element>& storage, const Condition& isReady)
+    {
+        for (auto it = storage.begin(); it != storage.end();)
+        {
+            auto& object = it->second.get();
+            if (isReady(object))
+            {
+                it = storage.erase(it);
+                continue;
+            }
+
+            object.mark();
+            ++it;
+        }
+    }
+
 private:
     // TODO Use absl::uset
     std::unordered_set<Object*> _heap;
     std::unordered_set<Object**> _roots;
     GCNamesStorage _names;
     Callbacks _callbacks;
+    TimerStorage& _timers;
+    PromiseStorage& _promises;
 };
