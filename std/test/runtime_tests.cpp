@@ -222,4 +222,44 @@ TEST_F(RuntimeTestFixture, checkDeletingObjectsWithoutOwner)
     EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
 }
 
+TEST_F(RuntimeTestFixture, checkEmptyOwner)
+{
+    const int ac = 0;
+    char** av;
+
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
+    {
+        TSObjectOwner<Number> el;
+        el = {}; // check no crash occurs
+
+        EXPECT_EQ(el.empty(), true);
+
+        el = make_object_owner(new Number(123));
+        EXPECT_EQ(el.empty(), false);
+    }
+}
+
+TEST_F(RuntimeTestFixture, checkDestroyOwnerAfterRuntime)
+{
+    const int ac = 0;
+    char** av;
+
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
+    try
+    {
+        TSObjectOwner<Number> empty;
+        TSObjectOwner<Number> nonEmpty = make_object_owner(new Number(33.21));
+
+        Runtime::destroy();
+    }
+    catch (...)
+    {
+        FAIL() << "No exception should be thrown";
+    }
+}
+
 } // namespace

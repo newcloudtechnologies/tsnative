@@ -38,10 +38,13 @@ public:
 
     TS_METHOD void callClassClosure();
 
+    TS_METHOD static void setStaticNumber(Number* num);
+
 private:
     std::vector<TSObjectOwner<Number>> m_numbers;
     TSObjectOwner<TSClosure> m_closure;
     TSObjectOwner<TSClosure> m_classClosure;
+    static TSObjectOwner<Number> s_staticNumber;
 };
 
 } // namespace IS_TS_MODULE
