@@ -67,6 +67,11 @@ public:
         return {m_object};
     }
 
+    bool empty() const
+    {
+        return m_object == nullptr;
+    }
+
 private:
     TSObjectOwner(TObj* obj)
         : m_object(obj)
@@ -80,7 +85,7 @@ private:
     void clear()
     {
         LOG_ADDRESS("Removing lock wrapper ", this);
-        if (m_root)
+        if (m_root && Runtime::isInitialized())
         {
             Runtime::getGC()->removeRoot(reinterpret_cast<void**>(m_root.get()));
         }
@@ -92,8 +97,11 @@ private:
         clear();
 
         m_root = std::exchange(other.m_root, nullptr);
-        *m_root = this;
         m_object = std::exchange(other.m_object, nullptr);
+        if (m_root)
+        {
+            *m_root = this;
+        }
     }
 
     friend TSObjectOwner make_object_owner<TObj>(TObj* t);

@@ -82,3 +82,5 @@ gcTest(testSaveClassClosure, "test save class closure", 2);
 user.callClassClosure();
 
 console.assert(numberToCapture === 1240, "GC check saved object - use saved class closure");
+
+TSObjectCache.setStaticNumber(44.5);

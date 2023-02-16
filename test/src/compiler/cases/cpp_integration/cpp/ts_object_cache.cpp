@@ -16,6 +16,8 @@
 
 using namespace cpp_integration;
 
+TSObjectOwner<Number> TSObjectCache::s_staticNumber = {};
+
 TSObjectCache::TSObjectCache()
 {
 }
@@ -60,4 +62,9 @@ String* TSObjectCache::getClosureString() const
 void TSObjectCache::callClassClosure()
 {
     m_classClosure->call();
+}
+
+void TSObjectCache::setStaticNumber(Number* num)
+{
+    s_staticNumber = make_object_owner(num);
 }
