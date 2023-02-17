@@ -62,10 +62,12 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 #
 # ENABLE_OPTIMIZATIONS  If enabled, it disables all unnecessary allocations
 #
+# DEPENDS               Specify targets on which the build depends.
+
 function (add_ts_library ARG_NAME ...)
     set(options )
     set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG PRINT_IR TRACE_IMPORT OPT_LEVEL RUN_EVENT_LOOP ENABLE_OPTIMIZATIONS)
-    set(multiValueArgs DEFINES LIBRARIES WATCH_SOURCES)
+    set(multiValueArgs DEFINES LIBRARIES WATCH_SOURCES DEPENDS)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
 
@@ -106,6 +108,7 @@ function (add_ts_library ARG_NAME ...)
         $<$<BOOL:${ENABLE_OPTIMIZATIONS}>:--enableOptimizations ${ENABLE_OPTIMIZATIONS};>
     )
     set(watchSources ${ARG_WATCH_SOURCES})
+    set(depends ${ARG_DEPENDS})
     set(outputDir ${CMAKE_CURRENT_BINARY_DIR}/compile_lib${targetName})
 
     _printVar(targetName)
@@ -136,7 +139,7 @@ function (add_ts_library ARG_NAME ...)
     _add_nm_target(${stage0} mangledTables demangledTables
         LIBRARIES ${libraries}
         OUTPUT_DIR ${outputDir}
-        DEPENDS ${libraries}
+        DEPENDS ${libraries} ${depends}
     )
 
     # Stage 1
@@ -343,6 +346,7 @@ function (_add_nm_target ARG_NAME ARG_OUT_MANGLED ARG_OUT_DEMANGLED)
     # XXX: Custom target is always out-of-date so all attached commands will be run
     # everytime!
     add_custom_target(${mainTarget})
+    add_dependencies(${mainTarget} ${dependency})
 
     foreach(library ${libs})
         if (TARGET ${library})
