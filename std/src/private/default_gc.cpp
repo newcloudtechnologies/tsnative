@@ -53,6 +53,12 @@ std::size_t DefaultGC::getAliveObjectsCount() const
 void DefaultGC::addRoot(Object** o, const Object* associatedName)
 {
     insertRoot(o);
+
+    if (!associatedName)
+    {
+        return;
+    }
+
     _names.setRootName(o, associatedName);
 }
 

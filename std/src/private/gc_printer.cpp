@@ -148,7 +148,7 @@ std::string GCPrinter::formatVariableNames(const Object* object) const
 {
     const auto entry = _variables.getObjectEntryWithHeap(object);
     std::stringstream ss;
-    if (entry.root) // TODO use std::optional instead when the c++ standard >= 17
+    if (entry.valid) // TODO use std::optional instead when the c++ standard >= 17
     {
         ss << "Associated variable name: " << entry.variableName << std::endl;
         ss << "Associated scope name: " << entry.scopeName << std::endl;

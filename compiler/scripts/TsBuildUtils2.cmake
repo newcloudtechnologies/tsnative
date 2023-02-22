@@ -100,12 +100,16 @@ function (add_ts_library ARG_NAME ...)
         endif ()
     endif ()
 
+    if (NOT DEFINED ARG_ENABLE_OPTIMIZATIONS)
+        set(ARG_ENABLE_OPTIMIZATIONS ON)
+    endif()
+
     set(extraFlags 
         $<$<BOOL:${ARG_PRINT_IR}>:--printIR;>
         $<$<BOOL:${ARG_TS_DEBUG}>:--debug;>
         $<$<BOOL:${ARG_TRACE_IMPORT}>:--trace;>
         $<$<BOOL:${ARG_RUN_EVENT_LOOP}>:--runEventLoop ${ARG_RUN_EVENT_LOOP};>
-        $<$<BOOL:${ENABLE_OPTIMIZATIONS}>:--enableOptimizations ${ENABLE_OPTIMIZATIONS};>
+        --enableOptimizations ${ARG_ENABLE_OPTIMIZATIONS}
     )
     set(watchSources ${ARG_WATCH_SOURCES})
     set(depends ${ARG_DEPENDS})

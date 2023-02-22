@@ -24,30 +24,37 @@ constexpr auto g_ScopeNameKey = "__scope_name__";
 
 void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable)
 {
-    Entry entry;
-    entry.root = root;
-
-    if (associatedVariable)
+    if (!associatedVariable || !root || !(*root))
     {
-        const String* variableName = associatedVariable->get<String*>(g_VariableNameKey);
-        if (variableName)
-        {
-            entry.variableName = GCStringConverter::convert(variableName);
-        }
-        const String* scopeName = associatedVariable->get<String*>(g_ScopeNameKey);
-        if (scopeName)
-        {
-            entry.scopeName = GCStringConverter::convert(scopeName);
-        }
+        return;
     }
-    _associatedVariablesAndScopes.push_back(entry);
+
+    Entry entry;
+    entry.valid = true;
+
+    const String* variableName = associatedVariable->get<String*>(g_VariableNameKey);
+    if (variableName)
+    {
+        entry.variableName = GCStringConverter::convert(variableName);
+    }
+    const String* scopeName = associatedVariable->get<String*>(g_ScopeNameKey);
+    if (scopeName)
+    {
+        entry.scopeName = GCStringConverter::convert(scopeName);
+    }
+
+    _associatedVariablesAndScopes[*root] = entry;
 }
 
 void GCNamesStorage::unsetRootName(Object** root)
 {
-    auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
-                              _associatedVariablesAndScopes.cend(),
-                              [root](const auto& p) { return p.root == root; });
+    if (!root || !(*root))
+    {
+        return;
+    }
+
+    auto found = _associatedVariablesAndScopes.find(*root);
+
     if (found != _associatedVariablesAndScopes.cend())
     {
         _associatedVariablesAndScopes.erase(found);
@@ -56,27 +63,30 @@ void GCNamesStorage::unsetRootName(Object** root)
 
 void GCNamesStorage::setCppRootName(Object** root, const std::string& rootName)
 {
+    if (!root || !(*root))
+    {
+        return;
+    }
+
     Entry entry;
-    entry.root = root;
     entry.variableName = rootName;
-    _associatedVariablesAndScopes.push_back(entry);
+    entry.valid = true;
+
+    _associatedVariablesAndScopes[*root] = entry;
 }
 
 GCNamesStorage::Entry GCNamesStorage::getObjectEntryWithHeap(const Object* object) const
 {
-    const auto found = std::find_if(_associatedVariablesAndScopes.cbegin(),
-                                    _associatedVariablesAndScopes.cend(),
-                                    [object](const auto& p)
-                                    {
-                                        if (!p.root && !(*p.root))
-                                        {
-                                            return false;
-                                        }
-                                        return *(p.root) == object;
-                                    });
+    if (!object)
+    {
+        return {};
+    }
+
+    const auto found = _associatedVariablesAndScopes.find(object);
     if (found == _associatedVariablesAndScopes.cend())
     {
         return {};
     }
-    return *found;
+
+    return found->second;
 }
