@@ -71,7 +71,7 @@ export class LLVMGenerator {
 
   private readonly _enableOptimizations: boolean;
 
-  constructor(program: ts.Program, runEventLoop?: string, enableOptimizations: boolean = false, generateDebugInfo = false) {
+  constructor(program: ts.Program, runEventLoop?: string, enableOptimizations: boolean = true, generateDebugInfo = false) {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
