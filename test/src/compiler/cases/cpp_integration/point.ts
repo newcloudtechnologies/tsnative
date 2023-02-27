@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) New Cloud Technologies, Ltd., 2014-2023
+ *
+ * You can not use the contents of the file in any way without
+ * New Cloud Technologies, Ltd. written permission.
+ *
+ * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
+ * at http://ncloudtech.com/contact.html
+ *
+ */
 import { Point, Rect } from "cpp_integration_exts";
 
 const p1 = new Point(1, 1);
