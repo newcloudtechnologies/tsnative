@@ -47,7 +47,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 2, unit: 'HOURS')   // timeout on whole pipeline job
+        timeout(time: 3, unit: 'HOURS')   // timeout on whole pipeline job
     }
 
     stages {
@@ -156,7 +156,7 @@ pipeline {
                 stage("Build std") {
                     steps {
                         script {
-                            echo "Build std"
+                            echo "Build std (Release)"
                             build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
                                     string(name: 'PKG_REPO', value: projectName),
                                     string(name: 'PKG_BRANCH_OR_TAG', value: branch),
@@ -170,13 +170,29 @@ pipeline {
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
                         }
+
+                        script {
+                            echo "Build std (Debug)"
+                            build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
+                                    string(name: 'PKG_REPO', value: projectName),
+                                    string(name: 'PKG_BRANCH_OR_TAG', value: branch),
+                                    string(name: 'PKG_CONAN_NAME', value: "tsnative-std"),
+                                    string(name: 'PKG_CONANFILE_PATH', value: "std"),
+                                    string(name: 'PKG_CONAN_VERSION', value: version),
+                                    string(name: 'PKG_CONAN_USER', value: user),
+                                    string(name: 'PKG_CONAN_CHANNEL', value: channel),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-s:b build_type=Release -s:h build_type=Debug -s:h abseil:build_type=Release -s:h gtest:build_type=Release -s:h libuv:build_type=Release -s:h graphvizlib:build_type=Release -s:b tsnative-declarator:build_type=Release -o build_tests=True"),
+                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
+                                    booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
+                            ]
+                        }
                     }
                 }
 
                 stage("Tests") {
                     steps {
                         script {
-                            echo "Build tests"
+                            echo "Build tests (Release)"
                             build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
                                     string(name: 'PKG_REPO', value: projectName),
                                     string(name: 'PKG_BRANCH_OR_TAG', value: branch),
@@ -186,6 +202,23 @@ pipeline {
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
                                     string(name: 'PKG_CONAN_OPTIONS', value: "-o run_tests_with_memcheck=True"),
+                                    string(name: 'PKG_CONAN_UPLOAD_PATTERN', value: ''),
+                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
+                                    booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
+                            ]
+                        }
+
+                        script {
+                            echo "Build tests (Debug)"
+                            build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
+                                    string(name: 'PKG_REPO', value: projectName),
+                                    string(name: 'PKG_BRANCH_OR_TAG', value: branch),
+                                    string(name: 'PKG_CONAN_NAME', value: "tsnative-tests"),
+                                    string(name: 'PKG_CONANFILE_PATH', value: "test"),
+                                    string(name: 'PKG_CONAN_VERSION', value: version),
+                                    string(name: 'PKG_CONAN_USER', value: user),
+                                    string(name: 'PKG_CONAN_CHANNEL', value: channel),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-s:b build_type=Release -s:h build_type=Debug -s:b tsnative-declarator:build_type=Release -s:b tsnative-compiler:build_type=Release -s:h tsnative-std:build_type=Debug -s:h abseil:build_type=Release -s:h gtest:build_type=Release -s:h libuv:build_type=Release -s:h graphvizlib:build_type=Release"),
                                     string(name: 'PKG_CONAN_UPLOAD_PATTERN', value: ''),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
