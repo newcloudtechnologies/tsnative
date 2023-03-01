@@ -156,6 +156,21 @@
     }
 }
 
+// Hoist variable through multiple scopes
+{
+    function firstLevel() {
+        function secondLevel() {
+            console.assert(i === 22, "");
+        }
+
+        secondLevel();
+    }
+
+    const i = 22;
+
+    firstLevel();
+}
+
 {
     const value = "5";
 
