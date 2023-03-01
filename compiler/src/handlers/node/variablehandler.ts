@@ -9,11 +9,10 @@
  *
  */
 
-import { Scope, HeapVariableDeclaration, Environment, addClassScope } from "../../scope";
-import { LLVMConstantFP, LLVMValue } from "../../llvm/value";
+import { Scope, Environment, addClassScope } from "../../scope";
+import { LLVMValue } from "../../llvm/value";
 import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
-import { LLVM } from "../../llvm/llvm";
 
 type VariableLike = ts.VariableStatement | ts.VariableDeclarationList;
 export class VariableHandler extends AbstractNodeHandler {
@@ -92,14 +91,6 @@ export class VariableHandler extends AbstractNodeHandler {
     }
 
     parentScope.setOrAssign(name, initializer);
-
-    if (outerEnv?.variables.includes(name)) {
-      const index = outerEnv.getVariableIndex(name);
-      const valuePtr = this.generator.builder.createSafeInBoundsGEP(outerEnv.typed, [0, index]);
-      const value = this.generator.builder.createLoad(valuePtr);
-
-      this.generator.builder.createSafeStore(initializer, value);
-    }
 
     const dbg = this.generator.getDebugInfo();
     if (dbg) {
