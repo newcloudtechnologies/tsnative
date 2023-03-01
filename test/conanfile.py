@@ -168,7 +168,11 @@ class TSNativeTestsConan(ConanFile):
     def buildCompiledTests(self):
         out_dir = "compiler_tests"
         # first - build pure ts tests
-        excludes = [".d.ts", "cpp_integration"]
+        excludes = [".d.ts", 
+        "cpp_integration", 
+        "tsn386_support_file1", # support file for name_collision test
+        "tsn386_support_file2", # support file for name_collision test
+        "gc_test_fixture"] # test fixture - not a test
 
 
         if self.settings.os == "Windows":
