@@ -130,6 +130,11 @@ bool Object::isPromise() const
     return _typeid == TSTypeID::Promise;
 }
 
+bool Object::isLazy() const
+{
+    return _typeid == TSTypeID::LazyClosure;
+}
+
 bool Object::has(String* key) const
 {
     return _props->has(key);

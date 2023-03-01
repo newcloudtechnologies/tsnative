@@ -52,6 +52,7 @@ exports.RUNTIME_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "r
 exports.DIAGNOSTICS_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "diagnostics.d.ts"));
 exports.MEMORY_DIAGNOSTICS_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "memory_diagnostics.d.ts"));
 exports.CLOSURE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tsclosure.d.ts"));
+exports.LAZY_CLOSURE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tslazy_closure.d.ts"));
 exports.DATE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tsdate.d.ts"));
 exports.MATH_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tsmath.d.ts"));
 exports.SET_INTERVAL_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "set_interval.d.ts"));

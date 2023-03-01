@@ -93,7 +93,7 @@ void DefaultGC::removeRoot(Object** o)
 
     LOG_ADDRESS("Removing root: ", o);
     _roots.erase(it);
-    _names.unsetRootName(*it);
+    _names.unsetRootName(o);
 }
 
 void DefaultGC::collect()
