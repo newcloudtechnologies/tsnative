@@ -134,7 +134,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
   }
 
-  private handleLazyClosureCall(expression: ts.CallExpression, valueDeclaration: Declaration, signature: Signature, lazyClosure: LLVMValue, outerEnv?: Environment) {
+  private handleLazyClosureCall(expression: ts.CallExpression,
+    valueDeclaration: Declaration,
+    signature: Signature,
+    lazyClosure: LLVMValue,
+    outerEnv?: Environment) {
+
     const parameters = signature.getDeclaredParameters();
     this.visitFunctionParameters(parameters);
 
@@ -149,7 +154,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
 
     const registeredEnvironment = this.generator.meta.getFunctionEnvironment(valueDeclaration);
-    const passedEnvironment = this.generator.tsclosure.lazyClosure.getEnv(lazyClosure);
+    const passedEnvironment = this.generator.tsclosure.lazyClosure.retrieveEnviroment(lazyClosure);
+
     registeredEnvironment.untyped = passedEnvironment;
 
     let env = createEnvironment(
@@ -493,7 +499,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (declaration.typeParameters) {
       this.generator.meta.registerFunctionEnvironment(expressionDeclaration, env);
-      return this.generator.tsclosure.lazyClosure.create(env.typed);
+      return this.generator.tsclosure.lazyClosure.create(env);
     }
 
     const tsReturnType = signature.getReturnType();
@@ -879,7 +885,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(expression);
 
-    if (this.generator.tsclosure.lazyClosure.isLazyClosure(functionToCall)) {
+    if (functionToCall.type.isLazyClosure()) {
       return this.handleLazyClosureCall(expression, valueDeclaration, resolvedSignature, functionToCall, outerEnv);
     }
 
@@ -1534,7 +1540,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     if (declaration.typeParameters) {
       this.generator.meta.registerFunctionEnvironment(declaration, env);
-      return this.generator.tsclosure.lazyClosure.create(env.typed);
+      return this.generator.tsclosure.lazyClosure.create(env);
     }
 
     const expressionDeclaration = Declaration.create(expression, this.generator);

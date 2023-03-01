@@ -11,6 +11,7 @@
 
 import * as llvm from "llvm-node";
 import { LLVMGenerator } from "../generator";
+import { TSLazyClosure } from "../ts/lazy_closure";
 
 export class LLVMType {
   type: llvm.Type;
@@ -199,6 +200,11 @@ export class LLVMType {
   isClosure() {
     const nakedType = this.unwrapPointer();
     return Boolean(nakedType.isStructType() && nakedType.name === "closure");
+  }
+
+  isLazyClosure() {
+    const nakedType = this.unwrapPointer();
+    return Boolean(nakedType.isStructType() && nakedType.name === TSLazyClosure.type_name)
   }
 
   isCXXVoidStar() {

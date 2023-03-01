@@ -290,7 +290,7 @@ export class Builder {
   }
 
   createBitCast(value: LLVMValue, destType: LLVMType, name?: string) {
-    if (this.generator.tsclosure.lazyClosure.isLazyClosure(value) && destType.isClosure()) {
+    if (value.type.isLazyClosure() && destType.isClosure()) {
       throw new Error("Cannot bitcast lazy closure to closure");
     }
 

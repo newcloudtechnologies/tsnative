@@ -112,6 +112,7 @@ async function main() {
     stdlib.MAP_DEFINITION,
     stdlib.TUPLE_DEFINITION,
     stdlib.CLOSURE_DEFINITION,
+    stdlib.LAZY_CLOSURE_DEFINITION,
     stdlib.CONSOLE_DEFINITION,
     stdlib.GC_DEFINITION,
     stdlib.ITERABLE_DEFINITION,

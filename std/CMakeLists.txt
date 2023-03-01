@@ -54,7 +54,9 @@ set(HEADERS
     include/std/event_loop.h
     include/std/tspromise.h
     include/std/parse_int.h
-    include/std/parse_float.h)
+    include/std/parse_float.h
+    include/std/private/tslazy_closure.h
+)
 
 set(SOURCES
     src/gc.cpp
@@ -104,7 +106,9 @@ set(SOURCES
     src/private/gc_printer.cpp
     src/private/gc_string_converter.cpp
     src/private/gc_names_storage.cpp
-    src/private/uv_timer_creator.cpp)
+    src/private/uv_timer_creator.cpp
+    src/private/tslazy_closure.cpp
+)
     
 
 if("${ENABLE_LOGS}" STREQUAL "all")

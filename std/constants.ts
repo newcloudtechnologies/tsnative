@@ -90,6 +90,10 @@ export const CLOSURE_DEFINITION = toPosixStyle(
   path.join(__dirname, "definitions", "tsclosure.d.ts")
 );
 
+export const LAZY_CLOSURE_DEFINITION = toPosixStyle(
+  path.join(__dirname, "definitions", "tslazy_closure.d.ts")
+);
+
 export const DATE_DEFINITION = toPosixStyle(
   path.join(__dirname, "definitions", "tsdate.d.ts")
 );

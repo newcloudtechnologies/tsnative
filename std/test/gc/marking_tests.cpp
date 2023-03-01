@@ -145,6 +145,21 @@ TEST_F(MarkingTestFixture, closure)
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
 }
 
+TEST_F(MarkingTestFixture, lazy_closure)
+{
+    void*** env = (void***)malloc(2 * sizeof(void**));
+
+    auto* lazyClosure = new test::LazyClosure(env);
+
+    const auto& allObjects = getActualAllocatedObjects();
+    EXPECT_EQ(1, allObjects.size());
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+
+    lazyClosure->mark();
+
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+}
+
 TEST_F(MarkingTestFixture, array)
 {
     auto arr = new test::Array<Object*>();

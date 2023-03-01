@@ -17,6 +17,7 @@ import { LLVMStructType, LLVMType } from "../llvm/type";
 import { LLVMConstant, LLVMConstantFP, LLVMGlobalVariable, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { TSType } from "../ts/type";
+import { TSLazyClosure } from "../ts/lazy_closure";
 
 const stdlib = require("std/constants");
 
@@ -57,45 +58,6 @@ class Builtin {
   }
 }
 
-class LazyClosure {
-  private readonly tag = "__lazy_closure";
-
-  private readonly generator: LLVMGenerator;
-  private readonly llvmType: LLVMType;
-
-  constructor(generator: LLVMGenerator) {
-    const structType = LLVMStructType.create(generator, this.tag);
-    structType.setBody([LLVMType.getInt8Type(generator).getPointer()]);
-    this.generator = generator;
-    this.llvmType = structType.getPointer();
-  }
-
-  getLLVMType() {
-    return this.llvmType;
-  }
-
-  create(env: LLVMValue) {
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
-    const envPtr = this.generator.builder.createSafeInBoundsGEP(allocated, [0, 0]);
-    this.generator.builder.createSafeStore(env, envPtr);
-    return allocated;
-  }
-
-  getEnv(lazyClosure: LLVMValue) {
-    if (!this.isLazyClosure(lazyClosure)) {
-      throw new Error(`Expected lazy closure to be passed at LazyClosure.getEnv, got '${lazyClosure.type.toString()}'`);
-    }
-
-    const envPtr = this.generator.builder.createSafeInBoundsGEP(lazyClosure.derefToPtrLevel1(), [0, 0]);
-    return this.generator.builder.createLoad(envPtr);
-  }
-
-  isLazyClosure(value: LLVMValue) {
-    const nakedType = value.type.unwrapPointer();
-    return Boolean(nakedType.isStructType() && nakedType.name?.startsWith(this.tag));
-  }
-}
-
 export class BuiltinTSClosure extends Builtin {
   private readonly llvmType: LLVMType;
   private readonly tsType: TSType;
@@ -105,12 +67,12 @@ export class BuiltinTSClosure extends Builtin {
   private readonly getEnvFn: LLVMValue;
   private readonly ctorFn: LLVMValue;
 
-  readonly lazyClosure: LazyClosure;
+  readonly lazyClosure: TSLazyClosure;
 
   constructor(generator: LLVMGenerator) {
     super("TSClosure", generator);
 
-    this.lazyClosure = new LazyClosure(generator);
+    this.lazyClosure = new TSLazyClosure(generator);
 
     this.declaration = this.initClassDeclaration();
 

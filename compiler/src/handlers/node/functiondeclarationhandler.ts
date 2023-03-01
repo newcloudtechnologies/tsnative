@@ -102,10 +102,10 @@ export class FunctionDeclarationHandler extends AbstractNodeHandler {
         );
     }
 
-    createClosureForDeclaration(declaration: Declaration, env: Environment) {
+    createClosureForDeclaration(declaration: Declaration, env: Environment): LLVMValue {
         if (declaration.typeParameters) {
             this.generator.meta.registerFunctionEnvironment(declaration, env);
-            return this.generator.tsclosure.lazyClosure.create(env.typed);
+            return this.generator.tsclosure.lazyClosure.create(env);
         }
 
         const signature = this.generator.ts.checker.getSignatureFromDeclaration(declaration);

@@ -214,6 +214,11 @@ std::string GCStringConverter::convert(const Object* obj)
         return "Closure:\n" + std::string("ArgsCount: ") + GCStringConverter::convert(closure->getNumArgs());
     }
 
+    if (obj->isLazy())
+    {
+        return "Lazy closure";
+    }
+
     if (obj->isTimer())
     {
         const auto* timer = static_cast<const TimerObject*>(obj);

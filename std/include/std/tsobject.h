@@ -47,7 +47,8 @@ enum class TSTypeID
     Closure = 1 << 14,
     Date = 1 << 15,
     Promise = 1 << 16,
-    Timer = 1 << 17
+    Timer = 1 << 17,
+    LazyClosure = 1 << 18,
 };
 
 class TS_DECLARE Object
@@ -74,6 +75,7 @@ public:
     bool isDate() const;
     bool isPromise() const;
     bool isTimer() const;
+    bool isLazy() const;
 
 protected:
     bool has(String* key) const;
