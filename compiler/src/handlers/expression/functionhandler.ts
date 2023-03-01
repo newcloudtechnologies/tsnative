@@ -463,8 +463,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const expressionDeclaration = Declaration.create(expression, this.generator);
     const scope = this.generator.symbolTable.currentScope;
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
-
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
       scope,
@@ -1252,14 +1250,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = matchingConstructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
-        scope.initializeVariablesAndFunctionDeclarations(body, this.generator);
         environmentVariables.push(
           ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, scope, outerEnv)
         );
       }
     }
 
-    scope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
     environmentVariables.push(...valueDeclaration.environmentVariables(expression, scope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
@@ -1512,8 +1508,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const scope = this.generator.symbolTable.currentScope;
     const dummyArguments = this.dummyArgsCreator.create(llvmArgumentTypes);
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
-
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
@@ -1677,6 +1671,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
             );
             this.generator.builder.setInsertionPoint(entryBlock);
 
+            if (constructorDeclaration) {
+              bodyScope.initializeVariablesAndFunctionDeclarations(constructorDeclaration.body!, this.generator);
+            }
+            
             if (dbg) {
               dbg.emitProcedure(
                 constructorDeclaration?.unwrapped,
@@ -1833,7 +1831,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           const mapped = this.generator.symbolTable.currentScope.typeMapper.get(argType.toString());
           return mapped.getLLVMType();
         });
-
+        
         // these dummy arguments will be substituted by actual arguments once called
         const dummyArguments = this.dummyArgsCreator.create(llvmArgumentTypes);
 
@@ -1844,8 +1842,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
           argumentTypes,
           this.generator
         );
-
-        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body, this.generator);
 
         const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
           signature,
