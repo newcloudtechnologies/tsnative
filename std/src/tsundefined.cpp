@@ -21,11 +21,15 @@ Undefined::Undefined()
     LOG_ADDRESS("Calling Undefined ctor ", this);
 }
 
+Undefined* Undefined::instancePtr = nullptr;
+
 Undefined* Undefined::instance()
 {
-    static Undefined inst;
-
-    return &inst;
+    if (!instancePtr)
+    {
+        instancePtr = new Undefined{};
+    }
+    return instancePtr;
 }
 
 String* Undefined::toString() const

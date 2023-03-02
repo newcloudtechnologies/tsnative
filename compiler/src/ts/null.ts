@@ -77,7 +77,7 @@ export class TSNull {
 
     this.generator.builder.createSafeStore(instance, globalNull);
 
-    this.generator.symbolTable.globalScope.set("null", globalNull, false);
+    this.generator.symbolTable.globalScope.set("null", globalNull, true);
   }
 
   getLLVMType() {

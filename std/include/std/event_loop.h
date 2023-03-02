@@ -31,7 +31,7 @@ public:
 
     void stop();
 
-    void processEvents();
+    TS_METHOD void processEvents();
 
     void enqueue(IEventLoop::Callback&& callback);
 

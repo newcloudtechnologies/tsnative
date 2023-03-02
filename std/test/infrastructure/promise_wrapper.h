@@ -18,52 +18,53 @@
 namespace test
 {
 
-class Promise
+class PromiseWrapper
 {
 protected:
-    Promise(PromisePrivate promisePrivate, IExecutor& executor);
+    PromiseWrapper(PromisePrivate promisePrivate, IExecutor& executor);
 
 public:
-    Promise(IExecutor& executor);
+    PromiseWrapper(IExecutor& executor);
 
     template <typename F1, typename F2>
-    Promise then(F1&& onFulfilled, F2&& onRejected)
+    PromiseWrapper then(F1&& onFulfilled, F2&& onRejected)
     {
         auto* onFulfilledClosure = makeClosure<Closure>(std::move(onFulfilled));
         auto* onRejectedClosure = makeClosure<Closure>(std::move(onRejected));
 
-        return Promise{_promisePrivate.then(onFulfilledClosure, onRejectedClosure, _executor), _executor};
+        return PromiseWrapper{_promisePrivate.then(onFulfilledClosure, onRejectedClosure, _executor), _executor};
     }
 
     template <typename F>
-    Promise then(F&& onFulfilled)
+    PromiseWrapper then(F&& onFulfilled)
     {
         auto* onFulfilledClosure = makeClosure<Closure>(std::move(onFulfilled));
 
-        return Promise{_promisePrivate.then(onFulfilledClosure, test::Undefined::instance(), _executor), _executor};
+        return PromiseWrapper{_promisePrivate.then(onFulfilledClosure, test::Undefined::instance(), _executor),
+                              _executor};
     }
 
-    Promise then();
+    PromiseWrapper then();
 
     template <typename F>
-    Promise fail(F&& onRejected)
+    PromiseWrapper fail(F&& onRejected)
     {
         auto* catchClosure = makeClosure<Closure>(std::move(onRejected));
 
-        return Promise{_promisePrivate.then(test::Undefined::instance(), catchClosure, _executor), _executor};
+        return PromiseWrapper{_promisePrivate.then(test::Undefined::instance(), catchClosure, _executor), _executor};
     }
 
-    Promise fail();
+    PromiseWrapper fail();
 
     template <typename F>
-    Promise finally(F&& onFinally)
+    PromiseWrapper finally(F&& onFinally)
     {
         auto* onFinallyClosure = makeClosure<Closure>(std::move(onFinally));
 
-        return Promise{_promisePrivate.then(onFinallyClosure, onFinallyClosure, _executor), _executor};
+        return PromiseWrapper{_promisePrivate.then(onFinallyClosure, onFinallyClosure, _executor), _executor};
     }
 
-    Promise finally();
+    PromiseWrapper finally();
 
     template <typename T>
     void resolve(T resolved)

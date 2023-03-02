@@ -59,3 +59,12 @@ void eraseIf(std::unordered_map<Key, T, Compare, Alloc>& c, Pred pred)
         }
     }
 }
+
+template <typename Container, typename Predicate>
+Container filter(const Container& container, Predicate&& predicate)
+{
+    Container result{};
+    std::copy_if(std::cbegin(container), std::cend(container), std::inserter(result, std::end(result)), predicate);
+
+    return result;
+}

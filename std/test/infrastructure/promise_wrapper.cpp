@@ -14,44 +14,44 @@
 namespace test
 {
 
-Promise::Promise(PromisePrivate promisePrivate, IExecutor& executor)
+PromiseWrapper::PromiseWrapper(PromisePrivate promisePrivate, IExecutor& executor)
     : _promisePrivate{promisePrivate}
     , _executor{executor}
 {
 }
 
-Promise::Promise(IExecutor& executor)
-    : Promise(PromisePrivate{}, executor)
+PromiseWrapper::PromiseWrapper(IExecutor& executor)
+    : PromiseWrapper(PromisePrivate{}, executor)
 {
 }
 
-Promise Promise::then()
+PromiseWrapper PromiseWrapper::then()
 {
-    return Promise{_promisePrivate.then(Undefined::instance(), Undefined::instance(), _executor), _executor};
+    return PromiseWrapper{_promisePrivate.then(Undefined::instance(), Undefined::instance(), _executor), _executor};
 }
 
-Promise Promise::fail()
+PromiseWrapper PromiseWrapper::fail()
 {
     return then();
 }
 
-Promise Promise::finally()
+PromiseWrapper PromiseWrapper::finally()
 {
-    return Promise{_promisePrivate.then(test::Undefined::instance(), test::Undefined::instance(), _executor),
-                   _executor};
+    return PromiseWrapper{_promisePrivate.then(test::Undefined::instance(), test::Undefined::instance(), _executor),
+                          _executor};
 }
 
-bool Promise::ready() const
+bool PromiseWrapper::ready() const
 {
     return _promisePrivate.ready();
 }
 
-bool Promise::isFulfilled() const
+bool PromiseWrapper::isFulfilled() const
 {
     return _promisePrivate.isFulfilled();
 }
 
-bool Promise::isRejected() const
+bool PromiseWrapper::isRejected() const
 {
     return _promisePrivate.isRejected();
 }

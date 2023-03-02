@@ -200,7 +200,7 @@ Diagnostics* Runtime::getDiagnostics()
 EventLoop* Runtime::getLoop()
 {
     checkInitialization();
-    return new EventLoop{*(_loop.get())};
+    return new EventLoop{*_loop};
 }
 
 ITimerCreator& Runtime::getTimerCreator()

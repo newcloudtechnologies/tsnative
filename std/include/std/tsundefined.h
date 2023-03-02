@@ -24,6 +24,7 @@ class TS_DECLARE Undefined : public Object
 {
 private:
     Undefined();
+    static Undefined* instancePtr;
 
 public:
     ~Undefined() override = default;

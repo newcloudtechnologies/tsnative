@@ -19,6 +19,7 @@
 #include "std/private/promise/promise_emitter.h"
 
 #include <memory>
+#include <vector>
 
 class String;
 class Boolean;
@@ -31,7 +32,7 @@ class GCStringConverter;
 class TS_DECLARE Promise : public Object, public EmitterBase<Promise, ReadyEvent>
 {
 protected:
-    explicit Promise(PromisePrivate* promisePrivate);
+    explicit Promise(PromisePrivate* promisePrivate, std::vector<Object*>&& childs);
 
 public:
     TS_METHOD TS_SIGNATURE("resolve(resolved?: Object): Promise") static Promise* resolve(Union* resolved);
@@ -68,7 +69,13 @@ public:
 
     TS_METHOD Boolean* toBool() const override;
 
+    std::vector<Object*> getChildObjects() const override;
+
 private:
+    static TSClosure* makeResolveClosure(Promise* promise);
+
+    static TSClosure* makeRejectClosure(Promise* promise);
+
     void success(Object* resolved);
 
     void failure(Object* rejected);
@@ -76,6 +83,7 @@ private:
 private:
     PromisePrivate* _d;
     ID _promiseID;
+    std::vector<Object*> _childs;
 
 private:
     friend class GCStringConverter;

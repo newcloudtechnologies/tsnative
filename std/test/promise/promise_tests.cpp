@@ -25,9 +25,9 @@ public:
         return _executor;
     }
 
-    test::Promise createPromise()
+    test::PromiseWrapper createPromise()
     {
-        return test::Promise{getExecutor()};
+        return test::PromiseWrapper{getExecutor()};
     }
 
     void SetUp() override

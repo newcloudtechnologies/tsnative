@@ -21,6 +21,7 @@
 #include "std/tsnull.h"
 #include "std/tsnumber.h"
 #include "std/tsobject.h"
+#include "std/tspromise.h"
 #include "std/tsset.h"
 #include "std/tsstring.h"
 #include "std/tstuple.h"
@@ -55,6 +56,7 @@ using Union = GloballyAllocatedObjectWrapper<::Union>;
 using Closure = GloballyAllocatedObjectWrapper<::TSClosure>;
 using LazyClosure = GloballyAllocatedObjectWrapper<::TSLazyClosure>;
 using Timer = GloballyAllocatedObjectWrapper<::UVTimerAdapter>;
+using Promise = GloballyAllocatedObjectWrapper<::Promise>;
 
 template <typename T>
 using Array = GloballyAllocatedObjectWrapper<::Array<T>>;
