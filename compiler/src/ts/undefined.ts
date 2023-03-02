@@ -77,7 +77,7 @@ export class TSUndefined {
     const globalUndef = LLVMGlobalVariable.make(this.generator, this.llvmType, false, nullValue, "undefined_constant");
     this.generator.builder.createSafeStore(instance, globalUndef);
 
-    this.generator.symbolTable.globalScope.set("undefined", globalUndef, false);
+    this.generator.symbolTable.globalScope.set("undefined", globalUndef, true);
   }
 
   getLLVMType() {

@@ -15,6 +15,9 @@
 #include "../infrastructure/global_test_allocator_fixture.h"
 #include "../infrastructure/object_wrappers.h"
 
+#include "std/private/make_closure_from_lambda.h"
+#include "std/private/uv_loop_adapter.h"
+
 #include <memory>
 #include <vector>
 
@@ -28,6 +31,16 @@ MATCHER_P(IsMarked, state, "")
 
 class MarkingTestFixture : public test::GlobalTestAllocatorFixture
 {
+public:
+    test::Closure* makeClosureExecutor() const
+    {
+        return makeClosure<test::Closure>(
+            [](TSClosure** resolve)
+            {
+                (*resolve)->setEnvironmentElement(new test::Number{23.f}, 0);
+                return test::Undefined::instance();
+            });
+    }
 };
 
 TEST_F(MarkingTestFixture, object)
@@ -219,4 +232,89 @@ TEST_F(MarkingTestFixture, map)
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
 }
 
+TEST_F(MarkingTestFixture, timer)
+{
+    UVLoopAdapter uvLoopAdapter{};
+    auto* closure = makeClosure<test::Closure>([] { return nullptr; });
+    auto* timer = new test::Timer{uvLoopAdapter, closure, 1};
+
+    const auto& allObjects = getActualAllocatedObjects();
+
+    EXPECT_EQ(2u, allObjects.size());
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+
+    timer->mark();
+
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+}
+
+TEST_F(MarkingTestFixture, promiseConstructor)
+{
+    auto* executor = makeClosureExecutor();
+    auto* promise = new test::Promise(executor);
+
+    const auto& allObjects = getActualAllocatedObjects();
+
+    EXPECT_EQ(3u, allObjects.size());
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+
+    promise->mark();
+
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+}
+
+TEST_F(MarkingTestFixture, promiseCallbackThen)
+{
+    auto* executor = makeClosureExecutor();
+    auto* startPromise = new test::Promise(executor);
+    auto* resolve = new test::Union{};
+    auto* reject = new test::Union{};
+    auto* endPromise = startPromise->then(resolve, reject);
+
+    const auto& allObjects = getActualAllocatedObjects();
+
+    EXPECT_EQ(5u, allObjects.size());
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+
+    startPromise->mark();
+    endPromise->mark();
+
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+}
+
+TEST_F(MarkingTestFixture, promiseCallbackCatch)
+{
+    auto* executor = makeClosureExecutor();
+    auto* startPromise = new test::Promise(executor);
+    auto* reject = new test::Union{};
+    auto* endPromise = startPromise->catchException(reject);
+
+    const auto& allObjects = getActualAllocatedObjects();
+
+    EXPECT_EQ(4u, allObjects.size());
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+
+    startPromise->mark();
+    endPromise->mark();
+
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+}
+
+TEST_F(MarkingTestFixture, promiseCallbackFinally)
+{
+    auto* executor = makeClosureExecutor();
+    auto* startPromise = new test::Promise(executor);
+    auto* finally = new test::Union{};
+    auto* endPromise = startPromise->finally(finally);
+
+    const auto& allObjects = getActualAllocatedObjects();
+
+    EXPECT_EQ(4u, allObjects.size());
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+
+    startPromise->mark();
+    endPromise->mark();
+
+    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+}
 } // anonymous namespace

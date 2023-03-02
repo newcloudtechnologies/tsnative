@@ -22,11 +22,15 @@ Null::Null()
     LOG_ADDRESS("Calling Null ctor ", this);
 }
 
+Null* Null::instancePtr = nullptr;
+
 Null* Null::instance()
 {
-    static Null inst;
-
-    return &inst;
+    if (!instancePtr)
+    {
+        instancePtr = new Null{};
+    }
+    return instancePtr;
 }
 
 String* Null::toString() const

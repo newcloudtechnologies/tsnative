@@ -24,6 +24,7 @@ class TS_DECLARE Null : public Object
 {
 private:
     Null();
+    static Null* instancePtr;
 
 public:
     ~Null() override = default;
