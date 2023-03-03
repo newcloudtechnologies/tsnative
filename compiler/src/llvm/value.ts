@@ -244,15 +244,18 @@ export class LLVMValue {
   }
 
   createEquals(other: LLVMValue): LLVMValue {
-    const thisPtr = this.derefToPtrLevel1();
-    const otherPtr = other.derefToPtrLevel1();
+    let thisPtr = this.derefToPtrLevel1();
+    let otherPtr = other.derefToPtrLevel1();
     const thisType = thisPtr.type;
     const otherType = otherPtr.type;
 
+    if (thisType.isUnion()) {
+      thisPtr = this.generator.ts.union.get(thisPtr);
+    }
+    
     if (otherType.isUnion()) {
-      let extracted = this.generator.ts.union.get(otherPtr);
-      extracted = this.generator.builder.createBitCast(extracted, thisType);
-      return this.createEquals(extracted);
+      const extracted = this.generator.ts.union.get(otherPtr);
+      otherPtr = this.generator.builder.createBitCast(extracted, thisType);
     }
 
     return this.generator.ts.obj.equals(thisPtr, otherPtr);
