@@ -1,3 +1,3 @@
-let filter: number | undefined;
+export let filter: number | undefined;
 
 export function currentDirectoryItem(){}

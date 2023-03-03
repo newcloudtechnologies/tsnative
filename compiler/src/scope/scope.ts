@@ -624,12 +624,12 @@ export class Scope {
     this.isDeinitialized = true;
   }
 
-  initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
+  hoist(root: ts.Node, generator: LLVMGenerator) {
     if (this.isHoisted) {
       return;
     }
 
-    const initializeFrom = (node: ts.Node) => {
+    const hoistFrom = (node: ts.Node) => {
       // ignore nested blocks and modules/namespaces
       if (ts.isBlock(node) || ts.isModuleBlock(node)) {
         return;
@@ -645,7 +645,7 @@ export class Scope {
         return;
       }
 
-      node.forEachChild(initializeFrom);
+      node.forEachChild(hoistFrom);
 
       // only interested in variables and functions declarations
       if (!ts.isVariableDeclaration(node) && !ts.isFunctionDeclaration(node)) {
@@ -674,7 +674,7 @@ export class Scope {
       this.set(name, inplaceAllocatedPtrPtr);
     }
 
-    root.forEachChild(initializeFrom);
+    root.forEachChild(hoistFrom);
     this.isHoisted = true;
   }
 

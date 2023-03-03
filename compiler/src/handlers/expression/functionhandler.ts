@@ -17,7 +17,6 @@ import {
   Scope,
   Environment,
   createEnvironment,
-  HeapVariableDeclaration,
 } from "../../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -25,8 +24,8 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
 import { last } from "lodash";
 import { TSType } from "../../ts/type";
-import { LLVMConstant, LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
-import { LLVMArrayType, LLVMStructType, LLVMType } from "../../llvm/type";
+import { LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
+import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";
@@ -51,17 +50,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.PropertyAccessExpression:
         switch (Expression.create(expression, this.generator).getAccessorType()) {
           case ts.SyntaxKind.GetAccessor:
-            return this.generator.symbolTable.withLocalScope(
-              (_) => this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env),
-              this.generator.symbolTable.currentScope,
-              this.generator.internalNames.FunctionScope
-            );
+            return this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env);
           case ts.SyntaxKind.SetAccessor:
-            return this.generator.symbolTable.withLocalScope(
-              (_) => this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env),
-              this.generator.symbolTable.currentScope,
-              this.generator.internalNames.FunctionScope
-            );
+            return this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env);
           default:
             // other property access kinds must be handled in AccessHandler
             throw new Error(`Unhandled property access '${expression.getText()}'`);
@@ -80,30 +71,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
           return this.handleFunctionBind(call, env);
         }
 
-        return this.generator.symbolTable.withLocalScope(
-          (_: Scope) => this.handleCallExpression(call, env),
-          this.generator.symbolTable.currentScope,
-          this.generator.internalNames.FunctionScope
-        );
+        return this.handleCallExpression(call, env);
       case ts.SyntaxKind.ArrowFunction:
-        return this.generator.symbolTable.withLocalScope(
-          (_: Scope) => this.handleArrowFunction(expression as ts.ArrowFunction, env),
-          this.generator.symbolTable.currentScope,
-          this.generator.internalNames.FunctionScope
-        );
+          return this.handleArrowFunction(expression as ts.ArrowFunction, env);
       case ts.SyntaxKind.NewExpression:
         this.generator.emitLocation(expression);
-        return this.generator.symbolTable.withLocalScope(
-          (_) => this.handleNewExpression(expression as ts.NewExpression, env),
-          this.generator.symbolTable.currentScope,
-          this.generator.internalNames.FunctionScope
-        );
+        return this.handleNewExpression(expression as ts.NewExpression, env);
       case ts.SyntaxKind.FunctionExpression:
-        return this.generator.symbolTable.withLocalScope(
-          (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
-          this.generator.symbolTable.currentScope,
-          this.generator.internalNames.FunctionScope
-        );
+        return this.handleFunctionExpression(expression as ts.FunctionExpression, env);
       default:
         break;
     }
@@ -1674,7 +1649,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
             if (constructorDeclaration) {
               bodyScope.initializeVariablesAndFunctionDeclarations(constructorDeclaration.body!, this.generator);
             }
-            
+
             if (dbg) {
               dbg.emitProcedure(
                 constructorDeclaration?.unwrapped,
