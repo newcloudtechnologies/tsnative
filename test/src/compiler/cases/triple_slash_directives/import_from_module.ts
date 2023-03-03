@@ -9,10 +9,6 @@
  *
  */
 
-/*
-@todo: doesn't work on ts-node
+import { ts } from "./import_from_module_imports"
 
-/// <reference path="import_from_module_defs.d.ts" />
-
-export { ts } from "mgt";
-*/
+console.assert(ts.Window.Type.OpenGL === 1, "Import from module");
