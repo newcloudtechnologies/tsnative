@@ -32,7 +32,7 @@ export class BlockHandler extends AbstractNodeHandler {
             this.prepare();
           }
 
-          scope.initializeVariablesAndFunctionDeclarations(block, this.generator);
+          scope.hoist(block, this.generator);
           this.hoistFunctionDeclarations(block, scope, env);
 
           this.handleBlock(block, scope, env);

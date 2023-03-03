@@ -50,9 +50,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
       case ts.SyntaxKind.PropertyAccessExpression:
         switch (Expression.create(expression, this.generator).getAccessorType()) {
           case ts.SyntaxKind.GetAccessor:
-            return this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env);
+            return this.generator.symbolTable.withLocalScope(
+                (_) => this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env),
+                this.generator.symbolTable.currentScope,
+                this.generator.internalNames.FunctionScope
+              );
           case ts.SyntaxKind.SetAccessor:
-            return this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env);
+            return this.generator.symbolTable.withLocalScope(
+                (_) => this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env),
+                this.generator.symbolTable.currentScope,
+                this.generator.internalNames.FunctionScope
+              );
           default:
             // other property access kinds must be handled in AccessHandler
             throw new Error(`Unhandled property access '${expression.getText()}'`);
@@ -71,14 +79,29 @@ export class FunctionHandler extends AbstractExpressionHandler {
           return this.handleFunctionBind(call, env);
         }
 
-        return this.handleCallExpression(call, env);
+        return this.generator.symbolTable.withLocalScope(
+            (_: Scope) => this.handleCallExpression(call, env),
+            this.generator.symbolTable.currentScope,
+            this.generator.internalNames.FunctionScope
+          );
       case ts.SyntaxKind.ArrowFunction:
-          return this.handleArrowFunction(expression as ts.ArrowFunction, env);
+        return this.generator.symbolTable.withLocalScope(
+            (_: Scope) => this.handleArrowFunction(expression as ts.ArrowFunction, env),
+            this.generator.symbolTable.currentScope,
+            this.generator.internalNames.FunctionScope
+          );
       case ts.SyntaxKind.NewExpression:
-        this.generator.emitLocation(expression);
-        return this.handleNewExpression(expression as ts.NewExpression, env);
+        return this.generator.symbolTable.withLocalScope(
+            (_) => this.handleNewExpression(expression as ts.NewExpression, env),
+            this.generator.symbolTable.currentScope,
+            this.generator.internalNames.FunctionScope
+          );
       case ts.SyntaxKind.FunctionExpression:
-        return this.handleFunctionExpression(expression as ts.FunctionExpression, env);
+        return this.generator.symbolTable.withLocalScope(
+            (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
+            this.generator.symbolTable.currentScope,
+            this.generator.internalNames.FunctionScope
+          );
       default:
         break;
     }
@@ -1539,6 +1562,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   public static handleFunctionBody(declaration: Declaration, fn: LLVMValue, generator: LLVMGenerator, env?: Environment) {
+    console.trace();
     const dbg = generator.getDebugInfo();
     generator.withInsertBlockKeeping(() => {
       return generator.symbolTable.withLocalScope(
@@ -1558,7 +1582,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
                 dbg.emitLocation(declaration?.body);
               }
 
-              bodyScope.initializeVariablesAndFunctionDeclarations(declaration.body!, generator);
+              bodyScope.hoist(declaration.body!, generator);
 
               if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
                 declaration.body.forEachChild((node) => {
@@ -1647,7 +1671,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
             this.generator.builder.setInsertionPoint(entryBlock);
 
             if (constructorDeclaration) {
-              bodyScope.initializeVariablesAndFunctionDeclarations(constructorDeclaration.body!, this.generator);
+              bodyScope.hoist(constructorDeclaration.body!, this.generator);
             }
 
             if (dbg) {
