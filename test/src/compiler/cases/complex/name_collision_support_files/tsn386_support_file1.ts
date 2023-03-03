@@ -1,5 +1,5 @@
 import {
-    currentDirectoryItem,
+    currentDirectoryItem
 } from "./tsn386_support_file2";
 
 type ContentView_arg = {
@@ -11,4 +11,5 @@ export function MyFPContentView(val: ContentView_arg) {
         filter: val.filter,
     };
 
+    // console.assert(contentArgs.filter === val.filter, "");
 }
