@@ -168,12 +168,21 @@ export class LLVMValue {
 
   createAdd(other: LLVMValue, flags?: MathFlags): LLVMValue {
     // operand type is intentionally not checked
-    if (this.type.isString()) {
+    if (this.type.isString() || other.type.isString()) {
       // mkrv @todo: handle inPlace flag correcty
       const concat = this.generator.ts.str.getLLVMConcat();
 
-      const operand1 = this.derefToPtrLevel1();
-      const operand2 = other.derefToPtrLevel1();
+      let operand1 = this.derefToPtrLevel1();
+      let operand2 = other.derefToPtrLevel1();
+
+      // coerse types to string
+      if (!operand1.type.isString()) {
+        operand1 = this.generator.ts.obj.objectToString(operand1);
+      }
+      else if (!operand2.type.isString()) {
+        operand2 = this.generator.ts.obj.objectToString(operand2);
+      }
+
       const untypedOp1 = this.generator.builder.asVoidStar(operand1);
       const untypedOp2 = this.generator.builder.asVoidStar(operand2);
 

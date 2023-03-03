@@ -264,12 +264,13 @@ String* Object::toString() const
     static size_t depth = 0;
     static const int8_t PADDING_WIDTH = 2;
 
-    oss << std::hex << size_t(this) << ": {\n";
+    oss << "{";
 
     ++depth;
 
     for (const auto& key : keys)
     {
+        oss << std::endl;
         oss << std::string(depth * PADDING_WIDTH, ' ') << key << ":";
 
         bool isParent = key->equals(parentKey)->unboxed();
@@ -283,8 +284,11 @@ String* Object::toString() const
         {
             oss << obj->toString()->cpp_str();
         }
+    }
 
-        oss << "\n";
+    if (!keys.empty())
+    {
+        oss << std::endl;
     }
 
     depth--;

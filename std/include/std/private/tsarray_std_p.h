@@ -282,7 +282,7 @@ template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array)
 {
     os << std::boolalpha;
-    os << "[ ";
+    os << "[";
     if (!array->_storage.empty())
     {
         std::for_each(array->_storage.cbegin(),
@@ -310,6 +310,6 @@ inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array
             os << "null";
         }
     }
-    os << " ]";
+    os << "]";
     return os;
 }

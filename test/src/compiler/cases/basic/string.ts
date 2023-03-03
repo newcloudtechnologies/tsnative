@@ -269,3 +269,52 @@
 
   check(arr);
 }
+
+{
+  console.assert("1" + 5 === "15", "Check string + number");
+
+  let fn = function() {
+    return "fun";
+  }
+  let result = 'function () {\nreturn "fun";\n}';
+  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-441
+  // console.assert(fn.toString() === result, "Check fn to string");
+  // console.assert("aaa" + fn === "aaa" + result, "Check string + function");
+  // console.assert(fn + "aaa" === result + "aaa", "Check function + string");
+
+  console.assert(1 + "5" === "15", "Check number + string");
+
+  console.assert(2 + 2 + 2 + "1" === "61", "Check + operator order");
+  console.assert(2 + 5 + (2 + "00ab*") + 3 + 1 === "7200ab*31", "Check + operator order with brackets");
+
+  console.assert('23' + [] === '23', "Check string + array");
+
+  console.log([1,2,3].toString());
+  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
+  // console.assert([1, 2, 3] + "&&" === "123&&", "Check array + string");
+
+  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
+  // console.assert({} + "a" === "[object Object]a", "Check object + string");
+  // console.assert("a" + {e : 5} === "[object Object]a", "Check object + string");
+
+  console.assert("123" + null === "123null", "Check string + null");
+  console.assert(null + "" === "null", "Check null + string");
+
+  console.assert("123" + undefined === "123undefined", "Check string + undefined");
+  console.assert(undefined + "))" === "undefined))", "Check undefined + string");
+
+  class B {
+    e = 5;
+
+    otherMethod(){
+      return this.e;
+    }
+  }
+
+  // won't even compile. Need to fix https://jira.ncloudtech.ru:8090/browse/TSN-441
+  //let str = "" + B;
+  // let str2 = B.toString();
+
+  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
+  // console.assert("" + new B() === "[object Object]", "Check string + class");
+}
