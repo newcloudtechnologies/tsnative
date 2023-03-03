@@ -51,16 +51,16 @@ export class FunctionHandler extends AbstractExpressionHandler {
         switch (Expression.create(expression, this.generator).getAccessorType()) {
           case ts.SyntaxKind.GetAccessor:
             return this.generator.symbolTable.withLocalScope(
-                (_) => this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env),
-                this.generator.symbolTable.currentScope,
-                this.generator.internalNames.FunctionScope
-              );
+              (_) => this.handleGetAccessExpression(expression as ts.PropertyAccessExpression, env),
+              this.generator.symbolTable.currentScope,
+              this.generator.internalNames.FunctionScope
+            );
           case ts.SyntaxKind.SetAccessor:
             return this.generator.symbolTable.withLocalScope(
-                (_) => this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env),
-                this.generator.symbolTable.currentScope,
-                this.generator.internalNames.FunctionScope
-              );
+              (_) => this.handleSetAccessExpression(expression as ts.PropertyAccessExpression, env),
+              this.generator.symbolTable.currentScope,
+              this.generator.internalNames.FunctionScope
+            );
           default:
             // other property access kinds must be handled in AccessHandler
             throw new Error(`Unhandled property access '${expression.getText()}'`);
@@ -80,28 +80,28 @@ export class FunctionHandler extends AbstractExpressionHandler {
         }
 
         return this.generator.symbolTable.withLocalScope(
-            (_: Scope) => this.handleCallExpression(call, env),
-            this.generator.symbolTable.currentScope,
-            this.generator.internalNames.FunctionScope
-          );
+          (_: Scope) => this.handleCallExpression(call, env),
+          this.generator.symbolTable.currentScope,
+          this.generator.internalNames.FunctionScope
+        );
       case ts.SyntaxKind.ArrowFunction:
         return this.generator.symbolTable.withLocalScope(
-            (_: Scope) => this.handleArrowFunction(expression as ts.ArrowFunction, env),
-            this.generator.symbolTable.currentScope,
-            this.generator.internalNames.FunctionScope
-          );
+          (_: Scope) => this.handleArrowFunction(expression as ts.ArrowFunction, env),
+          this.generator.symbolTable.currentScope,
+          this.generator.internalNames.FunctionScope
+        );
       case ts.SyntaxKind.NewExpression:
         return this.generator.symbolTable.withLocalScope(
-            (_) => this.handleNewExpression(expression as ts.NewExpression, env),
-            this.generator.symbolTable.currentScope,
-            this.generator.internalNames.FunctionScope
-          );
+          (_) => this.handleNewExpression(expression as ts.NewExpression, env),
+          this.generator.symbolTable.currentScope,
+          this.generator.internalNames.FunctionScope
+        );
       case ts.SyntaxKind.FunctionExpression:
         return this.generator.symbolTable.withLocalScope(
-            (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
-            this.generator.symbolTable.currentScope,
-            this.generator.internalNames.FunctionScope
-          );
+          (_: Scope) => this.handleFunctionExpression(expression as ts.FunctionExpression, env),
+          this.generator.symbolTable.currentScope,
+          this.generator.internalNames.FunctionScope
+        );
       default:
         break;
     }
@@ -1562,7 +1562,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
   }
 
   public static handleFunctionBody(declaration: Declaration, fn: LLVMValue, generator: LLVMGenerator, env?: Environment) {
-    console.trace();
     const dbg = generator.getDebugInfo();
     generator.withInsertBlockKeeping(() => {
       return generator.symbolTable.withLocalScope(
@@ -1830,7 +1829,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           const mapped = this.generator.symbolTable.currentScope.typeMapper.get(argType.toString());
           return mapped.getLLVMType();
         });
-        
+
         // these dummy arguments will be substituted by actual arguments once called
         const dummyArguments = this.dummyArgsCreator.create(llvmArgumentTypes);
 
