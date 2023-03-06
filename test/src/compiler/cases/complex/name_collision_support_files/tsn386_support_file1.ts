@@ -11,5 +11,5 @@ export function MyFPContentView(val: ContentView_arg) {
         filter: val.filter,
     };
 
-    // console.assert(contentArgs.filter === val.filter, "");
+    console.assert(contentArgs.filter === val.filter, "");
 }
