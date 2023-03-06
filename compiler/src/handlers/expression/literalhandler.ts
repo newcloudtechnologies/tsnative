@@ -107,11 +107,14 @@ export class LiteralHandler extends AbstractExpressionHandler {
           }
 
           const propertyName = property.name.getText();
-          const propertyContextType = this.generator.ts.checker.getContextualType(property.initializer);
+          let propertyContextType = this.generator.ts.checker.getContextualType(property.initializer);
+          if (!propertyContextType) {
+            propertyContextType = this.generator.ts.checker.getTypeAtLocation(property.initializer);
+          }
 
-          if (propertyContextType?.isUnion() && !propVal.type.isUnion()) {
+          if (propertyContextType.isUnion() && !propVal.type.isUnion()) {
             propVal = this.generator.ts.union.create(propVal)
-          } else if (!propertyContextType?.isUnion() && propVal.type.isUnion()) {
+          } else if (!propertyContextType.isUnion() && propVal.type.isUnion()) {
             propVal = this.generator.ts.union.get(propVal);
           }
 
