@@ -400,3 +400,35 @@ import createStore2 from "./union_type_imports"
     }
     foo(val2);
 }
+
+// Check if two unions are equal
+{
+    const u1: number | undefined = 10;
+    const u2: number | undefined = 10;
+
+    console.assert(u1 === u2, "Two unions: equality tests failed")
+}
+
+// Check if two unions are not equal
+{
+    const u1: number | undefined = 10;
+    const u2: number | undefined = 20;
+
+    console.assert(u1 !== u2, "Two unions: inequality tests failed")
+}
+
+// Check if two unions are equal
+{
+    const u1: number | undefined = 10;
+    const n2 = 10;
+
+    console.assert(u1 === n2, "Union and number: equality tests failed")
+}
+
+// Check if two unions are not equals
+{
+    const n1 = 20;
+    const u2: number | undefined = 10;
+
+    console.assert(n1 !== u2, "Union and number: inequality tests failed")
+}
