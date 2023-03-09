@@ -32,6 +32,7 @@ export class TSObject {
   private keysFn: LLVMValue | undefined;
   private copyPropsFn: LLVMValue | undefined;
   private operatorInFn: LLVMValue | undefined;
+  private isUndefinedFn: LLVMValue | undefined;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -188,6 +189,33 @@ export class TSObject {
     const { fn: keys } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
 
     return keys;
+  }
+
+  private initTypeCheckerFn(name: string) {
+    const declaration = this.declaration.members.find((m) => m.name?.getText() === name);
+
+    if (!declaration) {
+      throw new Error(`Unable to find '${name}' at '${this.declaration.getText()}'`);
+    }
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      declaration,
+      undefined,
+      this.generator.ts.obj.getTSType(),
+      [this.generator.ts.obj.getTSType()],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`Unable to find cxx '${name}' for 'Object'`);
+    }
+
+    const llvmReturnType = LLVMType.getCXXVoidStarType(this.generator);
+    const llvmArgumentTypes = [LLVMType.getCXXVoidStarType(this.generator)];
+
+    const { fn: result } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return result;
   }
 
   private initCopyPropsFn() {
@@ -461,6 +489,16 @@ export class TSObject {
 
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);
     return this.generator.builder.createSafeCall(this.operatorInFn, [thisUntyped, key]);
+  }
+
+  createIsUndefined(thisValue: LLVMValue) {
+    if (!this.isUndefinedFn) {
+      this.isUndefinedFn = this.initTypeCheckerFn("isUndefined");
+    }
+
+    const thisUntyped = this.generator.builder.asVoidStar(thisValue);
+    const result = this.generator.builder.createSafeCall(this.isUndefinedFn, [thisUntyped]);
+    return this.generator.builder.createBitCast(result, this.generator.builtinBoolean.getLLVMType());
   }
 
   getLLVMType() {

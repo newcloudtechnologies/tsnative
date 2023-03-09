@@ -9,13 +9,13 @@
  *
  */
 
-import { Environment, HeapVariableDeclaration, IdentifierNotFound, Scope, ScopeValue } from "../../scope";
+import { Environment, HeapVariableDeclaration, IdentifierNotFound, Scope } from "../../scope";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
 import { Declaration } from "../../ts/declaration";
+import { IfBlockCreator } from "../ifblockcreator"
 
 export class AccessHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -235,7 +235,7 @@ export class AccessHandler extends AbstractExpressionHandler {
       return llvmValue;
     }
 
-    const value = this.generator.ts.obj.get(llvmValue, propertyName);
+    let value = this.generator.ts.obj.get(llvmValue, propertyName);
     const objectType = this.generator.ts.checker.getTypeAtLocation(left);
 
     const propertySymbol = objectType.getProperty(propertyName);
@@ -244,8 +244,29 @@ export class AccessHandler extends AbstractExpressionHandler {
     let propertyType = propertyDeclaration.type;
     propertyType = propertyType.isSupported() ? propertyType : this.generator.ts.obj.getTSType();
 
+    const valuePtrPtr = this.generator.builder.createAlloca(value.type);
+    this.generator.builder.createSafeStore(value, valuePtrPtr);
+
+    if (propertyType.isUnion()) {
+      const ifBlockCreator = new IfBlockCreator(this.generator);
+
+      const isUndefined = this.generator.ts.obj.createIsUndefined(value);
+
+      const thenAction = () => {
+        let wrappedValue = this.generator.ts.union.create(value);
+        wrappedValue = this.generator.builder.createBitCast(wrappedValue, this.generator.ts.obj.getLLVMType());
+        this.generator.builder.createSafeStore(wrappedValue, valuePtrPtr);
+      }
+
+      const elseAction = () => {
+
+      }
+
+      ifBlockCreator.create(isUndefined, thenAction, elseAction);
+    }
+
     const targetLLVMType = propertyType.getLLVMType();
 
-    return this.generator.builder.createBitCast(value, targetLLVMType);
+    return this.generator.builder.createBitCast(valuePtrPtr.derefToPtrLevel1(), targetLLVMType);
   }
 }
