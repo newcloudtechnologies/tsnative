@@ -267,11 +267,11 @@ Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
     const auto integralStart = static_cast<int>(start->unboxed());
     const auto deleteCountValue = maybeDeleteCount->getValue();
 
-    if (deleteCountValue->isUndefined())
+    if (deleteCountValue->isUndefinedCpp())
     {
         return Array<T>::fromStdVector(_d->splice(integralStart));
     }
-    else if (deleteCountValue->isBoolean())
+    else if (deleteCountValue->isBooleanCpp())
     {
         const auto b = static_cast<const Boolean*>(deleteCountValue)->unboxed();
         if (!b)
@@ -279,14 +279,14 @@ Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
             return Array<T>::fromStdVector(std::vector<T>{});
         }
     }
-    else if (!deleteCountValue->isNumber())
+    else if (!deleteCountValue->isNumberCpp())
     {
         return Array<T>::fromStdVector(std::vector<T>{});
     }
 
     const auto integralDeleteCount = [deleteCountValue]() -> int
     {
-        if (deleteCountValue->isBoolean())
+        if (deleteCountValue->isBooleanCpp())
         {
             return 1; // true bool
         }

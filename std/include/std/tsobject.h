@@ -60,22 +60,23 @@ public:
 
     virtual ~Object();
 
-    bool isObject() const;
-    bool isUnion() const;
-    bool isBoolean() const;
-    bool isNumber() const;
-    bool isString() const;
-    bool isUndefined() const;
-    bool isNull() const;
-    bool isArray() const;
-    bool isTuple() const;
-    bool isSet() const;
-    bool isMap() const;
-    bool isClosure() const;
-    bool isDate() const;
-    bool isPromise() const;
-    bool isTimer() const;
-    bool isLazy() const;
+    // TODO These methods should be moved to pImpl
+    bool isObjectCpp() const;
+    bool isUnionCpp() const;
+    bool isBooleanCpp() const;
+    bool isNumberCpp() const;
+    bool isStringCpp() const;
+    bool isUndefinedCpp() const;
+    bool isNullCpp() const;
+    bool isArrayCpp() const;
+    bool isTupleCpp() const;
+    bool isSetCpp() const;
+    bool isMapCpp() const;
+    bool isClosureCpp() const;
+    bool isDateCpp() const;
+    bool isPromiseCpp() const;
+    bool isTimerCpp() const;
+    bool isLazyClosureCpp() const;
 
 protected:
     bool has(String* key) const;
@@ -83,6 +84,8 @@ protected:
     TS_METHOD Boolean* operatorIn(String* key) const;
 
 public:
+    TS_METHOD Boolean* isUndefined() const;
+
     TS_METHOD TS_SIGNATURE("get(key: string): Object") Object* get(String* key) const;
     TS_METHOD TS_SIGNATURE("set(key: string, value: Object): void") void set(String* key, Object* value);
 

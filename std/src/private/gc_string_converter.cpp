@@ -138,88 +138,88 @@ std::string toString(const Union* u)
 // TODO Output should be associated with variables everywhere
 std::string GCStringConverter::convert(const Object* obj)
 {
-    if (obj->isNumber())
+    if (obj->isNumberCpp())
     {
         const auto* number = static_cast<const Number*>(obj);
         return toString(number->_d);
     }
 
-    if (obj->isDate())
+    if (obj->isDateCpp())
     {
         const auto* date = static_cast<const Date*>(obj);
         return toString(date->_d);
     }
 
-    if (obj->isString())
+    if (obj->isStringCpp())
     {
         const auto* str = static_cast<const String*>(obj);
         return toString(str->_d);
     }
 
-    if (obj->isArray())
+    if (obj->isArrayCpp())
     {
         const auto* arr = static_cast<const Array<Object*>*>(obj);
         return "Array:\n" + toString(arr->_d);
     }
 
-    if (obj->isBoolean())
+    if (obj->isBooleanCpp())
     {
         const auto* boolean = static_cast<const Boolean*>(obj);
         return toString(boolean->_d);
     }
 
-    if (obj->isPromise())
+    if (obj->isPromiseCpp())
     {
         const auto* promise = static_cast<const Promise*>(obj);
         return toString(promise);
     }
 
-    if (obj->isMap())
+    if (obj->isMapCpp())
     {
         const auto* mapping = static_cast<const Map<Object*, Object*>*>(obj);
         return toString(mapping->_d);
     }
 
-    if (obj->isSet())
+    if (obj->isSetCpp())
     {
         const auto* set = static_cast<const Set<Object*>*>(obj);
         return toString(set->_d);
     }
 
-    if (obj->isUnion())
+    if (obj->isUnionCpp())
     {
         const auto* u = static_cast<const Union*>(obj);
         return toString(u);
     }
 
-    if (obj->isTuple())
+    if (obj->isTupleCpp())
     {
         const auto* t = static_cast<const Tuple*>(obj);
         return "Tuple:\n" + toString(t->_d);
     }
 
-    if (obj->isNull())
+    if (obj->isNullCpp())
     {
         return "null";
     }
 
-    if (obj->isUndefined())
+    if (obj->isUndefinedCpp())
     {
         return "undefined";
     }
 
-    if (obj->isClosure())
+    if (obj->isClosureCpp())
     {
         const auto* closure = static_cast<const TSClosure*>(obj);
         return "Closure:\n" + std::string("ArgsCount: ") + GCStringConverter::convert(closure->getNumArgs());
     }
 
-    if (obj->isLazy())
+    if (obj->isLazyClosureCpp())
     {
         return "Lazy closure";
     }
 
-    if (obj->isTimer())
+    if (obj->isTimerCpp())
     {
         const auto* timer = static_cast<const TimerObject*>(obj);
         return "Timer:\n" + std::to_string(timer->due().count());
@@ -255,7 +255,7 @@ std::string GCStringConverter::convert(const Object* obj)
         return "GC Wrapper";
     }
 
-    if (obj->isObject())
+    if (obj->isObjectCpp())
     {
         if (obj->_props)
         {

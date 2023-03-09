@@ -55,82 +55,87 @@ Object::~Object()
     delete _props;
 }
 
-bool Object::isObject() const
+Boolean* Object::isUndefined() const
+{
+    return new Boolean(isUndefinedCpp());
+}
+
+bool Object::isObjectCpp() const
 {
     return _typeid == TSTypeID::Object;
 }
 
-bool Object::isUnion() const
+bool Object::isUnionCpp() const
 {
     return _typeid == TSTypeID::Union;
 }
 
-bool Object::isBoolean() const
+bool Object::isBooleanCpp() const
 {
     return _typeid == TSTypeID::Boolean;
 }
 
-bool Object::isNumber() const
+bool Object::isNumberCpp() const
 {
     return _typeid == TSTypeID::Number;
 }
 
-bool Object::isString() const
+bool Object::isStringCpp() const
 {
     return _typeid == TSTypeID::String;
 }
 
-bool Object::isUndefined() const
+bool Object::isUndefinedCpp() const
 {
     return _typeid == TSTypeID::Undefined;
 }
 
-bool Object::isNull() const
+bool Object::isNullCpp() const
 {
     return _typeid == TSTypeID::Null;
 }
 
-bool Object::isArray() const
+bool Object::isArrayCpp() const
 {
     return _typeid == TSTypeID::Array;
 }
 
-bool Object::isTuple() const
+bool Object::isTupleCpp() const
 {
     return _typeid == TSTypeID::Tuple;
 }
 
-bool Object::isSet() const
+bool Object::isSetCpp() const
 {
     return _typeid == TSTypeID::Set;
 }
 
-bool Object::isTimer() const
+bool Object::isTimerCpp() const
 {
     return _typeid == TSTypeID::Timer;
 }
 
-bool Object::isMap() const
+bool Object::isMapCpp() const
 {
     return _typeid == TSTypeID::Map;
 }
 
-bool Object::isClosure() const
+bool Object::isClosureCpp() const
 {
     return _typeid == TSTypeID::Closure;
 }
 
-bool Object::isDate() const
+bool Object::isDateCpp() const
 {
     return _typeid == TSTypeID::Date;
 }
 
-bool Object::isPromise() const
+bool Object::isPromiseCpp() const
 {
     return _typeid == TSTypeID::Promise;
 }
 
-bool Object::isLazy() const
+bool Object::isLazyClosureCpp() const
 {
     return _typeid == TSTypeID::LazyClosure;
 }

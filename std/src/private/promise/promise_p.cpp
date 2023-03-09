@@ -31,7 +31,7 @@ PromisePrivate PromisePrivate::then(Object* onResolved, Object* onRejected, IExe
 
 void PromisePrivate::resolve(Object* resolved)
 {
-    if (resolved->isPromise())
+    if (resolved->isPromiseCpp())
     {
         auto* tsPromise = static_cast<Promise*>(resolved);
         return joinPromise(tsPromise);
@@ -41,7 +41,7 @@ void PromisePrivate::resolve(Object* resolved)
 
 void PromisePrivate::reject(Object* rejected)
 {
-    if (rejected->isPromise())
+    if (rejected->isPromiseCpp())
     {
         auto* tsPromise = static_cast<Promise*>(rejected);
         return joinPromise(tsPromise);

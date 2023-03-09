@@ -259,7 +259,7 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
 
 Boolean* String::equals(Object* other) const
 {
-    if (!other->isString())
+    if (!other->isStringCpp())
     {
         return new Boolean(false);
     }

@@ -432,3 +432,21 @@ import createStore2 from "./union_type_imports"
 
     console.assert(n1 !== u2, "Union and number: inequality tests failed")
 }
+
+// Just check compilation
+type RxPane_args = {
+    margins?: number
+}
+
+function setArgs(args: RxPane_args): void {
+    if (args.margins !== undefined) {
+    }
+}
+
+function RxPane(args: RxPane_args) {
+    setArgs(args);
+}
+
+RxPane({})
+RxPane({margins: undefined})
+
