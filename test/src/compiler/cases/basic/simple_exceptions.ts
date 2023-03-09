@@ -424,3 +424,66 @@ class MyError {
   const bar = new Bar("");
   console.assert(bar.doSome() === error, "Nested concrete exception value mismatch");
 }
+
+{
+  function foo() {
+    try {
+        let a = 15;
+        throw a;
+    }
+    catch (e) {
+      console.assert(e === 15, "Exceptions: thrown value equality check failed");
+    }
+  }
+
+  foo();
+}
+
+{
+
+  function baz() {
+    let a = 10;
+    if (a === 10) {
+      let b = 100;
+      throw a;
+    }
+
+    let c = "abacaba";
+    throw a;
+  }
+
+  function bar() {
+    try {
+      let b = 15;
+      baz();
+
+      let c = 50;
+    }
+    catch (e) {
+      console.assert(e === 10, "Exceptions: thrown value equality check failed");
+    }
+  }
+
+  bar();
+}
+
+{
+  function fuzz() {
+    try {
+      try {
+          let a = 15;
+          throw "abacaba";
+      }
+      catch (e) {
+        let variable = 100;
+        console.assert(e === "abacaba", "Exceptions: thrown value equality check failed");
+        throw e;
+      }
+    }
+    catch(ee) {
+      console.assert(ee === "abacaba", "Exceptions: thrown value equality check failed");
+    }
+  }
+
+  fuzz();
+}

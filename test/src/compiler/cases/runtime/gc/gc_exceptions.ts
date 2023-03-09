@@ -104,5 +104,23 @@ function checkExceptionsFromFunctions() {
     // }
 }
 
+function checkNestedExceptions() {
+    try {
+        try {
+            let a = 15;
+            throw "abacaba";
+        }
+        catch (e) {
+            let variable = 100;
+            console.assert(e === "abacaba", "Exceptions: thrown value equality check failed");
+            throw e;
+        }
+    }
+    catch(ee) {
+        console.assert(ee === "abacaba", "Exceptions: thrown value equality check failed");
+    }
+}
+
 gcTest(checkSimpleExceptions, "Check simple exceptions");
 gcTest(checkExceptionsFromFunctions, "Check exceptions from functions");
+gcTest(checkNestedExceptions, "Check nested exceptions from functions");

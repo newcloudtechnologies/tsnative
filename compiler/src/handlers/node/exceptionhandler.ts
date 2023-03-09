@@ -98,6 +98,8 @@ export class ExceptionHandler extends AbstractNodeHandler {
       if (node.expression) {
         this.generator.emitLocation(node);
         const value = this.generator.handleExpression(node.expression, env).derefToPtrLevel1();
+
+        this.generator.symbolTable.currentScope.deinitialize();
         this.emitThrowBlock(value, node);
       }
       return true;
