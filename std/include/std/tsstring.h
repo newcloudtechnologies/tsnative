@@ -92,6 +92,8 @@ public:
 
     TS_METHOD String* clone() const;
 
+    TS_METHOD Number* negate() const;
+
     Array<String*>* getKeysArray() const override;
 
 private:

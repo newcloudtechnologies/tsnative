@@ -28,6 +28,7 @@ export class TSString {
   private lengthFn: LLVMValue | undefined;
   private concatFn: LLVMValue | undefined;
   private cloneFn: LLVMValue | undefined;
+  private negateFn: LLVMValue | undefined;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
@@ -114,6 +115,28 @@ export class TSString {
     return clone;
   }
 
+  private initNegateFn() {
+    const declaration = this.getDeclaration();
+    const thisType = declaration.type;
+    const llvmThisType = this.getLLVMType();
+
+    const equalsDeclaration = declaration.members.find((m) => m.isMethod() && m.name?.getText() === "negate")!;
+
+    const { qualifiedName } = FunctionMangler.mangle(
+      equalsDeclaration,
+      undefined,
+      thisType,
+      [thisType],
+      this.generator
+    );
+
+    const llvmReturnType = this.generator.builtinNumber.getLLVMType();
+    const llvmArgumentTypes = [llvmThisType];
+    const { fn: result } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, qualifiedName);
+
+    return result;
+  }
+
   getLLVMType() {
     return this.llvmType;
   }
@@ -165,12 +188,28 @@ export class TSString {
     return constructor;
   }
 
-  getLLVMConcat() {
+  createConcat(lhs: LLVMValue, rhs: LLVMValue) {
+    const concatFn = this.getLLVMConcat();
+    const lhsVoidStar = this.generator.builder.asVoidStar(lhs.derefToPtrLevel1());
+    const rhsVoidStar = this.generator.builder.asVoidStar(rhs.derefToPtrLevel1());
+    const result = this.generator.builder.createSafeCall(concatFn, [lhsVoidStar, rhsVoidStar]);
+    return this.generator.builder.createBitCast(result, this.getLLVMType());
+  }
+
+  private getLLVMConcat() {
     if (!this.concatFn) {
       this.concatFn = this.initConcatFn();
     }
 
     return this.concatFn;
+  }
+
+  createNegate(thisValue: LLVMValue) {
+    if (!this.negateFn) {
+      this.negateFn = this.initNegateFn();
+    }
+
+    return this.generator.builder.createSafeCall(this.negateFn, [thisValue.derefToPtrLevel1()]);
   }
 
   getLLVMLength() {

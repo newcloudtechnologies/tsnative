@@ -21,6 +21,8 @@
 #endif
 
 #include "std/private/logger.h"
+#include "std/private/number_parser.h"
+#include "std/private/tsnumber_p.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -317,4 +319,21 @@ Array<String*>* String::getKeysArray() const
     }
 
     return result;
+}
+
+TS_METHOD Number* String::negate() const
+{
+    const auto trimmed = this->_d->trim();
+    if (trimmed.empty())
+    {
+        return new Number{0.0};
+    }
+
+    const auto parsed = NumberParser::parseFloat(trimmed);
+    if (parsed == NumberPrivate::NaN())
+    {
+        return new Number{parsed};
+    }
+
+    return new Number{-parsed};
 }

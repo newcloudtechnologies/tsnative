@@ -318,3 +318,32 @@
   // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
   // console.assert("" + new B() === "[object Object]", "Check string + class");
 }
+
+{
+  const w1 = "5" + -"2";
+  console.assert(w1 === "5-2", "String: 5+-2 case failed");
+
+  const w2 = -"2";
+  console.assert(w2 === -2, "String: -2 case failed");
+
+  const w3 = "5" + -"asdasdas";
+  console.assert(w3 === "5NaN", "String: 5NaN case failed");
+
+  const w4 = "5" + -"";
+  console.assert(w4 === "50", "String: empty string case failed");
+
+  const w5 = "5" + -"   ";
+  console.assert(w5 === "50", "String: spaces only case failed");
+
+  const w6 = -"-2";
+  console.assert(w6 === 2, "String: --2 case failed");
+
+  const w7 = +-"5";
+  console.assert(w7 === -5, "String: +-5 case failed");
+
+  const w8 = -+"5";
+  console.assert(w8 === -5, "String: -+5 case failed");
+
+  const w9 = -+-"5";
+  console.assert(w9 === 5, "String: -+-5 case failed");
+}
