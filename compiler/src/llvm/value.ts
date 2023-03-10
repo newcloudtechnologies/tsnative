@@ -138,7 +138,9 @@ export class LLVMValue {
     } else if (this.type.isUndefined() || this.type.isNull()) {
       return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
     }
-
+    else if (this.type.isString()) {
+      return this.generator.ts.str.createNegate(this);
+    }
     throw new Error(`Unhandled type '${this.type.toString()}' in LLVMValue.createNegate`);
   }
 
@@ -170,7 +172,6 @@ export class LLVMValue {
     // operand type is intentionally not checked
     if (this.type.isString() || other.type.isString()) {
       // mkrv @todo: handle inPlace flag correcty
-      const concat = this.generator.ts.str.getLLVMConcat();
 
       let operand1 = this.derefToPtrLevel1();
       let operand2 = other.derefToPtrLevel1();
@@ -186,7 +187,7 @@ export class LLVMValue {
       const untypedOp1 = this.generator.builder.asVoidStar(operand1);
       const untypedOp2 = this.generator.builder.asVoidStar(operand2);
 
-      const result = this.generator.builder.createSafeCall(concat, [untypedOp1, untypedOp2]);
+      const result = this.generator.ts.str.createConcat(untypedOp1, untypedOp2);
       if (flags === MathFlags.Inplace) {
         return this.makeAssignment(result);
       }

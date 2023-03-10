@@ -17,7 +17,6 @@ import {
   Scope,
   Environment,
   createEnvironment,
-  HeapVariableDeclaration,
 } from "../../scope";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
@@ -25,8 +24,8 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
 import { last } from "lodash";
 import { TSType } from "../../ts/type";
-import { LLVMConstant, LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
-import { LLVMArrayType, LLVMStructType, LLVMType } from "../../llvm/type";
+import { LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
+import { LLVMArrayType, LLVMType } from "../../llvm/type";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { Expression } from "../../ts/expression";

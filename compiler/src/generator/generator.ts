@@ -100,6 +100,14 @@ export class LLVMGenerator {
     return this;
   }
 
+  private initGlobalConstants() {
+    this.runtime.initGlobalState();
+    this.ts.null.init();
+    this.ts.undef.init();
+    this.builtinNumber.initNan();
+    this.builtinNumber.initInfinity();
+  }
+
   createModule(): llvm.Module {
     if (!this.initialized) {
       throw new Error("Generator in not initialized. Call LLVMGenerator.init first");
@@ -113,12 +121,7 @@ export class LLVMGenerator {
 
     this.builder.setInsertionPoint(entryBlock);
 
-    this.runtime.initGlobalState();
-    this.ts.null.init();
-    this.ts.undef.init();
-
-    this.builtinNumber.initNan();
-    this.builtinNumber.initInfinity();
+    this.initGlobalConstants();
 
     if (dbg) {
       dbg.emitMainScope(main.unwrapped as llvm.Function);

@@ -31,7 +31,6 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
   private handleTemplateExpression(expression: ts.TemplateExpression, env?: Environment) {
     const stringType = this.generator.ts.str.getLLVMType();
     const stringConstructor = this.generator.ts.str.getLLVMConstructor();
-    const stringConcat = this.generator.ts.str.getLLVMConcat();
     let allocated = this.generator.gc.allocate(stringType.getPointerElementType());
     allocated = this.generator.builder.asVoidStar(allocated);
 
@@ -43,10 +42,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
 
       const allocatedSpanExpression = this.generator.ts.obj.objectToString(value);
 
-      allocated = this.generator.builder.createSafeCall(stringConcat, [
-        this.generator.builder.asVoidStar(allocated),
-        this.generator.builder.asVoidStar(allocatedSpanExpression)
-      ]);
+      allocated = this.generator.ts.str.createConcat(allocated, allocatedSpanExpression);
 
       if (span.literal.rawText) {
         const allocatedLiteral = this.generator.gc.allocate(stringType.getPointerElementType());
@@ -56,10 +52,7 @@ export class TemplateExpressionHandler extends AbstractExpressionHandler {
           literal,
         ]);
 
-        allocated = this.generator.builder.createSafeCall(stringConcat, [
-          this.generator.builder.asVoidStar(allocated),
-          this.generator.builder.asVoidStar(allocatedLiteral),
-        ]);
+        allocated = this.generator.ts.str.createConcat(allocated, allocatedLiteral);
       }
     }
 

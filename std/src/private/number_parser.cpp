@@ -140,36 +140,42 @@ Number* NumberParser::parseInt(String* str, Union* radix) noexcept
     return new Number{parsed};
 }
 
-Number* NumberParser::parseFloat(String* str) noexcept
+double NumberParser::parseFloat(const std::string& str) noexcept
 {
-    auto s = str->cpp_str();
-    if (s.empty())
+    if (str.empty())
     {
-        return Number::NaN();
+        return NumberPrivate::NaN();
     }
-    size_t left = trimBegin(s, 0);
+    size_t left = trimBegin(str, 0);
 
     bool negate = false;
-    if (s[left] == '-')
+    if (str[left] == '-')
     {
         negate = true;
     }
 
-    if (hasPrefix(s, left))
+    if (hasPrefix(str, left))
     {
-        return new Number{0.0};
+        return 0.0;
     }
 
     try
     {
-        return new Number{std::stod(s.substr(left))};
+        return std::stod(str.substr(left));
     }
     catch (const std::invalid_argument&)
     {
-        return Number::NaN();
+        return NumberPrivate::NaN();
     }
     catch (std::out_of_range&)
     {
-        return new Number{negate ? Number::NEGATIVE_INFINITY() : Number::POSITIVE_INFINITY()};
+        return negate ? NumberPrivate::NEGATIVE_INFINITY() : NumberPrivate::POSITIVE_INFINITY();
     }
+}
+
+Number* NumberParser::parseFloat(String* str) noexcept
+{
+    auto s = str->cpp_str();
+    const auto result = parseFloat(s);
+    return new Number(result);
 }
