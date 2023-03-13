@@ -46,6 +46,10 @@ function testSaveClassClosure () {
     user.setClassClosure(el.doChangeValue);
 }
 
+function testClosurePassingToCXXClassByOwner() {
+    user.onClick(() => 101);
+}
+
 export function gcTest(testBody: () => void, description: string, savedObjects: number) {
     const diagnostics = Runtime.getDiagnostics();
     const memInfo = diagnostics.getMemoryDiagnostics();
@@ -94,3 +98,6 @@ user.callClassClosure();
 console.assert(numberToCapture === 1240, "GC check saved object - use saved class closure");
 
 TSObjectCache.setStaticNumber(44.5);
+
+gcTest(testClosurePassingToCXXClassByOwner, "Test keeping and passing closure by TSObjectOwner to std::function", 1);
+console.assert(user.click() === 101, "Closure passed to std::function by TSObjectOwner and called successfully");

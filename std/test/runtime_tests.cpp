@@ -262,4 +262,80 @@ TEST_F(RuntimeTestFixture, checkDestroyOwnerAfterRuntime)
     }
 }
 
+TEST_F(RuntimeTestFixture, checkTSObjectOwnerCopyConstructible)
+{
+    const int ac = 0;
+    char** av;
+
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
+    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getGC());
+
+    TSObjectOwner<Number> owner{make_object_owner(new Number(33.21))};
+    ASSERT_EQ(1, owner.useCount());
+
+    TSObjectOwner<Number> copy{owner};
+    ASSERT_EQ(2, copy.useCount());
+    ASSERT_EQ(2, owner.useCount());
+
+    gc->collect();
+
+    // 3 - memInfo + gc + Number shared by two TSObjectOwners
+    EXPECT_EQ(3, memInfo->getAliveObjectsCount()->unboxed());
+
+    // release Number held by 'copy'
+    copy = {};
+    gc->collect();
+
+    // 3 - memInfo + gc + Number held by TSObjectOwner (owner)
+    EXPECT_EQ(3, memInfo->getAliveObjectsCount()->unboxed());
+
+    // release Number held by 'owner'
+    owner = {};
+    gc->collect();
+
+    // 2 - memInfo + gc
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+}
+
+TEST_F(RuntimeTestFixture, checkTSObjectOwnerCopyAssignable)
+{
+    const int ac = 0;
+    char** av;
+
+    const auto initResult = Runtime::init(ac, av);
+    ASSERT_EQ(0, initResult);
+
+    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getGC());
+
+    TSObjectOwner<Number> copy;
+    ASSERT_EQ(0, copy.useCount());
+
+    {
+        TSObjectOwner<Number> owner = make_object_owner(new Number(33.21));
+        ASSERT_EQ(1, owner.useCount());
+
+        copy = owner;
+        ASSERT_EQ(2, copy.useCount());
+        ASSERT_EQ(2, owner.useCount());
+    }
+
+    ASSERT_EQ(1, copy.useCount());
+
+    gc->collect();
+
+    // 3 - memInfo + gc + Number pointed by TSObjectOwner
+    EXPECT_EQ(3, memInfo->getAliveObjectsCount()->unboxed());
+
+    copy = {};
+
+    gc->collect();
+
+    // 2 - memInfo + gc
+    EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
+}
+
 } // namespace

@@ -37,6 +37,17 @@ void TSObjectCache::setClassClosure(TSClosure* classClosure)
     m_classClosure = make_object_owner(classClosure);
 }
 
+void TSObjectCache::onClick(TSClosure* tsHandler)
+{
+    auto clickHandlerClosure = make_object_owner(tsHandler);
+    m_button.onClick([clickHandlerClosure]() -> Number* { return static_cast<Number*>(clickHandlerClosure->call()); });
+}
+
+Number* TSObjectCache::click()
+{
+    return m_button.click();
+}
+
 Number* TSObjectCache::getNumbersSum() const
 {
     double sum = 0.0;
