@@ -13,7 +13,6 @@
 
 #include "std/gc.h"
 #include "std/runtime.h"
-#include "std/tsobject.h"
 
 #include "std/private/logger.h"
 
@@ -26,7 +25,7 @@ template <typename TObj>
 TSObjectOwner<TObj> make_object_owner(TObj* t);
 
 template <typename TObj>
-class TSObjectOwner : public Object
+class TSObjectOwner
 {
     static_assert(std::is_base_of<Object, TObj>::value, "TObj expected to be derived from Object");
 
@@ -43,8 +42,19 @@ public:
         clear();
     }
 
-    TSObjectOwner(const TSObjectOwner& other) = delete;
-    TSObjectOwner& operator=(TSObjectOwner& other) = delete;
+    TSObjectOwner(const TSObjectOwner& other)
+        : m_object(other.m_object)
+    {
+    }
+
+    TSObjectOwner& operator=(const TSObjectOwner& other)
+    {
+        clear();
+
+        m_object = other.m_object;
+
+        return *this;
+    }
 
     TSObjectOwner(TSObjectOwner&& other)
     {
@@ -59,35 +69,33 @@ public:
 
     const TObjectPtr& operator->() const noexcept
     {
-        return m_object;
+        return *m_object.get();
     }
 
-    std::vector<Object*> getChildObjects() const override
+    long useCount() const
     {
-        return {m_object};
+        return m_object.use_count();
     }
 
     bool empty() const
     {
-        return m_object == nullptr;
+        return m_object.use_count() == 0;
     }
 
 private:
     TSObjectOwner(TObj* obj)
-        : m_object(obj)
-        , m_root(std::make_unique<Object*>())
+        : m_object(std::make_shared<TObjectPtr>(obj))
     {
-        LOG_ADDRESS("Creating lock wrapper ", this);
-        *m_root = this;
-        Runtime::getGC()->addRootWithName(m_root.get(), "C++ side root wrapper");
+        LOG_ADDRESS("Creating lock wrapper ", m_object);
+        Runtime::getGC()->addRootWithName(reinterpret_cast<Object**>(m_object.get()), "C++ side root wrapper");
     }
 
     void clear()
     {
-        LOG_ADDRESS("Removing lock wrapper ", this);
-        if (m_root && Runtime::isInitialized())
+        if (m_object && Runtime::isInitialized() && m_object.use_count() == 1)
         {
-            Runtime::getGC()->removeRoot(reinterpret_cast<void**>(m_root.get()));
+            LOG_ADDRESS("Removing lock wrapper ", this);
+            Runtime::getGC()->removeRoot(reinterpret_cast<void**>(m_object.get()));
         }
     }
 
@@ -96,19 +104,13 @@ private:
         LOG_ADDRESS("Taking lock wrapper ownership ", this);
         clear();
 
-        m_root = std::exchange(other.m_root, nullptr);
         m_object = std::exchange(other.m_object, nullptr);
-        if (m_root)
-        {
-            *m_root = this;
-        }
     }
 
     friend TSObjectOwner make_object_owner<TObj>(TObj* t);
 
 private:
-    TObj* m_object;
-    std::unique_ptr<Object*> m_root;
+    std::shared_ptr<TObjectPtr> m_object;
 };
 
 template <class TObj>
