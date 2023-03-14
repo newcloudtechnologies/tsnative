@@ -9,8 +9,7 @@
  *
  */
 
-
-// Array
+// Iteration over Array
 {
     const arr = [1, 2, 3];
     let counter = 0;
@@ -20,31 +19,51 @@
     }
 }
 
+// Iteration over Array.keys()
 {
     const arr = [1, 2, 3];
     let counter = 0;
 
-    for (const value of arr) {
-        if (counter === 0) {
-            break;
-        }
-        console.assert(value === ++counter, "Array for..of");
+    for (const key of arr.keys()) {
+        console.assert(key === counter++, "Array.keys() for..of");
     }
-
-    console.log("Counter value: " + counter.toString());
-    console.assert(counter === 0, "Break failed");
 }
 
+// Iteration other Array.values()
+{
+    const arr = [1, 2, 3];
+    let counter = 0;
+
+    for (const value of arr.values()) {
+        console.assert(value === 1 + counter++, "Array.values() for..of");
+    }
+}
+
+// Iteration over String
+{
+    const str = "0123";
+    let counter = 0;
+
+    for (const value of str) {
+        const s = counter.toString();
+        counter++;
+        console.assert(value === s, "String for..of");
+    }
+}
+
+// Iteration over String 2
 {
     const str = "TEST";
     const chars = str.split("");
+    console.log(chars);
 
     let counter = 0;
     for (const char of str) {
-        console.assert(char === chars[counter++], "String for..of");
+        console.assert(char === chars[counter++], "String for..of 2");
     }
 }
 
+// Iteration over Set
 {
     const set = new Set<number>();
     set.add(3).add(1).add(-22);
@@ -56,6 +75,60 @@
     }
 }
 
+// Iteration over Set.keys()
+{
+    const set = new Set<number>();
+    set.add(3).add(1).add(-22);
+    const expected = [3, 1, -22];
+
+    let counter = 0;
+    for (const key of set.keys()) {
+        console.assert(key === expected[counter++], "Set.keys() for..of");
+    }
+}
+
+// Iteration over Set.values()
+{
+    const set = new Set<number>();
+    set.add(3).add(1).add(-22);
+    const expected = [3, 1, -22];
+
+    let counter = 0;
+    for (const value of set.values()) {
+        console.assert(value === expected[counter++], "Set.values() for..of");
+    }
+}
+
+// Iteration over Map.keys()
+{
+        const map = new Map<number, string>();
+        map.set(10, "Z").set(1, "A").set(2, "B");
+
+        const expectedKeys = [10, 1, 2];
+        const expectedValues = ["Z", "A", "B"];
+        let counter = 0;
+        for (const key of map.keys()) {
+            console.assert(key === expectedKeys[counter], "Map.keys() for..of");
+            ++counter;
+        }
+}
+
+// Iteration over Map.values()
+{
+    const map = new Map<number, string>();
+    map.set(10, "Z").set(1, "A").set(2, "B");
+
+    const expectedKeys = [10, 1, 2];
+    const expectedValues = ["Z", "A", "B"];
+
+    let counter = 0;
+    for (const value of map.values()) {
+        console.assert(value === expectedValues[counter], "Map.values() for..of");
+        ++counter;
+    }
+}
+
+// Iteration other Map
 {
     const map = new Map<number, string>();
     map.set(10, "Z").set(1, "A").set(2, "B");
@@ -70,6 +143,7 @@
     }
 }
 
+// Iteration other Map with destuctured initializer
 {
     const map = new Map<number, string>();
     map.set(10, "Z").set(1, "A").set(2, "B");

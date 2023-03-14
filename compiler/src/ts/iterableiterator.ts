@@ -24,33 +24,38 @@ export class TSIterableIterator {
     this.generator = generator;
   }
 
-  createIterator(valueDeclaration: Declaration, knownGenericTypes?: string[]) {
-    let id = valueDeclaration.type.toString();
+  // Create iterator getter method from Iterable
+  createIteratorGetterMethod(iterableDeclaration: Declaration, knownGenericTypes?: string[]) : LLVMValue {
+    let id = iterableDeclaration.type.toString();
     if (knownGenericTypes) {
       id += knownGenericTypes.join();
     }
 
     if (this.iteratorFns.has(id)) {
+      const iteratorFn = this.iteratorFns.get(id);
+      if (!iteratorFn) {
+        throw new Error(`Can't happen: Map.has() returned true and Map.get() returned undefined`);
+      }      
       return this.iteratorFns.get(id)!;
     }
 
-    const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]");
+    const iteratorDeclaration = iterableDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]");
 
     if (!iteratorDeclaration) {
-      throw new Error(`Unable to find '[Symbol.iterator]' at '${valueDeclaration.getText()}'`);
+      throw new Error(`Unable to find '[Symbol.iterator]' at '${iterableDeclaration.getText()}'`);
     }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       iteratorDeclaration,
       undefined,
-      valueDeclaration.type,
+      iterableDeclaration.type,
       [],
       this.generator,
       knownGenericTypes
     );
 
     if (!isExternalSymbol) {
-      throw new Error(`Iterator for declaration '${valueDeclaration.getText()}' not found`);
+      throw new Error(`Iterator for declaration '${iterableDeclaration.getText()}' not found`);
     }
 
     const { fn: iterator } = this.generator.llvm.function.create(
@@ -62,5 +67,17 @@ export class TSIterableIterator {
     this.iteratorFns.set(id, iterator);
 
     return iterator;
+  }
+
+  // Return iterator declaration from Iterable declaration
+  getIteratorDeclaration(iterableDeclaration: Declaration) {
+    const iteratorDeclaration = iterableDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]")!;
+    const signature = this.generator.ts.checker.getSignatureFromDeclaration(iteratorDeclaration);
+    const returnType = signature.getReturnType();
+    const declaration = returnType.getSymbol().valueDeclaration;
+    if (!declaration) {
+      throw new Error(`Iterator declaration '${iterableDeclaration.getText()}' not found`);
+    }
+    return declaration;
   }
 }

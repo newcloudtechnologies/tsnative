@@ -411,3 +411,14 @@
 
     console.assert(are_equal_arrays(Object.keys(obj), expected), "For..in shouldn't change iteration source");
 }
+
+// Iteration other Map.keys()
+{
+    const map = new Map<string, number>();
+    map.set("Z", 10);
+    let counter = 0;
+    for (const key in map.keys()) {
+        ++counter;
+    }
+    console.assert(counter === 0, "Map.keys() for..in 2");
+}
