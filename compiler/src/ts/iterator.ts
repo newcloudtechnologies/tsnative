@@ -25,22 +25,23 @@ export class TSIterator {
     this.generator = generator;
   }
 
-  getNext(valueDeclaration: Declaration, genericType: TSType) {
-    const id = valueDeclaration.type.toString() + genericType.toString();
+  // Create iterator next() method getter function
+  getNext(iteratorDeclaration: Declaration, genericType: TSType) : LLVMValue {
+    const id = iteratorDeclaration.type.toString() + genericType.toString();
 
     if (this.nextFns.has(id)) {
-      return this.nextFns.get(id)!;
+      const iteratorFn = this.nextFns.get(id);
+      if (!iteratorFn) {
+        throw new Error(`Can't happen: Map.has() returned true and Map.get() returned undefined`);
+      }
+      return iteratorFn;
     }
+    const thisType = this.generator.ts.checker.getTypeAtLocation(iteratorDeclaration.unwrapped);
 
-    const iteratorDeclaration = valueDeclaration.members.find((m) => m.name?.getText() === "[Symbol.iterator]")!;
-    const signature = this.generator.ts.checker.getSignatureFromDeclaration(iteratorDeclaration);
-
-    const returnType = signature.getReturnType();
-
-    const declaration = returnType.getSymbol().valueDeclaration!;
-    const thisType = returnType;
-
-    const nextDeclaration = declaration.members.find((m) => m.name?.getText() === "next")!;
+    const nextDeclaration = iteratorDeclaration.members.find((m) => m.name?.getText() === "next");
+    if (!nextDeclaration) {
+      throw new Error(`Symbol for 'next' is not found at '${iteratorDeclaration.getText()}'`);
+    }
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       nextDeclaration,
@@ -52,7 +53,7 @@ export class TSIterator {
     );
 
     if (!isExternalSymbol) {
-      throw new Error(`External symbol for 'next' is not found at '${declaration.getText()}'`);
+      throw new Error(`External symbol for 'next' is not found at '${iteratorDeclaration.getText()}'`);
     }
 
     const llvmReturnType = LLVMType.getInt8Type(this.generator).getPointer();

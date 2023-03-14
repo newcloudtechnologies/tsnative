@@ -119,6 +119,8 @@ template <typename T>
 class TS_DECLARE ArrayIterator : public IterableIterator<T>
 {
 public:
+    TS_CODE("[Symbol.iterator](): Iterator<T>;")
+
     ArrayIterator(Array<T>* iterable)
         : _iterable(iterable)
     {

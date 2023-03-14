@@ -19,6 +19,9 @@ import { LLVMValue } from "../../llvm/value";
 import { LoopHelper } from "./loophelper";
 import { ExitingBlocks } from "../../llvm/exiting_blocks";
 import { LLVMType } from "../../llvm/type";
+import { TSType } from "../../ts/type";
+import { TSIterator } from "../../ts/iterator";
+import { Declaration } from "../../ts/declaration";
 
 export class LoopHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -291,9 +294,6 @@ export class LoopHandler extends AbstractNodeHandler {
 
       const variableType = this.generator.ts.checker.getTypeAtLocation(initializer.name);
 
-      const iterable = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
-      const iterableTypeless = this.generator.builder.asVoidStar(iterable);
-
       const forOfHandlerImpl = () => {
         const condition = BasicBlock.create(context, "for_of.condition");
         const incrementor = BasicBlock.create(context, "for_of.incrementor");
@@ -311,14 +311,7 @@ export class LoopHandler extends AbstractNodeHandler {
         currentFunction.addBasicBlock(exiting);
         currentFunction.addBasicBlock(end);
 
-        const type = this.generator.ts.checker.getTypeAtLocation(statement.expression);
-        const symbol = type.getSymbol();
-        const declaration = symbol.valueDeclaration;
-
-        if (!declaration) {
-          throw new Error(`Unable to find value declaration for type: '${type.toString()}'. Error at: '${statement.getText()}'`);
-        }
-
+        // Process the case where variable in for_of is tuple
         let incPlaceholderPtrPtr = this.generator.gc.allocate(variableType.getLLVMType());
         if (isTupleInitializer()) {
           const bindingPattern = initializer.name as ts.ArrayBindingPattern;
@@ -333,11 +326,30 @@ export class LoopHandler extends AbstractNodeHandler {
 
         updateScope(incPlaceholderPtrPtr);
 
-        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(declaration);
-        const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [iterableTypeless]);
-        const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
+        // Process for_of statement.expression
+        const type = this.generator.ts.checker.getTypeAtLocation(statement.expression);
+        const declaration = type.getSymbol().valueDeclaration;
+        if (!declaration) {
+          throw new Error(`Unable to find value declaration for type: '${type.toString()}'. Error at: '${statement.getText()}'`);
+        }
 
-        const iteratorNextMethod = this.generator.ts.iterator.getNext(declaration, variableType);
+        // for_of argument expression can be either Iterator or Iterable,
+        // in case of iterable we need one more step: find Symbol.iterator
+        // and call it to obtain iterator
+        let iterator : LLVMValue;
+        let iteratorDeclaration : Declaration;
+        if (!type.isIterator()) {
+          // statement.expression is Iterable, obtain iterator from it
+          const iterable = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
+          const iterableTypeless = this.generator.builder.asVoidStar(iterable);
+          const iteratorGetterMethod = this.generator.ts.iterableIterator.createIteratorGetterMethod(declaration);
+          iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [iterableTypeless]);
+          iteratorDeclaration = this.generator.ts.iterableIterator.getIteratorDeclaration(declaration);
+        } else {
+          // create iterator directly from statement.expression
+          iterator = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
+          iteratorDeclaration = declaration;
+        }
 
         builder.createBr(bodyLatch);
         builder.setInsertionPoint(bodyLatch);
@@ -345,7 +357,9 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(condition);
         builder.setInsertionPoint(condition);
 
-        const next = this.generator.builder.createSafeCall(iteratorNextMethod, [iteratorTypeless]);
+        const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
+        const iteratorNextGetterMethod = this.generator.ts.iterator.getNext(iteratorDeclaration, variableType);
+        const next = this.generator.builder.createSafeCall(iteratorNextGetterMethod, [iteratorTypeless]);
         const nextTypeless = this.generator.builder.asVoidStar(next);
 
         const doneFn = this.generator.iteratorResult.getDoneGetter(variableType);
@@ -441,12 +455,11 @@ export class LoopHandler extends AbstractNodeHandler {
 
         const arrayDeclaration = this.generator.ts.array.getDeclaration();
 
-        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIterator(
+        const iteratorGetterMethod = this.generator.ts.iterableIterator.createIteratorGetterMethod(
           arrayDeclaration,
           ["String*"]);
         const iterator = this.generator.builder.createSafeCall(iteratorGetterMethod, [indicesTypeLess])
-        const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
-        const iteratorNextMethod = this.generator.ts.iterator.getNext(arrayDeclaration, variableType);
+        const iteratorDeclaration = this.generator.ts.iterableIterator.getIteratorDeclaration(arrayDeclaration);
 
         let incPlaceholderPtrPtr = this.generator.gc.allocate(variableType.getLLVMType());
         updateScope(incPlaceholderPtrPtr);
@@ -457,7 +470,9 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(condition);
         builder.setInsertionPoint(condition);
 
-        const next = this.generator.builder.createSafeCall(iteratorNextMethod, [iteratorTypeless]);
+        const iteratorTypeless = this.generator.builder.asVoidStar(iterator);
+        const iteratorNextGetterMethod = this.generator.ts.iterator.getNext(iteratorDeclaration, variableType);
+        const next = this.generator.builder.createSafeCall(iteratorNextGetterMethod, [iteratorTypeless]);
         const nextTypeless = this.generator.builder.asVoidStar(next);
 
         const doneFn = this.generator.iteratorResult.getDoneGetter(variableType);

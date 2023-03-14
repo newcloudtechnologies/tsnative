@@ -353,6 +353,11 @@ export class TSType {
     return this.isObject() && !this.isArray() && !this.isString();
   }
 
+  isIterator()
+  {
+    return this.toString().includes("Iterator<") && this.toString().endsWith(">");
+  }
+
   isPrimitive() {
     return (
       this.isNumber() ||
