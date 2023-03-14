@@ -86,7 +86,7 @@ private:
     TSObjectOwner(TObj* obj)
         : m_object(std::make_shared<TObjectPtr>(obj))
     {
-        LOG_ADDRESS("Creating lock wrapper ", m_object);
+        LOG_ADDRESS("Creating lock wrapper ", m_object.get());
         Runtime::getGC()->addRootWithName(reinterpret_cast<Object**>(m_object.get()), "C++ side root wrapper");
     }
 
