@@ -35,7 +35,7 @@
 template <typename T>
 class ArrayPrivate;
 
-class GCStringConverter;
+class ToStringConverter;
 
 template <typename T>
 class TS_DECLARE Array : public Iterable<T>
@@ -96,6 +96,8 @@ public:
     TS_METHOD TS_SIGNATURE("splice(start: number, deleteCount?: number): T[]") Array<T>* splice(
         Number* start, Union* maybeDeleteCount);
 
+    TS_METHOD TS_SIGNATURE("join(separator?: string|undefied): string") String* join(Union* maybeDelimiter) const;
+
     TS_METHOD TS_SIGNATURE("concat(other: T[]): T[]") Array<T>* concat(const Array<T>* other) const;
 
     std::vector<T> toStdVector() const;
@@ -112,7 +114,7 @@ private:
     ArrayPrivate<T>* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
 
 template <typename T>
@@ -264,6 +266,22 @@ Number* Array<T>::indexOf(T value, Union* maybeFromIndex) const
 }
 
 template <typename T>
+String* Array<T>::join(Union* maybeDelimiter) const
+{
+    if (maybeDelimiter && maybeDelimiter->hasValue())
+    {
+        auto maybeVal = maybeDelimiter->getValue();
+        if (maybeVal->isStringCpp())
+        {
+            auto delimiter = maybeVal->toString()->cpp_str();
+            return new String(_d->join(delimiter));
+        }
+    }
+
+    return new String(_d->join());
+}
+
+template <typename T>
 Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
 {
     const auto integralStart = static_cast<int>(start->unboxed());
@@ -315,7 +333,7 @@ std::vector<T> Array<T>::toStdVector() const
 template <typename T>
 String* Array<T>::toString() const
 {
-    return new String(_d->toString());
+    return join(nullptr);
 }
 
 template <typename T>

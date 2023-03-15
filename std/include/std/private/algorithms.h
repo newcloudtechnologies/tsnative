@@ -12,8 +12,12 @@
 #pragma once
 
 #include <algorithm>
+#include <string>
 #include <tuple>
 #include <unordered_map>
+
+namespace utils
+{
 
 namespace details
 {
@@ -68,3 +72,13 @@ Container filter(const Container& container, Predicate&& predicate)
 
     return result;
 }
+
+void replaceAll(std::string& str, const std::string& substrToReplace, const std::string& replacer);
+
+template <class Container, class TEl>
+void eraseAll(Container& container, const TEl& element)
+{
+    container.erase(std::remove(container.begin(), container.end(), element), container.end());
+}
+
+} // namespace utils

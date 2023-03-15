@@ -28,7 +28,7 @@ class Number;
 class Union;
 
 class StringPrivate;
-class GCStringConverter;
+class ToStringConverter;
 
 // add TS_DECLARE to template specialization
 template class TS_DECLARE Iterable<String*>;
@@ -100,7 +100,7 @@ private:
     StringPrivate* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
 
 TS_CODE("// @ts-ignore\n"

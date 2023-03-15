@@ -290,12 +290,10 @@
   console.assert('23' + [] === '23', "Check string + array");
 
   console.log([1,2,3].toString());
-  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
-  // console.assert([1, 2, 3] + "&&" === "123&&", "Check array + string");
+  console.assert([1, 2, 3] + "&&" === "1,2,3&&", "Check array + string");
 
-  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
-  // console.assert({} + "a" === "[object Object]a", "Check object + string");
-  // console.assert("a" + {e : 5} === "[object Object]a", "Check object + string");
+  console.assert({} + "a" === "[object Object]a", "Check object + string");
+  console.assert("a" + {e : 5} === "a[object Object]", "Check string + object");
 
   console.assert("123" + null === "123null", "Check string + null");
   console.assert(null + "" === "null", "Check null + string");
@@ -315,8 +313,7 @@
   //let str = "" + B;
   // let str2 = B.toString();
 
-  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-439
-  // console.assert("" + new B() === "[object Object]", "Check string + class");
+  console.assert("" + new B() === "[object Object]", "Check string + class");
 }
 
 {

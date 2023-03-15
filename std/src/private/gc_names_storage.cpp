@@ -10,7 +10,7 @@
  */
 
 #include "std/private/gc_names_storage.h"
-#include "std/private/gc_string_converter.h"
+#include "std/private/to_string_converter.h"
 #include "std/tsstring.h"
 
 #include <algorithm>
@@ -35,12 +35,12 @@ void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable
     const String* variableName = associatedVariable->get<String*>(g_VariableNameKey);
     if (variableName)
     {
-        entry.variableName = GCStringConverter::convert(variableName);
+        entry.variableName = ToStringConverter::convert(variableName);
     }
     const String* scopeName = associatedVariable->get<String*>(g_ScopeNameKey);
     if (scopeName)
     {
-        entry.scopeName = GCStringConverter::convert(scopeName);
+        entry.scopeName = ToStringConverter::convert(scopeName);
     }
 
     _associatedVariablesAndScopes[*root] = entry;

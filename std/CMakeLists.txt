@@ -104,10 +104,11 @@ set(SOURCES
     src/private/default_executor.cpp
     src/private/number_parser.cpp
     src/private/gc_printer.cpp
-    src/private/gc_string_converter.cpp
+    src/private/to_string_converter.cpp
     src/private/gc_names_storage.cpp
     src/private/uv_timer_creator.cpp
     src/private/tslazy_closure.cpp
+    src/private/algorithms.cpp
 )
     
 
@@ -238,13 +239,17 @@ if (BUILD_TEST)
                      test/event_loop/uv_timer_tests.cpp
                      test/primitive_types/string/replace_tests.cpp
                      test/primitive_types/number/unary.cpp
+                     test/primitive_types/to_string_test.cpp
                      test/promise/expected_tests.cpp
                      test/promise/general_finite_state_machine_tests.cpp
                      test/infrastructure/promise_wrapper.cpp
                      test/promise/promise_tests.cpp
                      test/array/splice_impl_tests.cpp
                      test/array/splice_tests.cpp
-                     test/mocks/stub_event_loop.cpp)
+                     test/array/join.cpp
+                     test/mocks/stub_event_loop.cpp
+                     test/utils/to_string_converter_tests.cpp
+                     )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
 

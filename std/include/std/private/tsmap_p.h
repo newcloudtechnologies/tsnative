@@ -42,6 +42,4 @@ public:
     virtual void forEachEntry(std::function<void(std::pair<K, V>&)> callable) = 0;
     // TODO This method should be removed and replaced by iterators?
     virtual void forEachEntry(std::function<void(const std::pair<K, V>&)> callable) const = 0;
-
-    virtual std::string toString() const = 0;
 };

@@ -24,7 +24,7 @@ class Number;
 class String;
 
 class BooleanPrivate;
-class GCStringConverter;
+class ToStringConverter;
 
 class TS_DECLARE Boolean : public Object
 {
@@ -49,7 +49,7 @@ private:
     BooleanPrivate* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
 
 TS_CODE("// @ts-ignore\n"

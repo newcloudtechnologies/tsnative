@@ -25,7 +25,7 @@
 
 class Number;
 class String;
-class GCStringConverter;
+class ToStringConverter;
 
 TS_CODE("// @ts-ignore\n"
         "export type TSClosure = Function;\n");
@@ -57,7 +57,7 @@ private:
     int64_t _optionals = 0;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
 
 template <typename T>

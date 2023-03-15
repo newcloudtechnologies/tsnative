@@ -262,44 +262,7 @@ void Object::set(const std::string& key, void* value)
 
 String* Object::toString() const
 {
-    std::ostringstream oss;
-
-    const auto& keys = _props->orderedKeys();
-
-    static size_t depth = 0;
-    static const int8_t PADDING_WIDTH = 2;
-
-    oss << "{";
-
-    ++depth;
-
-    for (const auto& key : keys)
-    {
-        oss << std::endl;
-        oss << std::string(depth * PADDING_WIDTH, ' ') << key << ":";
-
-        bool isParent = key->equals(parentKey)->unboxed();
-        auto obj = static_cast<const Object*>(_props->get(key));
-
-        if (isParent)
-        {
-            oss << "<recursive: " << size_t(obj) << ">";
-        }
-        else
-        {
-            oss << obj->toString()->cpp_str();
-        }
-    }
-
-    if (!keys.empty())
-    {
-        oss << std::endl;
-    }
-
-    depth--;
-    oss << std::string(depth * PADDING_WIDTH, ' ') + "}";
-
-    return new String{oss.str()};
+    return new String{"[object Object]"};
 }
 
 Boolean* Object::toBool() const

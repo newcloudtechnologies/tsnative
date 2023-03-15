@@ -183,10 +183,7 @@ Boolean* Promise::equals(Object* other) const
 
 String* Promise::toString() const
 {
-    auto msg = (_d->ready() ? getResult()->toString()->cpp_str() : "<pending>");
-    std::stringstream ss;
-    ss << "{ " << msg << "}";
-    return new String(ss.str());
+    return new String("[object Promise]");
 }
 
 Boolean* Promise::toBool() const

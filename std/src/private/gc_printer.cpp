@@ -11,7 +11,8 @@
 
 #include "std/private/gc_printer.h"
 
-#include "std/private/gc_string_converter.h"
+#include "std/private/algorithms.h"
+#include "std/private/to_string_converter.h"
 #include "std/tsobject.h"
 #include "std/tsstring.h"
 
@@ -21,6 +22,12 @@
 #include <sstream>
 
 #include <include/gvl.h>
+
+static std::string removeQuotes(std::string&& str)
+{
+    utils::eraseAll(str, '\"');
+    return str;
+}
 
 GCPrinter::GCPrinter(const GCPrinter::objects_t& heap, const GCPrinter::roots_t& roots, const GCNamesStorage& variables)
     : _heap(heap)
@@ -58,7 +65,7 @@ std::string GCPrinter::formatHeapInfo(const objects_t& heap) const
         }
 
         ss << "Obj: " << std::hex << el << std::endl;
-        ss << "Value: " << GCStringConverter::convert(el) << std::endl;
+        ss << "Value: " << removeQuotes(ToStringConverter::convert(el)) << std::endl;
         ss << formatVariableNames(el) << std::endl;
 
         ss << std::endl;
@@ -78,7 +85,7 @@ std::string GCPrinter::formatObjInfo(const Object* obj) const
 {
     std::stringstream ss;
     ss << "Obj: " << std::hex << obj << std::endl;
-    ss << "Value: " << GCStringConverter::convert(obj) << std::endl;
+    ss << "Value: " << removeQuotes(ToStringConverter::convert(obj)) << std::endl;
     ss << formatVariableNames(obj) << std::endl;
 
     return ss.str();

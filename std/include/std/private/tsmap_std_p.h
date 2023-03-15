@@ -39,11 +39,6 @@ public:
     void forEachEntry(std::function<void(std::pair<K, V>&)> callable) override;
     void forEachEntry(std::function<void(const std::pair<K, V>&)> callable) const override;
 
-    std::string toString() const override;
-
-    template <typename U, typename W>
-    friend std::ostream& operator<<(std::ostream& os, const MapStdPrivate<U, W>* m);
-
 private:
     std::unordered_map<K, V> _hashmap;
     std::vector<K> _orderedKeys;
@@ -151,27 +146,4 @@ template <typename K, typename V>
 const std::vector<K>& MapStdPrivate<K, V>::orderedKeys() const
 {
     return _orderedKeys;
-}
-
-template <typename K, typename V>
-std::string MapStdPrivate<K, V>::toString() const
-{
-    std::ostringstream oss;
-    oss << this;
-    return oss.str();
-}
-
-template <typename K, typename V>
-inline std::ostream& operator<<(std::ostream& os, const MapStdPrivate<K, V>* m)
-{
-    os << "Map {\n";
-
-    for (auto* key : m->_orderedKeys)
-    {
-        os << "    " << key << ": " << m->get(key) << "\n";
-    }
-
-    os << "}";
-
-    return os;
 }

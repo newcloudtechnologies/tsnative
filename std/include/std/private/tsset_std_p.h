@@ -40,11 +40,6 @@ public:
     void forEach(std::function<void(V&)> callable) override;
     void forEach(std::function<void(const V&)> callable) const override;
 
-    std::string toString() const override;
-
-    template <typename U>
-    friend std::ostream& operator<<(std::ostream&, const SetStdPrivate<U>*);
-
 private:
     std::set<V> _set;
     std::vector<V> _ordered;
@@ -124,27 +119,4 @@ template <typename V>
 const std::vector<V>& SetStdPrivate<V>::ordered() const
 {
     return _ordered;
-}
-
-template <typename V>
-std::string SetStdPrivate<V>::toString() const
-{
-    std::ostringstream oss;
-    oss << this;
-    return oss.str();
-}
-
-template <typename V>
-inline std::ostream& operator<<(std::ostream& os, const SetStdPrivate<V>* s)
-{
-    os << "Set [\n";
-
-    for (auto value : s->_ordered)
-    {
-        os << "  " << value << "\n";
-    }
-
-    os << "]";
-
-    return os;
 }

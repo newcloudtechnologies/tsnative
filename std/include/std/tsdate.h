@@ -23,7 +23,7 @@ class String;
 class Union;
 
 class DatePrivate;
-class GCStringConverter;
+class ToStringConverter;
 
 class TS_DECLARE Date : public Object
 {
@@ -161,5 +161,5 @@ private:
     DatePrivate* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };

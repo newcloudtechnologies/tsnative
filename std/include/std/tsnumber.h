@@ -26,7 +26,7 @@ class String;
 class Union;
 
 class NumberPrivate;
-class GCStringConverter;
+class ToStringConverter;
 
 class TS_DECLARE Number : public Object
 {
@@ -103,7 +103,7 @@ private:
     NumberPrivate* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
 
 TS_CODE("// @ts-ignore\n"
