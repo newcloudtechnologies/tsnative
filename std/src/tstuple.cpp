@@ -58,7 +58,7 @@ void Tuple::setElementAtIndex(Number* index, Object* value)
 
 String* Tuple::toString() const
 {
-    return new String(_d->toString());
+    return new String(_d->join(","));
 }
 
 std::vector<Object*> Tuple::getChildObjects() const

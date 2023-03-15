@@ -27,7 +27,7 @@ class Union;
 class TSClosure;
 
 class PromisePrivate;
-class GCStringConverter;
+class ToStringConverter;
 
 class TS_DECLARE Promise : public Object, public EmitterBase<Promise, ReadyEvent>
 {
@@ -86,5 +86,5 @@ private:
     std::vector<Object*> _childs;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };

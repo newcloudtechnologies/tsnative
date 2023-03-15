@@ -40,5 +40,6 @@ public:
     virtual std::vector<std::size_t> keys() const = 0;
 
     virtual std::vector<T> toStdVector() const = 0;
-    virtual std::string toString() const = 0;
+
+    virtual std::string join(const std::string& delimiter = ",") const = 0;
 };

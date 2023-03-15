@@ -35,7 +35,7 @@
 template <typename T>
 class SetPrivate;
 
-class GCStringConverter;
+class ToStringConverter;
 
 template <typename T>
 class TS_DECLARE Set : public Iterable<T>
@@ -71,7 +71,7 @@ private:
     SetPrivate<T>* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
 
 template <typename T>
@@ -172,7 +172,7 @@ IterableIterator<T>* Set<T>::keys()
 template <typename T>
 String* Set<T>::toString() const
 {
-    return new String(_d->toString());
+    return new String("[object Set]");
 }
 
 template <typename T>

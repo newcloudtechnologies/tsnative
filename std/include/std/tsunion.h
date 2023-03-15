@@ -20,7 +20,7 @@
 #include <ostream>
 
 class Boolean;
-class GCStringConverter;
+class ToStringConverter;
 
 class TS_DECLARE Union : public Object
 {
@@ -55,5 +55,5 @@ private:
     Object* _value = Undefined::instance();
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };

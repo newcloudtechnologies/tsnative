@@ -23,7 +23,7 @@ class ArrayPrivate;
 
 class String;
 class Number;
-class GCStringConverter;
+class ToStringConverter;
 
 class TS_DECLARE Tuple : public Object
 {
@@ -47,5 +47,5 @@ private:
     ArrayPrivate<Object*>* _d = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };

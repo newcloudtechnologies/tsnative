@@ -596,3 +596,11 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   console.assert(e1 === 1, "Array: destructing assignment element 1 not equal");
   console.assert(e2 === 2, "Array: destructing assignment element 2 not equal");
 }
+
+{
+  let description = "Test join";
+  const arr = [-55, 0, Number.NaN, +9];
+
+  console.assert(arr.join() === "-55,0,NaN,9", description + " simple");
+  console.assert(arr.join("* *") === "-55* *0* *NaN* *9", description + " with separator");
+}

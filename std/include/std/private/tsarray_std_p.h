@@ -23,6 +23,8 @@
 #include <sstream>
 #include <vector>
 
+class StringConverter;
+
 template <typename T>
 class DequeueBackend : public ArrayPrivate<T>
 {
@@ -52,10 +54,8 @@ public:
     std::vector<std::size_t> keys() const override;
 
     std::vector<T> toStdVector() const override;
-    std::string toString() const override;
 
-    template <typename U>
-    friend std::ostream& operator<<(std::ostream& os, const DequeueBackend<U>* array);
+    std::string join(const std::string& delimiter = ",") const override;
 
 private:
     std::vector<T> doSplice(std::size_t start, std::size_t deleteCount);
@@ -63,6 +63,7 @@ private:
 
 private:
     std::deque<T> _storage;
+    friend class StringConverter;
 };
 
 template <typename T>
@@ -254,14 +255,6 @@ std::vector<T> DequeueBackend<T>::toStdVector() const
 }
 
 template <typename T>
-std::string DequeueBackend<T>::toString() const
-{
-    std::ostringstream oss;
-    oss << this;
-    return oss.str();
-}
-
-template <typename T>
 template <typename... Ts>
 std::size_t DequeueBackend<T>::push(T t, Ts... ts)
 {
@@ -279,37 +272,31 @@ std::vector<std::size_t> DequeueBackend<T>::keys() const
 }
 
 template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const DequeueBackend<T>* array)
+std::string DequeueBackend<T>::join(const std::string& delimiter) const
 {
-    os << std::boolalpha;
-    os << "[";
-    if (!array->_storage.empty())
+    if (_storage.empty())
     {
-        std::for_each(array->_storage.cbegin(),
-                      array->_storage.cend() - 1,
-                      [&os](T value)
-                      {
-                          if (value)
-                          {
-                              os << Object::asObjectPtr(value)->toString()->cpp_str() << ", ";
-                          }
-                          else
-                          {
-                              os << "null"
-                                 << ", ";
-                          }
-                      });
+        return "";
+    }
 
-        auto last = array->_storage.back();
-        if (last)
+    std::ostringstream oss;
+
+    for (auto it = _storage.cbegin(); it != _storage.cend(); ++it)
+    {
+        if (*it)
         {
-            os << Object::asObjectPtr(last)->toString()->cpp_str();
+            oss << Object::asObjectPtr(*it)->toString()->cpp_str();
         }
         else
         {
-            os << "null";
+            oss << "null";
+        }
+
+        if (it != _storage.cend() - 1)
+        {
+            oss << delimiter;
         }
     }
-    os << "]";
-    return os;
+
+    return oss.str();
 }

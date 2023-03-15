@@ -29,7 +29,7 @@ class Map;
 template <typename K, typename V>
 class MapPrivate;
 
-class GCStringConverter;
+class ToStringConverter;
 
 enum class TSTypeID
 {
@@ -101,6 +101,7 @@ public:
 
     // virtual because compiler tries to find it using vtable
     TS_METHOD virtual String* toString() const;
+
     TS_METHOD virtual Boolean* toBool() const;
 
     TS_METHOD virtual Boolean* equals(Object* other) const;
@@ -141,7 +142,6 @@ public:
 
     void* operator new(std::size_t n);
 
-private:
     std::vector<String*> getKeys() const;
 
 private:
@@ -152,5 +152,5 @@ private:
     bool _isMarked = false;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };

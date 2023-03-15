@@ -14,6 +14,7 @@
 #include <TS.h>
 
 #include "std/private/options.h"
+#include "std/private/to_string_converter.h"
 
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
@@ -50,7 +51,7 @@ TS_CODE(
 template <typename T>
 void console::log(T value)
 {
-    std::cout << std::boolalpha << Object::asObjectPtr(value)->toString()->cpp_str() << std::endl;
+    std::cout << ToStringConverter::convert(Object::asObjectPtr(value)) << std::endl;
 }
 
 template <typename T, typename... Ts>
@@ -62,7 +63,7 @@ void console::log(T v, Ts... ts)
 template <typename T, typename... Ts>
 void console::logImpl(T v, Ts... ts)
 {
-    std::cout << std::boolalpha << Object::asObjectPtr(v)->toString()->cpp_str() << " ";
+    std::cout << ToStringConverter::convert(Object::asObjectPtr(v)) << " ";
     console::log(ts...);
 }
 

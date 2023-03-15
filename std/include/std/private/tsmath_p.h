@@ -104,16 +104,17 @@ private:
     template <typename... Args>
     constexpr static void checkDoubleTraits(Args&... args)
     {
-        forEachInTuple(std::tuple<Args...>{},
-                       [](auto t)
-                       { static_assert(std::is_floating_point<decltype(t)>::value, "Require float pointing type"); });
+        utils::forEachInTuple(
+            std::tuple<Args...>{},
+            [](auto t) { static_assert(std::is_floating_point<decltype(t)>::value, "Require float pointing type"); });
     }
 
     template <typename... Args>
     static bool hasNaN(Args&... args)
     {
         std::size_t countNaN = 0;
-        forEachInTuple(std::make_tuple(args...), [&countNaN](double d) { countNaN += (NumberPrivate::isNaN(d)); });
+        utils::forEachInTuple(std::make_tuple(args...),
+                              [&countNaN](double d) { countNaN += (NumberPrivate::isNaN(d)); });
 
         return countNaN != 0;
     }

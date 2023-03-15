@@ -29,9 +29,9 @@ public:
     constexpr GeneralFiniteStateMachine()
     {
         static_assert(std::is_base_of<GeneralFiniteStateMachine, T>::value, "Type T should be type Fsm");
-        forEachInTuple(std::tuple<TStates...>{},
-                       [](auto state)
-                       { static_assert(std::is_empty<decltype(state)>::value, "Expected only empty FSM states"); });
+        utils::forEachInTuple(
+            std::tuple<TStates...>{},
+            [](auto state) { static_assert(std::is_empty<decltype(state)>::value, "Expected only empty FSM states"); });
     }
 
     template <typename Event>

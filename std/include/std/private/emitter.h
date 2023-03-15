@@ -74,7 +74,7 @@ public:
 
     void reset() noexcept
     {
-        forEachInTuple(_handlers, [](auto& listeners) { listeners.clear(); });
+        utils::forEachInTuple(_handlers, [](auto& listeners) { listeners.clear(); });
     }
 
     template <typename TEvent>

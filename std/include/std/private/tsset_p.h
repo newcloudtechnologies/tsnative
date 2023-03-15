@@ -36,6 +36,4 @@ public:
     virtual void forEach(std::function<void(V&)> callable) = 0;
     // TODO This method should be removed and replaced by iterators?
     virtual void forEach(std::function<void(const V&)> callable) const = 0;
-
-    virtual std::string toString() const = 0;
 };

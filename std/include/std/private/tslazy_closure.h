@@ -21,7 +21,7 @@
 
 class Number;
 class String;
-class GCStringConverter;
+class ToStringConverter;
 
 TS_CODE("// @ts-ignore\n"
         "export type TSLazyClosure = Function;\n");
@@ -42,5 +42,5 @@ private:
     Enviroment _env = nullptr;
 
 private:
-    friend class GCStringConverter;
+    friend class ToStringConverter;
 };
