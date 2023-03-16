@@ -13,6 +13,7 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { HeapVariableDeclaration, Environment, Scope } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
+import { VariableFinder } from "../variablefinder"
 
 export class IdentifierHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -49,15 +50,11 @@ export class IdentifierHandler extends AbstractExpressionHandler {
     }
 
     let identifier = expression.getText();
-
+    const varFinder = new VariableFinder(this.generator);
     if (env) {
-      const index = env.getVariableIndex(identifier);
-      if (index > -1) {
-        const agg = this.generator.builder.createLoad(env.typed);
-
-        const extracted = this.generator.builder.createSafeExtractValue(agg, [index]);
-
-        return extracted;
+      const valueFromEnv = varFinder.findInsideEnv(identifier, env);
+      if (valueFromEnv) {
+        return valueFromEnv;
       }
     }
 
@@ -70,7 +67,7 @@ export class IdentifierHandler extends AbstractExpressionHandler {
       identifier = declarationNamespace.concat(type.mangle()).join(".");
     }
 
-    const value = this.generator.symbolTable.currentScope.tryGetThroughParentChain(identifier);
+    const value = varFinder.findInsideScopes(identifier);
     if (!value) {
       throw new Error(`Identifier '${expression.text}' not found in local scope nor environment`);
     }
