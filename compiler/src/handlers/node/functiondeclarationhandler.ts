@@ -14,7 +14,7 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment, createEnvironment } from "../../scope";
 import { LLVMFunction } from "../../llvm/function";
 import { LLVMType } from "../../llvm/type";
-import { LLVMConstant, LLVMValue } from "../../llvm/value";
+import { LLVMValue } from "../../llvm/value";
 import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { FunctionHandler } from "../expression/functionhandler";

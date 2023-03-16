@@ -34,6 +34,7 @@ import { LLVMFunction } from "../../llvm/function";
 import { getInvocableBody, needUnwind } from "../../builder/builder";
 import { TSSymbol } from "../../ts/symbol";
 import { DummyArgumentsCreator } from "../dummyargumentscreator";
+import { VariableFinder } from "../variablefinder"
 
 export class FunctionHandler extends AbstractExpressionHandler {
   private readonly sysVFunctionHandler: SysVFunctionHandler;
@@ -1227,7 +1228,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       );
     }
 
-    let thisValuePtr = this.getThisForConstructorCall(expression);
+    let thisValuePtr = this.getThisForConstructorCall(expression, outerEnv);
 
     const scope = this.generator.symbolTable.currentScope;
     scope.setOrAssign(this.generator.internalNames.This, thisValuePtr);
@@ -1327,7 +1328,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     return thisValuePtr;
   }
 
-  private getThisForConstructorCall(expression: ts.NewExpression) {
+  private getThisForConstructorCall(expression: ts.NewExpression, outerEnv?: Environment) {
     const isVariableDeclaration = ts.isVariableDeclaration(expression.parent);
     const isReassignment = ts.isBinaryExpression(expression.parent) && expression.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(expression.parent.left);
 
@@ -1343,7 +1344,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
       variableName = (expression.parent as ts.BinaryExpression).left.getText();
     }
 
-    const hoistedPtrPtr = this.generator.symbolTable.currentScope.tryGetThroughParentChain(variableName);
+    const varFinder = new VariableFinder(this.generator);
+    const hoistedPtrPtr = varFinder.find(variableName, outerEnv);
     if (!hoistedPtrPtr || !(hoistedPtrPtr instanceof LLVMValue)) {
       throw new Error(`Expected hoisted variable '${variableName}' should be LLVMValue with ** inside`);
     }

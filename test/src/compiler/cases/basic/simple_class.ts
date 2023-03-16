@@ -1620,3 +1620,16 @@
 
   console.assert(widget.closeAction === closeAction, "Searching for matching constructor should work with object-typed arguments");
 }
+
+// Just test if it compiles
+{
+  class A {
+  }
+  let n = new A();
+  
+  function buzzfuzz() {
+      n = new A()
+  }
+  
+  buzzfuzz();
+}
