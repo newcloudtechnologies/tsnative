@@ -16,11 +16,8 @@
 #include <algorithm>
 #include <cassert>
 
-namespace
-{
-constexpr auto g_VariableNameKey = "__variable_name__";
-constexpr auto g_ScopeNameKey = "__scope_name__";
-} // namespace
+static String* g_VariableNameKey = new String("__variable_name__");
+static String* g_ScopeNameKey = new String("__scope_name__");
 
 void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable)
 {
@@ -32,12 +29,12 @@ void GCNamesStorage::setRootName(Object** root, const Object* associatedVariable
     Entry entry;
     entry.valid = true;
 
-    const String* variableName = associatedVariable->get<String*>(g_VariableNameKey);
+    const auto* variableName = associatedVariable->get(g_VariableNameKey);
     if (variableName)
     {
         entry.variableName = ToStringConverter::convert(variableName);
     }
-    const String* scopeName = associatedVariable->get<String*>(g_ScopeNameKey);
+    const auto* scopeName = associatedVariable->get(g_ScopeNameKey);
     if (scopeName)
     {
         entry.scopeName = ToStringConverter::convert(scopeName);
