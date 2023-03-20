@@ -156,6 +156,8 @@ export class AccessHandler extends AbstractExpressionHandler {
       return this.handleArrayElementAccess(expression, env);
     } else if (type.isTuple()) {
       return this.handleTupleElementAccess(expression, env);
+    } else if (type.isString()) {
+      return this.handleStringElementAccess(expression, env);
     } else if (type.isObject()) {
       return this.handlePropertyAccessGEP(expression, env);
     } else {
@@ -179,6 +181,15 @@ export class AccessHandler extends AbstractExpressionHandler {
     const elementLLVMType = elementType.getLLVMType();
 
     return this.generator.builder.createBitCast(element, elementLLVMType);
+  }
+
+  private handleStringElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {
+    const subscription = this.generator.ts.str.createSubscription();
+    const string = this.generator.handleExpression(expression.expression, env).derefToPtrLevel1();
+    const stringUntyped = this.generator.builder.asVoidStar(string);
+    const index = this.generator.handleExpression(expression.argumentExpression, env).derefToPtrLevel1();
+    const element = this.generator.builder.createSafeCall(subscription, [stringUntyped, index]);
+    return element;
   }
 
   private handleTupleElementAccess(expression: ts.ElementAccessExpression, env?: Environment): LLVMValue {

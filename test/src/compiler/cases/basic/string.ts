@@ -344,3 +344,35 @@
   const w9 = -+-"5";
   console.assert(w9 === 5, "String: -+-5 case failed");
 }
+
+{
+  const s : string = "AB";
+  console.assert(s[0] === "A", "String: operator[] 1");
+  console.assert(s[1] === "B", "String: operator[] 2");
+}
+
+{
+  let i = 0;
+  const s : string = "AB";
+  console.assert(s[i] === "A", "String: operator[]  with variable 1");
+  i++;
+  console.assert(s[i] === "B", "String: operator[]  with variable 2");
+}
+
+{
+  let i = -1;
+  const s : string = "AB";
+  console.assert(s[i + 1] === "A", "String: operator[]  with variable 1");
+  console.assert(s[i + 2] === "B", "String: operator[]  with variable 2");
+}
+
+{
+  const s : string = "AB";
+  for (let i = 0; i < s.length; i++) {
+    if (i === 0) {
+      console.assert(s[i] === "A", "String: for & operator[] 1");
+    } else if (i === 1) {
+      console.assert(s[i] === "B", "String: for & operator[] 2");
+    }
+  }
+}
