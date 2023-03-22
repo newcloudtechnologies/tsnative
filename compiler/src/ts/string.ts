@@ -23,8 +23,9 @@ export class TSString {
   private readonly generator: LLVMGenerator;
   private readonly declaration: Declaration;
   private readonly llvmType: LLVMType;
-
+  
   private readonly constructorFns = new Map<string, LLVMValue>();
+  private subscriptFn : LLVMValue | undefined;
   private lengthFn: LLVMValue | undefined;
   private concatFn: LLVMValue | undefined;
   private cloneFn: LLVMValue | undefined;
@@ -137,6 +138,10 @@ export class TSString {
     return result;
   }
 
+  getTSType() {
+    return this.declaration.type;
+  }
+
   getLLVMType() {
     return this.llvmType;
   }
@@ -236,5 +241,40 @@ export class TSString {
     }
 
     return this.generator.builder.createSafeCall(this.cloneFn, [value]);
+  }
+
+  createSubscription() {
+    if (this.subscriptFn) {
+      return this.subscriptFn;
+    }
+
+    const stringType = this.generator.ts.str.getTSType();
+    const valueDeclaration = stringType.getSymbol().valueDeclaration;
+    if (!valueDeclaration) {
+      throw new Error("No declaration for String found");
+    }
+    const declaration = valueDeclaration.members.find((m) => m.isIndexSignature())!;
+
+    const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
+      declaration,
+      undefined,
+      stringType,
+      [this.generator.builtinNumber.getTSType()],
+      this.generator
+    );
+
+    if (!isExternalSymbol) {
+      throw new Error(`String 'subscription' for type '${stringType.toString()}' not found`);
+    }
+
+    const { fn: subscript } = this.generator.llvm.function.create(
+      this.generator.ts.str.getLLVMType(),
+      [LLVMType.getInt8Type(this.generator).getPointer(), this.generator.builtinNumber.getLLVMType()],
+      qualifiedName
+    );
+
+    this.subscriptFn = subscript;
+
+    return subscript;
   }
 }
