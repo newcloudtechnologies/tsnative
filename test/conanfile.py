@@ -207,13 +207,14 @@ class TSNativeTestsConan(ConanFile):
 
         cases = apply_filter(cases)
 
+        t = time.time()
+
         # For pure ts code we use CMakeLists.txt located in compiler package folder
         for require, dependency in self.dependencies.items():
             if "tsnative-compiler" in dependency.ref:
                 compiler_pkg_dir = dependency.package_folder
                 break
 
-        t = time.time()
         for case in cases:
             self.output.info("==== Compiling %s" % case)
             # CMake class doesn't provide explicit option to control build dir path
@@ -230,17 +231,16 @@ class TSNativeTestsConan(ConanFile):
             cmake.build()
 
         # build ts-cpp integration tests
-        if self.settings.os != "Windows":   # FIXME: TSN-396
-            self.output.info("==== Tests cpp_integration started, os: %s" % self.settings.os)
-            cpp_integration_tests_path_object = Path(self.getRelativeCppIntegrationTestsPath())
-            all_cpp_tests = list(map(lambda x: Path(x).stem, cpp_integration_tests_path_object.glob('*.ts')))
-            cpp_tests = apply_filter(all_cpp_tests)
-            for test in cpp_tests:
-                self.output.info("==== Compiling %s" % test)
-                self.folders.build = os.path.join(out_dir, "cpp_integration")
-                cmake = CMake(self)
-                cmake.configure(build_script_folder=os.path.join(self.src_path, "cpp_integration"))
-                cmake.build(build_tool_args=["-j1"] if is_ci() else [])
+        self.output.info("==== Tests cpp_integration started, os: %s" % self.settings.os)
+        cpp_integration_tests_path_object = Path(self.getRelativeCppIntegrationTestsPath())
+        all_cpp_tests = list(map(lambda x: Path(x).stem, cpp_integration_tests_path_object.glob('*.ts')))
+        cpp_tests = apply_filter(all_cpp_tests)
+        for test in cpp_tests:
+            self.output.info("==== Compiling %s" % test)
+            self.folders.build = os.path.join(out_dir, "cpp_integration")
+            cmake = CMake(self)
+            cmake.configure(build_script_folder=os.path.join(self.src_path, "cpp_integration"))
+            cmake.build(build_tool_args=["-j1"] if is_ci() else [])
 
         # clean up
         self.folders.build = ""
