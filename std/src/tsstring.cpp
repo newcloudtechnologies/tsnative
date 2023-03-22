@@ -273,6 +273,10 @@ Boolean* String::equals(Object* other) const
 
 String* String::operator[](Number* index) const
 {
+    if (index->unboxed() < 0)
+    {
+        throw std::runtime_error("Invalid string index");
+    }
     return operator[](static_cast<size_t>(index->unboxed()));
 }
 

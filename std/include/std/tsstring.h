@@ -79,7 +79,7 @@ public:
 
     TS_METHOD Boolean* equals(Object* other) const override;
 
-    String* operator[](Number* index) const;
+    TS_METHOD TS_SIGNATURE("[index: number]: string") String* operator[](Number* index) const;
     String* operator[](size_t index) const;
 
     TS_METHOD String* toString() const override;

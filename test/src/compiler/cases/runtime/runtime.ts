@@ -17,7 +17,8 @@ import { Runtime } from "tsnative/std/definitions/runtime"
     const firstArg = args[0];
     const splittedPath = firstArg.split("/");
     console.assert(splittedPath.length > 0, "Runtime tests failed: Path is empty");
-    const filename = splittedPath[splittedPath.length - 1];
+    let filename = splittedPath[splittedPath.length - 1];
+    filename = filename.split(".")[0]; // remove extension if any
 
     const expected = "runtime";
     console.assert(filename === expected, "Runtime tests failed: First cmd arg should be binary name");
