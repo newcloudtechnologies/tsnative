@@ -47,7 +47,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 3, unit: 'HOURS')   // timeout on whole pipeline job
+        timeout(time: 4, unit: 'HOURS')   // timeout on whole pipeline job
     }
 
     stages {
@@ -220,7 +220,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
                                     string(name: 'PKG_CONAN_OPTIONS', value: "-s:b build_type=Release -s:h build_type=Debug -s:b tsnative-declarator:build_type=Release -s:b tsnative-compiler:build_type=Release -s:h tsnative-std:build_type=Debug -s:h abseil:build_type=Release -s:h gtest:build_type=Release -s:h libuv:build_type=Release -s:h graphvizlib:build_type=Release"),
                                     string(name: 'PKG_CONAN_UPLOAD_PATTERN', value: ''),
-                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin_x86_64.*|android.*'),
+                                    string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin_x86_64.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
                         }
