@@ -607,7 +607,6 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 
 {
   const arr = "0123456789";
-  
   const digits1 = new Map<string, number>();
   const digits2 = new Map<string, number>();
   arr.split('').map((c, i) => digits1.set(c, i));
