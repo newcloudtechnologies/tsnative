@@ -11,12 +11,10 @@
 
 import { innerNS } from "cpp_integration_exts";
 import { ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod } from "cpp_integration_exts";
-// import { sum } from "cpp_integration_exts";
+import { sum } from "cpp_integration_exts";
 
-/* @todo: template parameters extraction from signature fails on this
 sum<number, number>(1, 3);
-sum<string, int32_t>("hello, ", "world");
-*/
+
 
 console.assert(innerNS.getGenericNumber<number>() === 42, "Generic 'innerNS.getGenericNumber<number>' test failed");
 console.assert(innerNS.getGenericNumber<string>() === "forty two", "Generic 'innerNS.getGenericNumber<string>' test failed");

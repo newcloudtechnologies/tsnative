@@ -22,7 +22,6 @@
 namespace cpp_integration IS_TS_MODULE
 {
 
-/*
 template <typename T, typename R>
 R TS_EXPORT sum(T op1, T op2)
 {
@@ -40,7 +39,6 @@ Number* TS_EXPORT sum(String* op1, String* op2)
 {
     return op1->length()->add(op2->length());
 }
-*/
 
 namespace innerNS IS_TS_NAMESPACE
 {

@@ -182,9 +182,11 @@ export class ExternalSymbolsProvider {
     const signature = generator.ts.checker.getSignatureFromDeclaration(declaration);
     const formalTypeParameters = signature.getTypeParameters();
 
-    if (!formalTypeParameters) {
+    if (!formalTypeParameters || !declaration.typeParameters) {
       return functionTemplateParametersPattern;
     }
+
+    const typeParamNames = declaration.typeParameters.map(t => t.name.getText());
 
     const formalParameters = signature.getParameters();
     const resolvedSignature = generator.ts.checker.getResolvedSignature(expression)!;
@@ -195,13 +197,17 @@ export class ExternalSymbolsProvider {
 
     const typenameTypeMap = signature.getGenericsToActualMap(expression);
     const templateTypes: string[] = [];
-    typenameTypeMap.forEach((value) => {
-      templateTypes.push(value.toPlainCppType());
-    });
 
-    functionTemplateParametersPattern = templateTypes.join(",");
+    for (const [name, type] of typenameTypeMap) {
+      if (typeParamNames.includes(name)) {
+        templateTypes.push(type.toPlainCppType());
+      }
+    }
+    
+    functionTemplateParametersPattern = templateTypes.join(",").replace(/\*/g, "");
     return functionTemplateParametersPattern;
   }
+
   private tryGetImpl(declaration: Declaration): string | undefined {
     if (declaration.isConstructor()) {
       const classDeclaration = Declaration.create(declaration.parent as ts.ClassDeclaration, this.generator);
@@ -320,7 +326,60 @@ export class ExternalSymbolsProvider {
       })
       .join(",");
   }
+
+  private normalizeCppSignature(signature: string): string {
+    let openedBracketsCount = 0;
+    let result = "";
+
+    for (const c of signature) {
+      if (c === "<") {
+        openedBracketsCount++;
+      }
+
+      if (c === ">") {
+        openedBracketsCount--;
+      }
+
+      if (openedBracketsCount !== 0 && c === " ") {
+        continue;
+      }
+
+      result += c;
+    }
+
+    return result;
+  }
+
+  private extractTypes(parameters: string): string {
+    let splittedByZeroLevelComma = []
+
+    let openedCount = 0;
+    let splitCommaPositions = [];
+    for (let i = 0 ; i < parameters.length ; ++i) {
+        if (parameters[i] === "<") {
+            openedCount++;
+        }
+        else if (parameters[i] === ">") {
+            openedCount--;
+        }
+        if (parameters[i] === "," && openedCount === 0) {
+            splitCommaPositions.push(i);
+        }
+    }
+
+    let begin = 0;
+    for (let pos of splitCommaPositions) {
+        splittedByZeroLevelComma.push(parameters.substring(begin, pos));
+        begin = pos + 1;
+    }
+    splittedByZeroLevelComma.push(parameters.substring(begin));
+
+    return ExternalSymbolsProvider.unqualifyParameters(splittedByZeroLevelComma);
+  }
+
   private extractTemplateParameterTypes(cppSignature: string): string[] {
+    cppSignature = this.normalizeCppSignature(cppSignature);
+
     // @todo: use lazy cache
     const namespaceType = this.namespace + this.thisTypeName;
 
@@ -337,16 +396,12 @@ export class ExternalSymbolsProvider {
     let classTemplateParameters: string = "";
     let functionTemplateParameters: string = "";
 
-    const extractTypes = (parameters: string): string => {
-      return ExternalSymbolsProvider.unqualifyParameters(parameters.split(","));
-    };
-
     if (classTemplateParametersMatches) {
-      classTemplateParameters = extractTypes(classTemplateParametersMatches[0]);
+      classTemplateParameters = this.extractTypes(classTemplateParametersMatches[0]);
     }
 
     if (functionTemplateParametersMatches) {
-      functionTemplateParameters = extractTypes(functionTemplateParametersMatches[0]);
+      functionTemplateParameters = this.extractTypes(functionTemplateParametersMatches[0]);
     }
 
     return [classTemplateParameters, functionTemplateParameters];
@@ -374,20 +429,16 @@ export class ExternalSymbolsProvider {
     if (matching) {
       const [classTemplateParameters, functionTemplateParameters] = this.extractTemplateParameterTypes(cppSignature);
 
-      /*
-      @todo
-      This case is necessary to make distinguish between Clazz<T>::do<U> and Clazz<U>::do<T>
-  
+      // This case is necessary to make distinguish between Clazz<T>::do<U> and Clazz<U>::do<T>
       if (this.classTemplateParametersPattern.length > 0 && this.functionTemplateParametersPattern.length > 0) {
         matching =
           classTemplateParameters === this.classTemplateParametersPattern &&
           functionTemplateParameters === this.functionTemplateParametersPattern;
       }
-      */
-
-      if (this.classTemplateParametersPattern.length > 0) {
+      else if (this.classTemplateParametersPattern.length > 0) {
         matching = classTemplateParameters === this.classTemplateParametersPattern;
-      } else if (this.functionTemplateParametersPattern.length > 0) {
+      } 
+      else if (this.functionTemplateParametersPattern.length > 0) {
         matching = functionTemplateParameters === this.functionTemplateParametersPattern;
       }
     }
