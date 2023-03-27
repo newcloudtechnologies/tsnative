@@ -604,3 +604,21 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   console.assert(arr.join() === "-55,0,NaN,9", description + " simple");
   console.assert(arr.join("* *") === "-55* *0* *NaN* *9", description + " with separator");
 }
+
+{
+  const arr = "0123456789";
+  const digits1 = new Map<string, number>();
+  const digits2 = new Map<string, number>();
+  arr.split('').map((c, i) => digits1.set(c, i));
+  arr.split('').map((c, i) => { digits2.set(c, i) });
+
+  const compare = (digits: Map<string, number>) => {
+    console.assert(digits.size === 10, "Simple array: Wrong digits size");
+    for (const e of arr) {
+      console.assert(digits.has(e) === true, `Simple array: digit ${e} is not in the digits map`)
+    }
+  }
+
+  compare(digits1);
+  compare(digits2);
+}
