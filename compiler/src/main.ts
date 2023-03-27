@@ -246,8 +246,7 @@ async function main() {
   }
 
   if (argv.emitIR) {
-    const dotTsFiles = process.argv.filter((s) => { return s.endsWith(".ts"); });
-    const outputName = dotTsFiles.length !== 0 ? dotTsFiles[0] : "a.ts";
+    const outputName = files.length !== 0 ? files[0] : "a.ts";
     new Build().writeIRToFile(llvmModule, outputName, argv);
   }
 }
