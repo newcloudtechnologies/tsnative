@@ -11,7 +11,25 @@
 
 import { BasicBlock } from "llvm-node";
 
+class LoopBodyExitHandlers {
+  private onBodyExitActions: ((...args: any[]) => void)[] = []
+
+  add(action: (...args: any[]) => void) {
+    this.onBodyExitActions.push(action);
+  }
+
+  pop() {
+    this.onBodyExitActions.pop();
+  }
+
+  last(): ((...args: any[]) => void) | undefined {
+    return this.onBodyExitActions[this.onBodyExitActions.length - 1];
+  }
+}
+
 export class LoopHelper {
+  static onBodyExitHandlers = new LoopBodyExitHandlers();
+
   static isWhileLoopBlock(block: BasicBlock): boolean {
     return block.name.startsWith("while.");
   }

@@ -234,12 +234,12 @@ export class Builder {
     return this.builder.getInsertBlock();
   }
 
-  setInsertionPoint(basicBlock?: llvm.BasicBlock) {
-    if (!basicBlock) {
-      throw new Error("No basic block provided to `Builder.setInsertionPoint`");
+  setInsertionPoint(insertionPoint?: llvm.BasicBlock | llvm.Value) {
+    if (!insertionPoint) {
+      throw new Error("No insertion point provided to `Builder.setInsertionPoint`");
     }
 
-    this.builder.setInsertionPoint(basicBlock);
+    this.builder.setInsertionPoint(insertionPoint);
   }
 
   createGlobalStringPtr(value: string, name?: string, addressSpace?: number) {

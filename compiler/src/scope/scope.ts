@@ -779,7 +779,7 @@ export class Scope {
     }
 
     if (newValue.type.getPointerLevel() !== 2) {
-      throw new Error(`newValue of '${identifier}' is not **`);
+      throw new Error(`newValue of '${identifier}' is not **: ${newValue.type.toString()}`);
     }
     this.map.set(identifier, newValue);
   }
@@ -805,7 +805,7 @@ export class Scope {
 
     const actualVal = value instanceof HeapVariableDeclaration ? value.allocated : value;
     if (actualVal.type.getPointerLevel() != 1) {
-      throw new Error(`Identifier '${identifier}' assignment failed: or actualVal is not *`);
+      throw new Error(`Identifier '${identifier}' assignment failed: or actualVal is not *: ${actualVal.type.toString()}`);
     }
 
     if (actualVal.type.isClosure()) {
