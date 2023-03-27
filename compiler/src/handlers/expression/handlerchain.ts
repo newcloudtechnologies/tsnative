@@ -33,6 +33,7 @@ import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
+import { CommaHandler } from "./commahandler";
 
 export class ExpressionHandlerChain {
   private readonly root: AbstractExpressionHandler;
@@ -57,7 +58,8 @@ export class ExpressionHandlerChain {
       .setNext(new ParenthesizedHandler(generator))
       .setNext(new UnaryHandler(generator))
       .setNext(new TemplateExpressionHandler(generator))
-      .setNext(new OperatorInHandler(generator));
+      .setNext(new OperatorInHandler(generator))
+      .setNext(new CommaHandler(generator));
 
     this.root = noop;
   }
