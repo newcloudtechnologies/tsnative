@@ -13,7 +13,7 @@ import { BasicBlock } from "llvm-node";
 import * as ts from "typescript";
 
 import { AbstractNodeHandler } from "./nodehandler";
-import { Scope, Environment } from "../../scope";
+import { Scope, Environment, HeapVariableDeclaration } from "../../scope";
 import { last } from "lodash";
 import { LLVMValue } from "../../llvm/value";
 import { LoopHelper } from "./loophelper";
@@ -145,7 +145,9 @@ export class LoopHandler extends AbstractNodeHandler {
   private handleForStatement(statement: ts.ForStatement, env?: Environment): void {
     const { builder, context, symbolTable, currentFunction } = this.generator;
 
-    const handlerImpl = (): void => {
+    const start = BasicBlock.create(context, "for.start");
+
+    const handlerImpl = (counters: string[] = []): void => {
       const condition = BasicBlock.create(context, "for.condition");
       const body = BasicBlock.create(context, "for.body");
       const bodyLatch = BasicBlock.create(context, "for.body.latch");
@@ -181,16 +183,78 @@ export class LoopHandler extends AbstractNodeHandler {
 
       currentFunction.addBasicBlock(body);
       builder.setInsertionPoint(body);
-      this.generator.handleNode(statement.statement, symbolTable.currentScope, env);
+
+      type CounterNameValuePair = { counter: string; value: LLVMValue };
+      const originals: CounterNameValuePair[] = [];
+
+      const currentScope = this.generator.symbolTable.currentScope;
+      for (const counter of counters) {
+        let value = currentScope.get(counter);
+        if (!value) {
+          throw new Error(`Counter ${counter} not found in current scope`);
+        }
+
+        if (value instanceof Scope) {
+          throw new Error(`Counter ${counter} is a Scope, expected Value`);
+        }
+
+        if (value instanceof HeapVariableDeclaration) {
+          value = value.allocated;
+        }
+
+        originals.push({ counter, value });
+
+        value = value.derefToPtrLevel1();
+
+        let clone = this.generator.gc.allocate(value.type);
+        this.generator.gc.addRoot(clone);
+
+        clone = clone.makeAssignment(value);
+
+        currentScope.replace(counter, clone);
+      }
+
+      LoopHelper.onBodyExitHandlers.add((store: boolean) => {
+          for (const original of originals) {
+            const counterCopy = currentScope.get(original.counter) as LLVMValue;
+
+            if (store) {
+              this.generator.builder.createSafeStore(counterCopy.derefToPtrLevel1(), original.value);
+            }
+
+            this.generator.gc.removeRoot(counterCopy);
+          }
+      });
+
+      this.generator.handleNode(
+        statement.statement,
+        currentScope,
+        env
+      );
 
       if (!this.generator.isCurrentBlockTerminated) {
+        LoopHelper.onBodyExitHandlers.last()?.apply(null, [!statement.incrementor]);
         builder.createBr(bodyLatch);
+      } else {
+        this.generator.withInsertBlockKeeping(() => {
+            const terminator = this.generator.builder.getInsertBlock()!.getTerminator()!;
+            this.generator.builder.setInsertionPoint(terminator);
+            LoopHelper.onBodyExitHandlers.last()?.apply(null, [!statement.incrementor]);
+        });
+      }
+
+      for (const original of originals) {
+          currentScope.replace(
+              original.counter,
+              original.value
+          );
       }
 
       if (statement.incrementor) {
         currentFunction.addBasicBlock(incrementor);
         builder.setInsertionPoint(incrementor);
-        this.generator.handleExpression(statement.incrementor, env).derefToPtrLevel1();
+        this.generator.handleExpression(statement.incrementor, env);
+
         if (statement.condition) {
           builder.createBr(condition);
         } else {
@@ -202,12 +266,21 @@ export class LoopHandler extends AbstractNodeHandler {
       builder.setInsertionPoint(end);
 
       ExitingBlocks.pop();
+      LoopHelper.onBodyExitHandlers.pop();
     };
 
     if (statement.initializer && ts.isVariableDeclarationList(statement.initializer)) {
-      symbolTable.withLocalScope(() => {
-        this.generator.handleNode(statement.initializer!, symbolTable.currentScope, env);
-        handlerImpl();
+      symbolTable.withLocalScope((localScope) => {
+        currentFunction.addBasicBlock(start);
+        builder.createBr(start);
+        builder.setInsertionPoint(start);
+
+        const prevState = localScope.names();
+        this.generator.handleNode(statement.initializer!, localScope, env);
+        const currState = localScope.names();
+        const counters = currState.filter(x => !prevState.includes(x));
+
+        handlerImpl(counters);
       }, this.generator.symbolTable.currentScope);
     } else {
       if (statement.initializer) {
@@ -525,6 +598,7 @@ export class LoopHandler extends AbstractNodeHandler {
       ts.isIfStatement(statement.parent) ||
       (ts.isBlock(statement.parent) && ts.isIfStatement(statement.parent.parent))
     ) {
+      LoopHelper.onBodyExitHandlers.last()?.apply(null, [true]);
       this.generator.builder.createBr(currentLatchBlock!);
     } else {
       // To allow conditionless `continue` we have to erase body's latch block, which is quite impossible lacking an API provided for that.
