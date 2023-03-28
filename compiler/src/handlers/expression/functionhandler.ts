@@ -1255,7 +1255,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
       }
     }
 
-    scope.initializeVariablesAndFunctionDeclarations(expression, this.generator);
     environmentVariables.push(...valueDeclaration.environmentVariables(expression, scope, outerEnv));
     environmentVariables.push(this.generator.internalNames.This);
 
