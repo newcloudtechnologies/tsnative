@@ -575,7 +575,6 @@ export class Scope {
   readonly isNamespace: boolean;
 
   private generator: LLVMGenerator;
-  private isHoisted = false;
   private isDeinitialized = false;
 
   constructor(name: string | undefined,
@@ -590,7 +589,6 @@ export class Scope {
     this.mangledName = mangledName;
     this.parent = parent;
     this.thisData = data;
-    this.isHoisted = false;
 
     this.typeMapper = new GenericTypeMapper();
     if (parent && parent.typeMapper) {
@@ -625,10 +623,6 @@ export class Scope {
   }
 
   initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
-    if (this.isHoisted) {
-      return;
-    }
-
     const initializeFrom = (node: ts.Node) => {
       // ignore nested blocks and modules/namespaces
       if (ts.isBlock(node) || ts.isModuleBlock(node)) {
@@ -675,7 +669,6 @@ export class Scope {
     }
 
     root.forEachChild(initializeFrom);
-    this.isHoisted = true;
   }
 
   get(identifier: string): ScopeValue | undefined {
