@@ -1600,7 +1600,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
                   if (ts.isReturnStatement(node) && node.expression) {
                     if (ts.isFunctionExpression(node.expression)) {
                       const closure = generator.handleExpression(node.expression, environment).derefToPtrLevel1();
-                      bodyScope.deinitialize();
                       generator.builder.createSafeRet(closure);
                       return;
                     }
@@ -1619,7 +1618,6 @@ export class FunctionHandler extends AbstractExpressionHandler {
                   blocklessArrowFunctionReturn,
                   currentReturnType
                 );
-                bodyScope.deinitialize();
                 generator.builder.createSafeRet(blocklessArrowFunctionReturn);
               }
 
@@ -1632,12 +1630,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
                 if (returnsOptional) {
                   const nullOptional = generator.ts.union.create();
-                  bodyScope.deinitialize();
                   generator.builder.createSafeRet(nullOptional);
                 } else {
                   let undef = generator.ts.undef.get();
                   undef = generator.builder.createBitCast(undef, currentReturnType);
-                  bodyScope.deinitialize();
                   generator.builder.createSafeRet(undef);
                 }
               }
