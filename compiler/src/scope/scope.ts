@@ -769,16 +769,6 @@ export class Scope {
     throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
   }
 
-  remove(identifier: string) {
-    const value = this.get(identifier);
-    if (value && !(value instanceof Scope)) {
-      const ptrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
-      this.generator.gc.removeRoot(ptrPtr);
-    }
-
-    this.map.delete(identifier);
-  }
-
   withThisKeeping<R>(action: () => R): R {
     const originalThis = this.get("this");
 
@@ -801,5 +791,15 @@ export class Scope {
     this.set("this", originalThis);
 
     return result;
+  }
+
+  private remove(identifier: string) {
+    const value = this.get(identifier);
+    if (value && !(value instanceof Scope)) {
+      const ptrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
+      this.generator.gc.removeRoot(ptrPtr);
+    }
+
+    this.map.delete(identifier);
   }
 }
