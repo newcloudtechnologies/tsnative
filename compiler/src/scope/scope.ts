@@ -598,10 +598,6 @@ export class Scope {
     this.isNamespace = isNamespace;
   }
 
-  isAmbientSourceFile() {
-    return this.name?.endsWith(".d.ts");
-  }
-
   deinitialize() {
     if (this.isDeinitialized) {
       return;
