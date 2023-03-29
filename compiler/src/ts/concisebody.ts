@@ -393,7 +393,6 @@ export class ConciseBody {
           visitor(this.body)
         }
 
-        bodyScope.map.clear();
         dummyBlock.eraseFromParent();
 
         if (signature) {
@@ -471,7 +470,6 @@ export class ConciseBody {
 
         ts.forEachChild(this.body, visitor);
 
-        bodyScope.map.clear();
         dummyBlock.eraseFromParent();
         return externalVariables;
       }, this.generator.symbolTable.currentScope);
