@@ -38,7 +38,7 @@ export class SymbolTable {
 
     const parts = identifier.split(".");
     if (parts.length > 1) {
-      const candidates = this.scopes.filter((scope) => scope.map.has(parts[0]));
+      const candidates = this.scopes.filter((scope) => scope.contains(parts[0]));
 
       if (candidates.length === 0) {
         throw new IdentifierNotFound(`No '${parts[0]}' in symbol table`);

@@ -456,7 +456,7 @@ export function populateContext(
 
     if (value instanceof Scope && !seenScopes.includes(value) && !value.isNamespace) {
       seenScopes.push(value);
-      value.map.forEach((v, k) => {
+      value.forEach((v, k) => {
         addToContextRecursively(v, k, variables);
       });
 
@@ -479,7 +479,7 @@ export function populateContext(
   };
 
   context.push(...populateStaticContext(root, environmentVariables));
-  root.map.forEach((value, key) => addToContextRecursively(value, key, environmentVariables));
+  root.forEach((value, key) => addToContextRecursively(value, key, environmentVariables));
 
   const isPropertyAccess = (value: string) => value.includes(".");
   const propertyAccesses = environmentVariables.filter(isPropertyAccess).reduce((acc, value) => {
@@ -508,7 +508,7 @@ export function populateContext(
         return findPropertyAccess(scope, values, seen);
       }
 
-      for (const [name, value] of scope.map) {
+      for (const [name, value] of scope) {
         if (value instanceof Scope && !seen.includes(value)) {
           seen.push(value);
 
@@ -564,7 +564,7 @@ export interface ThisData {
 }
 
 export class Scope {
-  map: Map<string, ScopeValue>;
+  private map: Map<string, ScopeValue>;
 
   readonly name: string | undefined;
   readonly mangledName: string | undefined;
@@ -576,6 +576,22 @@ export class Scope {
 
   private generator: LLVMGenerator;
   private isDeinitialized = false;
+
+  keys(): string[] {
+    return Array.from(this.map.keys());
+  }
+
+  forEach(visitor: (value: ScopeValue, key: string, map: Map<string, ScopeValue>) => void): void {
+    this.map.forEach(visitor);
+  }
+
+  contains(key: string): boolean {
+    return this.map.has(key);
+  }
+
+  [Symbol.iterator]() {
+    return this.map[Symbol.iterator]();
+  }
 
   constructor(name: string | undefined,
     mangledName: string | undefined,
@@ -639,21 +655,6 @@ export class Scope {
 
   getStatic(identifier: string) {
     return this.thisData?.staticProperties?.get(identifier);
-  }
-
-  names(): string[] {
-    const result: string[] = [];
-    for (const it of this.map) {
-      result.push(it[0]);
-    }
-
-    if (this.thisData?.staticProperties) {
-      for (const [name] of this.thisData.staticProperties) {
-        result.push(name);
-      }
-    }
-
-    return result;
   }
 
   tryGetThroughParentChain(identifier: string): ScopeValue | undefined {

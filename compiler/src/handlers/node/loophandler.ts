@@ -275,9 +275,9 @@ export class LoopHandler extends AbstractNodeHandler {
         builder.createBr(start);
         builder.setInsertionPoint(start);
 
-        const prevState = localScope.names();
+        const prevState = localScope.keys();
         this.generator.handleNode(statement.initializer!, localScope, env);
-        const currState = localScope.names();
+        const currState = localScope.keys();
         const counters = currState.filter(x => !prevState.includes(x));
 
         handlerImpl(counters);
