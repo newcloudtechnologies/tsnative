@@ -49,7 +49,7 @@ export class VariableHandler extends AbstractNodeHandler {
     parentScope: Scope,
     outerEnv?: Environment
   ): void {
-    if (this.generator.symbolTable.currentScope.isAmbientSourceFile()) {
+    if (this.generator.symbolTable.currentScope.name?.endsWith(".d.ts")) {
       // variables declared in ambient sources are considered compiler internals
       return;
     }
