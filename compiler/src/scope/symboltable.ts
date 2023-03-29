@@ -99,8 +99,4 @@ export class SymbolTable {
 
     return this.getNested(parts.slice(1), scope.get(parts[0]));
   }
-
-  dump() {
-    this.scopes.forEach((scope) => scope.dump());
-  }
 }
