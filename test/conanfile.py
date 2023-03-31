@@ -182,8 +182,6 @@ class TSNativeTestsConan(ConanFile):
 
         if self.settings.os == "Windows":
             excludes.append("date.ts")                  # FIXME: TSN-163
-            if self.settings.build_type == "Debug":
-                excludes.append("top-level-statements.ts")  # FIXME: TSN-428
         elif self.settings.os == "Macos":
             if self.settings.arch == "armv8":
                 if self.settings.build_type == "Debug":
