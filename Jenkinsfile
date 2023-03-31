@@ -153,7 +153,7 @@ pipeline {
                     }
                 }
 
-                stage("Build std") {
+                stage("Build std - Release") {
                     steps {
                         script {
                             echo "Build std (Release)"
@@ -170,7 +170,11 @@ pipeline {
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
                         }
+                    }
+                }
 
+                stage("Build std - Debug") {
+                    steps {
                         script {
                             echo "Build std (Debug)"
                             build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
@@ -189,7 +193,7 @@ pipeline {
                     }
                 }
 
-                stage("Tests") {
+                stage("Tests - Release") {
                     steps {
                         script {
                             echo "Build tests (Release)"
@@ -207,7 +211,11 @@ pipeline {
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
                         }
+                    }
+                }
 
+                stage("Tests - Debug") {
+                    steps {
                         script {
                             echo "Build tests (Debug)"
                             build job: "${params.CONAN_DEPLOY_REPO}/${params.CONAN_DEPLOY_BRANCH}", parameters: [
