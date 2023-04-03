@@ -12,16 +12,24 @@
 #pragma once
 
 #include <cstddef>
-
-class Object;
+#include <cstdint>
+#include <unordered_map>
 
 class MemoryDiagnosticsStorage final
 {
 public:
-    std::size_t getDeletedObjectsCount() const;
+    using Size = uint64_t;
 
-    void onDeleted(const void*);
+    Size getDeletedObjectsCount() const;
+
+    void onDeleted(const void* el);
+
+    void onObjectAllocated(const void* el, Size size);
+
+    Size getCurrentAllocatedBytes() const;
 
 private:
-    std::size_t _deletedObjectsCount = 0u;
+    Size _deletedObjectsCount = 0u;
+    Size _allocatedManagedMemory = 0;
+    std::unordered_map<const void*, std::size_t> _allocatedObjectTable;
 };

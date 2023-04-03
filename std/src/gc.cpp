@@ -11,16 +11,16 @@
 
 #include "std/gc.h"
 
-#include "std/igc_impl.h"
+#include "std/private/memory_management/igc_impl.h"
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
-#include "std/private/allocator.h"
 #include "std/private/logger.h"
+#include "std/private/memory_management/memory_manager.h"
 
-GC::GC(IGCImpl* gcImpl, Allocator* allocator)
+GC::GC(IGCImpl* gcImpl, MemoryManager* memManager)
     : _gcImpl{gcImpl}
-    , _allocator{allocator}
+    , _memManager{memManager}
 {
     LOG_ADDRESS("Calling GC wrapper ctor ", this);
 
@@ -29,7 +29,7 @@ GC::GC(IGCImpl* gcImpl, Allocator* allocator)
         throw std::runtime_error("GC cannot be nullptr");
     }
 
-    if (!_allocator)
+    if (!_memManager)
     {
         throw std::runtime_error("Allocator cannot be nullptr");
     }
@@ -37,22 +37,22 @@ GC::GC(IGCImpl* gcImpl, Allocator* allocator)
 
 void* GC::allocate(double numBytes)
 {
-    if (!_allocator)
+    if (!_memManager)
     {
         throw std::runtime_error("Allocator cannot be nullptr");
     }
 
-    return _allocator->allocate(static_cast<std::size_t>(numBytes));
+    return _memManager->allocate(static_cast<std::size_t>(numBytes));
 }
 
 void* GC::allocateObject(double numBytes)
 {
-    if (!_allocator)
+    if (!_memManager)
     {
         throw std::runtime_error("Allocator cannot be nullptr");
     }
 
-    return _allocator->allocateObject(static_cast<std::size_t>(numBytes));
+    return _memManager->allocateMemoryForObject(static_cast<std::size_t>(numBytes));
 }
 
 void GC::collect()
@@ -104,7 +104,7 @@ String* GC::toString() const
 
 Boolean* GC::toBool() const
 {
-    return new Boolean(_gcImpl && _allocator);
+    return new Boolean(_gcImpl && _memManager);
 }
 
 void GC::saveMemoryGraph() const

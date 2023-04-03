@@ -150,7 +150,7 @@ export class VariableHandler extends AbstractNodeHandler {
           if (!variableTypeDeclaration.isAmbient()) {
             allocated = this.generator.ts.obj.create();
           } else {
-            allocated = this.generator.gc.allocate(type.getLLVMType().getPointerElementType());
+            allocated = this.generator.gc.allocateObject(type.getLLVMType().getPointerElementType());
           }
         }
       }

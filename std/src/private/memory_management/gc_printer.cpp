@@ -9,7 +9,7 @@
  *
  */
 
-#include "std/private/gc_printer.h"
+#include "std/private/memory_management/gc_printer.h"
 
 #include "std/private/algorithms.h"
 #include "std/private/to_string_converter.h"

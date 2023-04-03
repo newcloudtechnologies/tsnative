@@ -51,17 +51,15 @@ function testClosurePassingToCXXClassByOwner() {
 }
 
 export function gcTest(testBody: () => void, description: string, savedObjects: number) {
-    const diagnostics = Runtime.getDiagnostics();
-    const memInfo = diagnostics.getMemoryDiagnostics();
+    const memInfo = Runtime.getMemoryDiagnostics();
     const gc = Runtime.getGC();
 
     gc.collect();
     const internalObjectsCount = memInfo.getAliveObjectsCount();
-
-    testBody();
-
     // Checks that everything in the gc's heap is alive
     memInfo.printGCState();
+
+    testBody();
 
     gc.collect();
     const newObjectCount = memInfo.getAliveObjectsCount();
@@ -83,7 +81,7 @@ user.clear();
 
 console.assert(user.getNumbersSum() === 0, "GC check saved object - clear saved numbers");
 
-gcTest(testSaveSimpleClosure, "test use ts closure in cxx code", 1);
+gcTest(testSaveSimpleClosure, "test use ts closure in cxx code", 3); // 3 - closure + numbers in it
 
 let str = user.getClosureString();
 
@@ -91,7 +89,7 @@ console.log(str);
 
 console.assert(str === "[Function]", "GC check saved object - use saved closure");
 
-gcTest(testSaveClassClosure, "test save class closure", 2);
+gcTest(testSaveClassClosure, "test save class closure", 5);
 
 user.callClassClosure();
 
@@ -99,5 +97,5 @@ console.assert(numberToCapture === 1240, "GC check saved object - use saved clas
 
 TSObjectCache.setStaticNumber(44.5);
 
-gcTest(testClosurePassingToCXXClassByOwner, "Test keeping and passing closure by TSObjectOwner to std::function", 1);
+gcTest(testClosurePassingToCXXClassByOwner, "Test keeping and passing closure by TSObjectOwner to std::function", 3);
 console.assert(user.click() === 101, "Closure passed to std::function by TSObjectOwner and called successfully");

@@ -14,13 +14,13 @@
 #include "std/tsnumber.h"
 #include "std/tsstring.h"
 
-#include "std/igc_impl.h"
+#include "std/private/memory_management/igc_impl.h"
 
 #include "std/private/logger.h"
-#include "std/private/memory_diagnostics_storage.h"
+#include "std/private/memory_management/memory_diagnostics_storage.h"
 
-MemoryDiagnostics::MemoryDiagnostics(const MemoryDiagnosticsStorage& storage, const IGCImpl& gc)
-    : _storage{storage}
+MemoryDiagnostics::MemoryDiagnostics(MemoryDiagnosticsStorage& diagnosticPimpl, const IGCImpl& gc)
+    : _diagnosticPimpl(diagnosticPimpl)
     , _gc{gc}
 {
     LOG_ADDRESS("Calling MemoryDiagnostics ctor this = ", this);
@@ -36,7 +36,7 @@ Number* MemoryDiagnostics::getAliveObjectsCount() const
 
 Number* MemoryDiagnostics::getDeletedObjectsCount() const
 {
-    return new Number(static_cast<double>(_storage.getDeletedObjectsCount()));
+    return new Number(static_cast<double>(_diagnosticPimpl.getDeletedObjectsCount()));
 }
 
 String* MemoryDiagnostics::toString() const
@@ -52,4 +52,19 @@ Boolean* MemoryDiagnostics::toBool() const
 void MemoryDiagnostics::printGCState() const
 {
     _gc.print();
+}
+
+void MemoryDiagnostics::onDeleted(const void* el)
+{
+    _diagnosticPimpl.onDeleted(el);
+}
+
+void MemoryDiagnostics::onObjectAllocated(const void* el, Size size)
+{
+    _diagnosticPimpl.onObjectAllocated(el, size);
+}
+
+MemoryDiagnostics::Size MemoryDiagnostics::getCurrentAllocatedBytes() const
+{
+    return _diagnosticPimpl.getCurrentAllocatedBytes();
 }

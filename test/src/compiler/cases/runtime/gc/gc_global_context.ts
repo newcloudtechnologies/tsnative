@@ -11,8 +11,7 @@
 
 import { Runtime } from "tsnative/std/definitions/runtime"
 
-const diagnostics = Runtime.getDiagnostics();
-const memInfo = diagnostics.getMemoryDiagnostics();
+const memInfo = Runtime.getMemoryDiagnostics();
 const gc = Runtime.getGC();
 
 // Simple class Test

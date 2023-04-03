@@ -9,15 +9,15 @@
  *
  */
 
-#include "std/private/allocator.h"
-
+#include "std/private/memory_management/allocator.h"
+#include "std/private/logger.h"
 #include "std/tsobject.h"
 
-#include "std/private/logger.h"
+#include <numeric>
 
-Allocator::Allocator(Callbacks&& callbacks)
-    : _callbacks{std::move(callbacks)}
+Allocator::Allocator()
 {
+    LOG_METHOD_CALL;
 }
 
 void* Allocator::allocate(std::size_t n)
@@ -29,17 +29,19 @@ void* Allocator::allocate(std::size_t n)
 
 void* Allocator::doAllocate(std::size_t n)
 {
+    LOG_METHOD_CALL;
     return malloc(n);
 }
 
 void* Allocator::allocateObject(std::size_t n)
 {
     auto* memory = doAllocate(n);
-    auto* object = Object::asObjectPtr(memory);
-
     LOG_ADDRESS("Allocated " + std::to_string(n) + " bytes using allocateObject ", memory);
-
-    _callbacks.onObjectAllocated(object);
-
     return memory;
+}
+
+void Allocator::deallocateObject(Object* ptr) noexcept
+{
+    LOG_METHOD_CALL;
+    delete ptr;
 }

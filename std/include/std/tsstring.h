@@ -41,7 +41,6 @@ public:
     String(const std::string& s);
     String(const char* s);
 
-protected:
     ~String() override;
 
 public:

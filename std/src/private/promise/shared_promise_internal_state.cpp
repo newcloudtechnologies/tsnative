@@ -21,15 +21,15 @@ void SharedPromiseInternalState::attach(PromisePrivate next,
 {
     auto promiseCallback = std::make_shared<PromiseCallback>(onFulfilled, onRejected, next);
 
-    auto sender = [this, promiseCallback]() mutable
+    auto sender = [self = shared_from_this(), promiseCallback]() mutable
     {
-        if (isFulfilled())
+        if (self->isFulfilled())
         {
-            promiseCallback->emit(SuccessEvent{_result.value().get()});
+            promiseCallback->emit(SuccessEvent{self->getResult()});
         }
-        else if (isRejected())
+        else if (self->isRejected())
         {
-            promiseCallback->emit(ErrorEvent{_result.value().getError()});
+            promiseCallback->emit(ErrorEvent{self->getResult()});
         }
     };
 
