@@ -44,7 +44,6 @@
 
 #include "std/timer_object.h"
 
-#include "std/diagnostics.h"
 #include "std/event_loop.h"
 #include "std/gc.h"
 #include "std/memory_diagnostics.h"
@@ -55,8 +54,6 @@
 
 constexpr int8_t PADDING_WIDTH = 2;
 constexpr auto FOUND_RECURSIVE = "<Error! Found circular structure>\n";
-
-static String* parentKey = new String("parent");
 
 static std::string shiftLines(std::string&& str)
 {
@@ -118,7 +115,8 @@ std::string ToStringConverter::toString(const Object* obj, Visited& visited)
         oss << shiftLines(ToStringConverter::convertWithCheck(value, visited));
     }
 
-    const auto* parent = obj->_props->get(parentKey);
+    String parentKey("parent");
+    const auto* parent = obj->_props->get(&parentKey);
     if (parent && parent != Undefined::instance())
     {
         auto data = formatParent(ToStringConverter::convert(parent));
@@ -255,7 +253,6 @@ std::string ToStringConverter::toString(const Union* u, Visited& visited)
     return oss.str();
 }
 
-// TODO Output should be associated with variables everywhere
 std::string ToStringConverter::convert(const Object* obj)
 {
     std::unordered_set<const Object*> visited;
@@ -341,11 +338,6 @@ std::string ToStringConverter::convertWithCheck(const Object* obj, Visited& visi
     if (dynamic_cast<const Runtime*>(obj))
     {
         return "Runtime";
-    }
-
-    if (dynamic_cast<const Diagnostics*>(obj))
-    {
-        return "Diagnostics";
     }
 
     if (dynamic_cast<const MemoryDiagnostics*>(obj))

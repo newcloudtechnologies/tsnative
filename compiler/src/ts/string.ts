@@ -225,7 +225,7 @@ export class TSString {
     return this.lengthFn;
   }
 
-  create(value: string) {
+  createGlobal(value: string) {
     const llvmThisType = this.llvmType;
     const constructor = this.getLLVMConstructor();
     const ptr = this.generator.builder.createGlobalStringPtr(value);

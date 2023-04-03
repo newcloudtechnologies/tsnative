@@ -67,14 +67,13 @@ void console::logImpl(T v, Ts... ts)
     console::log(ts...);
 }
 
-static String* assertionFailedMessage = new String("Assertion failed:");
-
 template <typename T, typename... Ts>
 void console::assert(T assumption, Ts... ts)
 {
     if (!Object::asObjectPtr(assumption)->toBool()->unboxed())
     {
-        console::log(assertionFailedMessage, ts...);
+        String assertionFailedMessage("Assertion failed:");
+        console::log(&assertionFailedMessage, ts...);
         std::terminate();
     }
 }

@@ -164,7 +164,7 @@ export class TSArray {
     const arrayType = this.getType(expression);
 
     const arrayTypename = arrayType.toString();
-    const allocated = this.generator.gc.allocate(this.classDeclaration.type.getLLVMType().getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.classDeclaration.type.getLLVMType().getPointerElementType());
 
     if (this.constructorFns.has(arrayTypename)) {
       return { constructor: this.constructorFns.get(arrayTypename)!, allocated };

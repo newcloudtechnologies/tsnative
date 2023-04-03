@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "std/private/gc_names_storage.h"
+#include "std/private/memory_management/gc_names_storage.h"
 
 #include <string>
 #include <unordered_map>

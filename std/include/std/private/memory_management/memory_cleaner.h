@@ -11,27 +11,21 @@
 
 #pragma once
 
-#include <cstdint>
 #include <functional>
 
-class Object;
+class IEventLoop;
+class IGCImpl;
 
-class Allocator final
+class MemoryCleaner
 {
 public:
-    struct Callbacks final
-    {
-        std::function<void(Object*)> onObjectAllocated = [](Object*) {};
-    };
+    MemoryCleaner(IEventLoop* loop, IGCImpl* gc);
 
-    Allocator(Callbacks&& callbacks);
-
-    void* allocate(std::size_t n);
-    void* allocateObject(std::size_t n);
+    void asyncClear(const std::function<void()> afterClear);
 
 private:
-    void* doAllocate(std::size_t n);
+    IEventLoop* _eventLoop;
+    IGCImpl* _gc;
 
-private:
-    Callbacks _callbacks;
+    bool _collectScheduled = false;
 };

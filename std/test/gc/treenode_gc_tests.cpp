@@ -14,8 +14,8 @@
 
 #include "../mocks/mock_eventloop.h"
 
-#include "std/private/async_object_storage.h"
-#include "std/private/default_gc.h"
+#include "std/private/memory_management/async_object_storage.h"
+#include "std/private/memory_management/default_gc.h"
 
 #include "std/tsobject.h"
 
@@ -65,14 +65,14 @@ public:
     void SetUp() override
     {
         DefaultGC::Callbacks gcCallbacks;
-        gcCallbacks.beforeDeleted = [this](const Object& o)
+        gcCallbacks.afterDelete = [this](void* o)
         {
-            auto it = std::find(_actualAliveObjects.begin(), _actualAliveObjects.end(), &o);
+            auto it = std::find(_actualAliveObjects.begin(), _actualAliveObjects.end(), static_cast<Object*>(o));
             ASSERT_NE(_actualAliveObjects.end(), it);
             _actualAliveObjects.erase(it);
         };
 
-        _gc = std::make_unique<DefaultGC>(std::move(gcCallbacks), _timers, _promises);
+        _gc = std::make_unique<DefaultGC>(_timers, std::move(gcCallbacks));
 
         TestAllocator::Callbacks allocatorCallbacks;
         allocatorCallbacks.onAllocated = [this](void* o)
@@ -111,7 +111,6 @@ private:
     std::unique_ptr<DefaultGC> _gc;
     test::MockEventLoop _mockEventLoop;
     TimerStorage _timers;
-    PromiseStorage _promises;
 };
 
 // Init:

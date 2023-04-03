@@ -167,7 +167,7 @@ export class TSUnion {
   create(initializer?: LLVMValue) {
     const ctor = this.getCtorFn();
 
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
     const args = [thisUntyped];
 
