@@ -17,6 +17,7 @@ import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMType } from "../llvm/type";
 import { Declaration } from "./declaration";
+import { ArgsToArray } from "./args_to_array"
 
 const stdlib = require("std/constants");
 
@@ -200,14 +201,29 @@ export class TSArray {
     return { constructor, allocated };
   }
 
-  createPush(elementType: TSType, expression: ts.ArrayLiteralExpression) {
+  callPush(elementType: TSType, expression: ts.ArrayLiteralExpression, 
+          thisPtr: LLVMValue, objPtr: LLVMValue, isSpread: boolean) {
     const arrayType = this.getType(expression);
-
     const arrayTypename = arrayType.toString();
 
-    if (this.pushFns.has(arrayTypename)) {
-      return this.pushFns.get(arrayTypename)!;
+    const findPush = () => { 
+      const pushFn = this.findPush(elementType, expression);
+      this.pushFns.set(arrayTypename, pushFn);
+      return pushFn;
     }
+
+    const pushFn = this.pushFns.has(arrayTypename) ? this.pushFns.get(arrayTypename)! : findPush();
+
+    const emptyArrPtr = this.generator.builder.createAlloca(this.llvmType);
+    const argsToArray = new ArgsToArray(this.generator);
+    const argsToArrayStackPtr = argsToArray.callConstructor(emptyArrPtr);
+    argsToArray.callAddObject(argsToArrayStackPtr, objPtr, isSpread);
+
+    this.generator.builder.createSafeCall(pushFn, [thisPtr, argsToArrayStackPtr]);
+  }
+
+  private findPush(elementType: TSType, expression: ts.ArrayLiteralExpression) {
+    const arrayType = this.getType(expression);
 
     if (elementType.isFunction()) {
       elementType = this.generator.tsclosure.getTSType();
@@ -237,8 +253,6 @@ export class TSArray {
       [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
-
-    this.pushFns.set(arrayTypename, push);
 
     return push;
   }

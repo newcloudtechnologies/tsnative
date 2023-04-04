@@ -172,35 +172,15 @@ export class LiteralHandler extends AbstractExpressionHandler {
     const arrayType = this.generator.ts.array.getType(expression);
     const elementType = arrayType.getTypeGenericArguments()[0];
 
-    const push = this.generator.ts.array.createPush(elementType, expression);
     for (const element of expression.elements) {
-      if (ts.isSpreadElement(element)) {
-        const concat = this.generator.ts.array.createConcat(expression);
-        let elementValue = this.generator.handleExpression(element.expression, outerEnv).derefToPtrLevel1();
-
-        if (elementValue instanceof HeapVariableDeclaration) {
-          elementValue = elementValue.allocated;
-        }
-        elementValue = elementValue.derefToPtrLevel1();
-        if (!elementType.isUnion() && elementValue.type.isUnion()) {
-          elementValue = this.generator.ts.union.get(elementValue);
-        }
-
-        allocated = this.generator.builder.createSafeCall(concat, [
-          this.generator.builder.asVoidStar(allocated),
-          this.generator.builder.asVoidStar(elementValue),
-        ]);
-      } else {
-        let elementValue = this.generator.handleExpression(element, outerEnv).derefToPtrLevel1();
-        if (!elementType.isUnion() && elementValue.type.isUnion()) {
-          elementValue = this.generator.ts.union.get(elementValue);
-        }
-
-        this.generator.builder.createSafeCall(push, [
-          this.generator.builder.asVoidStar(allocated),
-          this.generator.builder.asVoidStar(elementValue),
-        ]);
+      const isSpread = ts.isSpreadElement(element);
+      const expr = isSpread ? element.expression : element;
+      let elementValue = this.generator.handleExpression(expr, outerEnv).derefToPtrLevel1();
+      if (!elementType.isUnion() && elementValue.type.isUnion()) {
+        elementValue = this.generator.ts.union.get(elementValue);
       }
+
+      this.generator.ts.array.callPush(elementType, expression, allocated, elementValue, isSpread);
     }
 
     return allocated;
