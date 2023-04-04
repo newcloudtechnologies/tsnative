@@ -103,6 +103,10 @@ export class VariableHandler extends AbstractNodeHandler {
 
     const dbg = this.generator.getDebugInfo();
     if (dbg) {
+      const varPtrPtr = parentScope.get(name);
+      if (varPtrPtr && varPtrPtr instanceof LLVMValue) {
+        initializer = varPtrPtr;
+      }
       dbg.emitDeclare(name, initializer, declaration, type);
     }
   }
