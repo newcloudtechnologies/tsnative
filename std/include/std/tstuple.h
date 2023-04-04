@@ -32,8 +32,8 @@ public:
     ~Tuple() override;
 
     TS_METHOD TS_GETTER Number* length() const;
-    TS_METHOD TS_SIGNATURE("[index: number]: any") void* operator[](Number* index);
-    void* operator[](int index);
+    TS_METHOD TS_SIGNATURE("[index: number]: any") void* operator[](Number* index) const;
+    void* operator[](int index) const;
 
     TS_METHOD TS_SIGNATURE("push(item: Object): void") void push(Object* item);
 
