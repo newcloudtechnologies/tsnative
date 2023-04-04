@@ -118,6 +118,10 @@ export const PROMISE_DEFINITION = toPosixStyle(
     path.join(__dirname, "definitions", "tspromise.d.ts")
 );
 
+export const ARGS_TO_ARRAY_DEFINITION = toPosixStyle(
+  path.join(__dirname, "definitions", "args_to_array.d.ts")
+);
+
 export const PARSE_INT_DEFINITION = toPosixStyle(
     path.join(__dirname, "definitions", "parse_int.d.ts")
 );

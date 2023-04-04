@@ -24,7 +24,7 @@ exports.UNDEFINED_DEFINITION = exports.OBJECT_DEFINITION =
 exports.ARRAY_DEFINITION = exports.STRING_DEFINITION = 
 exports.DIAGNOSTICS_DEFINITION = exports.MEMORY_DIAGNOSTICS_DEFINITION =
 exports.NUMERIC = exports.EVENT_LOOP_DEFINITION = exports.PROMISE_DEFINITION =
-exports.PARSE_INT_DEFINITION = exports.PARSE_FLOAT_DEFINITION = void 0;
+exports.PARSE_INT_DEFINITION = exports.PARSE_FLOAT_DEFINITION = exports.ARGS_TO_ARRAY_DEFINITION = void 0;
 
 var path = require("path");
 function toPosixStyle(file) {
@@ -61,4 +61,5 @@ exports.EVENT_LOOP_DEFINITION = toPosixStyle(path.join(__dirname, "definitions",
 exports.PROMISE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tspromise.d.ts"));
 exports.PARSE_INT_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "parse_int.d.ts"));
 exports.PARSE_FLOAT_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "parse_float.d.ts"));
+exports.ARGS_TO_ARRAY_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "args_to_array.d.ts"));
 exports.STUBS = toPosixStyle(path.join(__dirname, "definitions", "lib.std.stubs.d.ts"));
