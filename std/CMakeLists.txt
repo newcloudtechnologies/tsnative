@@ -55,7 +55,8 @@ set(HEADERS
     include/std/tspromise.h
     include/std/parse_int.h
     include/std/parse_float.h
-    include/std/private/tslazy_closure.h
+    include/std/tslazy_closure.h
+    include/std/args_to_array.h
 )
 
 set(SOURCES
@@ -83,6 +84,8 @@ set(SOURCES
     src/parse_float.cpp
     src/timer_object.cpp
     src/id_generator.cpp
+    src/tslazy_closure.cpp
+    src/args_to_array.cpp
 
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
@@ -107,7 +110,6 @@ set(SOURCES
     src/private/to_string_converter.cpp
     src/private/gc_names_storage.cpp
     src/private/uv_timer_creator.cpp
-    src/private/tslazy_closure.cpp
     src/private/algorithms.cpp
 )
     

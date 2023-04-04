@@ -9,7 +9,7 @@
  *
  */
 
-#include "std/private/tslazy_closure.h"
+#include "std/tslazy_closure.h"
 
 #include "std/private/logger.h"
 #include "std/tsstring.h"
