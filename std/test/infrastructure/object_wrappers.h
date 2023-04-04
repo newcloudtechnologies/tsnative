@@ -11,12 +11,12 @@
 
 #pragma once
 
-#include "std/private/tslazy_closure.h"
 #include "std/private/uv_timer_adapter.h"
 #include "std/tsarray.h"
 #include "std/tsboolean.h"
 #include "std/tsclosure.h"
 #include "std/tsdate.h"
+#include "std/tslazy_closure.h"
 #include "std/tsmap.h"
 #include "std/tsnull.h"
 #include "std/tsnumber.h"
