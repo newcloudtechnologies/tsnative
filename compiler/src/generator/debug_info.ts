@@ -78,6 +78,8 @@ export class DebugInfo {
       topLevelCompileUnit.filename,
       topLevelCompileUnit.dir
     );
+    console.log(`Add file ${topLevelCompileUnit.filename}`);
+
     this.compileUnit = this.diBuilder.createCompileUnit(
       llvm.dwarf.SourceLanguage.C_plus_plus_14,
       diFile,
@@ -124,7 +126,6 @@ export class DebugInfo {
       .unwrap()
       .SetCurrentDebugLocation(new llvm.DebugLoc(location));
   }
-
   emitProcedure(
     decl: ts.Node | undefined,
     fn: llvm.Function,
@@ -186,6 +187,17 @@ export class DebugInfo {
   finalize(): void {
     this.diBuilder.finalize();
   }
+  getOrCreateTypeExt(tsType: TSType, size: number, scope: llvm.DIScope, lineNo : number): llvm.DIType | undefined {
+    if (!this.typeCache.has(tsType)) {
+      const compType = this.diBuilder.createForwardDecl(llvm.dwarf.DW_TAG_class_type, tsType.getApparentType().toString(), scope, scope.getFile(), lineNo, tsType.getApparentType().mangle());
+      const ptrType = this.diBuilder.createPointerType(compType, size)
+      this.typeCache.set(
+        tsType,
+        this.diBuilder.createPointerType(ptrType, size)
+      );
+    }
+    return this.typeCache.get(tsType);
+  }
 
   getOrCreateType(tsType: TSType, size: number): llvm.DIType | undefined {
     if (!this.typeCache.has(tsType)) {
@@ -203,14 +215,16 @@ export class DebugInfo {
     decl: ts.Node,
     tsType: TSType
   ): llvm.Instruction | undefined {
-    const dbgType = this.getOrCreateType(
+    const { lineNo, column } = DebugInfo.getSourceLocation(decl);
+    const dbgType = this.getOrCreateTypeExt(
       tsType,
-      this.generator.module.dataLayout.getPointerSizeInBits(0)
+      this.generator.module.dataLayout.getPointerSizeInBits(0),
+      this.getScope(), lineNo
     );
     if (!dbgType) {
       return undefined;
     }
-    const { lineNo, column } = DebugInfo.getSourceLocation(decl);
+    //const { lineNo, column } = DebugInfo.getSourceLocation(decl);
     const scope = this.getScope();
     const location = llvm.DILocation.get(
       this.generator.context,
@@ -257,5 +271,11 @@ export class DebugInfo {
       this.getScope()
     );
     callInst.setDebugLoc(new llvm.DebugLoc(location));
+  }
+  public createFile() : llvm.DIFile {
+    const { filename, dir } = DebugInfo.getFileNameAndDir(
+      this.generator.currentSourceFile.fileName
+    );
+    return this.diBuilder.createFile(filename, dir);
   }
 }

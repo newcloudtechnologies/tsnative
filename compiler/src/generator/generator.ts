@@ -197,7 +197,15 @@ export class LLVMGenerator {
     );
 
     this.symbolTable.addScope(sourceFileScope);
-
+    if (this.debugInfo) {
+      if (this.currentSourceFile.fileName.endsWith('.d.ts')) {
+        // console.log(`Skipping d.ts file ${this.currentSourceFile.fileName}`);
+      }
+      else {
+        console.log(`Add file ${this.currentSourceFile.fileName}`);
+        this.debugInfo.createFile();
+      }
+    }
     this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
     this.hoistFunctionDeclarations();
 
