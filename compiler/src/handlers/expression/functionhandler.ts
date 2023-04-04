@@ -1134,14 +1134,14 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const arrayType = lastParameter.valueDeclaration!.type;
 
     const elementType = arrayType.getTypeGenericArguments()[0];
-    const push = this.generator.ts.array.createPush(elementType, fakeLiteral!);
 
     for (let i = restArgumentsStartIndex; i < args.length; ++i) {
       const arg = args[i];
+      const isSpread = ts.isSpreadElement(arg);
 
       let value: LLVMValue;
 
-      if (ts.isSpreadElement(arg)) {
+      if (isSpread) {
         value = this.generator.handleExpression(arg.expression, outerEnv).derefToPtrLevel1();
       } else {
         value = this.generator.handleExpression(arg, outerEnv).derefToPtrLevel1();
@@ -1149,17 +1149,15 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       if (value.type.isArray()) {
         restArguments = value;
-      } else {
-        if (value.isTSPrimitivePtr()) {
-          // mimics 'value' semantic for primitives
-          value = value.clone();
-        }
-
-        this.generator.builder.createSafeCall(push, [
-          this.generator.builder.asVoidStar(restArguments!),
-          this.generator.builder.asVoidStar(value),
-        ]);
+        continue;
       }
+
+      if (value.isTSPrimitivePtr()) {
+        // mimics 'value' semantic for primitives
+        value = value.clone();
+      }
+
+      this.generator.ts.array.callPush(elementType, fakeLiteral!, restArguments!, value, isSpread);
     }
 
     scope.set(lastParameter.escapedName.toString(), restArguments!);
