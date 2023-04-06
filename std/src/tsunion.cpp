@@ -43,7 +43,7 @@ void Union::setValue(Object* value)
 
 bool Union::hasValue()
 {
-    return _value && !_value->isNullCpp() && !_value->isUndefinedCpp();
+    return _value && !_value->isNull() && !_value->isUndefined();
 }
 
 String* Union::toString() const
@@ -58,7 +58,7 @@ Boolean* Union::toBool() const
 
 Boolean* Union::equals(Object* other) const
 {
-    if (other->isUnionCpp())
+    if (other->isUnion())
     {
         other = static_cast<Union*>(other)->getValue();
     }

@@ -55,87 +55,87 @@ Object::~Object()
     delete _props;
 }
 
-Boolean* Object::isUndefined() const
+Boolean* Object::isUndefined_CompilerAPI() const
 {
-    return new Boolean(isUndefinedCpp());
+    return new Boolean(isUndefined());
 }
 
-bool Object::isObjectCpp() const
+bool Object::isObject() const
 {
     return _typeid == TSTypeID::Object;
 }
 
-bool Object::isUnionCpp() const
+bool Object::isUnion() const
 {
     return _typeid == TSTypeID::Union;
 }
 
-bool Object::isBooleanCpp() const
+bool Object::isBoolean() const
 {
     return _typeid == TSTypeID::Boolean;
 }
 
-bool Object::isNumberCpp() const
+bool Object::isNumber() const
 {
     return _typeid == TSTypeID::Number;
 }
 
-bool Object::isStringCpp() const
+bool Object::isString() const
 {
     return _typeid == TSTypeID::String;
 }
 
-bool Object::isUndefinedCpp() const
+bool Object::isUndefined() const
 {
     return _typeid == TSTypeID::Undefined;
 }
 
-bool Object::isNullCpp() const
+bool Object::isNull() const
 {
     return _typeid == TSTypeID::Null;
 }
 
-bool Object::isArrayCpp() const
+bool Object::isArray() const
 {
     return _typeid == TSTypeID::Array;
 }
 
-bool Object::isTupleCpp() const
+bool Object::isTuple() const
 {
     return _typeid == TSTypeID::Tuple;
 }
 
-bool Object::isSetCpp() const
+bool Object::isSet() const
 {
     return _typeid == TSTypeID::Set;
 }
 
-bool Object::isTimerCpp() const
+bool Object::isTimer() const
 {
     return _typeid == TSTypeID::Timer;
 }
 
-bool Object::isMapCpp() const
+bool Object::isMap() const
 {
     return _typeid == TSTypeID::Map;
 }
 
-bool Object::isClosureCpp() const
+bool Object::isClosure() const
 {
     return _typeid == TSTypeID::Closure;
 }
 
-bool Object::isDateCpp() const
+bool Object::isDate() const
 {
     return _typeid == TSTypeID::Date;
 }
 
-bool Object::isPromiseCpp() const
+bool Object::isPromise() const
 {
     return _typeid == TSTypeID::Promise;
 }
 
-bool Object::isLazyClosureCpp() const
+bool Object::isLazyClosure() const
 {
     return _typeid == TSTypeID::LazyClosure;
 }

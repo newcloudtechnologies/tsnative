@@ -170,7 +170,7 @@ void Promise::failure(Object* rejected)
 
 Boolean* Promise::equals(Object* other) const
 {
-    if (!other->isPromiseCpp())
+    if (!other->isPromise())
     {
         return new Boolean(false);
     }

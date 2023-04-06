@@ -36,7 +36,7 @@
     {                                                                       \
         assert(value && "Invalid object");                                  \
                                                                             \
-        if (!value->isNumberCpp())                                          \
+        if (!value->isNumber())                                          \
         {                                                                   \
             return new Boolean{false};                                      \
         }                                                                   \
@@ -234,7 +234,7 @@ Number* Number::bitwiseRightShiftInplace(Number* other)
 
 Boolean* Number::equals(Object* other) const
 {
-    if (!other->isNumberCpp())
+    if (!other->isNumber())
     {
         return new Boolean(false);
     }

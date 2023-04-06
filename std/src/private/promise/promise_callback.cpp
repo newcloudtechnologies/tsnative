@@ -37,7 +37,7 @@ void PromiseCallback::invoke(Object* object, Result&& arg) noexcept
 {
     assert(object && "Invalid object");
 
-    if (object->isClosureCpp())
+    if (object->isClosure())
     {
         auto* closure = static_cast<TSClosure*>(object);
         return callClosure(closure, std::move(arg));

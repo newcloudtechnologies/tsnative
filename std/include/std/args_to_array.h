@@ -21,10 +21,10 @@ class Boolean;
 class TS_DECLARE ArgsToArray final : public Object
 {
 public:
-    TS_METHOD ArgsToArray(Array<Object*>* aggregator) noexcept;
+    TS_METHOD ArgsToArray(Array<Object*>* aggregator);
 
-    TS_METHOD void addObject(Object* nextArg, Boolean* isSpread) noexcept;
+    TS_METHOD void addObject(Object* nextArg, Boolean* isSpread);
 
 private:
-    Array<Object*>& m_aggregator;
+    Array<Object*>* m_aggregator;
 };
