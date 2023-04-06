@@ -186,7 +186,6 @@ class TSNativeTestsConan(ConanFile):
             if self.settings.arch == "armv8":
                 if self.settings.build_type == "Debug":
                     pass
-                    #excludes.append("promises.ts")          # FIXME: TSN-426
                     #excludes.append("ctor_env.ts")          # FIXME: TSN-427
                     #excludes.append("tuple.ts")             # FIXME: TSN-429
                     #excludes.append("boolean.ts")           # FIXME: TSN-430
