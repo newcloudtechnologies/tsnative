@@ -24,36 +24,60 @@ void addFlatten(const TCollection& what, Array<Object*>& where) noexcept
     {
         Number index{static_cast<double>(i)};
         auto* element = static_cast<Object*>(what.operator[](&index));
+        std::cout << element->toString() << std::endl;
         where.push(element);
     }
 }
 } // anonymous namespace
 
-ArgsToArray::ArgsToArray(Array<Object*>* aggregator) noexcept
-    : m_aggregator{*aggregator}
+ArgsToArray::ArgsToArray(Array<Object*>* aggregator)
+    : m_aggregator{aggregator}
 {
+    if (!m_aggregator)
+    {
+        throw std::runtime_error("Aggregator array is nullptr");
+    }
+
+    LOG_INFO("ArgsToArray CTOR");
 }
 
-void ArgsToArray::addObject(Object* nextArg, Boolean* isSpread) noexcept
+void ArgsToArray::addObject(Object* nextArg, Boolean* isSpread)
 {
+    LOG_INFO("ArgsToArray addObject call 1");
+
     if (!nextArg || !isSpread)
     {
         return;
     }
 
-    if (nextArg->isArrayCpp() && isSpread->unboxed())
+    LOG_INFO("ArgsToArray addObject call 2");
+    LOG_INFO("ArgsToArray addObject call 3");
+
+    if (!(isSpread->unboxed()))
+    {
+        LOG_INFO("ArgsToArray addObject call 5");
+        m_aggregator->push(nextArg);
+        LOG_INFO("ArgsToArray addObject call 6");
+        return;
+    }
+
+    LOG_INFO("ArgsToArray addObject call 7");
+
+    if (nextArg->isArray())
     {
         const auto* array = static_cast<Array<Object*>*>(nextArg);
-        addFlatten(*array, m_aggregator);
-        return;
-    }
+        addFlatten(*array, *m_aggregator);
 
-    if (nextArg->isTupleCpp() && isSpread->unboxed())
+        std::cout << "Aggregator to str: " << std::endl;
+        std::cout << m_aggregator->toString() << std::endl;
+    }
+    else if (nextArg->isTuple())
     {
         const auto* tuple = static_cast<Tuple*>(nextArg);
-        addFlatten(*tuple, m_aggregator);
-        return;
+        addFlatten(*tuple, *m_aggregator);
     }
-
-    m_aggregator.push(nextArg);
+    else
+    {
+        throw std::runtime_error("ArgsToArray::addObject: only arrays and tuples can be used as spread elements");
+    }
 }

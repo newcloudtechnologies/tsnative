@@ -493,7 +493,7 @@ export class TSObject {
 
   createIsUndefined(thisValue: LLVMValue) {
     if (!this.isUndefinedFn) {
-      this.isUndefinedFn = this.initTypeCheckerFn("isUndefined");
+      this.isUndefinedFn = this.initTypeCheckerFn("isUndefined_CompilerAPI");
     }
 
     const thisUntyped = this.generator.builder.asVoidStar(thisValue);

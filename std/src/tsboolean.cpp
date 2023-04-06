@@ -65,7 +65,7 @@ Boolean* Boolean::negate() const
 
 Boolean* Boolean::equals(Object* other) const
 {
-    if (!other->isBooleanCpp())
+    if (!other->isBoolean())
     {
         return new Boolean(false);
     }
