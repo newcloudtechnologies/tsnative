@@ -185,10 +185,11 @@ class TSNativeTestsConan(ConanFile):
         elif self.settings.os == "Macos":
             if self.settings.arch == "armv8":
                 if self.settings.build_type == "Debug":
-                    excludes.append("promises.ts")          # FIXME: TSN-426
-                    excludes.append("ctor_env.ts")          # FIXME: TSN-427
-                    excludes.append("tuple.ts")             # FIXME: TSN-429
-                    excludes.append("boolean.ts")           # FIXME: TSN-430
+                    pass
+                    #excludes.append("promises.ts")          # FIXME: TSN-426
+                    #excludes.append("ctor_env.ts")          # FIXME: TSN-427
+                    #excludes.append("tuple.ts")             # FIXME: TSN-429
+                    #excludes.append("boolean.ts")           # FIXME: TSN-430
 
         def in_excludes(path: str):
             for ex in excludes:
