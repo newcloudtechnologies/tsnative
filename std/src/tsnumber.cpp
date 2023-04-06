@@ -36,7 +36,7 @@
     {                                                                       \
         assert(value && "Invalid object");                                  \
                                                                             \
-        if (!value->isNumber())                                          \
+        if (!value->isNumber())                                             \
         {                                                                   \
             return new Boolean{false};                                      \
         }                                                                   \
