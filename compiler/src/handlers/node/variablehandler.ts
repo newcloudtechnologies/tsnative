@@ -103,7 +103,23 @@ export class VariableHandler extends AbstractNodeHandler {
 
     const dbg = this.generator.getDebugInfo();
     if (dbg) {
-      dbg.emitDeclare(name, initializer, declaration, type);
+      let variable = parentScope.get(name);
+      if (!variable) {
+        throw new Error(`LLVMValue for ${name} not found. Error at: ${declaration.getText()}`);
+      }
+
+      if (variable instanceof Scope) {
+        throw new Error(`LLVMValue for ${name} not found (Scope). Error at: ${declaration.getText()}`);
+      }
+
+      if (variable instanceof HeapVariableDeclaration) {
+        variable = variable.allocated;
+      }
+
+      if (variable.type.getPointerLevel() !== 2) {
+        throw new Error(`Expected value to be pointer to pointer, got '${variable.type.toString()}. Error at: ${declaration.getText()}'`);
+      }
+      dbg.emitDeclare(name, variable, declaration, type);
     }
   }
 

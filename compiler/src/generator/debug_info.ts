@@ -186,6 +186,17 @@ export class DebugInfo {
   finalize(): void {
     this.diBuilder.finalize();
   }
+  getOrCreateCompositeType(tsType: TSType, size: number, scope: llvm.DIScope, lineNo : number): llvm.DIType | undefined {
+    if (!this.typeCache.has(tsType)) {
+      const compType = this.diBuilder.createForwardDecl(llvm.dwarf.DW_TAG_class_type, tsType.getApparentType().toString(), scope, scope.getFile(), lineNo, tsType.getApparentType().mangle());
+      const ptrType = this.diBuilder.createPointerType(compType, size)
+      this.typeCache.set(
+        tsType,
+        this.diBuilder.createPointerType(ptrType, size)
+      );
+    }
+    return this.typeCache.get(tsType);
+  }
 
   getOrCreateType(tsType: TSType, size: number): llvm.DIType | undefined {
     if (!this.typeCache.has(tsType)) {
@@ -203,14 +214,15 @@ export class DebugInfo {
     decl: ts.Node,
     tsType: TSType
   ): llvm.Instruction | undefined {
-    const dbgType = this.getOrCreateType(
+    const { lineNo, column } = DebugInfo.getSourceLocation(decl);
+    const dbgType = this.getOrCreateCompositeType(
       tsType,
-      this.generator.module.dataLayout.getPointerSizeInBits(0)
+      this.generator.module.dataLayout.getPointerSizeInBits(0),
+      this.getScope(), lineNo
     );
     if (!dbgType) {
       return undefined;
     }
-    const { lineNo, column } = DebugInfo.getSourceLocation(decl);
     const scope = this.getScope();
     const location = llvm.DILocation.get(
       this.generator.context,
