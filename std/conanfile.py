@@ -27,10 +27,11 @@ class TSNativeStdConan(ConanFile):
 
     options = {
         "build_tests": [True, False],
-        "enable_logs": ["all", "gc", "none"],
+        "enable_logs": ["all", "none"],
         "run_tests_with_memcheck": [True, False],
         "fail_test_on_mem_leak": [True, False],
         "memory_limit_kb": "ANY",
+        "validate_gc": [True, False],
     }
 
     default_options = {
@@ -39,6 +40,7 @@ class TSNativeStdConan(ConanFile):
         "run_tests_with_memcheck": False,
         "fail_test_on_mem_leak": False,
         "memory_limit_kb": "1000000",
+        "validate_gc": False,
     }
 
     def requirements(self):
@@ -69,6 +71,7 @@ class TSNativeStdConan(ConanFile):
         tc.variables["ENABLE_LOGS"] = self.options.enable_logs
         tc.variables["FAIL_TESTS_ON_MEM_LEAK"] = self.options.fail_test_on_mem_leak
         tc.variables["MEMORY_LIMIT_KB"] = self.options.memory_limit_kb
+        tc.variables["VALIDATE_GC"] = self.options.validate_gc
         # tc.variables["CMAKE_VERBOSE_MAKEFILE"]="ON"
 
         print("TOOLCHAIN VARIABLES:\n\t" +
@@ -104,6 +107,7 @@ class TSNativeStdConan(ConanFile):
         del self.info.options.run_tests_with_memcheck
         del self.info.options.fail_test_on_mem_leak
         del self.info.options.memory_limit_kb
+        del self.info.options.validate_gc
 
     @property
     def base_cmake_module_path(self: ConanFile):

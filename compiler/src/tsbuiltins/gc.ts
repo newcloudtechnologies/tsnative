@@ -19,6 +19,7 @@ import { Runtime } from "../tsbuiltins/runtime"
 
 import * as ts from "typescript";
 
+const path = require("path");
 const stdlib = require("std/constants");
 
 export class GC {
@@ -74,7 +75,11 @@ export class GC {
             const variableNameObj = this.generator.ts.str.createGlobal(associatedName !== undefined ? associatedName : "__no_name__");
             this.generator.ts.obj.set(allocatedObj, "__variable_name__", variableNameObj);
 
-            const scopeNameObj = this.generator.ts.str.createGlobal(scopeName !== undefined ? scopeName : "__no_name__");
+            let scopeBaseName = "__no_name__";
+            if (scopeName) {
+                scopeBaseName = path.basename(scopeName);
+            }
+            const scopeNameObj = this.generator.ts.str.createGlobal(scopeBaseName);
             this.generator.ts.obj.set(allocatedObj, "__scope_name__", scopeNameObj);
 
             i8PtrAssociatedVarName = this.generator.builder.createBitCast(allocatedObj, i8PtrType);

@@ -17,6 +17,7 @@
 #include "std/private/memory_management/async_object_storage.h"
 #include "std/private/memory_management/gc_names_storage.h"
 
+#include <functional>
 #include <unordered_set>
 
 class Object;
@@ -28,6 +29,8 @@ public:
     {
         std::function<void(void*)> afterDelete = [](void*) {};
     };
+    using Heap = std::unordered_set<Object*>;
+    using Roots = std::unordered_set<Object**>;
 
     DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks);
     ~DefaultGC();
@@ -41,7 +44,10 @@ public:
     void removeRoot(Object** object) override;
 
     void collect() override;
-    void print() const override;
+    void print(const std::string& fileName = "") const override;
+
+    const Heap& getHeap() const;
+    const Roots& getRoots() const;
 
 private:
     void mark();
@@ -68,8 +74,8 @@ private:
 
 private:
     // TODO Use absl::uset
-    std::unordered_set<Object*> _heap;
-    std::unordered_set<Object**> _roots;
+    Heap _heap;
+    Roots _roots;
     GCNamesStorage _names;
     Callbacks _callbacks;
     TimerStorage& _timers; // TODO remove -  https://jira.ncloudtech.ru:8090/browse/TSN-551

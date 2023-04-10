@@ -357,5 +357,17 @@ void* Object::operator new(std::size_t n)
     return Runtime::getMemoryManager()->allocateMemoryForObject(n);
 }
 
+#ifdef VALIDATE_GC
+void Object::operator delete(void* ptr)
+{
+    if (Runtime::isInitialized() && Runtime::getMemoryManager())
+    {
+        Runtime::getMemoryManager()->onObjectAboutToDelete(ptr);
+    }
+
+    ::operator delete(ptr);
+}
+#endif
+
 class String;
 template class Map<String*, Object*>;

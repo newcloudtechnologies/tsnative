@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include "std/tsobject.h"
@@ -21,6 +22,7 @@ class IGCImpl;
 class GC;
 class MemoryCleaner;
 class MemoryDiagnosticsStorage;
+class IGCValidator;
 
 class MemoryManager final
 {
@@ -28,16 +30,21 @@ public:
     MemoryManager(std::unique_ptr<Allocator>&& allocator,
                   std::unique_ptr<MemoryCleaner>&& cleaner,
                   std::unique_ptr<IGCImpl>&& gc,
-                  std::unique_ptr<MemoryDiagnosticsStorage>&& memoryDiagnostics);
+                  std::unique_ptr<MemoryDiagnosticsStorage>&& memoryDiagnostics,
+                  std::unique_ptr<IGCValidator>&& gcValidator);
     ~MemoryManager();
 
     void* allocateMemoryForObject(std::size_t size);
 
     void* allocate(std::size_t n);
 
+    void onObjectAboutToDelete(void* ptr);
+
     GC* getGC();
 
     MemoryDiagnostics* getMemoryDiagnostics() const;
+
+    const IGCValidator* getGCValidator() const;
 
 private:
     bool needToFreeMemory() const;
@@ -49,6 +56,7 @@ private:
     std::unique_ptr<IGCImpl> _gc;
     std::unique_ptr<MemoryDiagnosticsStorage> _memoryDiagnosticPimpl;
     std::unique_ptr<MemoryCleaner> _memoryCleaner;
+    std::unique_ptr<IGCValidator> _gcValidator;
 
-    std::size_t _memoryThreshold;
+    uint64_t _memoryThreshold;
 };

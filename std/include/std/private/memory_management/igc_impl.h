@@ -12,7 +12,7 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
+#include <string>
 
 class Object;
 
@@ -33,5 +33,5 @@ public:
 
     virtual void collect() = 0;
 
-    virtual void print() const = 0;
+    virtual void print(const std::string& fileName = "") const = 0;
 };

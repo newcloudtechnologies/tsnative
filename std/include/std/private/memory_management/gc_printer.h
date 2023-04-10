@@ -35,7 +35,7 @@ public:
 
     GCPrinter(const objects_t& heap, const roots_t& roots, const GCNamesStorage& variables);
 
-    void print() const;
+    void print(std::string fileName = "") const;
 
 private:
     void fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const;
