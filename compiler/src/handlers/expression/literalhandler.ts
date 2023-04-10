@@ -11,11 +11,9 @@
 
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
-import { Environment, HeapVariableDeclaration } from "../../scope";
+import { Environment } from "../../scope";
 import { LLVMConstantFP, LLVMConstantInt, LLVMValue } from "../../llvm/value";
 import { TSTuple } from "../../ts/tuple";
-import { TSType } from "../../ts/type";
-import { Declaration } from "../../ts/declaration";
 
 export class LiteralHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -76,7 +74,7 @@ export class LiteralHandler extends AbstractExpressionHandler {
       expression.kind === ts.SyntaxKind.TrueKeyword
         ? LLVMConstantInt.getTrue(this.generator)
         : LLVMConstantInt.getFalse(this.generator);
-    return this.generator.builtinBoolean.create(value);
+    return this.generator.builtinBoolean.createHeap(value); // Probably can be allocated on stack?
   }
 
   private handleNumericLiteral(expression: ts.NumericLiteral): LLVMValue {
@@ -159,30 +157,28 @@ export class LiteralHandler extends AbstractExpressionHandler {
   }
 
   private handleArrayLiteralExpression(expression: ts.ArrayLiteralExpression, outerEnv?: Environment): LLVMValue {
-    const constructorAndMemory = this.generator.ts.array.createConstructor(expression);
-    const { constructor } = constructorAndMemory;
-    let { allocated } = constructorAndMemory;
-
-    this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
-
-    if (expression.elements.length === 0) {
-      return allocated;
-    }
+    const arrayPtr = this.generator.gc.allocateObject(this.generator.ts.array.getLLVMType().getPointerElementType());
 
     const arrayType = this.generator.ts.array.getType(expression);
+    this.generator.ts.array.callDefaultConstructor(this.generator.builder.asVoidStar(arrayPtr), arrayType);
+
+    if (expression.elements.length === 0) {
+      return arrayPtr;
+    }
+
     const elementType = arrayType.getTypeGenericArguments()[0];
 
     for (const element of expression.elements) {
       const isSpread = ts.isSpreadElement(element);
-      const expr = isSpread ? element.expression : element;
+      const expr = isSpread ? (element as ts.SpreadElement).expression : element;
       let elementValue = this.generator.handleExpression(expr, outerEnv).derefToPtrLevel1();
       if (!elementType.isUnion() && elementValue.type.isUnion()) {
         elementValue = this.generator.ts.union.get(elementValue);
       }
 
-      this.generator.ts.array.callPush(elementType, expression, allocated, elementValue, isSpread);
+      this.generator.ts.array.callPush(arrayType, arrayPtr, elementValue, isSpread);
     }
 
-    return allocated;
+    return arrayPtr;
   }
 }

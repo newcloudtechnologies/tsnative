@@ -136,7 +136,7 @@ export class LLVMValue {
       const fn = this.generator.builtinBoolean.getNegateFn();
       return this.generator.builder.createSafeCall(fn, [thisPtr]);
     } else if (this.type.isUndefined() || this.type.isNull()) {
-      return this.generator.builtinBoolean.create(LLVMConstantInt.getTrue(this.generator));
+      return this.generator.builtinBoolean.createHeap(LLVMConstantInt.getTrue(this.generator));
     }
     else if (this.type.isString()) {
       return this.generator.ts.str.createNegate(this);

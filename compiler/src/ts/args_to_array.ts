@@ -23,13 +23,16 @@ export class ArgsToArray {
   private readonly classDeclaration: Declaration;
   private readonly llvmType: LLVMType;
 
-  private static constructorFn: LLVMValue | undefined;
-  private static addObjectFn: LLVMValue | undefined;
+  private constructorFn: LLVMValue;
+  private addObjectFn: LLVMValue;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
 
     this.classDeclaration = this.initClassDeclaration();
+    this.constructorFn = this.findConstructor();
+    this.addObjectFn = this.findAddObject();
+
     this.llvmType = this.classDeclaration.getLLVMStructType("args_to_array");
   }
 
@@ -47,7 +50,7 @@ export class ArgsToArray {
     });
 
     if (!classDeclaration) {
-      throw new Error("Unable to find 'Array' ArgsToArray in std library definitions");
+      throw new Error("Unable to find ArgsToArray in std library definitions");
     }
 
     return Declaration.create(classDeclaration as ts.ClassDeclaration, this.generator);
@@ -79,7 +82,7 @@ export class ArgsToArray {
   }
 
   private findAddObject() {
-    const addObjectDeclaration = this.classDeclaration.members.find((m) => m.getText() === "addObject")!;
+    const addObjectDeclaration = this.classDeclaration.members.find((m) => m.isMethod() && m.name?.getText() === "addObject")!;
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
         addObjectDeclaration,
@@ -94,41 +97,35 @@ export class ArgsToArray {
         throw new Error(`ArgsToArray::addObject not found`);
       }
   
+      const voidStarType = LLVMType.getInt8Type(this.generator).getPointer();
       const objectType = this.generator.ts.obj.getLLVMType();
       const boolType = this.generator.builtinBoolean.getLLVMType();
 
       const { fn: addObjectFn } = this.generator.llvm.function.create(
           LLVMType.getVoidType(this.generator),
-          [objectType, boolType],
+          [voidStarType, objectType, boolType],
           qualifiedName);
   
       return addObjectFn;
   }
 
-  callConstructor(arr: LLVMValue) {
-    if (!ArgsToArray.constructorFn) {
-        ArgsToArray.constructorFn = this.findConstructor();
-    }
+  getLLVMType() {
+    return this.llvmType;
+  }
 
-    const stackMemoryPtr = this.generator.builder.createAlloca(this.llvmType);
-    const stackMemoryVoidStar = this.generator.builder.asVoidStar(stackMemoryPtr);
+  callConstructor(memory: LLVMValue, arr: LLVMValue) {
+    const memoryVoidStar = this.generator.builder.asVoidStar(memory);
     const arrVoidStar = this.generator.builder.asVoidStar(arr);
-    this.generator.builder.createSafeCall(ArgsToArray.constructorFn, [stackMemoryVoidStar, arrVoidStar]);
-
-    return stackMemoryPtr;
+    this.generator.builder.createSafeCall(this.constructorFn, [memoryVoidStar, arrVoidStar]);
   }
 
   callAddObject(thisPtr: LLVMValue, obj: LLVMValue, isSpread: boolean) {
-    if (!ArgsToArray.addObjectFn) {
-        ArgsToArray.addObjectFn = this.findAddObject();
-    }
-
     const thisVoidStar = this.generator.builder.asVoidStar(thisPtr);
     const castedObjPtr = this.generator.builder.createBitCast(obj, this.generator.ts.obj.getLLVMType());
 
     const spreadConstant = isSpread ? LLVMConstantInt.getTrue(this.generator) : LLVMConstantInt.getFalse(this.generator)
-    const spreadPtr = this.generator.builtinBoolean.create(spreadConstant);
+    const spreadPtr = this.generator.builtinBoolean.createStack(spreadConstant);
 
-    this.generator.builder.createSafeCall(ArgsToArray.addObjectFn, [thisVoidStar, castedObjPtr, spreadPtr]);
+    this.generator.builder.createSafeCall(this.addObjectFn, [thisVoidStar, castedObjPtr, spreadPtr]);
   }
 }

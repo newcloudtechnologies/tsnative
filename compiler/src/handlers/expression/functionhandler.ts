@@ -1127,28 +1127,20 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const fakeLiteral = ts.createArrayLiteral();
     fakeLiteral.parent = lastParameter.valueDeclaration!.unwrapped;
 
-    const { constructor, allocated } = this.generator.ts.array.createConstructor(fakeLiteral);
-    this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
-    let restArguments = allocated;
-
     const arrayType = lastParameter.valueDeclaration!.type;
 
-    const elementType = arrayType.getTypeGenericArguments()[0];
+    let arrayPtr = this.generator.gc.allocateObject(this.generator.ts.array.getLLVMType().getPointerElementType());
+    this.generator.ts.array.callDefaultConstructor(this.generator.builder.asVoidStar(arrayPtr), arrayType);
 
     for (let i = restArgumentsStartIndex; i < args.length; ++i) {
       const arg = args[i];
       const isSpread = ts.isSpreadElement(arg);
 
-      let value: LLVMValue;
-
-      if (isSpread) {
-        value = this.generator.handleExpression(arg.expression, outerEnv).derefToPtrLevel1();
-      } else {
-        value = this.generator.handleExpression(arg, outerEnv).derefToPtrLevel1();
-      }
+      const expr = isSpread ? (arg as ts.SpreadElement).expression : arg;
+      let value = this.generator.handleExpression(expr, outerEnv).derefToPtrLevel1();
 
       if (value.type.isArray()) {
-        restArguments = value;
+        arrayPtr = value;
         continue;
       }
 
@@ -1157,11 +1149,11 @@ export class FunctionHandler extends AbstractExpressionHandler {
         value = value.clone();
       }
 
-      this.generator.ts.array.callPush(elementType, fakeLiteral!, restArguments!, value, isSpread);
+      this.generator.ts.array.callPush(arrayType, arrayPtr, value, isSpread);
     }
 
-    scope.set(lastParameter.escapedName.toString(), restArguments!);
-    return restArguments;
+    scope.set(lastParameter.escapedName.toString(), arrayPtr);
+    return arrayPtr;
   }
 
   private makeClosure(fn: LLVMValue, functionDeclaration: Declaration, env: Environment) {

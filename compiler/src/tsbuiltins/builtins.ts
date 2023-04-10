@@ -814,12 +814,21 @@ export class BuiltinBoolean extends Builtin {
     return this.generator.builder.createSafeCall(this.unboxFn, [value]);
   }
 
-  create(value: LLVMValue) {
+  createHeap(value: LLVMValue) {
     const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
-    const thisUntyped = this.generator.builder.asVoidStar(allocated);
-
-    this.generator.builder.createSafeCall(this.constructorFn, [thisUntyped, value]);
+    this.callCtor(allocated, value);
     return allocated;
+  }
+
+  createStack(value: LLVMValue) {
+    const allocated = this.generator.builder.createAlloca(this.llvmType.getPointerElementType());
+    this.callCtor(allocated, value);
+    return allocated;
+  }
+
+  private callCtor(memory: LLVMValue, value: LLVMValue) {
+    const thisUntyped = this.generator.builder.asVoidStar(memory);
+    this.generator.builder.createSafeCall(this.constructorFn, [thisUntyped, value]);
   }
 
   getNegateFn() {
