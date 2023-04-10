@@ -14,6 +14,7 @@
 #include "std/private/logger.h"
 #include "std/private/memory_management/allocator.h"
 #include "std/private/memory_management/igc_impl.h"
+#include "std/private/memory_management/igc_validator.h"
 #include "std/private/memory_management/memory_cleaner.h"
 #include "std/private/memory_management/memory_diagnostics_storage.h"
 
@@ -27,12 +28,14 @@ constexpr const auto g_multipleFactor = 2;
 MemoryManager::MemoryManager(std::unique_ptr<Allocator>&& allocator,
                              std::unique_ptr<MemoryCleaner>&& cleaner,
                              std::unique_ptr<IGCImpl>&& gc,
-                             std::unique_ptr<MemoryDiagnosticsStorage>&& memoryDiagnostics)
+                             std::unique_ptr<MemoryDiagnosticsStorage>&& memoryDiagnostics,
+                             std::unique_ptr<IGCValidator>&& gcValidator)
     : _allocator(std::move(allocator))
     , _memoryCleaner(std::move(cleaner))
     , _gc(std::move(gc))
     , _memoryDiagnosticPimpl(std::move(memoryDiagnostics))
     , _memoryThreshold(g_DefaultMemoryLimitBytes)
+    , _gcValidator(std::move(gcValidator))
 {
     LOG_INFO("Memory limit is " + std::to_string(_memoryThreshold) + " bytes");
 }
@@ -73,6 +76,19 @@ MemoryDiagnostics* MemoryManager::getMemoryDiagnostics() const
 GC* MemoryManager::getGC()
 {
     return new GC{_gc.get(), this};
+}
+
+void MemoryManager::onObjectAboutToDelete(void* ptr)
+{
+    if (_gcValidator)
+    {
+        _gcValidator->onObjectAboutToDelete(ptr);
+    }
+}
+
+const IGCValidator* MemoryManager::getGCValidator() const
+{
+    return _gcValidator.get();
 }
 
 bool MemoryManager::needToFreeMemory() const

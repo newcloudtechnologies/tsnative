@@ -15,17 +15,19 @@
 
 class IEventLoop;
 class IGCImpl;
+class IGCValidator;
 
 class MemoryCleaner
 {
 public:
-    MemoryCleaner(IEventLoop* loop, IGCImpl* gc);
+    MemoryCleaner(IEventLoop& loop, IGCImpl& gc, const IGCValidator* validator);
 
     void asyncClear(const std::function<void()> afterClear);
 
 private:
-    IEventLoop* _eventLoop;
-    IGCImpl* _gc;
+    IEventLoop& _eventLoop;
+    IGCImpl& _gc;
+    const IGCValidator* _gcValidator = nullptr;
 
     bool _collectScheduled = false;
 };

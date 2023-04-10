@@ -18,8 +18,6 @@
 
 #include "std/private/memory_management/gc_printer.h"
 
-#include "std/private/to_string_converter.h"
-
 #include <cassert>
 
 DefaultGC::DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks)
@@ -69,6 +67,16 @@ void DefaultGC::addRootWithName(Object** o, const char* name)
 {
     insertRoot(o);
     _names.setCppRootName(o, name);
+}
+
+const DefaultGC::Heap& DefaultGC::getHeap() const
+{
+    return _heap;
+}
+
+const DefaultGC::Roots& DefaultGC::getRoots() const
+{
+    return _roots;
 }
 
 void DefaultGC::insertRoot(Object** o)
@@ -165,9 +173,9 @@ void DefaultGC::unmarkRoots()
     }
 }
 
-void DefaultGC::print() const
+void DefaultGC::print(const std::string& fileName) const
 {
-#ifdef ENABLE_GC_LOGS
-    GCPrinter{_heap, _roots, _names}.print();
-#endif // ENABLE_GC_LOGS
+#ifdef VALIDATE_GC
+    GCPrinter{_heap, _roots, _names}.print(fileName);
+#endif // VALIDATE_GC
 }

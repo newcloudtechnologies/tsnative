@@ -12,6 +12,7 @@
 #include "std/gc.h"
 
 #include "std/private/memory_management/igc_impl.h"
+#include "std/private/memory_management/igc_validator.h"
 #include "std/tsboolean.h"
 #include "std/tsstring.h"
 
@@ -62,7 +63,12 @@ void GC::collect()
         throw std::runtime_error("GC cannot be nullptr");
     }
 
-    return _gcImpl->collect();
+    _gcImpl->collect();
+
+    if (_memManager && _memManager->getGCValidator())
+    {
+        _memManager->getGCValidator()->validate();
+    }
 }
 
 void GC::addRoot(void** root, void* associatedName)

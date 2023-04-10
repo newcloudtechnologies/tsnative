@@ -13,12 +13,14 @@
 
 #include "std/ievent_loop.h"
 #include "std/private/memory_management/igc_impl.h"
+#include "std/private/memory_management/igc_validator.h"
 
 #include "std/private/logger.h"
 
-MemoryCleaner::MemoryCleaner(IEventLoop* loop, IGCImpl* gc)
+MemoryCleaner::MemoryCleaner(IEventLoop& loop, IGCImpl& gc, const IGCValidator* gcValidator)
     : _eventLoop(loop)
     , _gc(gc)
+    , _gcValidator(gcValidator)
 {
 }
 
@@ -38,10 +40,14 @@ void MemoryCleaner::asyncClear(const std::function<void()> afterClear)
 
     LOG_INFO("Scheduling Garbage collection");
 
-    _eventLoop->enqueue(
+    _eventLoop.enqueue(
         [this, fn = afterClear]()
         {
-            _gc->collect();
+            _gc.collect();
+            if (_gcValidator)
+            {
+                _gcValidator->validate();
+            }
             _collectScheduled = false;
             fn();
         });
