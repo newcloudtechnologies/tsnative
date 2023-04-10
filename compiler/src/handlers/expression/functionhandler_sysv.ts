@@ -274,47 +274,87 @@ export class SysVFunctionHandler {
     return this.generator.builder.createBitCast(thisValueUntyped, llvmThisType);
   }
 
+  private convertTSArgToLLVMArg(argument: ts.Expression, index: number, declaration: Declaration, outerEnv?: Environment) {
+    if (ts.isSpreadElement(argument)) {
+      return this.generator.handleExpression(argument.expression, outerEnv).derefToPtrLevel1();
+    }
+
+    let arg = this.generator.handleExpression(argument, outerEnv).derefToPtrLevel1();
+
+    if (arg.isTSPrimitivePtr()) {
+      arg = arg.clone();
+    }
+
+    // there may be no parameter declared at argument's index in case of rest arguments
+    const parameterAtIndex = declaration.parameters[index];
+    if (parameterAtIndex) {
+      const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+
+      if (!parameterDeclaration.dotDotDotToken) {
+        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
+            let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+
+            if (parameterDeclaration.type.isEnum()) {
+              value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
+              return value.asLLVMInteger();
+            }
+
+            return value;
+        }
+      }
+
+      if (parameterDeclaration.type.isEnum()) {
+        return arg.asLLVMInteger();
+      }
+
+      if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
+        return this.generator.ts.union.create(arg);
+      }
+    }
+
+    return this.generator.builder.asVoidStar(arg);
+  }
+
+  private computeRestCallArguments(restParameterStart: number, 
+                                   spreadPairs: { argument: ts.Expression, index: number }[],
+                                   declaration: Declaration, outerEnv?: Environment) : LLVMValue[] {
+    if (restParameterStart === -1) {
+      return [];
+    }
+
+    const argsToArray = this.generator.ts.array.getArgsToArrayConverter();
+    const aggregatorStackArrPtr = this.generator.builder.createAlloca(this.generator.ts.array.getLLVMType().getPointerElementType());
+    this.generator.ts.array.callDefaultConstructor(aggregatorStackArrPtr, this.generator.ts.array.getDeclaration().type);
+    
+    const argsToArrayStackPtr = this.generator.builder.createAlloca(argsToArray.getLLVMType().getPointerElementType());
+    argsToArray.callConstructor(argsToArrayStackPtr, aggregatorStackArrPtr);
+
+    for (const {argument, index} of spreadPairs) {
+      const llvmArgPtr = this.convertTSArgToLLVMArg(argument, index, declaration, outerEnv);
+      const isSpread = ts.isSpreadElement(argument);
+      argsToArray.callAddObject(argsToArrayStackPtr, llvmArgPtr, isSpread);
+    }
+
+    return [aggregatorStackArrPtr];
+  }
+
   private handleCallArguments(tsArgs: ts.NodeArray<ts.Expression>, declaration: Declaration, outerEnv?: Environment) {
-    const llvmArgs = tsArgs.map((argument, index) => {
-      if (ts.isSpreadElement(argument)) {
-        return this.generator.handleExpression(argument.expression, outerEnv).derefToPtrLevel1();
-      }
+    const llvmArgs: LLVMValue[] = [];
 
-      let arg = this.generator.handleExpression(argument, outerEnv).derefToPtrLevel1();
+    const restParametersStart = declaration.parameters.findIndex((p, _) => p.dotDotDotToken !== undefined);
 
-      if (arg.isTSPrimitivePtr()) {
-        arg = arg.clone();
-      }
+    const passedArgIndexPairs = tsArgs.map((arg, _) => arg).map((val, idx) => ({argument: val, index: idx}));
 
-      // there may be no parameter declared at argument's index in case of rest arguments
-      const parameterAtIndex = declaration.parameters[index];
-      if (parameterAtIndex) {
-        const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+    const sliceStart = restParametersStart === -1 ? passedArgIndexPairs.length : restParametersStart;
+    const spreadArgIndexPairs = passedArgIndexPairs.slice(sliceStart);
+    const nonSpreadArgIndexPairs = passedArgIndexPairs.slice(0, sliceStart);
+    
+    for (const {argument, index} of nonSpreadArgIndexPairs) {
+      llvmArgs.push(this.convertTSArgToLLVMArg(argument, index, declaration, outerEnv));
+    }
 
-        if (!parameterDeclaration.dotDotDotToken) {
-          if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
-              let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
-
-              if (parameterDeclaration.type.isEnum()) {
-                value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
-                return value.asLLVMInteger();
-              }
-
-              return value;
-          }
-        }
-
-        if (parameterDeclaration.type.isEnum()) {
-          return arg.asLLVMInteger();
-        }
-
-        if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-          return this.generator.ts.union.create(arg);
-        }
-      }
-
-      return this.generator.builder.asVoidStar(arg);
-    });
+    const restParams = this.computeRestCallArguments(restParametersStart, spreadArgIndexPairs, declaration, outerEnv);
+    restParams.forEach((p, _) => llvmArgs.push(this.generator.builder.asVoidStar(p)));
 
     this.populateOptionals(llvmArgs, declaration);
 
