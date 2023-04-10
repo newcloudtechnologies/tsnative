@@ -79,110 +79,6 @@ export class TemplateInstantiator {
     this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
   }
 
-  private getConsoleFunction(call: ts.CallExpression) {
-    if (call.getText().startsWith("console.log")) {
-      return "log";
-    } else if (call.getText().startsWith("console.assert")) {
-      return "assert";
-    }
-
-    throw new Error(`Unhandled 'console' call: ${call.getText()}`);
-  }
-
-  private handleGenericConsoleOutput(call: ts.CallExpression) {
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, TSType>) => {
-      const argumentTypes = call.arguments.map((arg) => {
-        let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
-
-        if (tsType.isTypeParameter()) {
-          const typename = tsType.toString();
-          tsType = typeMap.get(typename)!;
-
-          if (tsType.isObject()) {
-            return "Object*";
-          }
-        }
-
-        return tsType.toCppType();
-      });
-
-      const consoleFunction = this.getConsoleFunction(call);
-
-      const maybeExists = CXXSymbols().getOrCreate("console").filter((s) => s.demangled.includes(`console::${consoleFunction}`));
-
-      const exists = maybeExists.some((s) => {
-        return (
-          ExternalSymbolsProvider.extractParameterTypes(s.demangled) ===
-          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-        );
-      });
-
-      if (!exists) {
-        const templateSignature = `template void console::${consoleFunction}(${argumentTypes.join(", ")});`;
-        this.generatedContent.push(templateSignature);
-      }
-    });
-
-    this.sources.forEach((source) => {
-      source.forEachChild(visitor);
-    });
-  }
-
-  private handleConsoleOutput(node: ts.Node) {
-    let call: ts.CallExpression;
-    if (ts.isExpressionStatement(node)) {
-      call = node.expression as ts.CallExpression;
-    } else if (ts.isCallExpression(node)) {
-      call = node;
-    } else {
-      throw new Error(
-        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]
-        }`
-      );
-    }
-
-    const hasGenericArguments = call.arguments.some((arg) =>
-      this.generator.ts.checker.getTypeAtLocation(arg).isTypeParameter()
-    );
-    if (hasGenericArguments) {
-      this.handleGenericConsoleOutput(call);
-    } else {
-      const argumentTypes = call.arguments.map((arg) => {
-        let tsType: TSType;
-
-        if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(arg)) {
-          const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
-          const declaration = symbol.valueDeclaration || symbol.declarations[0];
-          tsType = declaration.type;
-
-          if (declaration.isEnumMember() || (declaration.isParameter() && tsType.isEnum())) {
-            tsType = tsType.getEnumElementTSType();
-          }
-        } else {
-          tsType = this.generator.ts.checker.getTypeAtLocation(arg);
-        }
-
-        return tsType.toCppType();
-      });
-
-      const consoleFunction = this.getConsoleFunction(call);
-
-      const maybeExists = CXXSymbols().getOrCreate("console").filter((s) => s.demangled.includes(`console::${consoleFunction}`));
-
-      const exists = maybeExists.some((symbol) => {
-        return (
-          ExternalSymbolsProvider.extractParameterTypes(symbol.demangled) ===
-          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-        );
-      });
-
-      if (!exists) {
-        const templateSignature = `template void console::${consoleFunction}(${argumentTypes.join(", ")});`;
-        this.generatedContent.push(templateSignature);
-      }
-    }
-  }
-
   private instantiateIteratorResult(type: TSType) {
     const instance = `template class IteratorResult<${type.toCppType()}>;`;
     const doubleSpecialization = "template class IteratorResult<Number*>;";
@@ -411,6 +307,9 @@ export class TemplateInstantiator {
     }
 
     const methodName = node.expression.name.getText();
+    if (methodName === "push") {
+      return;
+    }
     const methodSymbol = tsArrayType.getProperty(methodName);
     const methodDeclaration = methodSymbol.valueDeclaration;
 
@@ -475,9 +374,7 @@ export class TemplateInstantiator {
       node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.methodsVisitor.bind(this)));
     }
 
-    if (node.getText().startsWith("console.log") || node.getText().startsWith("console.assert")) {
-      this.handleConsoleOutput(node);
-    } else if (
+    if (
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&
       this.generator.ts.checker.getTypeAtLocation(node.expression.expression).isArray()
