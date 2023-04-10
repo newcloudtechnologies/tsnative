@@ -165,7 +165,6 @@ Array<T>::~Array()
 template <typename T>
 Number* Array<T>::push(Array<T>* other)
 {
-    LOG_INFO("-----------------Array push call--------------");
     auto iterator = other->iterator();
     auto result = iterator->next();
 
