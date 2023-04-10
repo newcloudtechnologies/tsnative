@@ -86,6 +86,7 @@ set(SOURCES
     src/id_generator.cpp
     src/tslazy_closure.cpp
     src/args_to_array.cpp
+    src/console.cpp
 
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
