@@ -34,6 +34,7 @@ void logArray(Array<Object*>* objects)
 }
 } // anonymous namespace
 
+
 void console::log(Object* msg, Array<Object*>* objects)
 {
     logString(msg->toString()->cpp_str());
@@ -44,10 +45,12 @@ void console::assert(Boolean* assumption, Array<Object*>* objects)
 {
     static const std::string failureMsg{"Assertion failed:"};
 
-    if (!Object::asObjectPtr(assumption)->toBool()->unboxed())
+    if (Object::asObjectPtr(assumption)->toBool()->unboxed())
     {
-        logString(failureMsg);
-        logArray(objects);
-        std::terminate();
+        return;
     }
+    
+    logString(failureMsg);
+    logArray(objects);
+    std::terminate();
 }
