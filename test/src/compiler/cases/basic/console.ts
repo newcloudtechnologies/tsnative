@@ -10,7 +10,8 @@
  */
 
 {
-    console.assert(555);
+    let i = 0;
+    console.assert(i >= 0);
 }
 
 {
