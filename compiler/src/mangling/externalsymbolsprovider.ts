@@ -147,6 +147,11 @@ export class ExternalSymbolsProvider {
       result.push(argumentTypes[i].toCppType());
     }
 
+    // If there are rest params and rest param is missing
+    if (argumentTypes.length < this.declaration.parameters.length && restParametersStart !== -1) {
+      result.push("Array<Object*>*");
+    }
+
     return result;
   }
 

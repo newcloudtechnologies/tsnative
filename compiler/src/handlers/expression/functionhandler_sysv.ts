@@ -405,9 +405,17 @@ export class SysVFunctionHandler {
   }
 
   private populateOptionals(args: LLVMValue[], declaration: Declaration) {
+    const builtinArray = this.generator.ts.array;
+
     for (let i = args.length; i < declaration.parameters.length; ++i) {
       const parameterDeclaration = Declaration.create(declaration.parameters[i], this.generator);
+
+      // Rest parameters array can be empty. So initialize with empty stack array
+      // Stack array should be safe because function will be called a moments later
       if (parameterDeclaration.dotDotDotToken) {
+        const stackMemoryPtr = this.generator.builder.createAlloca(builtinArray.getLLVMType().getPointerElementType());
+        this.generator.ts.array.callDefaultConstructor(stackMemoryPtr, builtinArray.getDeclaration().type);
+        args.push(stackMemoryPtr);
         continue;
       }
 
