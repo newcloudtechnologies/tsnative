@@ -41,15 +41,10 @@ export function doIterate<TParam>(model: Array<TParam>) {
 
     for (let i = len - 1; i >= 0; i--) {
         let item = model[i];
-        // won't compile. See https://jira.ncloudtech.ru:8090/browse/TSN-346
-        //doubledArr.push(item);
-
-        doubledArr.push(item, item);
+        doubledArr.push(item);
     }
 
-    // will cause crash. See https://jira.ncloudtech.ru:8090/browse/TSN-346
-    // console.assert(doubledArr.length === arr.length, "Iterate through array using a template function");
-    console.assert(true, "Compile check"); // TODO repalce me with the commented line ⇧
+    console.assert(doubledArr.length === model.length, "Iterate through array using a template function");
 }
 
 let arr: Point[] = [];
