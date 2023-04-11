@@ -34,3 +34,11 @@
 #define LOG_METHOD_CALL
 
 #endif // ENABLE_LOGS
+
+#ifdef VALIDATE_GC
+#define LOG_GC(msg) std::cout << "[GC] " << (msg) << std::endl;
+#define LOG_GC_ADDRESS(msg, address) std::cout << "[GC] " << (msg) << std::hex << ((void*)address) << std::endl
+#else
+#define LOG_GC(msg)
+#define LOG_GC_ADDRESS(msg, address)
+#endif

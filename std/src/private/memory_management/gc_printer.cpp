@@ -9,9 +9,10 @@
  *
  */
 
-#include "std/private/gc_printer.h"
+#include "std/private/memory_management/gc_printer.h"
 
 #include "std/private/algorithms.h"
+#include "std/private/logger.h"
 #include "std/private/to_string_converter.h"
 #include "std/tsobject.h"
 #include "std/tsstring.h"
@@ -36,7 +37,7 @@ GCPrinter::GCPrinter(const GCPrinter::objects_t& heap, const GCPrinter::roots_t&
 {
 }
 
-void GCPrinter::print() const
+void GCPrinter::print(std::string fileName) const
 {
     static int i = 0;
 
@@ -48,7 +49,12 @@ void GCPrinter::print() const
 
     fillRootsGraph(graph, _roots);
 
-    std::ofstream out("gc_print_" + std::to_string(i++) + ".gv");
+    if (fileName.empty())
+    {
+        fileName = "gc_print_" + std::to_string(i++);
+    }
+
+    std::ofstream out(fileName + ".gv");
     graph.RenderDot(out);
 }
 
@@ -86,6 +92,7 @@ std::string GCPrinter::formatObjInfo(const Object* obj) const
     std::stringstream ss;
     ss << "Obj: " << std::hex << obj << std::endl;
     ss << "Value: " << removeQuotes(ToStringConverter::convert(obj)) << std::endl;
+    ss << "Is marked: " << std::boolalpha << obj->isMarked() << std::endl;
     ss << formatVariableNames(obj) << std::endl;
 
     return ss.str();
@@ -93,7 +100,7 @@ std::string GCPrinter::formatObjInfo(const Object* obj) const
 
 void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const
 {
-    std::cout << ("Roots count: " + std::to_string(roots.size()) + "\n");
+    LOG_GC("Roots count: " + std::to_string(roots.size()));
 
     visited_nodes_t visited;
 
@@ -108,7 +115,12 @@ void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const
         graph.AddNode(rootId, {gvl::Property("style", "bold"), gvl::Property("shape", "component")});
 
         auto id = gvl::NodeId(formatObjInfo(*o));
-        graph.AddNode(id, {gvl::Property("shape", "component")});
+        std::vector<gvl::Property> properties{gvl::Property("shape", "component")};
+        if ((*o)->isMarked())
+        {
+            properties.push_back(gvl::Property("shape", "Msquare"));
+        }
+        graph.AddNode(id, properties);
         graph.AddEdge(rootId, id);
 
         visited.insert({*o, id});
@@ -144,7 +156,12 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
         }
         visited.insert({c, id});
 
-        graph.AddNode(id);
+        std::vector<gvl::Property> properties;
+        if (c->isMarked())
+        {
+            properties.push_back(gvl::Property("shape", "Msquare"));
+        }
+        graph.AddNode(id, properties);
         graph.AddEdge(parentNode, id);
 
         fillChildrenGraph(graph, id, c, visited);

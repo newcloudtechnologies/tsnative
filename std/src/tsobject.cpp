@@ -16,16 +16,16 @@
 #include "std/private/logger.h"
 #include "std/private/tsmap_p.h"
 
+#include "std/runtime.h"
 #include "std/tsarray.h"
 #include "std/tsboolean.h"
 #include "std/tsmap.h"
 #include "std/tsstring.h"
 
-#include "std/private/allocator.h"
-#include "std/runtime.h"
+#include "std/private/memory_management/memory_manager.h"
 
-static String* superKey = new String("super");
-static String* parentKey = new String("parent");
+static constexpr auto superKeyCpp = "super";
+static constexpr auto parentKeyCpp = "parent";
 
 Object::Object()
 #ifdef USE_MAP_STD_BACKEND
@@ -149,12 +149,10 @@ std::vector<String*> Object::getKeys() const
 {
     std::vector<String*> uniqueKeys;
 
-    const std::string& superKeyCppStr = superKey->cpp_str();
-    const std::string& parentKeyCppStr = parentKey->cpp_str();
-
-    if (has(superKey))
+    String superKey(superKeyCpp);
+    if (has(&superKey))
     {
-        auto* superObject = get(superKey);
+        auto* superObject = get(&superKey);
         std::vector<String*> superUniqueKeys = superObject->getKeys();
         uniqueKeys.insert(uniqueKeys.end(),
                           std::make_move_iterator(superUniqueKeys.begin()),
@@ -169,7 +167,7 @@ std::vector<String*> Object::getKeys() const
     for (String* key : keys)
     {
         const std::string& keyCppStr = key->cpp_str();
-        if (keyCppStr == superKeyCppStr || keyCppStr == parentKeyCppStr || superKeys.count(key))
+        if (keyCppStr == superKeyCpp || keyCppStr == parentKeyCpp || superKeys.count(key))
         {
             continue;
         }
@@ -182,16 +180,17 @@ std::vector<String*> Object::getKeys() const
 
 Boolean* Object::operatorIn(String* key) const
 {
+    String superKey(superKeyCpp);
+
     // Local lookup O(1)
     if (has(key))
     {
         return new Boolean(true);
     }
-    else if (has(superKey))
+    else if (has(&superKey))
     {
         // Super lookup (linear)
-        std::string keyCppStr = key->cpp_str();
-        auto* superObject = get(superKey);
+        auto* superObject = get(&superKey);
         return superObject->operatorIn(key);
     }
     return new Boolean(false);
@@ -211,9 +210,10 @@ Object* Object::get(String* key) const
         return _props->get(key);
     }
 
-    if (has(superKey))
+    String superKey(superKeyCpp);
+    if (has(&superKey))
     {
-        auto superValue = get(superKey);
+        auto superValue = get(&superKey);
         while (superValue)
         {
             if (superValue->has(key))
@@ -221,9 +221,9 @@ Object* Object::get(String* key) const
                 return superValue->get(key);
             }
 
-            if (superValue->has(superKey))
+            if (superValue->has(&superKey))
             {
-                superValue = superValue->get(superKey);
+                superValue = superValue->get(&superKey);
             }
             else
             {
@@ -354,8 +354,20 @@ void* Object::operator new(std::size_t n)
         return ::operator new(n);
     }
 
-    return Runtime::getAllocator().allocateObject(n);
+    return Runtime::getMemoryManager()->allocateMemoryForObject(n);
 }
+
+#ifdef VALIDATE_GC
+void Object::operator delete(void* ptr)
+{
+    if (Runtime::isInitialized() && Runtime::getMemoryManager())
+    {
+        Runtime::getMemoryManager()->onObjectAboutToDelete(ptr);
+    }
+
+    ::operator delete(ptr);
+}
+#endif
 
 class String;
 template class Map<String*, Object*>;

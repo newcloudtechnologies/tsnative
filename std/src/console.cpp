@@ -28,16 +28,23 @@ void logArray(Array<Object*>* objects)
 
     while (!result->done()->unboxed())
     {
-        logString(result->value()->toString()->cpp_str());
+        const auto converted = ToStringConverter::convert(Object::asObjectPtr(result->value()));
+        logString(converted);
         result = iterator->next();
     }
 }
 } // anonymous namespace
 
-
 void console::log(Object* msg, Array<Object*>* objects)
 {
-    logString(msg->toString()->cpp_str());
+    const auto convertedMsg = ToStringConverter::convert(Object::asObjectPtr(msg));
+
+    logString(convertedMsg);
+    if (objects->length()->unboxed() == 0)
+    {
+        std::cout << std::endl;
+    }
+
     logArray(objects);
 }
 
@@ -49,7 +56,7 @@ void console::assert(Boolean* assumption, Array<Object*>* objects)
     {
         return;
     }
-    
+
     logString(failureMsg);
     logArray(objects);
     std::terminate();

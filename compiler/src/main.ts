@@ -122,7 +122,6 @@ async function main() {
     stdlib.DATE_DEFINITION,
     stdlib.MATH_DEFINITION,
     stdlib.RUNTIME_DEFINITION,
-    stdlib.DIAGNOSTICS_DEFINITION,
     stdlib.MEMORY_DIAGNOSTICS_DEFINITION,
     stdlib.SET_INTERVAL_DEFINITION,
     stdlib.SET_TIMEOUT_DEFINITION,

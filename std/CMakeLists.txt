@@ -47,7 +47,6 @@ set(HEADERS
     include/std/tsmath.h
     include/std/runtime.h
     include/std/gc.h
-    include/std/diagnostics.h
     include/std/memory_diagnostics.h
     include/std/set_timeout.h
     include/std/set_interval.h
@@ -74,7 +73,6 @@ set(SOURCES
     src/template_instances.cpp
     src/tsstring.cpp
     src/runtime.cpp
-    src/diagnostics.cpp
     src/memory_diagnostics.cpp
     src/set_timeout.cpp
     src/set_interval.cpp
@@ -97,9 +95,13 @@ set(SOURCES
     src/private/tsstring_std_p.cpp
     src/private/tsdate_absl_p.cpp
     src/private/tsmath_p.cpp
-    src/private/default_gc.cpp
-    src/private/allocator.cpp
-    src/private/memory_diagnostics_storage.cpp
+    src/private/memory_management/default_gc.cpp
+    src/private/memory_management/gc_validator.cpp
+    src/private/memory_management/allocator.cpp
+    src/private/memory_management/memory_diagnostics_storage.cpp
+    src/private/memory_management/memory_manager.cpp
+    src/private/memory_management/memory_cleaner.cpp
+    src/private/memory_management/mem_manager_creator.cpp
     src/private/uv_loop_adapter.cpp
     src/private/uv_timer_adapter.cpp
     src/private/promise/promise_p.cpp
@@ -107,9 +109,9 @@ set(SOURCES
     src/private/promise/promise_callback.cpp
     src/private/default_executor.cpp
     src/private/number_parser.cpp
-    src/private/gc_printer.cpp
+    src/private/memory_management/gc_printer.cpp
     src/private/to_string_converter.cpp
-    src/private/gc_names_storage.cpp
+    src/private/memory_management/gc_names_storage.cpp
     src/private/uv_timer_creator.cpp
     src/private/algorithms.cpp
 )
@@ -117,10 +119,13 @@ set(SOURCES
 
 if("${ENABLE_LOGS}" STREQUAL "all")
     add_definitions( -DENABLE_LOGS )
-    add_definitions( -DENABLE_GC_LOGS )
-elseif ("${ENABLE_LOGS}" STREQUAL "gc")
-    add_definitions( -DENABLE_GC_LOGS )
 endif()
+
+if(VALIDATE_GC)
+    add_definitions( -DVALIDATE_GC )
+endif()
+
+add_compile_definitions( MEMORY_LIMIT_KB=${MEMORY_LIMIT_KB} )
 
 add_library(${PROJECT_NAME}
     ${HEADERS} ${SOURCES} 
@@ -236,6 +241,7 @@ if (BUILD_TEST)
                      test/infrastructure/global_test_allocator_fixture.cpp
                      test/gc/treenode_gc_tests.cpp
                      test/gc/marking_tests.cpp
+                     test/gc/gc_validator_tests.cpp
                      test/runtime_tests.cpp
                      test/event_loop/uv_loop_tests.cpp
                      test/event_loop/custom_loop_tests.cpp
