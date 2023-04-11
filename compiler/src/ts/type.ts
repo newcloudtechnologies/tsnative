@@ -658,6 +658,10 @@ export class TSType {
   }
 
   toCppType(): string {
+    if (this.isAny()) {
+      return "Object*";
+    }
+
     if (this.isVoid()) {
       return "Undefined*";
     }
