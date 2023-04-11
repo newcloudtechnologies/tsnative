@@ -16,22 +16,28 @@
 
 namespace
 {
-void logImpl(const std::string& str)
+void logString(const std::string& str)
 {
     std::cout << str << " ";
 }
-} // anonymous namespace
 
-void console::log(Array<Object*>* objects)
+void logArray(Array<Object*>* objects)
 {
     auto iterator = objects->iterator();
     auto result = iterator->next();
 
     while (!result->done()->unboxed())
     {
-        logImpl(result->value()->toString()->cpp_str());
+        logString(result->value()->toString()->cpp_str());
         result = iterator->next();
     }
+}
+} // anonymous namespace
+
+void console::log(Object* msg, Array<Object*>* objects)
+{
+    logString(msg->toString()->cpp_str());
+    logArray(objects);
 }
 
 void console::assert(Boolean* assumption, Array<Object*>* objects)
@@ -40,8 +46,8 @@ void console::assert(Boolean* assumption, Array<Object*>* objects)
 
     if (!Object::asObjectPtr(assumption)->toBool()->unboxed())
     {
-        logImpl(failureMsg);
-        console::log(objects);
+        logString(failureMsg);
+        logArray(objects);
         std::terminate();
     }
 }
