@@ -9,22 +9,23 @@
  *
  */
 
-#include "std/private/default_gc.h"
+#include "std/private/memory_management/default_gc.h"
 
 #include "std/tsobject.h"
 #include "std/tsstring.h"
 
 #include "std/private/logger.h"
 
-#include "std/private/gc_printer.h"
+#include "std/private/memory_management/gc_printer.h"
 
-DefaultGC::DefaultGC(Callbacks&& callbacks, TimerStorage& timers, PromiseStorage& promises)
+#include <cassert>
+
+DefaultGC::DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks)
     : _heap{}
     , _roots{}
     , _names{}
-    , _callbacks{std::move(callbacks)}
+    , _callbacks(std::move(gcCallbacks))
     , _timers{timers}
-    , _promises{promises}
 {
 }
 
@@ -68,8 +69,19 @@ void DefaultGC::addRootWithName(Object** o, const char* name)
     _names.setCppRootName(o, name);
 }
 
+const DefaultGC::Heap& DefaultGC::getHeap() const
+{
+    return _heap;
+}
+
+const DefaultGC::Roots& DefaultGC::getRoots() const
+{
+    return _roots;
+}
+
 void DefaultGC::insertRoot(Object** o)
 {
+    LOG_METHOD_CALL;
     if (!o)
     {
         throw std::runtime_error("GC: root cannot be nullptr");
@@ -81,6 +93,7 @@ void DefaultGC::insertRoot(Object** o)
 
 void DefaultGC::removeRoot(Object** o)
 {
+    LOG_METHOD_CALL;
     if (!o)
     {
         throw std::runtime_error("GC: root cannot be nullptr");
@@ -98,6 +111,7 @@ void DefaultGC::removeRoot(Object** o)
 
 void DefaultGC::collect()
 {
+    LOG_METHOD_CALL;
     LOG_INFO("Calling mark");
     mark();
     LOG_INFO("Calling sweep");
@@ -111,9 +125,7 @@ void DefaultGC::collect()
 void DefaultGC::mark()
 {
     const auto isTimerReady = [](const TimerObject& t) { return !t.active(); };
-    const auto isPromiseReady = [](const Promise& p) { return p.ready(); };
     markStorage(_timers, isTimerReady);
-    markStorage(_promises, isPromiseReady);
 
     for (auto** r : _roots)
     {
@@ -127,25 +139,24 @@ void DefaultGC::mark()
 
 void DefaultGC::sweep()
 {
-    auto it = _heap.cbegin();
-    while (it != _heap.cend())
+    auto it = _heap.begin();
+    while (it != _heap.end())
     {
         auto* object = (*it);
-        LOG_ADDRESS("Sweeping object ", object);
+        LOG_ADDRESS("Try sweeping object ", object);
 
         if (object->isMarked())
         {
             LOG_ADDRESS("Marked object, continue ", object);
             object->unmark();
+
             ++it;
             continue;
         }
 
-        _callbacks.beforeDeleted(*object);
-
         LOG_ADDRESS("Calling object's dtor ", object);
-        delete object;
-        _callbacks.afterDeleted(object);
+        _callbacks.afterDelete(object);
+
         it = _heap.erase(it);
     }
 }
@@ -162,9 +173,9 @@ void DefaultGC::unmarkRoots()
     }
 }
 
-void DefaultGC::print() const
+void DefaultGC::print(const std::string& fileName) const
 {
-#ifdef ENABLE_GC_LOGS
-    GCPrinter{_heap, _roots, _names}.print();
-#endif // ENABLE_GC_LOGS
+#ifdef VALIDATE_GC
+    GCPrinter{_heap, _roots, _names}.print(fileName);
+#endif // VALIDATE_GC
 }

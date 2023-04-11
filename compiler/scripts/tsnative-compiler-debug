@@ -4,7 +4,7 @@
 # 1 for instantaing template classes
 # 2 for instantaing template functions
 # 3 for generating LLVM IR
-launchNumberToDebug=3;
+launchNumberToDebug=0;
 useVSCodeDebug=1; # Set one for VSCod debugging and 0 for Chrome debugging
 
 echo "[DEBUG MODE] Running in the debug mode with desired launch number: ${launchNumberToDebug}"

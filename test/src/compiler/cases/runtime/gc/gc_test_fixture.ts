@@ -11,13 +11,12 @@
 
 import { Runtime } from "tsnative/std/definitions/runtime"
 
-export function gcTest(testBody: () => void, description: string) {
-    const diagnostics = Runtime.getDiagnostics();
-    const memInfo = diagnostics.getMemoryDiagnostics();
+export function gcTest(testBody: () => void, description: string, savedObjects = 0) {
+    const memInfo = Runtime.getMemoryDiagnostics();
     const gc = Runtime.getGC();
 
     gc.collect();
-    const internalObjectsCount = memInfo.getAliveObjectsCount();
+    const beforeAliveObjects = memInfo.getAliveObjectsCount();
 
     testBody();
 
@@ -28,10 +27,12 @@ export function gcTest(testBody: () => void, description: string) {
     memInfo.printGCState();
 
     gc.collect();
-    const newObjectCount = memInfo.getAliveObjectsCount();
+    const afterAliveObjects = memInfo.getAliveObjectsCount();
 
     // Checks that everything in the gc's heap is alive
     memInfo.printGCState();
 
-    console.assert(internalObjectsCount === newObjectCount, `GC failed: not all object were collected -- ${description}`);
+    console.log(`before alive object ${beforeAliveObjects}, after ${afterAliveObjects}, saved ${savedObjects}`);
+    console.assert(beforeAliveObjects === afterAliveObjects - savedObjects,
+         `GC failed: not all object were collected -- ${description}`);
 }

@@ -19,7 +19,8 @@ class PromisePrivate;
 class Object;
 class IExecutor;
 
-class SharedPromiseInternalState final : public PromiseEmitter<SharedPromiseInternalState>
+class SharedPromiseInternalState final : public PromiseEmitter<SharedPromiseInternalState>,
+                                         public std::enable_shared_from_this<SharedPromiseInternalState>
 {
 public:
     using States = PromiseState::States;

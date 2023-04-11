@@ -15,6 +15,7 @@
 
 #include "std/id_generator.h"
 #include "std/tsobject.h"
+#include "std/tsobject_owner.h"
 
 #include "std/private/promise/promise_emitter.h"
 
@@ -34,6 +35,13 @@ class TS_DECLARE Promise : public Object, public EmitterBase<Promise, ReadyEvent
 protected:
     explicit Promise(PromisePrivate* promisePrivate, std::vector<Object*>&& childs);
 
+    Promise(const Promise& other) = delete;
+    Promise& operator=(const Promise& other) = delete;
+    Promise(Promise&& other) = delete;
+    Promise& operator=(const Promise&& other) = delete;
+
+    ~Promise() override;
+
 public:
     TS_METHOD TS_SIGNATURE("resolve(resolved?: Object): Promise") static Promise* resolve(Union* resolved);
 
@@ -41,8 +49,6 @@ public:
 
     TS_CODE("constructor(executor: (resolve: (value?: any) => void, reject: (reason?: any) => void) => void);")
     explicit Promise(TSClosure* executor);
-
-    ~Promise() override;
 
     TS_METHOD TS_SIGNATURE("then(onfulfilled?: (value: any) => void, onrejected?: (reason?: any) => void): Promise")
         Promise* then(Union* onFulfilled, Union* onRejected);
@@ -80,10 +86,14 @@ private:
 
     void failure(Object* rejected);
 
+    void removeKeeperAlive();
+
 private:
     PromisePrivate* _d;
     ID _promiseID;
-    std::vector<Object*> _childs;
+    std::vector<Object*> _children;
+
+    void** _pseudoRoot = nullptr;
 
 private:
     friend class ToStringConverter;

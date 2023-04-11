@@ -596,7 +596,7 @@ export class BuiltinNumber extends Builtin {
   }
 
   create(value: LLVMValue) {
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    let allocated: LLVMValue = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
 
     this.generator.builder.createSafeCall(this.ctorFn, [thisUntyped, value]);
@@ -815,7 +815,7 @@ export class BuiltinBoolean extends Builtin {
   }
 
   createHeap(value: LLVMValue) {
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     this.callCtor(allocated, value);
     return allocated;
   }

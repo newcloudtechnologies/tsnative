@@ -9,14 +9,13 @@
  *
  */
 
-#include "std/private/memory_diagnostics_storage.h"
+#pragma once
 
-std::size_t MemoryDiagnosticsStorage::getDeletedObjectsCount() const
-{
-    return _deletedObjectsCount;
-}
+#include <memory>
 
-void MemoryDiagnosticsStorage::onDeleted(const void*)
-{
-    ++_deletedObjectsCount;
-}
+#include "std/private/memory_management/async_object_storage.h"
+
+class MemoryManager;
+class IEventLoop;
+
+std::unique_ptr<MemoryManager> createMemoryManager(TimerStorage& storage, IEventLoop* loop);

@@ -11,6 +11,7 @@
 
 #include "std/tspromise.h"
 
+#include "std/gc.h"
 #include "std/runtime.h"
 #include "std/tsboolean.h"
 #include "std/tsclosure.h"
@@ -22,7 +23,6 @@
 #include "std/private/promise/promise_p.h"
 
 #include <cassert>
-#include <sstream>
 
 namespace
 {
@@ -31,7 +31,7 @@ TSClosure* makeClosure(void* (*envCall)(void***), Promise* promise)
     void*** env = (void***)malloc(2 * sizeof(void**));
 
     env[0] = (void**)malloc(sizeof(void**));
-    *(env[0]) = (void*)malloc(sizeof(void*));
+    *(env[0]) = Undefined::instance(); // the default value
 
     auto** promiseStar = (void**)malloc(sizeof(void*));
     *promiseStar = (void*)promise;
@@ -47,7 +47,6 @@ TSClosure* makeClosure(void* (*envCall)(void***), Promise* promise)
 
 Promise* Promise::resolve(Union* resolved)
 {
-    LOG_METHOD_CALL;
     LOG_INFO("Calling static method resolve ");
 
     auto* promise = new Promise{new PromisePrivate{}, {}};
@@ -57,7 +56,6 @@ Promise* Promise::resolve(Union* resolved)
 
 Promise* Promise::reject(Object* rejected)
 {
-    LOG_METHOD_CALL;
     LOG_INFO("Calling static method reject ");
 
     auto* promise = new Promise{new PromisePrivate{}, {}};
@@ -69,22 +67,40 @@ Promise::Promise(PromisePrivate* promisePrivate, std::vector<Object*>&& childs)
     : Object{TSTypeID::Promise}
     , _d{promisePrivate}
     , _promiseID{IDGenerator{}.createID()}
-    , _childs{std::move(childs)}
+    , _children{std::move(childs)}
+    , _pseudoRoot(new void*())
 {
+    LOG_ADDRESS("Call delegate Promise ctor for ", this);
+    if (!Runtime::isInitialized())
+    {
+        LOG_INFO("Runtime is not initialized.");
+        return;
+    }
     if (auto ptr = _d->getReadyConnector().lock())
     {
-        ptr->on<ReadyEvent>([this](auto&&...) { this->emit(ReadyEvent{}); });
+        ptr->on<ReadyEvent>(
+            [this](auto&&...)
+            {
+                _children.push_back(getResult());
+                this->emit(ReadyEvent{});
+                removeKeeperAlive();
+            });
     }
-    Runtime::getMutablePromiseStorage().emplace(getID(), *this);
+
+    *_pseudoRoot = this;
+    if (Runtime::isInitialized())
+    {
+        Runtime::getMemoryManager()->getGC()->addRoot(_pseudoRoot, nullptr);
+    }
 }
 
 Promise::Promise(TSClosure* executor)
     : Promise{new PromisePrivate{}, {executor}}
 {
-    LOG_METHOD_CALL;
     LOG_ADDRESS("Calling Promise ctor with executor for ", this);
 
     const auto numArgs = (std::size_t)executor->getNumArgs()->unboxed();
+
     assert(numArgs == 1 || numArgs == 2);
     executor->setEnvironmentElement(makeResolveClosure(this), 0);
     if (numArgs == 2)
@@ -96,7 +112,6 @@ Promise::Promise(TSClosure* executor)
 
 Promise::~Promise()
 {
-    LOG_METHOD_CALL;
     LOG_ADDRESS("Calling Promise dtor for ", this);
     delete _d;
 }
@@ -108,26 +123,23 @@ ID Promise::getID() const
 
 Promise* Promise::then(Union* onFulfilled, Union* onRejected)
 {
-    LOG_METHOD_CALL;
     LOG_ADDRESS("Calling then method for ", this);
+
     auto* next = new PromisePrivate{_d->then(onFulfilled->getValue(), onRejected->getValue(), Runtime::getExecutor())};
-    return new Promise{next, {onFulfilled, onRejected}};
+    auto result = new Promise{next, {onFulfilled, onRejected, this}};
+    return result;
 }
 
 Promise* Promise::catchException(Union* onRejected)
 {
-    LOG_METHOD_CALL;
     LOG_ADDRESS("Calling fail method for ", this);
-    auto* next = new PromisePrivate{_d->then(Undefined::instance(), onRejected->getValue(), Runtime::getExecutor())};
-    return new Promise{next, {onRejected}};
+    return then(new Union{}, onRejected);
 }
 
 Promise* Promise::finally(Union* onFinally)
 {
-    LOG_METHOD_CALL;
     LOG_ADDRESS("Calling finally method for ", this);
-    auto* next = new PromisePrivate{_d->then(onFinally->getValue(), onFinally->getValue(), Runtime::getExecutor())};
-    return new Promise{next, {onFinally}};
+    return then(onFinally, onFinally);
 }
 
 Object* Promise::getResult() const
@@ -159,6 +171,17 @@ void Promise::success(Object* resolved)
     LOG_METHOD_CALL;
     assert(resolved && "resolve is null");
     _d->resolve(resolved);
+    removeKeeperAlive();
+}
+
+void Promise::removeKeeperAlive()
+{
+    if (_pseudoRoot && Runtime::isInitialized())
+    {
+        Runtime::getMemoryManager()->getGC()->removeRoot(_pseudoRoot);
+        delete _pseudoRoot;
+        _pseudoRoot = nullptr;
+    }
 }
 
 void Promise::failure(Object* rejected)
@@ -166,6 +189,7 @@ void Promise::failure(Object* rejected)
     LOG_METHOD_CALL;
     assert(rejected && "rejected is null");
     _d->reject(rejected);
+    removeKeeperAlive();
 }
 
 Boolean* Promise::equals(Object* other) const
@@ -193,7 +217,7 @@ Boolean* Promise::toBool() const
 
 std::vector<Object*> Promise::getChildObjects() const
 {
-    return _childs;
+    return _children;
 }
 
 TSClosure* Promise::makeResolveClosure(Promise* promise)

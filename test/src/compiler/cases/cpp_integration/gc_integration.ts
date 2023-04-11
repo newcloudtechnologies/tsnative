@@ -49,8 +49,7 @@ function test_gc_on_cxx_class_with_inheritance() {
 
 // All diagnostics mechanics is created using variables to force GC not to delete it before the time comes
 // old and new object counts will not be equivalent otherwise becase diagnostics object will be collected
-const diagnostics = Runtime.getDiagnostics();
-const memInfo = diagnostics.getMemoryDiagnostics();
+const memInfo = Runtime.getMemoryDiagnostics();
 
 const gc = Runtime.getGC();
 

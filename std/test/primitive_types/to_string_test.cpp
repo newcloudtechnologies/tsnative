@@ -23,7 +23,6 @@ void checkStr(const T* obj, const std::string& reference)
 {
     auto* str = obj->toString();
     EXPECT_EQ(str->cpp_str(), reference);
-    delete static_cast<Object*>(str);
 }
 
 TEST_F(ToStringTest, Boolean)

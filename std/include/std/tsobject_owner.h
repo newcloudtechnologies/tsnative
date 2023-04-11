@@ -12,6 +12,7 @@
 #pragma once
 
 #include "std/gc.h"
+#include "std/private/memory_management/memory_manager.h"
 #include "std/runtime.h"
 
 #include "std/private/logger.h"
@@ -87,7 +88,11 @@ private:
         : m_object(std::make_shared<TObjectPtr>(obj))
     {
         LOG_ADDRESS("Creating lock wrapper ", m_object.get());
-        Runtime::getGC()->addRootWithName(reinterpret_cast<Object**>(m_object.get()), "C++ side root wrapper");
+        if (Runtime::isInitialized())
+        {
+            Runtime::getMemoryManager()->getGC()->addRootWithName(reinterpret_cast<Object**>(m_object.get()),
+                                                                  "C++ side root wrapper");
+        }
     }
 
     void clear()
@@ -95,7 +100,7 @@ private:
         if (m_object && Runtime::isInitialized() && m_object.use_count() == 1)
         {
             LOG_ADDRESS("Removing lock wrapper ", this);
-            Runtime::getGC()->removeRoot(reinterpret_cast<void**>(m_object.get()));
+            Runtime::getMemoryManager()->getGC()->removeRoot(reinterpret_cast<void**>(m_object.get()));
         }
     }
 
