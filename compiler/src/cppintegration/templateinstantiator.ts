@@ -215,7 +215,7 @@ export class TemplateInstantiator {
     }
   }
 
-  private handleGenericArrayMethods(call: ts.CallExpression) {
+  private handleGenericArrayMethods(call: ts.CallExpression, methodDeclaration: Declaration) {
     if (!ts.isPropertyAccessExpression(call.expression)) {
       throw new Error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[call.expression.kind]}'`);
     }
@@ -228,17 +228,34 @@ export class TemplateInstantiator {
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(call);
     const tsReturnType = resolvedSignature.getReturnType();
     let cppReturnType = tsReturnType.toCppType();
+    const restArgsStart = methodDeclaration.parameters.findIndex((p) => p.dotDotDotToken);
+    const callArguments = call.arguments.map((e) => e);
 
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, TSType>) => {
-      const argumentTypes = call.arguments.map((arg) => {
+    const computeArgumentTypes = (typesMap: Map<string, TSType>) => {
+      let result: string[] = [];
+
+      for (let i = 0 ; i < callArguments.length ; ++i) {
+        const arg = callArguments[i];
         let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
         if (tsType.isTypeParameter()) {
           tsType = typesMap.get(tsType.toString())!;
         }
 
-        return tsType.toCppType();
-      });
+        const resolvedType = tsType.toCppType();
+        if (i === restArgsStart) {
+          result.push("Array<" + resolvedType + ">*");
+          return result;
+        }
+
+        result.push(resolvedType);
+      }
+
+      return result;
+    }
+    
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, TSType>) => {
+      const argumentTypes = computeArgumentTypes(typesMap);
 
       const maybeExists = CXXSymbols().getOrCreate(cppArrayType).filter((s) => s.demangled.includes(cppArrayType + "::" + methodName));
 
@@ -301,15 +318,7 @@ export class TemplateInstantiator {
 
     const elementType = tsArrayType.getTypeGenericArguments()[0];
 
-    if (!elementType.isSupported() || !tsReturnType.isSupported()) {
-      this.handleGenericArrayMethods(node);
-      return;
-    }
-
     const methodName = node.expression.name.getText();
-    if (methodName === "push") {
-      return;
-    }
     const methodSymbol = tsArrayType.getProperty(methodName);
     const methodDeclaration = methodSymbol.valueDeclaration;
 
@@ -317,30 +326,35 @@ export class TemplateInstantiator {
       throw new Error(`Unable to find method '${methodName} for Array'`);
     }
 
+    if (!elementType.isSupported() || !tsReturnType.isSupported()) {
+      this.handleGenericArrayMethods(node, methodDeclaration);
+      return;
+    }
+
     const declaredParameters = methodDeclaration.parameters;
     const args = node.arguments;
 
     const argumentTypes: string[] = [];
-
-    args.forEach((arg, index) => {
-      const declaration = declaredParameters[index];
+    for (let i = 0 ; i < args.length ; ++i) {
+      const arg = args[i];
+      const declaration = declaredParameters[i];
 
       if (declaration?.questionToken) {
         argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
-        return;
+        break;
       }
 
-      if (ts.isSpreadElement(arg)) {
+      if (declaration?.dotDotDotToken || ts.isSpreadElement(arg)) {
         argumentTypes.push(tsArrayType.toCppType());
-        return;
+        break;
       }
 
       const tsType = this.generator.ts.checker.getTypeAtLocation(arg);
       const cppType = tsType.toCppType();
 
       argumentTypes.push(cppType);
-    });
-
+    }
+  
     if (args.length < declaredParameters.length) {
       for (let i = args.length; i < declaredParameters.length; ++i) {
         argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
