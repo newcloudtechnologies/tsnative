@@ -142,6 +142,10 @@ public:
 
     void* operator new(std::size_t n);
 
+#ifdef VALIDATE_GC
+    void operator delete(void* ptr);
+#endif
+
     std::vector<String*> getKeys() const;
 
 private:

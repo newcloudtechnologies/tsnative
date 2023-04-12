@@ -18,14 +18,14 @@
 #include <cstdint>
 
 class IGCImpl;
-class Allocator;
+class MemoryManager;
 
 class TS_EXPORT TS_DECLARE GC : public Object
 {
 public:
     // gcImpl can be nullptr if Runtime::destroy was called and user code contains references to GC
     // same for allocator in the future?
-    GC(IGCImpl* gcImpl, Allocator* allocator);
+    GC(IGCImpl* gcImpl, MemoryManager* memManager);
 
     // TODO Should be removed. Allocator should allocate, not GC
     TS_METHOD TS_NO_CHECK TS_SIGNATURE("allocate(numBytes: any): void") void* allocate(double numBytes);
@@ -45,5 +45,5 @@ public:
 
 private:
     IGCImpl* _gcImpl;
-    Allocator* _allocator;
+    MemoryManager* _memManager;
 };

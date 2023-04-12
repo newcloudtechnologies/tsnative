@@ -129,6 +129,19 @@ function checkPromisePassTask() {
     Promise.resolve(42).then(task);
 }
 
+function checkUnresolvedPromise() {
+    let prom = new Promise((resolve: Callback<number>) => {});
+}
+
+function checkPromisesTree() {
+    const p = Promise.resolve(true);
+    p.then((b: boolean) => {return 4;})
+     .then((n: number) => { return ++n;});
+    p.then((b: boolean) => {return "asdfb";});
+    p.then((b: boolean) => { return !b;})
+     .then((b: boolean) => { console.assert(b === false, "Correct promise result");});
+}
+
 gcTest(checkPromiseConstructorResolve, "Check promise constructor -- Resolve callback");
 gcTest(checkPromiseConstructorResolveAndReject, "Check promise constructor -- Resolve and reject  callback");
 gcTest(checkReadyPromiseResolve, "Check ready promise resolve");
@@ -141,3 +154,5 @@ gcTest(checkPromiseIfUseSomeState, "Check the promise if you use the same state"
 gcTest(checkPromiseIfFullChain, "Check the promise if you use full chains");
 gcTest(checkPromiseConstructorResolveAndThenCapture, "Check the promise if use capture");
 gcTest(checkPromisePassTask, "Check the promise if pass task to then");
+gcTest(checkUnresolvedPromise, "Check unresolved promise", 6); // 6 - promise + 2 unions + closure + numbers
+gcTest(checkPromisesTree, "Check promises tree");

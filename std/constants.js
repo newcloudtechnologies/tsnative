@@ -22,7 +22,7 @@ exports.UNION_DEFINITION = exports.BOOLEAN_DEFINITION =
 exports.NUMBER_DEFINITION = exports.NULL_DEFINITION = 
 exports.UNDEFINED_DEFINITION = exports.OBJECT_DEFINITION = 
 exports.ARRAY_DEFINITION = exports.STRING_DEFINITION = 
-exports.DIAGNOSTICS_DEFINITION = exports.MEMORY_DIAGNOSTICS_DEFINITION =
+exports.MEMORY_DIAGNOSTICS_DEFINITION =
 exports.NUMERIC = exports.EVENT_LOOP_DEFINITION = exports.PROMISE_DEFINITION =
 exports.PARSE_INT_DEFINITION = exports.PARSE_FLOAT_DEFINITION = void 0;
 
@@ -49,7 +49,6 @@ exports.SET_ITERATOR_DEFINITION = toPosixStyle(path.join(__dirname, "definitions
 exports.CONSOLE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "console.d.ts"));
 exports.GC_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "gc.d.ts"));
 exports.RUNTIME_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "runtime.d.ts"));
-exports.DIAGNOSTICS_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "diagnostics.d.ts"));
 exports.MEMORY_DIAGNOSTICS_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "memory_diagnostics.d.ts"));
 exports.CLOSURE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tsclosure.d.ts"));
 exports.LAZY_CLOSURE_DEFINITION = toPosixStyle(path.join(__dirname, "definitions", "tslazy_closure.d.ts"));

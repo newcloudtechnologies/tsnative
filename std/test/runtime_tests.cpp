@@ -19,8 +19,8 @@
 
 #include "infrastructure/global_test_allocator_fixture.h"
 
-#include "std/diagnostics.h"
 #include "std/memory_diagnostics.h"
+#include "std/private/memory_management/memory_manager.h"
 #include "std/tsobject_owner.h"
 
 #include "std/runtime.h"
@@ -140,12 +140,12 @@ TEST_F(RuntimeTestFixture, simpleCheckObjOwner)
         return locker;
     };
 
-    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
-    auto gc = make_object_owner(Runtime::getGC());
+    auto memInfo = make_object_owner(Runtime::getMemoryManager()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getMemoryManager()->getGC());
 
     gc->collect();
 
-    // 2 - memInfo + gc
+    // 2 - gc + memInfo
     EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
 
     gc->collect();
@@ -189,12 +189,12 @@ TEST_F(RuntimeTestFixture, checkDeletingObjectsWithoutOwner)
 
     const auto createElementWithoutOwner = [this] { return new Number(44.56); };
 
-    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
-    auto gc = make_object_owner(Runtime::getGC());
+    auto memInfo = make_object_owner(Runtime::getMemoryManager()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getMemoryManager()->getGC());
 
     gc->collect();
 
-    // 2 - memInfo + gc
+    // 2 - gc + memInfo
     EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
 
     gc->collect();
@@ -270,8 +270,8 @@ TEST_F(RuntimeTestFixture, checkTSObjectOwnerCopyConstructible)
     const auto initResult = Runtime::init(ac, av);
     ASSERT_EQ(0, initResult);
 
-    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
-    auto gc = make_object_owner(Runtime::getGC());
+    auto memInfo = make_object_owner(Runtime::getMemoryManager()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getMemoryManager()->getGC());
 
     TSObjectOwner<Number> owner{make_object_owner(new Number(33.21))};
     ASSERT_EQ(1, owner.useCount());
@@ -282,21 +282,21 @@ TEST_F(RuntimeTestFixture, checkTSObjectOwnerCopyConstructible)
 
     gc->collect();
 
-    // 3 - memInfo + gc + Number shared by two TSObjectOwners
+    // 3 - gc + memInfo + Number shared by two TSObjectOwners
     EXPECT_EQ(3, memInfo->getAliveObjectsCount()->unboxed());
 
     // release Number held by 'copy'
     copy = {};
     gc->collect();
 
-    // 3 - memInfo + gc + Number held by TSObjectOwner (owner)
+    // 3 - gc + memInfo + Number held by TSObjectOwner (owner)
     EXPECT_EQ(3, memInfo->getAliveObjectsCount()->unboxed());
 
     // release Number held by 'owner'
     owner = {};
     gc->collect();
 
-    // 2 - memInfo + gc
+    // 2 - gc + memInfo
     EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
 }
 
@@ -308,8 +308,8 @@ TEST_F(RuntimeTestFixture, checkTSObjectOwnerCopyAssignable)
     const auto initResult = Runtime::init(ac, av);
     ASSERT_EQ(0, initResult);
 
-    auto memInfo = make_object_owner(Runtime::getDiagnostics()->getMemoryDiagnostics());
-    auto gc = make_object_owner(Runtime::getGC());
+    auto memInfo = make_object_owner(Runtime::getMemoryManager()->getMemoryDiagnostics());
+    auto gc = make_object_owner(Runtime::getMemoryManager()->getGC());
 
     TSObjectOwner<Number> copy;
     ASSERT_EQ(0, copy.useCount());
@@ -327,14 +327,14 @@ TEST_F(RuntimeTestFixture, checkTSObjectOwnerCopyAssignable)
 
     gc->collect();
 
-    // 3 - memInfo + gc + Number pointed by TSObjectOwner
+    // 3 - gc + memInfo + Number pointed by TSObjectOwner
     EXPECT_EQ(3, memInfo->getAliveObjectsCount()->unboxed());
 
     copy = {};
 
     gc->collect();
 
-    // 2 - memInfo + gc
+    // 2 - gc + memInfo
     EXPECT_EQ(2, memInfo->getAliveObjectsCount()->unboxed());
 }
 

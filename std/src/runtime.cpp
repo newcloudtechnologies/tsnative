@@ -11,18 +11,14 @@
 
 #include "std/runtime.h"
 
-#include "std/diagnostics.h"
 #include "std/event_loop.h"
-#include "std/gc.h"
-#include "std/memory_diagnostics.h"
 #include "std/tsarray.h"
 #include "std/tsstring.h"
 
-#include "std/private/allocator.h"
 #include "std/private/default_executor.h"
-#include "std/private/default_gc.h"
 #include "std/private/logger.h"
-#include "std/private/memory_diagnostics_storage.h"
+#include "std/private/memory_management/mem_manager_creator.h"
+#include "std/private/memory_management/memory_manager.h"
 #include "std/private/uv_loop_adapter.h"
 #include "std/private/uv_timer_creator.h"
 
@@ -31,15 +27,11 @@
 
 bool Runtime::_isInitialized = false;
 std::vector<std::string> Runtime::_cmdArgs{};
-std::unique_ptr<IGCImpl> Runtime::_gcImpl{nullptr};
-std::unique_ptr<Allocator> Runtime::_allocator{nullptr};
-std::unique_ptr<MemoryDiagnosticsStorage> Runtime::_memoryDiagnosticsStorage{nullptr};
 std::unique_ptr<IEventLoop> Runtime::_loop{nullptr};
 std::unique_ptr<IExecutor> Runtime::_executor{nullptr};
 std::unique_ptr<ITimerCreator> Runtime::_timerCreator{nullptr};
-
-AsyncObjectStorage<std::reference_wrapper<TimerObject>> Runtime::_timers{};
-AsyncObjectStorage<std::reference_wrapper<Promise>> Runtime::_promises{};
+std::unique_ptr<MemoryManager> Runtime::_memoryManager{nullptr};
+TimerStorage Runtime::_timers{};
 
 namespace
 {
@@ -99,12 +91,6 @@ bool Runtime::isInitialized()
     return _isInitialized;
 }
 
-Allocator& Runtime::getAllocator()
-{
-    checkInitialization();
-    return *_allocator;
-}
-
 void Runtime::initLoop(IEventLoop* customEventLoop)
 {
     if (customEventLoop)
@@ -129,6 +115,30 @@ void Runtime::initTimerCreator(ITimerCreator* customTimerCreator)
     _timerCreator = std::make_unique<UVTimerCreator>(*static_cast<UVLoopAdapter*>(_loop.get()));
 }
 
+TimerStorage& Runtime::getMutableTimerStorage()
+{
+    checkInitialization();
+    return _timers;
+}
+
+const TimerStorage& Runtime::getTimerStorage()
+{
+    checkInitialization();
+    return _timers;
+}
+
+MemoryManager* Runtime::getMemoryManager()
+{
+    checkInitialization();
+    return _memoryManager.get();
+}
+
+MemoryDiagnostics* Runtime::getMemoryDiagnostics()
+{
+    checkInitialization();
+    return _memoryManager->getMemoryDiagnostics();
+}
+
 Array<String*>* Runtime::getCmdArgs()
 {
     checkInitialization();
@@ -143,13 +153,6 @@ Array<String*>* Runtime::getCmdArgs()
     return result;
 }
 
-GC* Runtime::getGC()
-{
-    checkInitialization();
-
-    return new GC{_gcImpl.get(), _allocator.get()};
-}
-
 int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop, ITimerCreator* customTimerCreator)
 {
     if (_isInitialized)
@@ -157,24 +160,11 @@ int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop, ITimerCreator
         throw std::runtime_error("Runtime has been initialized already");
     }
 
-    _memoryDiagnosticsStorage = std::make_unique<MemoryDiagnosticsStorage>();
-
     initLoop(customEventLoop);
     initTimerCreator(customTimerCreator);
-
-    DefaultGC::Callbacks gcCallbacks;
-    gcCallbacks.afterDeleted = [memStorage = _memoryDiagnosticsStorage.get()](const void* o)
-    { memStorage->onDeleted(o); };
-
-    auto defaultGC = std::make_unique<DefaultGC>(std::move(gcCallbacks), _timers, _promises);
-
-    Allocator::Callbacks allocatorCallbacks;
-    allocatorCallbacks.onObjectAllocated = [gc = defaultGC.get()](Object* o) { gc->addObject(o); };
-
-    _gcImpl = std::move(defaultGC);
-    _allocator = std::make_unique<Allocator>(std::move(allocatorCallbacks));
-
     initCmdArgs(ac, av);
+
+    _memoryManager = createMemoryManager(_timers, _loop.get());
 
     const auto result = registerExitHandlers();
 
@@ -190,11 +180,10 @@ int Runtime::init(int ac, char* av[], IEventLoop* customEventLoop, ITimerCreator
     return result;
 }
 
-Diagnostics* Runtime::getDiagnostics()
+GC* Runtime::getGC()
 {
     checkInitialization();
-
-    return new Diagnostics{*_gcImpl, *_memoryDiagnosticsStorage};
+    return getMemoryManager()->getGC();
 }
 
 EventLoop* Runtime::getLoop()
@@ -221,7 +210,7 @@ void Runtime::destroy()
     _cmdArgs.clear();
     _timerCreator = nullptr;
     _loop = nullptr;
-    _gcImpl = nullptr;
+    _memoryManager = nullptr;
 
     _isInitialized = false;
 
@@ -245,24 +234,4 @@ IExecutor& Runtime::getExecutor()
         _executor = std::make_unique<DefaultExecutor>(*_loop);
     }
     return *_executor;
-}
-
-TimerStorage& Runtime::getMutableTimerStorage()
-{
-    return _timers;
-}
-
-const TimerStorage& Runtime::getTimerStorage()
-{
-    return _timers;
-}
-
-PromiseStorage& Runtime::getMutablePromiseStorage()
-{
-    return _promises;
-}
-
-const PromiseStorage& Runtime::getPromiseStorage()
-{
-    return _promises;
 }

@@ -23,8 +23,7 @@ class SomeClass<T> {
 }
 
 
-const diagnostics = Runtime.getDiagnostics();
-const memInfo = diagnostics.getMemoryDiagnostics();
+const memInfo = Runtime.getMemoryDiagnostics();
 
 // validate memory, createStore as a root should crash the program
 memInfo.printGCState();

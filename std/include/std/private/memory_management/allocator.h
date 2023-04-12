@@ -13,25 +13,19 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 
 class Object;
 
 class Allocator final
 {
 public:
-    struct Callbacks final
-    {
-        std::function<void(Object*)> onObjectAllocated = [](Object*) {};
-    };
-
-    Allocator(Callbacks&& callbacks);
+    Allocator();
 
     void* allocate(std::size_t n);
     void* allocateObject(std::size_t n);
+    void deallocateObject(Object* ptr) noexcept;
 
 private:
     void* doAllocate(std::size_t n);
-
-private:
-    Callbacks _callbacks;
 };

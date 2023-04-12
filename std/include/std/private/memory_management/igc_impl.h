@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 
 class Object;
 
@@ -28,8 +29,9 @@ public:
     virtual void addRoot(Object** object, const Object* associatedName) = 0;
     virtual void addRootWithName(Object** object, const char* name) = 0;
     virtual void removeRoot(Object** object) = 0;
+    virtual void addObject(Object* obj) = 0;
 
     virtual void collect() = 0;
 
-    virtual void print() const = 0;
+    virtual void print(const std::string& fileName = "") const = 0;
 };

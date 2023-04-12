@@ -15,32 +15,26 @@
 
 #include "std/tsobject.h"
 
+#include "std/private/memory_management/async_object_storage.h"
+
 #include <memory>
 #include <vector>
 
-#include "std/private/async_object_storage.h"
-
 TS_CODE("import { GC } from './gc' \n");
-TS_CODE("import { Diagnostics } from './diagnostics' \n");
 TS_CODE("import { EventLoop } from './event_loop' \n");
-
-class GC;
-class Diagnostics;
+TS_CODE("import { MemoryDiagnostics } from './memory_diagnostics' \n");
 
 template <typename T>
 class Array;
 
 class String;
-class Allocator;
-class MemoryDiagnosticsStorage;
-class IGCImpl;
-
 class EventLoop;
-
+class MemoryManager;
+class GC;
 class IEventLoop;
-
 class IExecutor;
 class ITimerCreator;
+class MemoryDiagnostics;
 
 class TS_EXPORT TS_DECLARE Runtime final : public Object
 {
@@ -50,30 +44,30 @@ public:
                     IEventLoop* customEventLoop = nullptr,
                     ITimerCreator* customTimerCreator = nullptr);
     static void destroy();
+
     static bool isInitialized();
 
+    static TS_METHOD EventLoop* getLoop();
+
+    static MemoryManager* getMemoryManager();
+
+    // TODO remove me from here, to do so need to change the compiler
     static TS_METHOD GC* getGC();
 
-    static TS_METHOD Diagnostics* getDiagnostics();
-
-    static TS_METHOD EventLoop* getLoop();
+    // TODO remove me from here, to do so need to change the compiler
+    static TS_METHOD MemoryDiagnostics* getMemoryDiagnostics();
 
     static IExecutor& getExecutor();
 
     static ITimerCreator& getTimerCreator();
 
+    static TimerStorage& getMutableTimerStorage();
+    static const TimerStorage& getTimerStorage();
+
     static TS_METHOD Array<String*>* getCmdArgs();
 
     TS_METHOD String* toString() const override;
     TS_METHOD Boolean* toBool() const override;
-
-    static Allocator& getAllocator();
-
-    static TimerStorage& getMutableTimerStorage();
-    static const TimerStorage& getTimerStorage();
-
-    static PromiseStorage& getMutablePromiseStorage();
-    static const PromiseStorage& getPromiseStorage();
 
 private:
     Runtime() = delete;
@@ -87,13 +81,10 @@ private:
     static std::unique_ptr<IEventLoop> _loop;
     static bool _isInitialized;
 
-    static std::unique_ptr<MemoryDiagnosticsStorage> _memoryDiagnosticsStorage;
-    static std::unique_ptr<IGCImpl> _gcImpl;
-    static std::unique_ptr<Allocator> _allocator;
+    // TO DO use roots like promise do instead of using AsyncStorage to keep timers alive
+    static TimerStorage _timers;
 
     static std::unique_ptr<IExecutor> _executor;
     static std::unique_ptr<ITimerCreator> _timerCreator;
-
-    static TimerStorage _timers;
-    static PromiseStorage _promises;
+    static std::unique_ptr<MemoryManager> _memoryManager;
 };

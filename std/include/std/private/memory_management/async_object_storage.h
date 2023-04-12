@@ -16,10 +16,8 @@
 
 #include "std/id_generator.h"
 #include "std/timer_object.h"
-#include "std/tspromise.h"
 
 template <typename Element>
 using AsyncObjectStorage = std::unordered_map<ID, Element>;
 
 using TimerStorage = AsyncObjectStorage<std::reference_wrapper<TimerObject>>;
-using PromiseStorage = AsyncObjectStorage<std::reference_wrapper<Promise>>;
