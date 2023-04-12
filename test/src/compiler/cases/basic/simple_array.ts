@@ -662,3 +662,22 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   console.assert(colors[0][0] === 1, "Multidimensional by literal: item under 0 0 is not equal");
   console.assert(colors[0][1] === 2, "Multidimensional by literal: item under 0 1 is not equal");
 }
+
+// push with tuples
+{
+    const t: [number, number] = [1, 2]
+    const arr: number[] = [];
+    arr.push(...t);
+
+    console.assert(arr[0] === 1, "Push with tuples: item under 0 is not equal");
+    console.assert(arr[1] === 2, "Push with tuples: item under 1 is not equal");
+}
+
+// array literal with tuples
+{
+    const t: [number, number] = [1, 2]
+    const arr: number[] = [...t];
+
+    console.assert(arr[0] === 1, "Array literal with tuples: item under 0 is not equal");
+    console.assert(arr[1] === 2, "Array literal with tuples: item under 1 is not equal");
+}

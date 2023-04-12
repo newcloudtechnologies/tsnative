@@ -54,3 +54,16 @@ console.assert(obj.getNumber() === obj.getDefaultNumber() && obj.getString() ===
 
     test({ a: { b: "test1" }, text: "test2" });
 }
+
+// Optionals with rest
+{
+    const arr = [1, 2];
+    const testObj = new WithOptionalArgs(22, "TEST");
+    testObj.setMoreValues(33, "Str", 44, 55, ...arr);
+    const items = testObj.getItems();
+
+    console.assert(items[0] === 44, "Optional items[0] check failed");
+    console.assert(items[1] === 55, "Optional items[1] check failed");
+    console.assert(items[2] === 1, "Optional items[2] check failed");
+    console.assert(items[3] === 2, "Optional items[3] check failed");
+}
