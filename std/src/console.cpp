@@ -37,14 +37,8 @@ void logArray(Array<Object*>* objects)
 
 void console::log(Array<Object*>* objects)
 {
-    // If no arguments are provided
-    if (objects->length() == 0)
-    {
-        std::cout << std::endl;
-        return;
-    }
-
     logArray(objects);
+    std::cout << std::endl;
 }
 
 void console::assert(Union* condition, Array<Object*>* objects)
