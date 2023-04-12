@@ -315,7 +315,7 @@ export class SysVFunctionHandler {
     return this.generator.builder.asVoidStar(arg);
   }
 
-  private computeRestCallArguments(restParameterStart: number, 
+  private computeRestParameters(restParameterStart: number, 
                                    spreadPairs: { argument: ts.Expression, index: number }[],
                                    declaration: Declaration, outerEnv?: Environment) : LLVMValue[] {
     if (restParameterStart === -1) {
@@ -353,10 +353,10 @@ export class SysVFunctionHandler {
       llvmArgs.push(this.convertTSArgToLLVMArg(argument, index, declaration, outerEnv));
     }
 
-    const restParams = this.computeRestCallArguments(restParametersStart, spreadArgIndexPairs, declaration, outerEnv);
-    restParams.forEach((p, _) => llvmArgs.push(this.generator.builder.asVoidStar(p)));
-
     this.populateOptionals(llvmArgs, declaration);
+
+    const restParams = this.computeRestParameters(restParametersStart, spreadArgIndexPairs, declaration, outerEnv);
+    restParams.forEach((p, _) => llvmArgs.push(this.generator.builder.asVoidStar(p)));
 
     return llvmArgs;
   }
@@ -413,9 +413,6 @@ export class SysVFunctionHandler {
       // Rest parameters array can be empty. So initialize with empty stack array
       // Stack array should be safe because function will be called a moments later
       if (parameterDeclaration.dotDotDotToken) {
-        const stackMemoryPtr = this.generator.builder.createAlloca(builtinArray.getLLVMType().getPointerElementType());
-        this.generator.ts.array.callDefaultConstructor(stackMemoryPtr, builtinArray.getDeclaration().type);
-        args.push(stackMemoryPtr);
         continue;
       }
 

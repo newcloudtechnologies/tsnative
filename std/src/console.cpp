@@ -35,24 +35,23 @@ void logArray(Array<Object*>* objects)
 }
 } // anonymous namespace
 
-void console::log(Object* msg, Array<Object*>* objects)
+void console::log(Array<Object*>* objects)
 {
-    const auto convertedMsg = ToStringConverter::convert(Object::asObjectPtr(msg));
-
-    logString(convertedMsg);
-    if (objects->length()->unboxed() == 0)
+    // If no arguments are provided
+    if (objects->length() == 0)
     {
         std::cout << std::endl;
+        return;
     }
 
     logArray(objects);
 }
 
-void console::assert(Boolean* assumption, Array<Object*>* objects)
+void console::assert(Union* condition, Array<Object*>* objects)
 {
     static const std::string failureMsg{"Assertion failed:"};
 
-    if (Object::asObjectPtr(assumption)->toBool()->unboxed())
+    if (!condition->hasValue() || condition->toBool()->unboxed())
     {
         return;
     }
