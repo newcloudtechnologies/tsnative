@@ -681,3 +681,23 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     console.assert(arr[0] === 1, "Array literal with tuples: item under 0 is not equal");
     console.assert(arr[1] === 2, "Array literal with tuples: item under 1 is not equal");
 }
+
+// Array literal to union
+// {
+    // let from = [2, 3];
+    // let to: (number | undefined)[] = [1, ...from, 4];
+
+    // let to: (number | undefined)[] = [1];
+    // console.assert(to[0] === 1, "Array literal with union to[0] not equal");
+    // console.assert(to[1] === 2, "Array literal with union to[1] not equal");
+    // console.assert(to[2] === 3, "Array literal with union to[2] not equal");
+    // console.assert(to[3] === 4, "Array literal with union to[3] not equal");
+// }
+
+Array literal from union
+{
+    let from: number | undefined = 10;
+    let to: number[] = [from];
+
+    console.assert(to[0] === 10, "Array literal with union to[0] not equal");
+}
