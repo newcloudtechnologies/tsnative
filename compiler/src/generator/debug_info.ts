@@ -16,6 +16,7 @@ import { LLVMGenerator } from "./generator";
 import { TSType } from "../ts/type";
 import { LLVMValue } from "../llvm/value";
 import { addClassScope, Scope } from "../scope";
+import { Declaration } from "../ts/declaration";
 
 export class SourceLocation {
   lineNo: number = 0;
@@ -179,7 +180,7 @@ export class DebugInfo {
       0, // ignore
       llvm.DINode.DIFlags.FlagPrototyped | llvm.DINode.DIFlags.FlagZero,
       llvm.DISubprogram.DISPFlags.SPFlagDefinition |
-        llvm.DISubprogram.DISPFlags.SPFlagMainSubprogram
+      llvm.DISubprogram.DISPFlags.SPFlagMainSubprogram
     );
     fn.setSubprogram(mainScope);
     this.openScope(mainScope);
@@ -188,7 +189,16 @@ export class DebugInfo {
   finalize(): void {
     this.diBuilder.finalize();
   }
-  getOrCreateCompositeType(tsType: TSType, size: number, scope: llvm.DIScope, lineNo : number): llvm.DIType | undefined {
+  getOrCreateCompositeType(tsType: TSType, size: number, scope: llvm.DIScope, lineNo: number): llvm.DIType | undefined {
+
+    if ((tsType.isClass() && tsType.isAmbient() == false) || tsType.getTypename() == 'Cl') {
+      const foundType = [...this.typeCache.keys()].find ((key) => { 
+        return key.getTypename() == tsType.getTypename(); } ); 
+      if (foundType && this.typeCache.has(foundType)) {
+        return this.typeCache.get(foundType);
+      }
+    }
+
     if (!this.typeCache.has(tsType)) {
       const compType = this.createCompositeType(tsType.getApparentType().toString(), size, scope, lineNo, tsType.getApparentType().mangle());
       this.typeCache.set(
@@ -197,7 +207,7 @@ export class DebugInfo {
     }
     return this.typeCache.get(tsType);
   }
-  createCompositeType(typeName : string, size: number, scope: llvm.DIScope, lineNo : number, mangled : string = '') : llvm.DIType {
+  createCompositeType(typeName: string, size: number, scope: llvm.DIScope, lineNo: number, mangled: string = ''): llvm.DIType {
     const compType = this.diBuilder.createForwardDecl(llvm.dwarf.DW_TAG_class_type, typeName, scope, scope.getFile(), lineNo, mangled);
     const ptrType = this.diBuilder.createPointerType(compType, size);
     return this.diBuilder.createPointerType(ptrType, size)
@@ -276,27 +286,39 @@ export class DebugInfo {
     );
     callInst.setDebugLoc(new llvm.DebugLoc(location));
   }
-  emitMemberDeclaration (scope : llvm.DIScope,  name : string , size: number, lineNo : number, diFile: llvm.DIFile, type : llvm.DIType) {
+  emitMemberDeclaration(scope: llvm.DIScope, name: string, size: number, lineNo: number, diFile: llvm.DIFile, type: llvm.DIType) {
 
-    this.diBuilder.createMemberType(scope, name, diFile, lineNo, size, 0, 0, 
+    const memberEmitted =  this.diBuilder.createMemberType(scope, name, diFile, lineNo, size, 0, 0,
       llvm.DINode.DIFlags.FlagPublic, type);
-  }
+      return memberEmitted;
+    }
 
-  createFile (filename? : string, dir? : string) : llvm.DIFile {
+  createFile(filename?: string, dir?: string): llvm.DIFile {
     if (filename && dir)
       return this.diBuilder.createFile(filename, dir);
     else {
-        const { filename, dir } = DebugInfo.getFileNameAndDir(
-          this.generator.currentSourceFile.fileName
+      const { filename, dir } = DebugInfo.getFileNameAndDir(
+        this.generator.currentSourceFile.fileName
+      );
+      return this.diBuilder.createFile(filename, dir);
+    }
+  }
+  emitClassDeclaration(name: string, typeDecl: Declaration, file: llvm.DIFile | undefined, members: llvm.DIType[]) {
+    if (name.trim().startsWith('Cl')) {
+      const classType = this.diBuilder.createClassType(members[0], name,
+        file? file : this.createFile(), 0, 
+        0, 0,0,
+        members,
+        null,
+        typeDecl.type.mangle(),
+        llvm.DINode.DIFlags.FlagTypePassByValue
         );
-        return this.diBuilder.createFile(filename, dir);
+        if (classType) {
+          this.typeCache.set(typeDecl.type, classType);
         }
+        return classType;
     }
-  emitClassDeclaration(name : string, mangledTypename : string, declaration : ts.Declaration, arr : llvm.DIType[]) {
-    if (name.startsWith('Cl')) {
-      //this.diBuilder.createClassType(this.scopeStack.at(1), 'Cl')
-      this.diBuilder.getOrCreateTypeArray(arr);
-    }
+    return undefined;
   }
 }
 

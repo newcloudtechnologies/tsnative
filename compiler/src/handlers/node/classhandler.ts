@@ -119,24 +119,26 @@ export class ClassHandler extends AbstractNodeHandler {
                   const { filename, dir } = DebugInfo.getFileNameAndDir(member.getSourceFile().fileName);
                   file = debugInfo?.createFile(filename, dir);
                 }
-                const lineNo = member.getSourceFile().getLineStarts();
+                const lineNoPos = member.getSourceFile().getLineAndCharacterOfPosition(member.unwrapped.getStart());
                 let diType = debugInfo?.getOrCreateCompositeType(type,
                   this.generator.module.dataLayout.getPointerSizeInBits(0),
-                  debugInfo?.getScope(), lineNo[0]);
-                if (diType)
-                  typeMap.set(type.toString(), diType);
+                  debugInfo?.getScope(), lineNoPos.line + 1);
+                if (diType && typeMap.has(type.getTypename()) == false)
+                  typeMap.set(type.getTypename(), diType);
                 break;
               }
             }
           }
+          let someType = debugInfo?.emitClassDeclaration(name, declaration, file, [...typeMap.values()]);
           for (let member of declaration.members) {
             for (let type of member.type.types) {
               let diType = typeMap.get(type.toString());
               if (!type.isUndefined() && member.name !== undefined &&
-                file !== undefined && diType !== undefined && type !== undefined) {
-                const lineNo = member.getSourceFile().getLineStarts();
-                debugInfo?.emitMemberDeclaration(diType as llvm.DIScope,
-                  member.name.getText(), 0, lineNo[0], file, diType);
+                someType !== undefined && file !== undefined &&
+                type !== undefined && diType !== undefined) {
+                  const lineNoPos = member.getSourceFile().getLineAndCharacterOfPosition(member.unwrapped.getStart());
+                  debugInfo?.emitMemberDeclaration(someType as llvm.DIScope,
+                  member.name.getText(), 0, lineNoPos.line + 1, file, diType);
               }
             }
           }
