@@ -131,7 +131,7 @@ export class TSMap {
   }
 
   create(templateTypes: string[]) {
-    const allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
 
     const ctor = this.getCtorFn(templateTypes);

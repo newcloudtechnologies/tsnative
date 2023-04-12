@@ -386,7 +386,7 @@ export class TSObject {
   }
 
   create(props?: LLVMValue) {
-    let allocated = this.generator.gc.allocate(this.llvmType.getPointerElementType());
+    let allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
     allocated = this.createInplace(allocated, props);
     return allocated;
   }
@@ -427,7 +427,7 @@ export class TSObject {
     }
 
     const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
-    const llvmKey = this.generator.ts.str.create(key);
+    const llvmKey = this.generator.ts.str.createGlobal(key);
 
     const value = this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
     return value;
@@ -441,7 +441,7 @@ export class TSObject {
     const thisUntyped = this.generator.builder.createBitCast(thisValue.derefToPtrLevel1(), this.llvmType);
     const valueUntyped = this.generator.builder.createBitCast(value.derefToPtrLevel1(), this.llvmType);
 
-    const wrappedKey = this.generator.ts.str.create(key);
+    const wrappedKey = this.generator.ts.str.createGlobal(key);
 
     return this.generator.builder.createSafeCall(this.setFn, [thisUntyped, wrappedKey, valueUntyped]);
   }

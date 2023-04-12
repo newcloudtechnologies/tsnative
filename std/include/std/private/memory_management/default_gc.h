@@ -11,34 +11,31 @@
 
 #pragma once
 
-#include <TS.h>
-
-#include "std/igc_impl.h"
+#include "std/private/memory_management/igc_impl.h"
 
 #include "std/private/algorithms.h"
-#include "std/private/async_object_storage.h"
-#include "std/private/gc_names_storage.h"
+#include "std/private/memory_management/async_object_storage.h"
+#include "std/private/memory_management/gc_names_storage.h"
 
 #include <functional>
 #include <unordered_set>
-#include <vector>
 
 class Object;
-class IMemoryDiagnosticsImpl;
 
 class DefaultGC : public IGCImpl
 {
 public:
     struct Callbacks final
     {
-        std::function<void(const Object&)> beforeDeleted = [](const Object&) {};
-        std::function<void(const void*)> afterDeleted = [](const void*) {};
+        std::function<void(void*)> afterDelete = [](void*) {};
     };
+    using Heap = std::unordered_set<Object*>;
+    using Roots = std::unordered_set<Object**>;
 
-    DefaultGC(Callbacks&& callbacks, TimerStorage& timers, PromiseStorage& promises);
+    DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks);
     ~DefaultGC();
 
-    void addObject(Object* o);
+    void addObject(Object* o) override;
 
     std::size_t getAliveObjectsCount() const override;
 
@@ -47,7 +44,10 @@ public:
     void removeRoot(Object** object) override;
 
     void collect() override;
-    void print() const override;
+    void print(const std::string& fileName = "") const override;
+
+    const Heap& getHeap() const;
+    const Roots& getRoots() const;
 
 private:
     void mark();
@@ -74,10 +74,9 @@ private:
 
 private:
     // TODO Use absl::uset
-    std::unordered_set<Object*> _heap;
-    std::unordered_set<Object**> _roots;
+    Heap _heap;
+    Roots _roots;
     GCNamesStorage _names;
     Callbacks _callbacks;
-    TimerStorage& _timers;
-    PromiseStorage& _promises;
+    TimerStorage& _timers; // TODO remove -  https://jira.ncloudtech.ru:8090/browse/TSN-551
 };

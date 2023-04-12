@@ -590,7 +590,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       if (!existing) {
         FunctionHandler.handleFunctionBody(valueDeclaration, fn, this.generator, env);
-        setLLVMFunctionScope(fn, parentScope, this.generator, expression);
+        setLLVMFunctionScope(fn, parentScope, this.generator, expression, false);
       }
       const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;
       callResult = this.invoke(expression, body, fn, callArgs);
@@ -685,7 +685,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
       if (!existing) {
         FunctionHandler.handleFunctionBody(valueDeclaration, fn, this.generator, env);
-        setLLVMFunctionScope(fn, parentScope, this.generator, expression);
+        setLLVMFunctionScope(fn, parentScope, this.generator, expression, false);
       }
 
       const body = valueDeclaration.isFunctionLike() ? valueDeclaration.body : undefined;

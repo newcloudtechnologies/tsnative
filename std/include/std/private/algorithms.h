@@ -12,9 +12,13 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
+
+class Object;
 
 namespace utils
 {
@@ -80,5 +84,9 @@ void eraseAll(Container& container, const TEl& element)
 {
     container.erase(std::remove(container.begin(), container.end(), element), container.end());
 }
+
+void visit(const Object& obj,
+           std::unordered_set<const Object*>& visited,
+           const std::function<void(const Object& obj)>& visiter);
 
 } // namespace utils
