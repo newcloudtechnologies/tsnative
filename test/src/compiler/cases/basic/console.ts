@@ -21,3 +21,19 @@
 
     console.log(E.b);
 }
+
+{
+    console.assert();
+}
+
+{
+    console.log();
+}
+
+{
+    console.log(1, 2, 3, 4, 5);
+}
+
+{
+    console.assert(true, 1, 2, 3);
+}

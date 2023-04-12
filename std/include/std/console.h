@@ -30,11 +30,10 @@
 namespace console IS_TS_DECLARED_NAMESPACE
 {
 
-TS_EXPORT TS_SIGNATURE("function log(message: any, ...optionalParams: any[]): void") void log(Object* msg,
-                                                                                              Array<Object*>* objects);
+TS_EXPORT TS_SIGNATURE("function log(...items: any[]): void") void log(Array<Object*>* objects);
 
-TS_EXPORT TS_SIGNATURE("function assert(assumption: any, ...optionalParams: any[]): void") void assert(
-    Boolean* assumption, Array<Object*>* objects);
+TS_EXPORT TS_SIGNATURE("function assert(condition?: boolean | undefined, ...optionalParams: any[]): void") void assert(
+    Union* condition, Array<Object*>* objects);
 
 } // namespace IS_TS_DECLARED_NAMESPACE
 
