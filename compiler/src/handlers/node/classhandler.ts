@@ -14,6 +14,9 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
 import { Declaration } from "../../ts/declaration";
+import { DebugInfo } from "../../generator/debug_info";
+import { TSType } from "../../ts/type";
+import * as llvm from "llvm-node";
 
 export class ClassHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -85,7 +88,6 @@ export class ClassHandler extends AbstractNodeHandler {
     const name = declaration.name!.getText();
     const thisType = declaration.type;
     const mangledTypename = thisType.mangle();
-
     if (thisType.isDeclared() && parentScope.get(mangledTypename)) {
       return;
     }
@@ -105,6 +107,41 @@ export class ClassHandler extends AbstractNodeHandler {
 
       // @todo: this logic is required because of builtins
       parentScope.setOrAssign(mangledTypename, scope);
+      if (this.generator.getDebugInfo() && declaration.isAmbient() == false) {
+        const debugInfo = this.generator.getDebugInfo();
+        if (declaration.members) {
+          let typeMap: Map<string, llvm.DIType> = new Map<string, llvm.DIType>();
+          let file: llvm.DIFile | undefined = undefined;
+          for (let member of declaration.members) {
+            for (let type of member.type.types) {
+              if (type.isUndefined() == false) { // && member.name !== undefined) {
+                if (file == undefined) {
+                  const { filename, dir } = DebugInfo.getFileNameAndDir(member.getSourceFile().fileName);
+                  file = debugInfo?.createFile(filename, dir);
+                }
+                const lineNo = member.getSourceFile().getLineStarts();
+                let diType = debugInfo?.getOrCreateCompositeType(type,
+                  this.generator.module.dataLayout.getPointerSizeInBits(0),
+                  debugInfo?.getScope(), lineNo[0]);
+                if (diType)
+                  typeMap.set(type.toString(), diType);
+                break;
+              }
+            }
+          }
+          for (let member of declaration.members) {
+            for (let type of member.type.types) {
+              let diType = typeMap.get(type.toString());
+              if (!type.isUndefined() && member.name !== undefined &&
+                file !== undefined && diType !== undefined && type !== undefined) {
+                const lineNo = member.getSourceFile().getLineStarts();
+                debugInfo?.emitMemberDeclaration(diType as llvm.DIScope,
+                  member.name.getText(), 0, lineNo[0], file, diType);
+              }
+            }
+          }
+        }
+      }
     }, parentScope);
   }
 

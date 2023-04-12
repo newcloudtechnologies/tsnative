@@ -15,6 +15,7 @@ import * as path from "path";
 import { LLVMGenerator } from "./generator";
 import { TSType } from "../ts/type";
 import { LLVMValue } from "../llvm/value";
+import { addClassScope, Scope } from "../scope";
 
 export class SourceLocation {
   lineNo: number = 0;
@@ -189,14 +190,17 @@ export class DebugInfo {
   }
   getOrCreateCompositeType(tsType: TSType, size: number, scope: llvm.DIScope, lineNo : number): llvm.DIType | undefined {
     if (!this.typeCache.has(tsType)) {
-      const compType = this.diBuilder.createForwardDecl(llvm.dwarf.DW_TAG_class_type, tsType.getApparentType().toString(), scope, scope.getFile(), lineNo, tsType.getApparentType().mangle());
-      const ptrType = this.diBuilder.createPointerType(compType, size)
+      const compType = this.createCompositeType(tsType.getApparentType().toString(), size, scope, lineNo, tsType.getApparentType().mangle());
       this.typeCache.set(
-        tsType,
-        this.diBuilder.createPointerType(ptrType, size)
+        tsType, compType
       );
     }
     return this.typeCache.get(tsType);
+  }
+  createCompositeType(typeName : string, size: number, scope: llvm.DIScope, lineNo : number, mangled : string = '') : llvm.DIType {
+    const compType = this.diBuilder.createForwardDecl(llvm.dwarf.DW_TAG_class_type, typeName, scope, scope.getFile(), lineNo, mangled);
+    const ptrType = this.diBuilder.createPointerType(compType, size);
+    return this.diBuilder.createPointerType(ptrType, size)
   }
 
   getOrCreateType(tsType: TSType, size: number): llvm.DIType | undefined {
@@ -216,6 +220,7 @@ export class DebugInfo {
     tsType: TSType
   ): llvm.Instruction | undefined {
     const { lineNo, column } = DebugInfo.getSourceLocation(decl);
+
     const dbgType = this.getOrCreateCompositeType(
       tsType,
       this.generator.module.dataLayout.getPointerSizeInBits(0),
@@ -271,10 +276,27 @@ export class DebugInfo {
     );
     callInst.setDebugLoc(new llvm.DebugLoc(location));
   }
-  public createFile() : llvm.DIFile {
-    const { filename, dir } = DebugInfo.getFileNameAndDir(
-      this.generator.currentSourceFile.fileName
-    );
-    return this.diBuilder.createFile(filename, dir);
+  emitMemberDeclaration (scope : llvm.DIScope,  name : string , size: number, lineNo : number, diFile: llvm.DIFile, type : llvm.DIType) {
+
+    this.diBuilder.createMemberType(scope, name, diFile, lineNo, size, 0, 0, 
+      llvm.DINode.DIFlags.FlagPublic, type);
+  }
+
+  createFile (filename? : string, dir? : string) : llvm.DIFile {
+    if (filename && dir)
+      return this.diBuilder.createFile(filename, dir);
+    else {
+        const { filename, dir } = DebugInfo.getFileNameAndDir(
+          this.generator.currentSourceFile.fileName
+        );
+        return this.diBuilder.createFile(filename, dir);
+        }
+    }
+  emitClassDeclaration(name : string, mangledTypename : string, declaration : ts.Declaration, arr : llvm.DIType[]) {
+    if (name.startsWith('Cl')) {
+      //this.diBuilder.createClassType(this.scopeStack.at(1), 'Cl')
+      this.diBuilder.getOrCreateTypeArray(arr);
+    }
   }
 }
+
