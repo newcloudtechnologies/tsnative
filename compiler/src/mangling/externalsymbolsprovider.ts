@@ -14,6 +14,7 @@ import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 import { CXXSymbol, CXXSymbols } from "./cxxsymbolsstorage";
+import { ArgumentsPatternComputer } from "./arguments_pattern_computer";
 
 type Predicate = (cxxSymbol: CXXSymbol) => boolean;
 export class ExternalSymbolsProvider {
@@ -79,91 +80,11 @@ export class ExternalSymbolsProvider {
       })
     );
     
-    const argsPattern = this.computeArgumentsPattern(knownArgumentTypes, argumentTypes, expression);
+    const argsPatternComputer = new ArgumentsPatternComputer(this.declaration, argumentTypes, expression);
+    const argsPattern = argsPatternComputer.compute(knownArgumentTypes);
     this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(argsPattern);
 
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
-  }
-
-  computeRestArgumentsType(restArgsStart: number, 
-                          argumentTypes: TSType[],
-                          expression: ts.NewExpression | ts.CallExpression) : string {
-    if (restArgsStart === -1 || argumentTypes.length === 0) {
-      throw new Error("computeRestArgumentsType should be called on function with rest parameters");
-    }
-
-    if (!expression.arguments) {
-      throw new Error("expression with rest arguments should have arguments");
-    }
-
-    if (expression.arguments.length !== argumentTypes.length) {
-      throw new Error("expression arguments count should be equal to argument types count");
-    }
-
-    const declarationParameter = this.declaration.parameters[restArgsStart];
-    if (declarationParameter.type) {
-      const parameterText = declarationParameter.type.getText();
-      if (parameterText === "any[]") {
-        return "Array<Object*>*";
-      }
-    }
-
-    for (let i = restArgsStart ; i < argumentTypes.length ; ++i) {
-      const type = argumentTypes[i];
-      const arg = expression.arguments[i];
-      if (!ts.isSpreadElement(arg)) {
-        continue;
-      }
-
-      if (type.isArray()) {
-        return type.toCppType();
-      }
-
-      // Tuple with spread has all equal template arguments
-      // Otherwise it will not be passed by the verifier
-      if (type.isTuple()) {
-        const elementType = type.getTypeGenericArguments()[0].toCppType();
-        return "Array<" + elementType + ">*";
-      }
-
-      // Set, Map and other collections do not have ... support
-    }
-
-    // If there are no spread arguments then construct resulting type
-    const elementType = argumentTypes[restArgsStart].toCppType();
-    return "Array<" + elementType + ">*";
-  }
-
-  computeArgumentsPattern(knownArgumentType: string[] | undefined,
-                          argumentTypes: TSType[],
-                          expression: ts.NewExpression | ts.CallExpression | ts.PropertyAccessExpression | undefined): string[] {
-    if (knownArgumentType) {
-      return knownArgumentType;
-    }
-
-    if (!expression || ts.isPropertyAccessExpression(expression)) {
-      return argumentTypes.map((type) => {
-        return type.toCppType();
-      });
-    }
-
-    let result: string[] = [];
-    const restParametersStart = this.declaration.parameters.findIndex((p, _) => p.dotDotDotToken !== undefined);
-    for (let i = 0 ; i < argumentTypes.length ; ++i) {
-      if (i === restParametersStart) {
-        result.push(this.computeRestArgumentsType(restParametersStart, argumentTypes, expression))
-        return result;
-      }
-
-      result.push(argumentTypes[i].toCppType());
-    }
-
-    // If there are rest params and rest param is missing
-    if (argumentTypes.length < this.declaration.parameters.length && restParametersStart !== -1) {
-      result.push("Array<Object*>*");
-    }
-
-    return result;
   }
 
   tryGet(): string | undefined {
