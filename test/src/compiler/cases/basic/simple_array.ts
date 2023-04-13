@@ -649,6 +649,8 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
       [1, 2]
   ];
 
+  console.assert(colors.length === 1, "Multidimensional by literal: outer array length != 1");
+  console.assert(colors[0].length === 2, "Multidimensional by literal: inner array length != 2");
   console.assert(colors[0][0] === 1, "Multidimensional by literal: item under 0 0 is not equal");
   console.assert(colors[0][1] === 2, "Multidimensional by literal: item under 0 1 is not equal");
 }
@@ -659,6 +661,8 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   const color = [1, 2];
   colors.push(color);
   
+  console.assert(colors.length === 1, "Multidimensional by literal: outer array length != 1");
+  console.assert(colors[0].length === 2, "Multidimensional by literal: inner array length != 2");
   console.assert(colors[0][0] === 1, "Multidimensional by literal: item under 0 0 is not equal");
   console.assert(colors[0][1] === 2, "Multidimensional by literal: item under 0 1 is not equal");
 }
@@ -669,6 +673,7 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     const arr: number[] = [];
     arr.push(...t);
 
+    console.assert(arr.length === 2, "Push with tuples: arr length != 2");
     console.assert(arr[0] === 1, "Push with tuples: item under 0 is not equal");
     console.assert(arr[1] === 2, "Push with tuples: item under 1 is not equal");
 }
@@ -678,6 +683,7 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     const t: [number, number] = [1, 2]
     const arr: number[] = [...t];
 
+    console.assert(arr.length === 2, "Array literal with tuples: arr length != 2");
     console.assert(arr[0] === 1, "Array literal with tuples: item under 0 is not equal");
     console.assert(arr[1] === 2, "Array literal with tuples: item under 1 is not equal");
 }
@@ -687,6 +693,7 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     let from: number | undefined = 10;
     let to: number[] = [from];
 
+    console.assert(arr.length === 1, "Array literal from union: arr length != 1");
     console.assert(to[0] === 10, "Array literal with union to[0] not equal");
 }
 
