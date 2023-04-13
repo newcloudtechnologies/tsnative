@@ -35,5 +35,5 @@
 }
 
 {
-    console.assert(true, 1, 2, 3);
+    console.assert(true, "My super string");
 }
