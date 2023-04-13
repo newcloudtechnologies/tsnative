@@ -694,7 +694,7 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     // console.assert(to[3] === 4, "Array literal with union to[3] not equal");
 // }
 
-Array literal from union
+// Array literal from union
 {
     let from: number | undefined = 10;
     let to: number[] = [from];
