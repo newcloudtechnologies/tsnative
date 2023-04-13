@@ -23,10 +23,6 @@
 }
 
 {
-    console.assert();
-}
-
-{
     console.log();
 }
 
