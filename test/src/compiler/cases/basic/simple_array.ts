@@ -663,7 +663,7 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   console.assert(colors[0][1] === 2, "Multidimensional by literal: item under 0 1 is not equal");
 }
 
-// push with tuples
+// Push with tuples
 {
     const t: [number, number] = [1, 2]
     const arr: number[] = [];
@@ -673,7 +673,7 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     console.assert(arr[1] === 2, "Push with tuples: item under 1 is not equal");
 }
 
-// array literal with tuples
+// Array literal with tuples
 {
     const t: [number, number] = [1, 2]
     const arr: number[] = [...t];
@@ -682,22 +682,16 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     console.assert(arr[1] === 2, "Array literal with tuples: item under 1 is not equal");
 }
 
-// Array literal to union
-// {
-    // let from = [2, 3];
-    // let to: (number | undefined)[] = [1, ...from, 4];
-
-    // let to: (number | undefined)[] = [1];
-    // console.assert(to[0] === 1, "Array literal with union to[0] not equal");
-    // console.assert(to[1] === 2, "Array literal with union to[1] not equal");
-    // console.assert(to[2] === 3, "Array literal with union to[2] not equal");
-    // console.assert(to[3] === 4, "Array literal with union to[3] not equal");
-// }
-
 // Array literal from union
 {
     let from: number | undefined = 10;
     let to: number[] = [from];
 
     console.assert(to[0] === 10, "Array literal with union to[0] not equal");
+}
+
+// Array literal indexing
+{
+  let a = [1, 2, 3][0];
+  console.assert(a === 1, "Array literal indexing: a !== 1");
 }
