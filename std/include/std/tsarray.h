@@ -60,7 +60,7 @@ public:
         return array;
     }
 
-    TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(Array<T>* v);
+    TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(Array<T>* other);
 
     inline void push(T v)
     {
