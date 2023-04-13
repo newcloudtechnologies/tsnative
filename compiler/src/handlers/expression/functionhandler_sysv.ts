@@ -287,29 +287,31 @@ export class SysVFunctionHandler {
 
     // there may be no parameter declared at argument's index in case of rest arguments
     const parameterAtIndex = declaration.parameters[index];
-    if (parameterAtIndex) {
-      const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
+    if (!parameterAtIndex) {
+      return this.generator.builder.asVoidStar(arg); 
+    }
 
-      if (!parameterDeclaration.dotDotDotToken) {
-        if (arg.type.isUnion() && !parameterDeclaration.type.isUnion()) {
-            let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
+    const parameterDeclaration = Declaration.create(parameterAtIndex, this.generator);
 
-            if (parameterDeclaration.type.isEnum()) {
-              value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
-              return value.asLLVMInteger();
-            }
-
-            return value;
-        }
-      }
+    if (!parameterDeclaration.dotDotDotToken
+          && arg.type.isUnion() 
+          && !parameterDeclaration.type.isUnion()) {
+      let value = this.generator.builder.asVoidStar(this.generator.ts.union.get(arg));
 
       if (parameterDeclaration.type.isEnum()) {
-        return arg.asLLVMInteger();
+        value = this.generator.builder.createBitCast(value, this.generator.builtinNumber.getLLVMType());
+        return value.asLLVMInteger();
       }
 
-      if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
-        return this.generator.ts.union.create(arg);
-      }
+      return value;
+    }
+
+    if (parameterDeclaration.type.isEnum()) {
+      return arg.asLLVMInteger();
+    }
+
+    if (parameterDeclaration.isOptional() && parameterDeclaration.type.isSupported()) {
+      return this.generator.ts.union.create(arg);
     }
 
     return this.generator.builder.asVoidStar(arg);
