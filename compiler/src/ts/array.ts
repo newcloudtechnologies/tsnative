@@ -214,23 +214,28 @@ export class TSArray {
   callPush(arrayType: TSType, thisPtr: LLVMValue, objPtr: LLVMValue, isSpread: boolean) {
     const arrayTypename = arrayType.toString();
 
-    const findPush = () => { 
+    const getOrCreatePush = () => { 
+      const maybePush = this.pushFns.get(arrayTypename);
+      if (maybePush) {
+        return maybePush;
+      }
+
       const pushFn = this.findPush(arrayType);
       this.pushFns.set(arrayTypename, pushFn);
       return pushFn;
     }
 
-    const pushFn = this.pushFns.has(arrayTypename) ? this.pushFns.get(arrayTypename)! : findPush();
+    const pushFn = getOrCreatePush();
 
-    const emptyArrPtr = this.generator.builder.createAlloca(this.llvmType.getPointerElementType());
-    this.callDefaultConstructor(emptyArrPtr, arrayType);
+    const aggregatorArrPtr = this.generator.builder.createAlloca(this.llvmType.getPointerElementType());
+    this.callDefaultConstructor(aggregatorArrPtr, arrayType);
     
     const argsToArrayStackPtr = this.generator.builder.createAlloca(this.argsToArray.getLLVMType().getPointerElementType());
-    this.argsToArray.callConstructor(argsToArrayStackPtr, emptyArrPtr);
+    this.argsToArray.callConstructor(argsToArrayStackPtr, aggregatorArrPtr);
     this.argsToArray.callAddObject(argsToArrayStackPtr, objPtr, isSpread);
 
     const thisVoidStar = this.generator.builder.asVoidStar(thisPtr);
-    const emptyArrPtrVoidStar = this.generator.builder.asVoidStar(emptyArrPtr);
+    const emptyArrPtrVoidStar = this.generator.builder.asVoidStar(aggregatorArrPtr);
     this.generator.builder.createSafeCall(pushFn, [thisVoidStar, emptyArrPtrVoidStar]);
   }
 

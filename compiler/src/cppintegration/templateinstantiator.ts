@@ -341,7 +341,7 @@ export class TemplateInstantiator {
 
       if (declaration?.questionToken) {
         argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
-        break;
+        continue;
       }
 
       if (declaration?.dotDotDotToken || ts.isSpreadElement(arg)) {
