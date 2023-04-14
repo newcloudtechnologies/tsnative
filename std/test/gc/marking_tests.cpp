@@ -15,7 +15,7 @@
 #include "../infrastructure/global_test_allocator_fixture.h"
 #include "../infrastructure/object_wrappers.h"
 
-#include "std/private/make_closure_from_lambda.h"
+#include "std/make_closure_from_lambda.h"
 #include "std/private/uv_loop_adapter.h"
 
 #include <memory>
@@ -32,12 +32,21 @@ MATCHER_P(IsMarked, state, "")
 class MarkingTestFixture : public test::GlobalTestAllocatorFixture
 {
 public:
-    test::Closure* makeClosureExecutor() const
+    enum class ExecutorCall
+    {
+        Resolve,
+        Reject
+    };
+
+public:
+    test::Closure* makeClosureExecutor(test::Number* value, ExecutorCall executorCall) const
     {
         return makeClosure<test::Closure>(
-            [](TSClosure** resolve)
+            [value, executorCall = std::move(executorCall)](TSClosure** resolve, TSClosure** reject)
             {
-                (*resolve)->setEnvironmentElement(new test::Number{23.f}, 0);
+                executorCall == ExecutorCall::Resolve ? (*resolve)->setEnvironmentElement(value, 0)
+                                                      : (*reject)->setEnvironmentElement(value, 0);
+
                 return test::Undefined::instance();
             });
     }
@@ -153,6 +162,8 @@ TEST_F(MarkingTestFixture, closure)
     EXPECT_EQ(5u, allObjects.size());
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
+    numArgs->mark();
+    envLength->mark();
     closure->mark();
 
     EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
@@ -250,7 +261,7 @@ TEST_F(MarkingTestFixture, timer)
 
 TEST_F(MarkingTestFixture, promiseConstructor)
 {
-    auto* executor = makeClosureExecutor();
+    auto* executor = makeClosureExecutor(new test::Number{23.f}, ExecutorCall::Resolve);
     auto* promise = new test::Promise(executor);
 
     const auto& allObjects = getActualAllocatedObjects();
@@ -265,7 +276,7 @@ TEST_F(MarkingTestFixture, promiseConstructor)
 
 TEST_F(MarkingTestFixture, promiseCallbackThen)
 {
-    auto* executor = makeClosureExecutor();
+    auto* executor = makeClosureExecutor(new test::Number{23.f}, ExecutorCall::Resolve);
     auto* startPromise = new test::Promise(executor);
     auto* resolve = new test::Union{};
     auto* reject = new test::Union{};
@@ -284,7 +295,7 @@ TEST_F(MarkingTestFixture, promiseCallbackThen)
 
 TEST_F(MarkingTestFixture, promiseCallbackCatch)
 {
-    auto* executor = makeClosureExecutor();
+    auto* executor = makeClosureExecutor(new test::Number{23.f}, ExecutorCall::Reject);
     auto* startPromise = new test::Promise(executor);
     auto* reject = new test::Union{};
     auto* endPromise = startPromise->catchException(reject);
@@ -302,7 +313,7 @@ TEST_F(MarkingTestFixture, promiseCallbackCatch)
 
 TEST_F(MarkingTestFixture, promiseCallbackFinally)
 {
-    auto* executor = makeClosureExecutor();
+    auto* executor = makeClosureExecutor(new test::Number{23.f}, ExecutorCall::Resolve);
     auto* startPromise = new test::Promise(executor);
     auto* finally = new test::Union{};
     auto* endPromise = startPromise->finally(finally);

@@ -18,27 +18,26 @@
 
 TSClosure::TSClosure(void* fn, void*** env, Number* envLength, Number* numArgs, Number* optionals)
     : Object(TSTypeID::Closure)
-    , _fn(fn)
+    , _fn{reinterpret_cast<void* (*)(void***)>(fn)}
     , _env(env)
-    , _envLength(envLength)
-    , _numArgs(numArgs)
-    , _optionals(static_cast<int64_t>(optionals->unboxed()))
+    , _envLength(envLength->unboxed())
+    , _numArgs(numArgs->unboxed())
+    , _optionals(optionals->unboxed())
 {
+    LOG_METHOD_CALL;
     LOG_ADDRESS("Calling closure ctor ", this);
-    LOG_ADDRESS("Env address: ", env);
+}
 
-    const auto nArgs = static_cast<std::size_t>(numArgs->unboxed());
-    const auto envLen = static_cast<std::size_t>(envLength->unboxed());
-
-    for (std::size_t i = 0; i < nArgs; ++i)
-    {
-        LOG_ADDRESS("Arg void** ", _env[i]);
-    }
-
-    for (std::size_t i = nArgs; i < envLen; ++i)
-    {
-        LOG_ADDRESS("Captured void** ", _env[i]);
-    }
+TSClosure::TSClosure(FunctionToCall&& fn, void*** env, std::uint32_t envLength, std::uint32_t numArgs)
+    : Object(TSTypeID::Closure)
+    , _fn{std::move(fn)}
+    , _env{env}
+    , _envLength{envLength}
+    , _numArgs{numArgs}
+    , _optionals{0}
+{
+    LOG_METHOD_CALL;
+    LOG_ADDRESS("Calling closure ctor ", this);
 }
 
 TSClosure::~TSClosure()
@@ -53,14 +52,19 @@ void*** TSClosure::getEnvironment() const
     return _env;
 }
 
-Number* TSClosure::getNumArgs() const
+std::uint32_t TSClosure::getNumArgs() const
 {
     return _numArgs;
 }
 
+std::uint32_t TSClosure::getEnvironmentLength() const
+{
+    return _envLength;
+}
+
 void* TSClosure::call() const
 {
-    return reinterpret_cast<void* (*)(void***)>(_fn)(_env);
+    return _fn(_env);
 }
 
 String* TSClosure::toString() const
@@ -72,17 +76,7 @@ std::vector<Object*> TSClosure::getChildObjects() const
 {
     auto result = Object::getChildObjects();
 
-    if (_numArgs)
-    {
-        result.push_back(_numArgs);
-    }
-
-    if (_envLength)
-    {
-        result.push_back(_envLength);
-    }
-
-    const auto envLength = static_cast<std::size_t>(_envLength->unboxed());
+    const auto envLength = _envLength;
     for (std::size_t i = 0; i < envLength; ++i)
     {
         auto voidStarStar = _env[i];
