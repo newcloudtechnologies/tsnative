@@ -106,7 +106,7 @@ template <typename T>
 void Set<T>::forEach(TSClosure* visitor) const
 {
     const auto& ordered = _d->ordered();
-    auto numArgs = visitor->getNumArgs()->unboxed();
+    auto numArgs = visitor->getNumArgs();
 
     for (size_t i = 0; i < ordered.size(); ++i)
     {

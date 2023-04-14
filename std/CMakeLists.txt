@@ -255,6 +255,7 @@ if (BUILD_TEST)
                      test/array/join.cpp
                      test/mocks/stub_event_loop.cpp
                      test/utils/to_string_converter_tests.cpp
+                     test/utils/make_closure_test.cpp
                      )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})

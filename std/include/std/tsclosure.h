@@ -20,7 +20,8 @@
 #include "std/tsobject.h"
 #include "std/tsunion.h"
 
-#include <ostream>
+#include <cstdint>
+#include <functional>
 #include <type_traits>
 
 class Number;
@@ -33,7 +34,11 @@ TS_CODE("// @ts-ignore\n"
 class TS_EXPORT TS_DECLARE TS_IGNORE TSClosure : public Object
 {
 public:
+    using FunctionToCall = std::function<void*(void***)>;
+
+public:
     TS_METHOD TS_NO_CHECK TSClosure(void* fn, void*** env, Number* envLength, Number* numArgs, Number* optionals);
+    TSClosure(FunctionToCall&& fn, void*** env, std::uint32_t envLength, std::uint32_t numArgs);
     ~TSClosure() override;
 
     TS_METHOD TS_NO_CHECK void*** getEnvironment() const;
@@ -41,7 +46,9 @@ public:
     template <typename T>
     void setEnvironmentElement(T value, int index);
 
-    Number* getNumArgs() const;
+    std::uint32_t getNumArgs() const;
+
+    std::uint32_t getEnvironmentLength() const;
 
     TS_METHOD void* call() const;
 
@@ -50,11 +57,11 @@ public:
     std::vector<Object*> getChildObjects() const override;
 
 private:
-    void* _fn = nullptr;
+    FunctionToCall _fn;
     void*** _env = nullptr;
-    Number* _envLength = nullptr;
-    Number* _numArgs = nullptr;
-    int64_t _optionals = 0;
+    std::uint32_t _envLength;
+    std::uint32_t _numArgs;
+    std::uint32_t _optionals = 0;
 
 private:
     friend class ToStringConverter;

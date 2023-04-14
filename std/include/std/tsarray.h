@@ -224,7 +224,7 @@ T Array<T>::operator[](size_t index) const
 template <typename T>
 void Array<T>::forEach(TSClosure* closure) const
 {
-    const auto numArgs = closure->getNumArgs()->unboxed();
+    const auto numArgs = closure->getNumArgs();
     const auto length = _d->length();
 
     for (std::size_t i = 0; i < length; ++i)
@@ -344,7 +344,7 @@ Array<U>* Array<T>::map(TSClosure* closure)
     static_assert(std::is_pointer<U>::value, "TS Array elements expected to be of pointer type");
 
     auto transformedArray = new Array<U>();
-    const auto numArgs = closure->getNumArgs()->unboxed();
+    const auto numArgs = closure->getNumArgs();
 
     const auto length = _d->length();
 

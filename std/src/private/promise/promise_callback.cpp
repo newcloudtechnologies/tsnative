@@ -49,7 +49,7 @@ void PromiseCallback::callClosure(TSClosure* closure, Result&& arg) noexcept
 {
     try
     {
-        bool hasArguments = closure->getNumArgs()->unboxed() != 0;
+        bool hasArguments = closure->getNumArgs() != 0;
         if (hasArguments)
         {
             closure->setEnvironmentElement(arg ? arg.get() : arg.getError(), 0);
