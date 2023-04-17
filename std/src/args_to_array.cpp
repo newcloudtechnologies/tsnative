@@ -9,7 +9,7 @@
  *
  */
 
-#include "std/private/args_to_array.h"
+#include "std/args_to_array.h"
 
 #include "std/tstuple.h"
 
