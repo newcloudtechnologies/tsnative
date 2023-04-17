@@ -12,6 +12,7 @@
 #pragma once
 
 #include "std/private/memory_management/gc_names_storage.h"
+#include "std/private/memory_management/gc_types.h"
 
 #include <string>
 #include <unordered_map>
@@ -30,16 +31,16 @@ class NodeId;
 class GCPrinter
 {
 public:
-    using roots_t = std::unordered_set<Object**>;
-    using objects_t = std::unordered_set<Object*>;
-
-    GCPrinter(const objects_t& heap, const roots_t& roots, const GCNamesStorage& variables);
+    GCPrinter(const UniqueObjects& heap,
+              const Roots& roots,
+              const GCNamesStorage& variables,
+              const UniqueConstObjects& marked);
 
     void print(std::string fileName = "") const;
 
 private:
-    void fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const;
-    std::string formatHeapInfo(const objects_t& heap) const;
+    void fillRootsGraph(gvl::Graph& graph, const Roots& roots) const;
+    std::string formatHeapInfo(const UniqueObjects& heap) const;
 
     using visited_nodes_t = std::unordered_map<Object*, gvl::NodeId>;
 
@@ -53,7 +54,8 @@ private:
     std::string formatVariableNames(const Object* object) const;
 
 private:
-    const objects_t& _heap;
-    const roots_t& _roots;
+    const UniqueObjects& _heap;
+    const Roots& _roots;
     const GCNamesStorage& _variables;
+    const UniqueConstObjects& _marked;
 };

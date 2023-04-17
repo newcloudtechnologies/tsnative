@@ -85,8 +85,20 @@ void eraseAll(Container& container, const TEl& element)
     container.erase(std::remove(container.begin(), container.end(), element), container.end());
 }
 
-void visit(const Object& obj,
+void visit(const Object* obj,
            std::unordered_set<const Object*>& visited,
-           const std::function<void(const Object& obj)>& visiter);
+           const std::function<void(const Object* obj)>& visiter);
+
+template <typename F, typename Tuple, size_t... Is>
+constexpr auto apply(F&& f, Tuple&& t, std::index_sequence<Is...>)
+{
+    return f(std::forward<typename std::tuple_element<Is, Tuple>::type>(std::get<Is>(t))...);
+}
+
+template <typename F, typename Tuple>
+constexpr auto apply(F&& f, Tuple&& t)
+{
+    return apply(std::forward<F>(f), std::forward<Tuple>(t), std::make_index_sequence<std::tuple_size<Tuple>{}>{});
+}
 
 } // namespace utils

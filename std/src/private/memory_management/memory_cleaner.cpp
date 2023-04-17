@@ -26,10 +26,6 @@ MemoryCleaner::MemoryCleaner(IEventLoop& loop, IGCImpl& gc, const IGCValidator* 
 
 void MemoryCleaner::asyncClear(const std::function<void()> afterClear)
 {
-    // TODO scheduling GC clear is temporally disabled
-    // see https://jira.ncloudtech.ru:8090/browse/TSN-553
-    return;
-
     if (_collectScheduled)
     {
         LOG_INFO("Garbage collection is already scheduled");

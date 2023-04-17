@@ -97,6 +97,7 @@ set(SOURCES
     src/private/tsmath_p.cpp
     src/private/memory_management/default_gc.cpp
     src/private/memory_management/gc_validator.cpp
+    src/private/memory_management/gc_object_marker.cpp
     src/private/memory_management/allocator.cpp
     src/private/memory_management/memory_diagnostics_storage.cpp
     src/private/memory_management/memory_manager.cpp
@@ -258,6 +259,7 @@ if (BUILD_TEST)
                      test/array/join.cpp
                      test/mocks/stub_event_loop.cpp
                      test/utils/to_string_converter_tests.cpp
+                     test/utils/make_closure_test.cpp
                      )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})

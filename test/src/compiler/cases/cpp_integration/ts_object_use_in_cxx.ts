@@ -81,7 +81,7 @@ user.clear();
 
 console.assert(user.getNumbersSum() === 0, "GC check saved object - clear saved numbers");
 
-gcTest(testSaveSimpleClosure, "test use ts closure in cxx code", 3); // 3 - closure + numbers in it
+gcTest(testSaveSimpleClosure, "test use ts closure in cxx code", 1); // 1 - closure
 
 let str = user.getClosureString();
 
@@ -89,7 +89,7 @@ console.log(str);
 
 console.assert(str === "[Function]", "GC check saved object - use saved closure");
 
-gcTest(testSaveClassClosure, "test save class closure", 5);
+gcTest(testSaveClassClosure, "test save class closure", 3);
 
 user.callClassClosure();
 
@@ -97,5 +97,5 @@ console.assert(numberToCapture === 1240, "GC check saved object - use saved clas
 
 TSObjectCache.setStaticNumber(44.5);
 
-gcTest(testClosurePassingToCXXClassByOwner, "Test keeping and passing closure by TSObjectOwner to std::function", 3);
+gcTest(testClosurePassingToCXXClassByOwner, "Test keeping and passing closure by TSObjectOwner to std::function", 1);
 console.assert(user.click() === 101, "Closure passed to std::function by TSObjectOwner and called successfully");

@@ -165,7 +165,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_VERSION', value: version),
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True -o run_tests_with_memcheck=True -o validate_gc=True -o memory_limit_kb=1"),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-o build_tests=True -o run_tests_with_memcheck=True"),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]
@@ -185,7 +185,7 @@ pipeline {
                                     string(name: 'PKG_CONAN_VERSION', value: version),
                                     string(name: 'PKG_CONAN_USER', value: user),
                                     string(name: 'PKG_CONAN_CHANNEL', value: channel),
-                                    string(name: 'PKG_CONAN_OPTIONS', value: "-s:b build_type=Release -s:h build_type=Debug -s:h abseil:build_type=Release -s:h gtest:build_type=Release -s:h libuv:build_type=Release -s:h graphvizlib:build_type=Release -s:b tsnative-declarator:build_type=Release -o build_tests=True -o validate_gc=True -o memory_limit_kb=1"),
+                                    string(name: 'PKG_CONAN_OPTIONS', value: "-s:b build_type=Release -s:h build_type=Debug -s:h abseil:build_type=Release -s:h gtest:build_type=Release -s:h libuv:build_type=Release -s:h graphvizlib:build_type=Release -s:b tsnative-declarator:build_type=Release -o build_tests=True -o validate_gc=True"),
                                     string(name: 'PKG_HOST_PROFILE_REGEXP', value: 'linux.*|darwin.*|.*mingw.*|android.*'),
                                     booleanParam(name: 'PKG_IS_BUILD_TOOL', value: false)
                             ]

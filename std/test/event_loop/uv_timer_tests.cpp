@@ -16,7 +16,7 @@
 #include "../infrastructure/object_wrappers.h"
 
 #include "std/id_generator.h"
-#include "std/private/make_closure_from_lambda.h"
+#include "std/make_closure_from_lambda.h"
 #include "std/private/uv_loop_adapter.h"
 #include "std/private/uv_timer_adapter.h"
 #include "std/tsclosure.h"

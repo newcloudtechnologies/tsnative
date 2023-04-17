@@ -18,6 +18,7 @@
 #include "std/private/logger.h"
 
 #include <memory>
+#include <utility>
 
 template <typename TObj>
 class TSObjectOwner;

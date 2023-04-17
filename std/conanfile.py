@@ -39,7 +39,7 @@ class TSNativeStdConan(ConanFile):
         "enable_logs": "none",
         "run_tests_with_memcheck": False,
         "fail_test_on_mem_leak": False,
-        "memory_limit_kb": "1000000",
+        "memory_limit_kb": "100000",
         "validate_gc": False,
     }
 
