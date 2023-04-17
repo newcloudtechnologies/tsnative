@@ -175,9 +175,10 @@ export class LiteralHandler extends AbstractExpressionHandler {
       if (!elementType.isUnion() && elementValue.type.isUnion()) {
         elementValue = this.generator.ts.union.get(elementValue);
       }
-      else if (elementType.isUnion() && !elementValue.type.isUnion()) {
-        elementValue = this.generator.ts.union.create(elementValue);
-      }
+      // TODO https://jira.ncloudtech.ru:8090/browse/TSN-579
+      // else if (elementType.isUnion() && !elementValue.type.isUnion()) {
+      //   elementValue = this.generator.ts.union.create(elementValue);
+      // }
 
       this.generator.ts.array.callPush(arrayType, arrayPtr, elementValue, isSpread);
     }
