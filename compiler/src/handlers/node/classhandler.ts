@@ -113,21 +113,17 @@ export class ClassHandler extends AbstractNodeHandler {
           let typeMap: Map<string, llvm.DIType> = new Map<string, llvm.DIType>();
           let file: llvm.DIFile | undefined = undefined;
           for (let member of declaration.members) {
-            for (let type of member.type.types) {
-              if (type.isUndefined() == false) { // && member.name !== undefined) {
-                if (file == undefined) {
-                  const { filename, dir } = DebugInfo.getFileNameAndDir(member.getSourceFile().fileName);
-                  file = debugInfo?.createFile(filename, dir);
-                }
-                const lineNoPos = member.getSourceFile().getLineAndCharacterOfPosition(member.unwrapped.getStart());
-                let diType = debugInfo?.getOrCreateCompositeType(type,
-                  this.generator.module.dataLayout.getPointerSizeInBits(0),
-                  debugInfo?.getScope(), lineNoPos.line + 1);
-                if (diType && typeMap.has(type.getTypename()) == false)
-                  typeMap.set(type.getTypename(), diType);
-                break;
-              }
+            if (file == undefined) {
+              const { filename, dir } = DebugInfo.getFileNameAndDir(member.getSourceFile().fileName);
+              file = debugInfo?.createFile(filename, dir);
             }
+            const lineNoPos = member.getSourceFile().getLineAndCharacterOfPosition(member.unwrapped.getStart());
+            const type = this.getFirstDefinedType(member.type);
+            let diType = debugInfo?.getOrCreateCompositeType(type,
+              this.generator.module.dataLayout.getPointerSizeInBits(0),
+              debugInfo?.getScope(), lineNoPos.line + 1);
+            if (diType && typeMap.has(type.getTypename()) == false)
+              typeMap.set(type.getTypename(), diType);
           }
           let someType = debugInfo?.emitClassDeclaration(name, declaration, file, [...typeMap.values()]);
           for (let member of declaration.members) {
@@ -136,8 +132,8 @@ export class ClassHandler extends AbstractNodeHandler {
               if (!type.isUndefined() && member.name !== undefined &&
                 someType !== undefined && file !== undefined &&
                 type !== undefined && diType !== undefined) {
-                  const lineNoPos = member.getSourceFile().getLineAndCharacterOfPosition(member.unwrapped.getStart());
-                  debugInfo?.emitMemberDeclaration(someType as llvm.DIScope,
+                const lineNoPos = member.getSourceFile().getLineAndCharacterOfPosition(member.unwrapped.getStart());
+                debugInfo?.emitMemberDeclaration(someType as llvm.DIScope,
                   member.name.getText(), 0, lineNoPos.line + 1, file, diType);
               }
             }
@@ -146,7 +142,16 @@ export class ClassHandler extends AbstractNodeHandler {
       }
     }, parentScope);
   }
-
+  private getFirstDefinedType(memberType : TSType) {
+    if (memberType.isUnion()) {
+      for (let type of memberType.types) {
+        if (type instanceof TSType && !type.isUndefined())  {
+          return type;
+        }
+      }
+    }
+    return memberType;
+  }
   private handleHeritageClauses(declaration: Declaration, localScope: Scope, parentScope: Scope) {
     if (!declaration.heritageClauses) {
       return;
