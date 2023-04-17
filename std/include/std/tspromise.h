@@ -78,13 +78,13 @@ public:
     std::vector<Object*> getChildObjects() const override;
 
 private:
-    static TSClosure* makeResolveClosure(Promise* promise);
-
-    static TSClosure* makeRejectClosure(Promise* promise);
-
     void success(Object* resolved);
 
     void failure(Object* rejected);
+
+    TSClosure* makeResolveClosure();
+
+    TSClosure* makeRejectClosure();
 
     void removeKeeperAlive();
 

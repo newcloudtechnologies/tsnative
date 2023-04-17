@@ -33,7 +33,7 @@ std::unique_ptr<MemoryManager> createMemoryManager(TimerStorage& storage, IEvent
 
     std::unique_ptr<IGCValidator> gcValidator;
 #ifdef VALIDATE_GC
-    gcValidator.reset(new GCValidator(gc->getHeap(), gc->getRoots()));
+    gcValidator.reset(new GCValidator(gc->getHeap(), gc->getRoots(), gc->getMarked()));
 #endif
 
     auto cleaner = std::make_unique<MemoryCleaner>(*loop, *gc.get(), gcValidator.get());

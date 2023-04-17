@@ -9,7 +9,7 @@ export class Entity {
 }
 
 //@ts-ignore
-@Size(5)
+@Size(4)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore

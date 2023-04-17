@@ -93,6 +93,30 @@ static std::string formatParent(std::string&& parentData)
     return removeNewLineAtEnd(removeEnclosingBrackets(std::move(parentData)));
 }
 
+static std::string convertTSClosureEnvironment(const TSClosure& closure)
+{
+    std::stringstream ss;
+
+    ss << "Env address: " << closure.getEnvironment() << std::endl;
+
+    const auto nArgs = closure.getNumArgs();
+    const auto env = closure.getEnvironment();
+    const auto envLen = closure.getEnvironmentLength();
+    auto printAddress = [&ss](auto msg, auto& value) { ss << msg << std::hex << ((void*)value) << std::endl; };
+
+    for (std::uint32_t i = 0; i < nArgs; ++i)
+    {
+        printAddress("Arg void** ", env[i]);
+    }
+
+    for (std::uint32_t i = nArgs; i < envLen; ++i)
+    {
+        printAddress("Captured void** ", env[i]);
+    }
+
+    return ss.str();
+}
+
 template <>
 std::string ToStringConverter::toString(const Object* obj, Visited& visited)
 {
@@ -316,7 +340,8 @@ std::string ToStringConverter::convertWithCheck(const Object* obj, Visited& visi
     if (obj->isClosure())
     {
         const auto* closure = static_cast<const TSClosure*>(obj);
-        return "Closure. " + std::string("ArgsCount: ") + ToStringConverter::convert(closure->getNumArgs());
+        return "Closure. " + std::string("ArgsCount: ") + std::to_string(closure->getNumArgs()) +
+               convertTSClosureEnvironment(*closure);
     }
 
     if (obj->isLazyClosure())

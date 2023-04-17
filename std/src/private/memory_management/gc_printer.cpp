@@ -30,10 +30,14 @@ static std::string removeQuotes(std::string&& str)
     return str;
 }
 
-GCPrinter::GCPrinter(const GCPrinter::objects_t& heap, const GCPrinter::roots_t& roots, const GCNamesStorage& variables)
+GCPrinter::GCPrinter(const UniqueObjects& heap,
+                     const Roots& roots,
+                     const GCNamesStorage& variables,
+                     const UniqueConstObjects& marked)
     : _heap(heap)
     , _roots(roots)
     , _variables(variables)
+    , _marked(marked)
 {
 }
 
@@ -58,7 +62,7 @@ void GCPrinter::print(std::string fileName) const
     graph.RenderDot(out);
 }
 
-std::string GCPrinter::formatHeapInfo(const objects_t& heap) const
+std::string GCPrinter::formatHeapInfo(const UniqueObjects& heap) const
 {
     std::stringstream ss;
     ss << "===== Heap =====" << std::endl << "Object count: " << heap.size() << std::endl << std::endl;
@@ -92,13 +96,13 @@ std::string GCPrinter::formatObjInfo(const Object* obj) const
     std::stringstream ss;
     ss << "Obj: " << std::hex << obj << std::endl;
     ss << "Value: " << removeQuotes(ToStringConverter::convert(obj)) << std::endl;
-    ss << "Is marked: " << std::boolalpha << obj->isMarked() << std::endl;
+    ss << "Is marked: " << std::boolalpha << (_marked.count(obj) > 0) << std::endl;
     ss << formatVariableNames(obj) << std::endl;
 
     return ss.str();
 }
 
-void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const
+void GCPrinter::fillRootsGraph(gvl::Graph& graph, const Roots& roots) const
 {
     LOG_GC("Roots count: " + std::to_string(roots.size()));
 
@@ -116,7 +120,7 @@ void GCPrinter::fillRootsGraph(gvl::Graph& graph, const roots_t& roots) const
 
         auto id = gvl::NodeId(formatObjInfo(*o));
         std::vector<gvl::Property> properties{gvl::Property("shape", "component")};
-        if ((*o)->isMarked())
+        if (_marked.count(*o) > 0)
         {
             properties.push_back(gvl::Property("shape", "Msquare"));
         }
@@ -157,7 +161,7 @@ void GCPrinter::fillChildrenGraph(gvl::Graph& graph,
         visited.insert({c, id});
 
         std::vector<gvl::Property> properties;
-        if (c->isMarked())
+        if (_marked.count(c) > 0)
         {
             properties.push_back(gvl::Property("shape", "Msquare"));
         }

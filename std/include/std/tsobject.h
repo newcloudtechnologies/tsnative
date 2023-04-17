@@ -109,13 +109,7 @@ public:
 
     TS_METHOD void copyPropsTo(Object* target);
 
-    bool isMarked() const;
-    void mark();
-    void unmark();
-
     virtual std::vector<Object*> getChildObjects() const;
-
-    void markChildren();
 
     template <typename T>
     static Object* asObjectPtr(T value)
@@ -151,8 +145,6 @@ private:
     MapPrivate<String*, Object*>* _props = nullptr;
 
     TSTypeID _typeid = TSTypeID::Object;
-
-    bool _isMarked = false;
 
 private:
     friend class ToStringConverter;

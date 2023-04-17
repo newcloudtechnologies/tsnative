@@ -18,32 +18,12 @@
 #include "std/tsstring.h"
 #include "std/tsunion.h"
 
+#include "std/make_closure_from_lambda.h"
 #include "std/private/algorithms.h"
 #include "std/private/logger.h"
 #include "std/private/promise/promise_p.h"
 
 #include <cassert>
-
-namespace
-{
-TSClosure* makeClosure(void* (*envCall)(void***), Promise* promise)
-{
-    void*** env = (void***)malloc(2 * sizeof(void**));
-
-    env[0] = (void**)malloc(sizeof(void**));
-    *(env[0]) = Undefined::instance(); // the default value
-
-    auto** promiseStar = (void**)malloc(sizeof(void*));
-    *promiseStar = (void*)promise;
-    env[1] = promiseStar;
-
-    auto* envLength = new Number{2.f};
-    auto* numArgs = new Number{1.f};
-    auto* opt = new Number{0.f};
-
-    return new TSClosure{(void*)envCall, env, envLength, numArgs, opt};
-}
-} // namespace
 
 Promise* Promise::resolve(Union* resolved)
 {
@@ -99,13 +79,14 @@ Promise::Promise(TSClosure* executor)
 {
     LOG_ADDRESS("Calling Promise ctor with executor for ", this);
 
-    const auto numArgs = (std::size_t)executor->getNumArgs()->unboxed();
+    const auto numArgs = executor->getNumArgs();
 
     assert(numArgs == 1 || numArgs == 2);
-    executor->setEnvironmentElement(makeResolveClosure(this), 0);
+
+    executor->setEnvironmentElement(makeResolveClosure(), 0);
     if (numArgs == 2)
     {
-        executor->setEnvironmentElement(makeRejectClosure(this), 1);
+        executor->setEnvironmentElement(makeRejectClosure(), 1);
     }
     executor->call();
 }
@@ -220,44 +201,22 @@ std::vector<Object*> Promise::getChildObjects() const
     return _children;
 }
 
-TSClosure* Promise::makeResolveClosure(Promise* promise)
+TSClosure* Promise::makeResolveClosure()
 {
-    static const auto resolvePromise = [](Promise** promise, Object** value)
-    {
-        assert(promise && "**promise is null");
-        assert(*promise && "*promise is null");
-        (*promise)->success(*value);
-    };
-
-    static const auto ptr = [](void*** env) -> void*
-    {
-        assert(env && "Environment is null");
-        assert(env[0] && "env[0] is null");
-        assert(env[1] && "env[1] is null");
-
-        resolvePromise(reinterpret_cast<Promise**>(env[1]), reinterpret_cast<Object**>(env[0]));
-        return nullptr;
-    };
-    return makeClosure(ptr, promise);
+    return makeClosure(
+        [this](Object** resolved)
+        {
+            success(*resolved);
+            return Undefined::instance();
+        });
 }
 
-TSClosure* Promise::makeRejectClosure(Promise* promise)
+TSClosure* Promise::makeRejectClosure()
 {
-    static const auto rejectPromise = [](Promise** promise, Object** value)
-    {
-        assert(promise && "**promise is null");
-        assert(*promise && "*promise is null");
-        (*promise)->failure(*value);
-    };
-
-    static const auto ptr = [](void*** env) -> void*
-    {
-        assert(env && "Environment is null");
-        assert(env[0] && "env[0] is null");
-        assert(env[1] && "env[1] is null");
-
-        rejectPromise(reinterpret_cast<Promise**>(env[1]), reinterpret_cast<Object**>(env[0]));
-        return nullptr;
-    };
-    return makeClosure(ptr, promise);
+    return makeClosure(
+        [this](Object** rejected)
+        {
+            failure(*rejected);
+            return Undefined::instance();
+        });
 }

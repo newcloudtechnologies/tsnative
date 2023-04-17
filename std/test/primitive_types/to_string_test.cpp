@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "../infrastructure/object_wrappers.h"
-#include "std/private/make_closure_from_lambda.h"
+#include "std/private/lambda_to_function_ptr.h"
 
 class ToStringTest : public test::GlobalTestAllocatorFixture
 {

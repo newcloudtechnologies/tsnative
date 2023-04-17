@@ -287,22 +287,6 @@ void Object::copyPropsTo(Object* target)
     _props->forEachEntry([this, &target](const auto& pair) { target->set(pair.first, pair.second); });
 }
 
-bool Object::isMarked() const
-{
-    return _isMarked;
-}
-
-void Object::mark()
-{
-    _isMarked = true;
-    markChildren();
-}
-
-void Object::unmark()
-{
-    _isMarked = false;
-}
-
 std::vector<Object*> Object::getChildObjects() const
 {
     std::vector<Object*> result;
@@ -326,21 +310,6 @@ std::vector<Object*> Object::getChildObjects() const
     _props->forEachEntry(callable);
 
     return result;
-}
-
-void Object::markChildren()
-{
-    LOG_ADDRESS("Calling OBJECT::markChildren on ", this);
-    auto children = getChildObjects();
-    for (auto* c : children)
-    {
-        if (!c->isMarked())
-        {
-            c->mark();
-        }
-    }
-
-    LOG_INFO("Finished calling OBJECT::markChildren");
 }
 
 void* Object::operator new(std::size_t n)

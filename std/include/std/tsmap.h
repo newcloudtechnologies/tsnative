@@ -110,7 +110,7 @@ template <typename K, typename V>
 void Map<K, V>::forEach(TSClosure* visitor) const
 {
     const auto& orderedKeys = _d->orderedKeys();
-    auto numArgs = visitor->getNumArgs()->unboxed();
+    auto numArgs = visitor->getNumArgs();
 
     for (size_t i = 0; i < orderedKeys.size(); ++i)
     {

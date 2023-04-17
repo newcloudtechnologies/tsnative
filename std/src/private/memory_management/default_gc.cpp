@@ -11,21 +11,17 @@
 
 #include "std/private/memory_management/default_gc.h"
 
-#include "std/tsobject.h"
-#include "std/tsstring.h"
-
+#include "std/private/algorithms.h"
 #include "std/private/logger.h"
 
 #include "std/private/memory_management/gc_printer.h"
-
-#include <cassert>
 
 DefaultGC::DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks)
     : _heap{}
     , _roots{}
     , _names{}
     , _callbacks(std::move(gcCallbacks))
-    , _timers{timers}
+    , _marker{_roots, timers}
 {
 }
 
@@ -69,14 +65,19 @@ void DefaultGC::addRootWithName(Object** o, const char* name)
     _names.setCppRootName(o, name);
 }
 
-const DefaultGC::Heap& DefaultGC::getHeap() const
+const UniqueObjects& DefaultGC::getHeap() const
 {
     return _heap;
 }
 
-const DefaultGC::Roots& DefaultGC::getRoots() const
+const Roots& DefaultGC::getRoots() const
 {
     return _roots;
+}
+
+const UniqueConstObjects& DefaultGC::getMarked() const
+{
+    return _marker.getMarked();
 }
 
 void DefaultGC::insertRoot(Object** o)
@@ -112,29 +113,17 @@ void DefaultGC::removeRoot(Object** o)
 void DefaultGC::collect()
 {
     LOG_METHOD_CALL;
+
     LOG_INFO("Calling mark");
-    mark();
+    _marker.mark();
+
     LOG_INFO("Calling sweep");
     sweep();
-    // sweep doesn't remove mark from TSObjectOwner-s . Need to remove it manually
-    LOG_INFO("Unmark marked roots manually");
-    unmarkRoots();
+
+    LOG_INFO("Calling unmark");
+    _marker.unmark();
+
     LOG_INFO("Finished collect call");
-}
-
-void DefaultGC::mark()
-{
-    const auto isTimerReady = [](const TimerObject& t) { return !t.active(); };
-    markStorage(_timers, isTimerReady);
-
-    for (auto** r : _roots)
-    {
-        if (r && *r && !(*r)->isMarked())
-        {
-            LOG_ADDRESS("Marking root: ", r);
-            (*r)->mark();
-        }
-    }
 }
 
 void DefaultGC::sweep()
@@ -145,11 +134,9 @@ void DefaultGC::sweep()
         auto* object = (*it);
         LOG_ADDRESS("Try sweeping object ", object);
 
-        if (object->isMarked())
+        if (_marker.isMarked(object))
         {
             LOG_ADDRESS("Marked object, continue ", object);
-            object->unmark();
-
             ++it;
             continue;
         }
@@ -161,21 +148,9 @@ void DefaultGC::sweep()
     }
 }
 
-void DefaultGC::unmarkRoots()
-{
-    for (auto** r : _roots)
-    {
-        if (r && *r && (*r)->isMarked())
-        {
-            LOG_ADDRESS("Unmark root manually: ", r);
-            (*r)->unmark();
-        }
-    }
-}
-
 void DefaultGC::print(const std::string& fileName) const
 {
 #ifdef VALIDATE_GC
-    GCPrinter{_heap, _roots, _names}.print(fileName);
+    GCPrinter{_heap, _roots, _names, getMarked()}.print(fileName);
 #endif // VALIDATE_GC
 }

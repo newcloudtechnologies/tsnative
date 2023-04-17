@@ -10,7 +10,7 @@ export class Event {
 }
 
 //@ts-ignore
-@Size(4)
+@Size(3)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
