@@ -21,14 +21,16 @@ class GCValidatorTest : public test::GlobalTestAllocatorFixture
 
 TEST_F(GCValidatorTest, checkFindingMarked)
 {
-    GCValidator::Roots rootsAfterSweep;
-    GCValidator::Heap heap;
+    Roots rootsAfterSweep;
+    UniqueObjects heap;
+    UniqueConstObjects marked;
 
     Object* obj = new test::Object();
-    obj->mark();
+
+    marked.insert(obj);
 
     rootsAfterSweep.insert(&obj);
-    GCValidator validator(heap, rootsAfterSweep);
+    GCValidator validator(heap, rootsAfterSweep, marked);
 
     EXPECT_NO_THROW(validator.validate());
 
@@ -41,11 +43,12 @@ TEST_F(GCValidatorTest, checkFindingMarked)
 
 TEST_F(GCValidatorTest, checkRoots)
 {
-    GCValidator::Roots roots;
-    GCValidator::Heap heap;
+    Roots roots;
+    UniqueObjects heap;
+    UniqueConstObjects marked;
 
     roots.insert(nullptr);
-    GCValidator validator(heap, roots);
+    GCValidator validator(heap, roots, marked);
 
     EXPECT_THROW(validator.validate(), std::runtime_error);
 
@@ -61,10 +64,11 @@ TEST_F(GCValidatorTest, checkRoots)
 
 TEST_F(GCValidatorTest, deletingObjectNotInTheHeap)
 {
-    GCValidator::Roots roots;
-    GCValidator::Heap heap;
+    Roots roots;
+    UniqueObjects heap;
+    UniqueConstObjects marked;
 
-    GCValidator validator(heap, roots);
+    GCValidator validator(heap, roots, marked);
 
     {
         std::unique_ptr<test::Object, std::function<void(test::Object*)>> obj(
@@ -75,10 +79,11 @@ TEST_F(GCValidatorTest, deletingObjectNotInTheHeap)
 
 TEST_F(GCValidatorTest, deletingObjectExistedInTheRootsGraph)
 {
-    GCValidator::Roots roots;
-    GCValidator::Heap heap;
+    Roots roots;
+    UniqueObjects heap;
+    UniqueConstObjects marked;
 
-    GCValidator validator(heap, roots);
+    GCValidator validator(heap, roots, marked);
 
     Object** ptr = new Object*();
 

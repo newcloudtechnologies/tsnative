@@ -93,6 +93,7 @@ set(SOURCES
     src/private/tsmath_p.cpp
     src/private/memory_management/default_gc.cpp
     src/private/memory_management/gc_validator.cpp
+    src/private/memory_management/gc_object_marker.cpp
     src/private/memory_management/allocator.cpp
     src/private/memory_management/memory_diagnostics_storage.cpp
     src/private/memory_management/memory_manager.cpp

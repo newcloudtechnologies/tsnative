@@ -13,14 +13,16 @@
 
 #include "std/private/memory_management/igc_impl.h"
 
-#include "std/private/algorithms.h"
 #include "std/private/memory_management/async_object_storage.h"
 #include "std/private/memory_management/gc_names_storage.h"
+#include "std/private/memory_management/gc_object_marker.h"
+#include "std/private/memory_management/gc_types.h"
 
 #include <functional>
 #include <unordered_set>
 
 class Object;
+class GCObjectMarker;
 
 class DefaultGC : public IGCImpl
 {
@@ -29,8 +31,6 @@ public:
     {
         std::function<void(void*)> afterDelete = [](void*) {};
     };
-    using Heap = std::unordered_set<Object*>;
-    using Roots = std::unordered_set<Object**>;
 
     DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks);
     ~DefaultGC();
@@ -46,37 +46,18 @@ public:
     void collect() override;
     void print(const std::string& fileName = "") const override;
 
-    const Heap& getHeap() const;
+    const UniqueObjects& getHeap() const;
     const Roots& getRoots() const;
+    const UniqueConstObjects& getMarked() const;
 
 private:
-    void mark();
     void sweep();
-    void unmarkRoots();
     void insertRoot(Object** root);
 
-    template <typename Element, typename Condition>
-    void markStorage(AsyncObjectStorage<Element>& storage, const Condition& isReady)
-    {
-        for (auto it = storage.begin(); it != storage.end();)
-        {
-            auto& object = it->second.get();
-            if (isReady(object))
-            {
-                it = storage.erase(it);
-                continue;
-            }
-
-            object.mark();
-            ++it;
-        }
-    }
-
 private:
-    // TODO Use absl::uset
-    Heap _heap;
+    UniqueObjects _heap;
     Roots _roots;
     GCNamesStorage _names;
+    GCObjectMarker _marker;
     Callbacks _callbacks;
-    TimerStorage& _timers; // TODO remove -  https://jira.ncloudtech.ru:8090/browse/TSN-551
 };
