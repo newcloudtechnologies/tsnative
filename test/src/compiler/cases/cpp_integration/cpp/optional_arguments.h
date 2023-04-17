@@ -28,6 +28,9 @@ public:
 
     TS_METHOD TS_SIGNATURE("setValues(n?: number, s?: string): void") void setValues(Union* n, Union* s);
 
+    TS_METHOD TS_SIGNATURE("setMoreValues(n?: number, s?: string, ...items: number[]): void") void setMoreValues(
+        Union* n, Union* s, Array<Number*>* items);
+
     TS_METHOD void setString(String* s);
 
     TS_METHOD Number* getNumber() const;
@@ -35,5 +38,7 @@ public:
 
     TS_METHOD Number* getDefaultNumber() const;
     TS_METHOD String* getDefaultString() const;
+
+    TS_METHOD Array<Number*>* getItems() const;
 };
 } // namespace IS_TS_MODULE

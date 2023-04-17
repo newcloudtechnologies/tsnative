@@ -15,7 +15,6 @@ import * as llvm from "llvm-node";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
-import { LLVMType } from "../../llvm/type";
 
 export class LogicHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {

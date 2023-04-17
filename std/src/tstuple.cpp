@@ -35,12 +35,12 @@ Number* Tuple::length() const
     return new Number(_d->length());
 }
 
-void* Tuple::operator[](Number* index)
+void* Tuple::operator[](Number* index) const
 {
     return operator[](static_cast<int>(index->unboxed()));
 }
 
-void* Tuple::operator[](int index)
+void* Tuple::operator[](int index) const
 {
     return _d->operator[](index);
 }

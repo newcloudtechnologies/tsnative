@@ -205,3 +205,14 @@ std::string NumberCXXBuiltinPrivate::toString() const
     }
     return oss.str();
 }
+
+bool NumberCXXBuiltinPrivate::operator==(const NumberPrivate& other) const noexcept
+{
+    const auto& casted = static_cast<const NumberCXXBuiltinPrivate&>(other);
+    return *this == casted._value;
+}
+
+bool NumberCXXBuiltinPrivate::operator==(double other) const noexcept
+{
+    return std::fabs(_value - other) < constants::g_Epsilon;
+}

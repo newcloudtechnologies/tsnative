@@ -79,110 +79,6 @@ export class TemplateInstantiator {
     this.INSTANTIATED_CLASSES_FILE = path.join(templateInstancesPath, "instantiated_classes.cpp");
   }
 
-  private getConsoleFunction(call: ts.CallExpression) {
-    if (call.getText().startsWith("console.log")) {
-      return "log";
-    } else if (call.getText().startsWith("console.assert")) {
-      return "assert";
-    }
-
-    throw new Error(`Unhandled 'console' call: ${call.getText()}`);
-  }
-
-  private handleGenericConsoleOutput(call: ts.CallExpression) {
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typeMap: Map<string, TSType>) => {
-      const argumentTypes = call.arguments.map((arg) => {
-        let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
-
-        if (tsType.isTypeParameter()) {
-          const typename = tsType.toString();
-          tsType = typeMap.get(typename)!;
-
-          if (tsType.isObject()) {
-            return "Object*";
-          }
-        }
-
-        return tsType.toCppType();
-      });
-
-      const consoleFunction = this.getConsoleFunction(call);
-
-      const maybeExists = CXXSymbols().getOrCreate("console").filter((s) => s.demangled.includes(`console::${consoleFunction}`));
-
-      const exists = maybeExists.some((s) => {
-        return (
-          ExternalSymbolsProvider.extractParameterTypes(s.demangled) ===
-          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-        );
-      });
-
-      if (!exists) {
-        const templateSignature = `template void console::${consoleFunction}(${argumentTypes.join(", ")});`;
-        this.generatedContent.push(templateSignature);
-      }
-    });
-
-    this.sources.forEach((source) => {
-      source.forEachChild(visitor);
-    });
-  }
-
-  private handleConsoleOutput(node: ts.Node) {
-    let call: ts.CallExpression;
-    if (ts.isExpressionStatement(node)) {
-      call = node.expression as ts.CallExpression;
-    } else if (ts.isCallExpression(node)) {
-      call = node;
-    } else {
-      throw new Error(
-        `Expected 'console.log/assert' call to be of 'ts.ExpressionStatement' or 'ts.CallExpression' kind, got ${ts.SyntaxKind[node.kind]
-        }`
-      );
-    }
-
-    const hasGenericArguments = call.arguments.some((arg) =>
-      this.generator.ts.checker.getTypeAtLocation(arg).isTypeParameter()
-    );
-    if (hasGenericArguments) {
-      this.handleGenericConsoleOutput(call);
-    } else {
-      const argumentTypes = call.arguments.map((arg) => {
-        let tsType: TSType;
-
-        if (this.generator.ts.checker.nodeHasSymbolAndDeclaration(arg)) {
-          const symbol = this.generator.ts.checker.getSymbolAtLocation(arg);
-          const declaration = symbol.valueDeclaration || symbol.declarations[0];
-          tsType = declaration.type;
-
-          if (declaration.isEnumMember() || (declaration.isParameter() && tsType.isEnum())) {
-            tsType = tsType.getEnumElementTSType();
-          }
-        } else {
-          tsType = this.generator.ts.checker.getTypeAtLocation(arg);
-        }
-
-        return tsType.toCppType();
-      });
-
-      const consoleFunction = this.getConsoleFunction(call);
-
-      const maybeExists = CXXSymbols().getOrCreate("console").filter((s) => s.demangled.includes(`console::${consoleFunction}`));
-
-      const exists = maybeExists.some((symbol) => {
-        return (
-          ExternalSymbolsProvider.extractParameterTypes(symbol.demangled) ===
-          ExternalSymbolsProvider.unqualifyParameters(argumentTypes)
-        );
-      });
-
-      if (!exists) {
-        const templateSignature = `template void console::${consoleFunction}(${argumentTypes.join(", ")});`;
-        this.generatedContent.push(templateSignature);
-      }
-    }
-  }
-
   private instantiateIteratorResult(type: TSType) {
     const instance = `template class IteratorResult<${type.toCppType()}>;`;
     const doubleSpecialization = "template class IteratorResult<Number*>;";
@@ -319,7 +215,7 @@ export class TemplateInstantiator {
     }
   }
 
-  private handleGenericArrayMethods(call: ts.CallExpression) {
+  private handleGenericArrayMethods(call: ts.CallExpression, methodDeclaration: Declaration) {
     if (!ts.isPropertyAccessExpression(call.expression)) {
       throw new Error(`Expected PropertyAccessExpression, got '${ts.SyntaxKind[call.expression.kind]}'`);
     }
@@ -332,17 +228,34 @@ export class TemplateInstantiator {
     const resolvedSignature = this.generator.ts.checker.getResolvedSignature(call);
     const tsReturnType = resolvedSignature.getReturnType();
     let cppReturnType = tsReturnType.toCppType();
+    const restArgsStart = methodDeclaration.parameters.findIndex((p) => p.dotDotDotToken);
+    const callArguments = call.arguments.map((e) => e);
 
-    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, TSType>) => {
-      const argumentTypes = call.arguments.map((arg) => {
+    const computeArgumentTypes = (typesMap: Map<string, TSType>) => {
+      let result: string[] = [];
+
+      for (let i = 0 ; i < callArguments.length ; ++i) {
+        const arg = callArguments[i];
         let tsType = this.generator.ts.checker.getTypeAtLocation(arg);
 
         if (tsType.isTypeParameter()) {
           tsType = typesMap.get(tsType.toString())!;
         }
 
-        return tsType.toCppType();
-      });
+        const resolvedType = tsType.toCppType();
+        if (i === restArgsStart) {
+          result.push("Array<" + resolvedType + ">*");
+          return result;
+        }
+
+        result.push(resolvedType);
+      }
+
+      return result;
+    }
+    
+    const visitor = this.withTypesMapFromTypesProviderForNode(call, (typesMap: Map<string, TSType>) => {
+      const argumentTypes = computeArgumentTypes(typesMap);
 
       const maybeExists = CXXSymbols().getOrCreate(cppArrayType).filter((s) => s.demangled.includes(cppArrayType + "::" + methodName));
 
@@ -405,11 +318,6 @@ export class TemplateInstantiator {
 
     const elementType = tsArrayType.getTypeGenericArguments()[0];
 
-    if (!elementType.isSupported() || !tsReturnType.isSupported()) {
-      this.handleGenericArrayMethods(node);
-      return;
-    }
-
     const methodName = node.expression.name.getText();
     const methodSymbol = tsArrayType.getProperty(methodName);
     const methodDeclaration = methodSymbol.valueDeclaration;
@@ -418,30 +326,35 @@ export class TemplateInstantiator {
       throw new Error(`Unable to find method '${methodName} for Array'`);
     }
 
+    if (!elementType.isSupported() || !tsReturnType.isSupported()) {
+      this.handleGenericArrayMethods(node, methodDeclaration);
+      return;
+    }
+
     const declaredParameters = methodDeclaration.parameters;
     const args = node.arguments;
 
     const argumentTypes: string[] = [];
-
-    args.forEach((arg, index) => {
-      const declaration = declaredParameters[index];
+    for (let i = 0 ; i < args.length ; ++i) {
+      const arg = args[i];
+      const declaration = declaredParameters[i];
 
       if (declaration?.questionToken) {
         argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
-        return;
+        continue;
       }
 
-      if (ts.isSpreadElement(arg)) {
+      if (declaration?.dotDotDotToken || ts.isSpreadElement(arg)) {
         argumentTypes.push(tsArrayType.toCppType());
-        return;
+        break;
       }
 
       const tsType = this.generator.ts.checker.getTypeAtLocation(arg);
       const cppType = tsType.toCppType();
 
       argumentTypes.push(cppType);
-    });
-
+    }
+  
     if (args.length < declaredParameters.length) {
       for (let i = args.length; i < declaredParameters.length; ++i) {
         argumentTypes.push(this.generator.ts.union.getDeclaration().type.toCppType());
@@ -475,9 +388,7 @@ export class TemplateInstantiator {
       node.expression.arguments.forEach((arg) => ts.forEachChild(arg, this.methodsVisitor.bind(this)));
     }
 
-    if (node.getText().startsWith("console.log") || node.getText().startsWith("console.assert")) {
-      this.handleConsoleOutput(node);
-    } else if (
+    if (
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&
       this.generator.ts.checker.getTypeAtLocation(node.expression.expression).isArray()

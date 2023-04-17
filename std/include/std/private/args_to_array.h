@@ -9,27 +9,22 @@
  *
  */
 
-{
-    let i = 0;
-    console.assert(i >= 0);
-}
+#pragma once
 
-{
-    enum E {
-        b
-    }
+#include <TS.h>
 
-    console.log(E.b);
-}
+#include "std/tsarray.h"
 
-{
-    console.log();
-}
+class String;
+class Boolean;
 
+class TS_DECLARE ArgsToArray final : public Object
 {
-    console.log(1, 2, 3, 4, 5);
-}
+public:
+    TS_METHOD ArgsToArray(Array<Object*>* aggregator);
 
-{
-    console.assert(true, "My super string");
-}
+    TS_METHOD void addObject(Object* nextArg, Boolean* isSpread);
+
+private:
+    Array<Object*>* m_aggregator;
+};

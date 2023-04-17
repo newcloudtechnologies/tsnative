@@ -129,6 +129,7 @@ async function main() {
     stdlib.PROMISE_DEFINITION,
     stdlib.PARSE_INT_DEFINITION,
     stdlib.PARSE_FLOAT_DEFINITION,
+    stdlib.ARGS_TO_ARRAY_DEFINITION
   ];
   options.types = [];
 

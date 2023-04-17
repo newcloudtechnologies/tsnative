@@ -17,6 +17,7 @@ import { addClassScope } from "../scope/scope";
 import { FunctionMangler } from "../mangling/functionmangler";
 import { LLVMType } from "../llvm/type";
 import { Declaration } from "./declaration";
+import { ArgsToArray } from "./args_to_array"
 
 const stdlib = require("std/constants");
 
@@ -32,10 +33,12 @@ export class TSArray {
   private readonly toStringFns = new Map<string, LLVMValue>();
   private readonly iteratorFns = new Map<string, LLVMValue>();
   private readonly setElementAtIndexFns = new Map<string, LLVMValue>();
+  private readonly argsToArray: ArgsToArray;
 
   constructor(generator: LLVMGenerator) {
     this.generator = generator;
-
+    this.argsToArray = new ArgsToArray(this.generator);
+    
     this.classDeclaration = this.initClassDeclaration();
 
     this.llvmType = this.classDeclaration.getLLVMStructType("array");
@@ -158,29 +161,37 @@ export class TSArray {
     return arrayType;
   }
 
-  createConstructor(expression: ts.ArrayLiteralExpression): { constructor: LLVMValue; allocated: LLVMValue } {
-    addClassScope(expression, this.generator.symbolTable.globalScope, this.generator);
+  callDefaultConstructor(thisPtr: LLVMValue, arrayType: TSType) {
+    const ctorFn = this.getCtorFn(arrayType);
 
-    const arrayType = this.getType(expression);
+    const thisVoidStar = this.generator.builder.asVoidStar(thisPtr);
+    this.generator.builder.createSafeCall(ctorFn, [thisVoidStar]);
+  }
+
+  getArgsToArrayConverter() {
+    return this.argsToArray;
+  }
+
+  private getCtorFn(arrayType: TSType): LLVMValue {
+    addClassScope(this.getDeclaration().unwrapped, this.generator.symbolTable.globalScope, this.generator);
 
     const arrayTypename = arrayType.toString();
-    const allocated = this.generator.gc.allocateObject(this.classDeclaration.type.getLLVMType().getPointerElementType());
 
     if (this.constructorFns.has(arrayTypename)) {
-      return { constructor: this.constructorFns.get(arrayTypename)!, allocated };
+      return this.constructorFns.get(arrayTypename)!;
     }
 
     const symbol = arrayType.getSymbol();
     const valueDeclaration = symbol.valueDeclaration;
     if (!valueDeclaration) {
-      throw new Error(`No value declaration found at '${expression.pos > 0 ? expression.getText() : "<synthetic array node>"}' type ${arrayType.toString()}`);
+      throw new Error(`No value declaration found for type ${arrayType.toString()}`);
     }
 
     const constructorDeclaration = valueDeclaration.members.find((m) => m.isConstructor())!;
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       constructorDeclaration,
-      expression,
+      undefined,
       arrayType,
       [],
       this.generator
@@ -197,22 +208,38 @@ export class TSArray {
 
     this.constructorFns.set(arrayTypename, constructor);
 
-    return { constructor, allocated };
+    return constructor;
   }
 
-  createPush(elementType: TSType, expression: ts.ArrayLiteralExpression) {
-    const arrayType = this.getType(expression);
-
+  callPush(arrayType: TSType, thisPtr: LLVMValue, objPtr: LLVMValue, isSpread: boolean) {
     const arrayTypename = arrayType.toString();
 
-    if (this.pushFns.has(arrayTypename)) {
-      return this.pushFns.get(arrayTypename)!;
+    const getOrCreatePush = () => { 
+      const maybePush = this.pushFns.get(arrayTypename);
+      if (maybePush) {
+        return maybePush;
+      }
+
+      const pushFn = this.findPush(arrayType);
+      this.pushFns.set(arrayTypename, pushFn);
+      return pushFn;
     }
 
-    if (elementType.isFunction()) {
-      elementType = this.generator.tsclosure.getTSType();
-    }
+    const pushFn = getOrCreatePush();
 
+    const aggregatorArrPtr = this.generator.builder.createAlloca(this.llvmType.getPointerElementType());
+    this.callDefaultConstructor(aggregatorArrPtr, arrayType);
+    
+    const argsToArrayStackPtr = this.generator.builder.createAlloca(this.argsToArray.getLLVMType().getPointerElementType());
+    this.argsToArray.callConstructor(argsToArrayStackPtr, aggregatorArrPtr);
+    this.argsToArray.callAddObject(argsToArrayStackPtr, objPtr, isSpread);
+
+    const thisVoidStar = this.generator.builder.asVoidStar(thisPtr);
+    const emptyArrPtrVoidStar = this.generator.builder.asVoidStar(aggregatorArrPtr);
+    this.generator.builder.createSafeCall(pushFn, [thisVoidStar, emptyArrPtrVoidStar]);
+  }
+
+  private findPush(arrayType: TSType) {
     const pushSymbol = arrayType.getProperty("push");
     const pushDeclaration = pushSymbol.valueDeclaration;
 
@@ -222,9 +249,9 @@ export class TSArray {
 
     const { qualifiedName, isExternalSymbol } = FunctionMangler.mangle(
       pushDeclaration,
-      expression,
+      undefined,
       arrayType,
-      [elementType],
+      [arrayType],
       this.generator
     );
 
@@ -237,8 +264,6 @@ export class TSArray {
       [LLVMType.getInt8Type(this.generator).getPointer(), LLVMType.getInt8Type(this.generator).getPointer()],
       qualifiedName
     );
-
-    this.pushFns.set(arrayTypename, push);
 
     return push;
   }

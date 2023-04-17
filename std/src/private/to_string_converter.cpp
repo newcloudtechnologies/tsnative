@@ -297,59 +297,59 @@ std::string ToStringConverter::convertWithCheck(const Object* obj, Visited& visi
 
     std::unique_ptr<const Object, decltype(clean)> cleaner(obj, clean);
 
-    if (obj->isNumberCpp())
+    if (obj->isNumber())
     {
         const auto* number = static_cast<const Number*>(obj);
         return toString(number->_d, visited);
     }
 
-    if (obj->isDateCpp())
+    if (obj->isDate())
     {
         const auto* date = static_cast<const Date*>(obj);
         return toString(date->_d, visited);
     }
 
-    if (obj->isStringCpp())
+    if (obj->isString())
     {
         const auto* str = static_cast<const String*>(obj);
         return toString(str->_d, visited);
     }
 
-    if (obj->isBooleanCpp())
+    if (obj->isBoolean())
     {
         const auto* boolean = static_cast<const Boolean*>(obj);
         return toString(boolean->_d, visited);
     }
 
-    if (obj->isPromiseCpp())
+    if (obj->isPromise())
     {
         const auto* promise = static_cast<const Promise*>(obj);
         return toString(promise, visited);
     }
 
-    if (obj->isNullCpp())
+    if (obj->isNull())
     {
         return "null";
     }
 
-    if (obj->isUndefinedCpp())
+    if (obj->isUndefined())
     {
         return "undefined";
     }
 
-    if (obj->isClosureCpp())
+    if (obj->isClosure())
     {
         const auto* closure = static_cast<const TSClosure*>(obj);
         return "Closure. " + std::string("ArgsCount: ") + std::to_string(closure->getNumArgs()) +
                convertTSClosureEnvironment(*closure);
     }
 
-    if (obj->isLazyClosureCpp())
+    if (obj->isLazyClosure())
     {
         return "Lazy closure";
     }
 
-    if (obj->isTimerCpp())
+    if (obj->isTimer())
     {
         const auto* timer = static_cast<const TimerObject*>(obj);
         return "Timer:\n" + std::to_string(timer->due().count());
@@ -380,37 +380,37 @@ std::string ToStringConverter::convertWithCheck(const Object* obj, Visited& visi
         return "GC Wrapper";
     }
 
-    if (obj->isArrayCpp())
+    if (obj->isArray())
     {
         const auto* arr = static_cast<const Array<Object*>*>(obj);
         return toString(arr->_d, visited);
     }
 
-    if (obj->isMapCpp())
+    if (obj->isMap())
     {
         const auto* mapping = static_cast<const Map<Object*, Object*>*>(obj);
         return toString(mapping->_d, visited);
     }
 
-    if (obj->isSetCpp())
+    if (obj->isSet())
     {
         const auto* set = static_cast<const Set<Object*>*>(obj);
         return toString(set->_d, visited);
     }
 
-    if (obj->isUnionCpp())
+    if (obj->isUnion())
     {
         const auto* u = static_cast<const Union*>(obj);
         return toString(u, visited);
     }
 
-    if (obj->isTupleCpp())
+    if (obj->isTuple())
     {
         const auto* t = static_cast<const Tuple*>(obj);
         return toString(t->_d, visited);
     }
 
-    if (obj->isObjectCpp())
+    if (obj->isObject())
     {
         return toString(obj, visited);
     }

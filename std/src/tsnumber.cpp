@@ -36,7 +36,7 @@
     {                                                                       \
         assert(value && "Invalid object");                                  \
                                                                             \
-        if (!value->isNumberCpp())                                          \
+        if (!value->isNumber())                                             \
         {                                                                   \
             return new Boolean{false};                                      \
         }                                                                   \
@@ -234,7 +234,7 @@ Number* Number::bitwiseRightShiftInplace(Number* other)
 
 Boolean* Number::equals(Object* other) const
 {
-    if (!other->isNumberCpp())
+    if (!other->isNumber())
     {
         return new Boolean(false);
     }
@@ -289,4 +289,14 @@ Number* Number::clone() const
 String* Number::toString() const
 {
     return new String(_d->toString());
+}
+
+bool Number::operator==(const Number& other) const noexcept
+{
+    return *(this->_d) == *(other._d);
+}
+
+bool Number::operator==(double other) const noexcept
+{
+    return *(this->_d) == other;
 }

@@ -49,7 +49,7 @@ export class EventLoop {
       this.runLoopFn,
       [
         eventLoopAddress,
-        this.generator.builtinBoolean.create(
+        this.generator.builtinBoolean.createStack(
           lock ? LLVMConstantInt.getTrue(this.generator)
             : LLVMConstantInt.getFalse(this.generator))
       ],

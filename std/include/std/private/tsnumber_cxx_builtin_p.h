@@ -63,6 +63,9 @@ public:
     double unboxed() const override;
     std::string toString() const override;
 
+    bool operator==(const NumberPrivate& other) const noexcept override;
+    bool operator==(double other) const noexcept override;
+
 private:
     double _value = 0.0;
 };
