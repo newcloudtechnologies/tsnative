@@ -170,7 +170,7 @@ TEST_F(ToStringConverterTest, Array)
     EXPECT_EQ(ToStringConverter::convert(array),
               "[{\n"
               "  \"el\": true\n"
-              "},{},{}]");
+              "}, {}, {}]");
 }
 
 TEST_F(ToStringConverterTest, ArrayWithSameObject)
@@ -183,7 +183,7 @@ TEST_F(ToStringConverterTest, ArrayWithSameObject)
     array->push(num);
     array->push(num);
 
-    EXPECT_EQ(ToStringConverter::convert(array), "[1234,1234,1234]");
+    EXPECT_EQ(ToStringConverter::convert(array), "[1234, 1234, 1234]");
 }
 
 TEST_F(ToStringConverterTest, Tuple)
@@ -193,7 +193,7 @@ TEST_F(ToStringConverterTest, Tuple)
 
     tuple->push(new test::Object());
     tuple->push(new test::Boolean(true));
-    EXPECT_EQ(ToStringConverter::convert(tuple), "[{},true]");
+    EXPECT_EQ(ToStringConverter::convert(tuple), "[{}, true]");
 }
 
 TEST_F(ToStringConverterTest, String)
@@ -233,7 +233,7 @@ TEST_F(ToStringConverterTest, Set)
     set->add(new test::Number(1));
     set->add(new test::Number(-8));
 
-    EXPECT_EQ(ToStringConverter::convert(set), "Set (2) {1,-8}");
+    EXPECT_EQ(ToStringConverter::convert(set), "Set (2) {1, -8}");
 }
 
 TEST_F(ToStringConverterTest, Promise)
