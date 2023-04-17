@@ -11,17 +11,13 @@
 
 #include <gtest/gtest.h>
 
-#include "../infrastructure/object_wrappers.h"
-
-#include "std/private/args_to_array.h"
 #include "std/tsarray.h"
 #include "std/tsnumber.h"
+#include "std/tstuple.h"
 
-class ArgsToArrayFixture : public test::GlobalTestAllocatorFixture
-{
-};
+#include "std/private/args_to_array.h"
 
-TEST_F(ArgsToArrayFixture, EmptyArray)
+TEST(ArgsToArrayFixture, EmptyArray)
 {
     Array<Object*> aggregator;
     ArgsToArray argsToArray(&aggregator);
@@ -29,7 +25,7 @@ TEST_F(ArgsToArrayFixture, EmptyArray)
     EXPECT_EQ(*(aggregator.length()), 0.0);
 }
 
-TEST_F(ArgsToArrayFixture, ArrayOfSingleNonSpreadObject)
+TEST(ArgsToArrayFixture, ArrayOfSingleNonSpreadObject)
 {
     Array<Object*> aggregator;
     ArgsToArray argsToArray(&aggregator);
@@ -38,12 +34,13 @@ TEST_F(ArgsToArrayFixture, ArrayOfSingleNonSpreadObject)
     Boolean isSpread(false);
     argsToArray.addObject(&obj, &isSpread);
 
-    EXPECT_EQ(*(aggregator.length()), 1.0);
     const std::size_t zero = 0u;
+
+    EXPECT_EQ(*(aggregator.length()), 1.0);
     EXPECT_TRUE(aggregator[zero]->equals(&obj)->unboxed());
 }
 
-TEST_F(ArgsToArrayFixture, ArrayOfMultipleNonSpreadObjects)
+TEST(ArgsToArrayFixture, ArrayOfMultipleNonSpreadObjects)
 {
     Array<Object*> aggregator;
     ArgsToArray argsToArray(&aggregator);
@@ -63,26 +60,59 @@ TEST_F(ArgsToArrayFixture, ArrayOfMultipleNonSpreadObjects)
     EXPECT_TRUE(aggregator[one]->equals(&obj2)->unboxed());
 }
 
-TEST_F(ArgsToArrayFixture, ArrayOfSingleSpreadObject)
+TEST(ArgsToArrayFixture, ArrayOfSingleSpreadObject)
 {
     Array<Object*> aggregator;
     ArgsToArray argsToArray(&aggregator);
 
     Array<Object*> arr;
-    Object obj;
-    arr.push(&obj);
+    Object obj1;
+    Object obj2;
+    Object obj3;
+    arr.push(&obj1);
+    arr.push(&obj2);
+    arr.push(&obj3);
 
     Boolean isSpread(true);
     argsToArray.addObject(&arr, &isSpread);
 
     const std::size_t zero = 0u;
     const std::size_t one = 1u;
+    const std::size_t two = 2u;
 
-    EXPECT_EQ(*(aggregator.length()), 1.0);
-    EXPECT_TRUE(aggregator[zero]->equals(&obj)->unboxed());
+    EXPECT_EQ(*(aggregator.length()), 3.0);
+    EXPECT_TRUE(aggregator[zero]->equals(&obj1)->unboxed());
+    EXPECT_TRUE(aggregator[one]->equals(&obj2)->unboxed());
+    EXPECT_TRUE(aggregator[two]->equals(&obj3)->unboxed());
 }
 
-TEST_F(ArgsToArrayFixture, MultidimensionalArray)
+TEST(ArgsToArrayFixture, ArraySpreadTuple)
+{
+    Array<Object*> aggregator;
+    ArgsToArray argsToArray(&aggregator);
+
+    Tuple tpl;
+    Object obj1;
+    Object obj2;
+    Object obj3;
+    tpl.push(&obj1);
+    tpl.push(&obj2);
+    tpl.push(&obj3);
+
+    Boolean isSpread(true);
+    argsToArray.addObject(&tpl, &isSpread);
+
+    const std::size_t zero = 0u;
+    const std::size_t one = 1u;
+    const std::size_t two = 2u;
+
+    EXPECT_EQ(*(aggregator.length()), 3.0);
+    EXPECT_TRUE(aggregator[zero]->equals(&obj1)->unboxed());
+    EXPECT_TRUE(aggregator[one]->equals(&obj2)->unboxed());
+    EXPECT_TRUE(aggregator[two]->equals(&obj3)->unboxed());
+}
+
+TEST(ArgsToArrayFixture, MultidimensionalArray)
 {
     Array<Object*> aggregator;
     ArgsToArray argsToArray(&aggregator);
