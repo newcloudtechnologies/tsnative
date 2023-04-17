@@ -1127,43 +1127,33 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const fakeLiteral = ts.createArrayLiteral();
     fakeLiteral.parent = lastParameter.valueDeclaration!.unwrapped;
 
-    const { constructor, allocated } = this.generator.ts.array.createConstructor(fakeLiteral);
-    this.generator.builder.createSafeCall(constructor, [this.generator.builder.asVoidStar(allocated)]);
-    let restArguments = allocated;
-
     const arrayType = lastParameter.valueDeclaration!.type;
 
-    const elementType = arrayType.getTypeGenericArguments()[0];
-    const push = this.generator.ts.array.createPush(elementType, fakeLiteral!);
+    let arrayPtr = this.generator.gc.allocateObject(this.generator.ts.array.getLLVMType().getPointerElementType());
+    this.generator.ts.array.callDefaultConstructor(this.generator.builder.asVoidStar(arrayPtr), arrayType);
 
     for (let i = restArgumentsStartIndex; i < args.length; ++i) {
       const arg = args[i];
+      const isSpread = ts.isSpreadElement(arg);
 
-      let value: LLVMValue;
-
-      if (ts.isSpreadElement(arg)) {
-        value = this.generator.handleExpression(arg.expression, outerEnv).derefToPtrLevel1();
-      } else {
-        value = this.generator.handleExpression(arg, outerEnv).derefToPtrLevel1();
-      }
+      const expr = isSpread ? (arg as ts.SpreadElement).expression : arg;
+      let value = this.generator.handleExpression(expr, outerEnv).derefToPtrLevel1();
 
       if (value.type.isArray()) {
-        restArguments = value;
-      } else {
-        if (value.isTSPrimitivePtr()) {
-          // mimics 'value' semantic for primitives
-          value = value.clone();
-        }
-
-        this.generator.builder.createSafeCall(push, [
-          this.generator.builder.asVoidStar(restArguments!),
-          this.generator.builder.asVoidStar(value),
-        ]);
+        arrayPtr = value;
+        continue;
       }
+
+      if (value.isTSPrimitivePtr()) {
+        // mimics 'value' semantic for primitives
+        value = value.clone();
+      }
+
+      this.generator.ts.array.callPush(arrayType, arrayPtr, value, isSpread);
     }
 
-    scope.set(lastParameter.escapedName.toString(), restArguments!);
-    return restArguments;
+    scope.set(lastParameter.escapedName.toString(), arrayPtr);
+    return arrayPtr;
   }
 
   private makeClosure(fn: LLVMValue, functionDeclaration: Declaration, env: Environment) {

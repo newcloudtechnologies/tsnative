@@ -14,6 +14,7 @@ import { LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 import { CXXSymbol, CXXSymbols } from "./cxxsymbolsstorage";
+import { ArgumentsPatternComputer } from "./arguments_pattern_computer";
 
 type Predicate = (cxxSymbol: CXXSymbol) => boolean;
 export class ExternalSymbolsProvider {
@@ -78,17 +79,10 @@ export class ExternalSymbolsProvider {
         return cppTypename;
       })
     );
-
-    // passed in fact
-    if (knownArgumentTypes) {
-      this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(knownArgumentTypes);
-    } else {
-      this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(
-        argumentTypes.map((type) => {
-          return type.toCppType();
-        })
-      );
-    }
+    
+    const argsPatternComputer = new ArgumentsPatternComputer(this.declaration, argumentTypes, expression);
+    const argsPattern = argsPatternComputer.compute(knownArgumentTypes);
+    this.argumentsPattern = ExternalSymbolsProvider.unqualifyParameters(argsPattern);
 
     this.functionTemplateParametersPattern = this.extractFunctionTemplateParameters(declaration, expression, generator);
   }

@@ -30,50 +30,12 @@
 namespace console IS_TS_DECLARED_NAMESPACE
 {
 
-template <typename T>
-TS_EXPORT TS_SIGNATURE("function log(message: any, ...optionalParams: any[]): void") void log(T t);
+TS_EXPORT TS_SIGNATURE("function log(...items: any[]): void") void log(Array<Object*>* objects);
 
-template <typename T, typename... Ts>
-void log(T v, Ts... ts);
-
-template <typename T, typename... Ts>
-void logImpl(T v, Ts... ts);
-
-template <typename T, typename... Ts>
-TS_EXPORT TS_SIGNATURE("function assert(assumption: any, ...optionalParams: any[]): void") void assert(T assumption,
-                                                                                                       Ts... ts);
+TS_EXPORT TS_SIGNATURE("function assert(condition?: boolean | undefined, ...optionalParams: any[]): void") void assert(
+    Union* condition, Array<Object*>* objects);
 
 } // namespace IS_TS_DECLARED_NAMESPACE
 
 TS_CODE(
     "declare type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : never;\n");
-
-template <typename T>
-void console::log(T value)
-{
-    std::cout << ToStringConverter::convert(Object::asObjectPtr(value)) << std::endl;
-}
-
-template <typename T, typename... Ts>
-void console::log(T v, Ts... ts)
-{
-    console::logImpl(v, ts...);
-}
-
-template <typename T, typename... Ts>
-void console::logImpl(T v, Ts... ts)
-{
-    std::cout << ToStringConverter::convert(Object::asObjectPtr(v)) << " ";
-    console::log(ts...);
-}
-
-template <typename T, typename... Ts>
-void console::assert(T assumption, Ts... ts)
-{
-    if (!Object::asObjectPtr(assumption)->toBool()->unboxed())
-    {
-        String assertionFailedMessage("Assertion failed:");
-        console::log(&assertionFailedMessage, ts...);
-        std::terminate();
-    }
-}

@@ -261,7 +261,7 @@ Number* String::lastIndexOf(String* pattern, Union* maybeStartIndex) const
 
 Boolean* String::equals(Object* other) const
 {
-    if (!other->isStringCpp())
+    if (!other->isString())
     {
         return new Boolean(false);
     }

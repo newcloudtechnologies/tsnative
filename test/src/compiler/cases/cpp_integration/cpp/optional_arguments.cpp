@@ -11,6 +11,7 @@
 
 #include "optional_arguments.h"
 
+#include <std/tsarray.h>
 #include <std/tsnumber.h>
 #include <std/tsstring.h>
 #include <std/tsunion.h>
@@ -32,6 +33,13 @@ void WithOptionalArgs::setValues(Union* n, Union* s)
 
     set("n", nValue);
     set("s", sValue);
+}
+
+void WithOptionalArgs::setMoreValues(Union* n, Union* s, Array<Number*>* items)
+{
+    setValues(n, s);
+
+    set("items", items);
 }
 
 void WithOptionalArgs::setString(String* s)
@@ -57,4 +65,9 @@ Number* WithOptionalArgs::getDefaultNumber() const
 String* WithOptionalArgs::getDefaultString() const
 {
     return new String("DEFAULT");
+}
+
+Array<Number*>* WithOptionalArgs::getItems() const
+{
+    return get<Array<Number*>*>("items");
 }

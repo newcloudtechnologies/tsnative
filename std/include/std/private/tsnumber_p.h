@@ -152,4 +152,7 @@ public:
 
     virtual double unboxed() const = 0;
     virtual std::string toString() const = 0;
+
+    virtual bool operator==(const NumberPrivate& other) const noexcept = 0;
+    virtual bool operator==(double other) const noexcept = 0;
 };

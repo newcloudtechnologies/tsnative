@@ -60,15 +60,12 @@ public:
         return array;
     }
 
-    TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(T v);
+    TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(Array<T>* other);
 
-    Number* push(Array<T>* other);
-
-    template <typename... Ts>
-    Number* push(T t, Ts... ts);
-
-    template <typename... Ts>
-    Number* push(Array<T>* t, Ts... ts);
+    inline void push(T v)
+    {
+        _d->push(v);
+    }
 
     TS_METHOD void setElementAtIndex(Number* index, T value);
 
@@ -163,13 +160,6 @@ template <typename T>
 Array<T>::~Array()
 {
     delete _d;
-}
-
-template <typename T>
-Number* Array<T>::push(T t)
-{
-    const auto result = _d->push(t);
-    return new Number(static_cast<double>(result));
 }
 
 template <typename T>
@@ -271,7 +261,7 @@ String* Array<T>::join(Union* maybeDelimiter) const
     if (maybeDelimiter && maybeDelimiter->hasValue())
     {
         auto maybeVal = maybeDelimiter->getValue();
-        if (maybeVal->isStringCpp())
+        if (maybeVal->isString())
         {
             auto delimiter = maybeVal->toString()->cpp_str();
             return new String(_d->join(delimiter));
@@ -287,11 +277,11 @@ Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
     const auto integralStart = static_cast<int>(start->unboxed());
     const auto deleteCountValue = maybeDeleteCount->getValue();
 
-    if (deleteCountValue->isUndefinedCpp())
+    if (deleteCountValue->isUndefined())
     {
         return Array<T>::fromStdVector(_d->splice(integralStart));
     }
-    else if (deleteCountValue->isBooleanCpp())
+    else if (deleteCountValue->isBoolean())
     {
         const auto b = static_cast<const Boolean*>(deleteCountValue)->unboxed();
         if (!b)
@@ -299,14 +289,14 @@ Array<T>* Array<T>::splice(Number* start, Union* maybeDeleteCount)
             return Array<T>::fromStdVector(std::vector<T>{});
         }
     }
-    else if (!deleteCountValue->isNumberCpp())
+    else if (!deleteCountValue->isNumber())
     {
         return Array<T>::fromStdVector(std::vector<T>{});
     }
 
     const auto integralDeleteCount = [deleteCountValue]() -> int
     {
-        if (deleteCountValue->isBooleanCpp())
+        if (deleteCountValue->isBoolean())
         {
             return 1; // true bool
         }
@@ -370,26 +360,6 @@ Array<U>* Array<T>::map(TSClosure* closure)
     }
 
     return transformedArray;
-}
-
-template <typename T>
-template <typename... Ts>
-Number* Array<T>::push(T t, Ts... ts)
-{
-    push(t);
-    push(ts...);
-
-    return length();
-}
-
-template <typename T>
-template <typename... Ts>
-Number* Array<T>::push(Array<T>* t, Ts... ts)
-{
-    push(t);
-    push(ts...);
-
-    return length();
 }
 
 template <typename T>

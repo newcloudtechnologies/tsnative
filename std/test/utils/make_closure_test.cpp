@@ -67,7 +67,7 @@ TEST_F(MakeClosureTest, getResult)
     auto result = closure->call();
     auto obj = Object::asObjectPtr(result);
 
-    EXPECT_TRUE(obj->isNumberCpp());
+    EXPECT_TRUE(obj->isNumber());
 
     EXPECT_EQ(static_cast<test::Number*>(obj)->unboxed(), 23);
 }
