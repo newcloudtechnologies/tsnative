@@ -290,3 +290,13 @@ String* Number::toString() const
 {
     return new String(_d->toString());
 }
+
+bool Number::operator==(const Number& other) const noexcept
+{
+    return *(this->_d) == *(other._d);
+}
+
+bool Number::operator==(double other) const noexcept
+{
+    return *(this->_d) == other;
+}
