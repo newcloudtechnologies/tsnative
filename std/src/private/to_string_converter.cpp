@@ -220,7 +220,7 @@ std::string ToStringConverter::toString(const ArrayPrivate<Object*>* array, Visi
 
         if (i != array->length() - 1)
         {
-            oss << ", ";
+            oss << ",";
         }
     }
 
@@ -260,7 +260,7 @@ std::string ToStringConverter::toString(const SetPrivate<Object*>* set, Visited&
     bool isFirst = true;
     for (const auto value : set->ordered())
     {
-        ss << (isFirst ? "" : ", ") << ToStringConverter::convertWithCheck(value, visited);
+        ss << (isFirst ? "" : ",") << ToStringConverter::convertWithCheck(value, visited);
         isFirst = false;
     }
 
