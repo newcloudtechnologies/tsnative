@@ -661,21 +661,54 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
   const color = [1, 2];
   colors.push(color);
   
-  console.assert(colors.length === 1, "Multidimensional by literal: outer array length != 1");
-  console.assert(colors[0].length === 2, "Multidimensional by literal: inner array length != 2");
-  console.assert(colors[0][0] === 1, "Multidimensional by literal: item under 0 0 is not equal");
-  console.assert(colors[0][1] === 2, "Multidimensional by literal: item under 0 1 is not equal");
+  console.assert(colors.length === 1, "Multidimensional by push: outer array length != 1");
+  console.assert(colors[0].length === 2, "Multidimensional by push: inner array length != 2");
+  console.assert(colors[0][0] === 1, "Multidimensional by push: item under 0 0 is not equal");
+  console.assert(colors[0][1] === 2, "Multidimensional by push: item under 0 1 is not equal");
 }
 
-// Push with tuples
+class A {
+  n: number = 10;
+
+  constructor(nn: number) {
+    this.n = nn;
+  }
+};
+
+// Multidimensional by literal with Object
 {
-    const t: [number, number] = [1, 2]
-    const arr: number[] = [];
+  const colors : A[][] = 
+  [
+      [new A(1), new A(2)]
+  ];
+
+  console.assert(colors.length === 1, "Multidimensional by literal obj: outer array length != 1");
+  console.assert(colors[0].length === 2, "Multidimensional by literal obj: inner array length != 2");
+  console.assert(colors[0][0].n === 1, "Multidimensional by literal obj: item under 0 0 is not equal");
+  console.assert(colors[0][1].n === 2, "Multidimensional by literal obj: item under 0 1 is not equal");
+}
+
+// Multidimensional by push
+{
+  const colors : A[][] = [];
+  const color = [new A(1), new A(2)];
+  colors.push(color);
+  
+  console.assert(colors.length === 1, "Multidimensional by push obj: outer array length != 1");
+  console.assert(colors[0].length === 2, "Multidimensional by push obj: inner array length != 2");
+  console.assert(colors[0][0].n === 1, "Multidimensional by push obj: item under 0 0 is not equal");
+  console.assert(colors[0][1].n === 2, "Multidimensional by push obj: item under 0 1 is not equal");
+}
+
+// Push with tuples and objects
+{
+    const t: [A, A] = [new A(1), new A(2)]
+    const arr: A[] = [];
     arr.push(...t);
 
-    console.assert(arr.length === 2, "Push with tuples: arr length != 2");
-    console.assert(arr[0] === 1, "Push with tuples: item under 0 is not equal");
-    console.assert(arr[1] === 2, "Push with tuples: item under 1 is not equal");
+    console.assert(arr.length === 2, "Push with tuples obj: arr length != 2");
+    console.assert(arr[0].n === 1, "Push with tuples obj: item under 0 is not equal");
+    console.assert(arr[1].n === 2, "Push with tuples obj: item under 1 is not equal");
 }
 
 // Array literal with tuples
@@ -686,6 +719,16 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
     console.assert(arr.length === 2, "Array literal with tuples: arr length != 2");
     console.assert(arr[0] === 1, "Array literal with tuples: item under 0 is not equal");
     console.assert(arr[1] === 2, "Array literal with tuples: item under 1 is not equal");
+}
+
+// Array literal with tuples obj
+{
+  const t: [A, A] = [new A(1), new A(2)]
+  const arr: A[] = [...t];
+
+  console.assert(arr.length === 2, "Array literal with tuples obj: arr length != 2");
+  console.assert(arr[0].n === 1, "Array literal with tuples obj: item under 0 is not equal");
+  console.assert(arr[1].n === 2, "Array literal with tuples obj: item under 1 is not equal");
 }
 
 // Array literal from union
