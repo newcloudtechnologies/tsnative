@@ -21,15 +21,20 @@ namespace
 constexpr auto validationStr = "========== Validation =========";
 }
 
-GCValidator::GCValidator(const Heap& heap, const Roots& roots)
+GCValidator::GCValidator(const UniqueObjects& heap, const Roots& roots, const UniqueConstObjects& marked)
     : _heap(heap)
     , _roots(roots)
+    , _marked(marked)
 {
+    LOG_INFO("Creating GCValidator");
 }
 
-GCValidator::~GCValidator() = default;
+GCValidator::~GCValidator()
+{
+    LOG_INFO("Deleting GCValidator");
+}
 
-void GCValidator::checkRoots(const std::function<void(const Object&)>& checker) const
+void GCValidator::checkRoots(const std::function<void(const Object*)>& checker) const
 {
     std::unordered_set<const Object*> visited;
 
@@ -42,7 +47,9 @@ void GCValidator::checkRoots(const std::function<void(const Object&)>& checker) 
             throw std::runtime_error("Invalid root");
         }
 
-        utils::visit(*(*r), visited, checker);
+        const auto* rootVal = *r;
+
+        utils::visit(rootVal, visited, checker);
     }
 }
 
@@ -60,9 +67,9 @@ void GCValidator::onObjectAboutToDelete(void* ptr) const
     (*obj);
 
     checkRoots(
-        [obj](const Object& el)
+        [obj](const Object* el)
         {
-            if (obj == &el)
+            if (obj == el)
             {
                 LOG_GC(validationStr);
                 LOG_GC_ADDRESS("Deleting object while it is in roots graph ", obj);
@@ -73,9 +80,9 @@ void GCValidator::onObjectAboutToDelete(void* ptr) const
 
 void GCValidator::validate() const
 {
-    const auto checkMarked = [](const Object& obj)
+    const auto checkMarked = [this](const Object* obj)
     {
-        if (obj.isMarked() && obj.getChildObjects().size() > 0)
+        if (_marked.count(obj) > 0 && obj->getChildObjects().size() > 0)
         {
             LOG_GC(validationStr);
             LOG_GC_ADDRESS("Found marked object with children in the graph after sweep ", &obj);
@@ -83,5 +90,5 @@ void GCValidator::validate() const
         }
     };
 
-    checkRoots([checkMarked](const Object& obj) { checkMarked(obj); });
+    checkRoots([checkMarked](const Object* obj) { checkMarked(obj); });
 }

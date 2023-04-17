@@ -16,22 +16,22 @@ void replaceAll(std::string& str, const std::string& substrToReplace, const std:
     }
 }
 
-void visit(const Object& obj,
+void visit(const Object* obj,
            std::unordered_set<const Object*>& visited,
-           const std::function<void(const Object& obj)>& visiter)
+           const std::function<void(const Object* obj)>& visiter)
 {
-    if (visited.count(&obj) > 0)
+    if (visited.count(obj) > 0)
     {
         return;
     }
 
-    visited.insert(&obj);
+    visited.insert(obj);
     visiter(obj);
 
-    const auto children = obj.getChildObjects();
+    const auto children = obj->getChildObjects();
     for (const auto* child : children)
     {
-        visit(*child, visited, visiter);
+        visit(child, visited, visiter);
     }
 }
 

@@ -16,6 +16,7 @@
 #include "../infrastructure/object_wrappers.h"
 
 #include "std/make_closure_from_lambda.h"
+#include "std/private/memory_management/gc_object_marker.h"
 #include "std/private/uv_loop_adapter.h"
 
 #include <memory>
@@ -23,11 +24,6 @@
 
 namespace
 {
-
-MATCHER_P(IsMarked, state, "")
-{
-    return arg->isMarked() == state;
-}
 
 class MarkingTestFixture : public test::GlobalTestAllocatorFixture
 {
@@ -52,70 +48,102 @@ public:
     }
 };
 
+TEST_F(MarkingTestFixture, empty)
+{
+    Roots roots;
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+    marker.mark();
+
+    EXPECT_TRUE(marker.getMarked().empty());
+    auto o = new test::Object();
+    EXPECT_FALSE(marker.isMarked(o));
+}
+
 TEST_F(MarkingTestFixture, object)
 {
     auto o = new test::Object();
     o->set("child", new test::Object());
 
+    Roots roots{reinterpret_cast<Object**>(&o)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(2u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+    EXPECT_TRUE(marker.getMarked().empty());
 
-    o->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_EQ(marker.getMarked().size(), 3); // object + prop key + prop value
+
+    marker.unmark();
+
+    EXPECT_EQ(marker.getMarked().size(), 0);
 }
 
 TEST_F(MarkingTestFixture, boolean)
 {
     auto boolean = new test::Boolean(true);
 
+    Roots roots{reinterpret_cast<Object**>(&boolean)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(1u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    boolean->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_EQ(marker.getMarked().size(), 1);
 }
 
 TEST_F(MarkingTestFixture, string)
 {
     auto string = new test::String("Abacaba");
 
+    Roots roots{reinterpret_cast<Object**>(&string)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(1u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    string->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_EQ(marker.getMarked().size(), 1);
 }
 
 TEST_F(MarkingTestFixture, number)
 {
     auto number = new test::Number(10);
 
+    Roots roots{reinterpret_cast<Object**>(&number)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(1u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    number->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_EQ(marker.getMarked().size(), 1);
 }
 
 TEST_F(MarkingTestFixture, date)
 {
     auto date = new test::Date();
 
+    Roots roots{reinterpret_cast<Object**>(&date)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(1u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    date->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_EQ(marker.getMarked().size(), 1);
 }
 
 TEST_F(MarkingTestFixture, union)
@@ -123,13 +151,16 @@ TEST_F(MarkingTestFixture, union)
     auto child = new test::Object();
     auto u = new test::Union(child);
 
+    Roots roots{reinterpret_cast<Object**>(&u)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(2u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    u->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_EQ(marker.getMarked().size(), 2);
 }
 
 void closureBody(){};
@@ -144,9 +175,6 @@ TEST_F(MarkingTestFixture, closure)
     *o1Star = (void*)o1;
     *o2Star = (void*)o2;
 
-    LOG_ADDRESS("o1Star ", o1Star);
-    LOG_ADDRESS("o2Star ", o2Star);
-
     void*** env = (void***)malloc(2 * sizeof(void**));
     env[0] = o1Star;
     env[1] = o2Star;
@@ -158,15 +186,16 @@ TEST_F(MarkingTestFixture, closure)
     void* closureBodyVoidStar = (void*)(&closureBody);
     auto closure = new test::Closure(closureBodyVoidStar, env, envLength, numArgs, &optionals);
 
+    Roots roots{reinterpret_cast<Object**>(&closure)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(5u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    numArgs->mark();
-    envLength->mark();
-    closure->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 3); // closure + two objects
 }
 
 TEST_F(MarkingTestFixture, lazy_closure)
@@ -175,41 +204,53 @@ TEST_F(MarkingTestFixture, lazy_closure)
 
     auto* lazyClosure = new test::LazyClosure(env);
 
+    Roots roots{reinterpret_cast<Object**>(&lazyClosure)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(1, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    lazyClosure->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 1);
 }
 
 TEST_F(MarkingTestFixture, array)
 {
     auto arr = new test::Array<Object*>();
     arr->push(new test::Object());
+    arr->push(new test::Object());
+
+    Roots roots{reinterpret_cast<Object**>(&arr)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
 
     const auto& allObjects = getActualAllocatedObjects();
-    EXPECT_EQ(2u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+    EXPECT_EQ(3u, allObjects.size());
 
-    arr->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 3);
 }
 
 TEST_F(MarkingTestFixture, tuple)
 {
     auto tuple = new test::Tuple();
     tuple->push(new test::Object());
+    tuple->push(new test::Object());
+    tuple->push(new test::Object());
+
+    Roots roots{reinterpret_cast<Object**>(&tuple)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
 
     const auto& allObjects = getActualAllocatedObjects();
-    EXPECT_EQ(2u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
+    EXPECT_EQ(4u, allObjects.size());
 
-    tuple->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 4);
 }
 
 TEST_F(MarkingTestFixture, set)
@@ -217,13 +258,16 @@ TEST_F(MarkingTestFixture, set)
     auto set = new test::Set<Object*>();
     set->add(new test::Object());
 
+    Roots roots{reinterpret_cast<Object**>(&set)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(2u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    set->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 2);
 }
 
 TEST_F(MarkingTestFixture, map)
@@ -234,13 +278,16 @@ TEST_F(MarkingTestFixture, map)
 
     map->set(key, value);
 
+    Roots roots{reinterpret_cast<Object**>(&map)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
     EXPECT_EQ(3u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    map->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 3);
 }
 
 TEST_F(MarkingTestFixture, timer)
@@ -249,14 +296,17 @@ TEST_F(MarkingTestFixture, timer)
     auto* closure = makeClosure<test::Closure>([] { return nullptr; });
     auto* timer = new test::Timer{uvLoopAdapter, closure, 1};
 
+    Roots roots{reinterpret_cast<Object**>(&timer)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
 
     EXPECT_EQ(2u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    timer->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(), 2); // timer, closure
 }
 
 TEST_F(MarkingTestFixture, promiseConstructor)
@@ -264,14 +314,18 @@ TEST_F(MarkingTestFixture, promiseConstructor)
     auto* executor = makeClosureExecutor(new test::Number{23.f}, ExecutorCall::Resolve);
     auto* promise = new test::Promise(executor);
 
+    Roots roots{reinterpret_cast<Object**>(&promise)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
 
     EXPECT_EQ(3u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    promise->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(marker.getMarked().size(),
+                6); // promise, closure + 1 env element, resolove promise and undef in args
 }
 
 TEST_F(MarkingTestFixture, promiseCallbackThen)
@@ -282,15 +336,19 @@ TEST_F(MarkingTestFixture, promiseCallbackThen)
     auto* reject = new test::Union{};
     auto* endPromise = startPromise->then(resolve, reject);
 
+    Roots roots{reinterpret_cast<Object**>(&endPromise)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
 
     EXPECT_EQ(5u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    startPromise->mark();
-    endPromise->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(
+        marker.getMarked().size(),
+        9); // promise, closure + 2 enviroment el. , resolove promise and undef in args, two unions, another promise
 }
 
 TEST_F(MarkingTestFixture, promiseCallbackCatch)
@@ -300,15 +358,19 @@ TEST_F(MarkingTestFixture, promiseCallbackCatch)
     auto* reject = new test::Union{};
     auto* endPromise = startPromise->catchException(reject);
 
+    Roots roots{reinterpret_cast<Object**>(&endPromise)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
 
     EXPECT_EQ(4u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    startPromise->mark();
-    endPromise->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(
+        marker.getMarked().size(),
+        9); // promise, closure + 2 enviroment el., resolove promise and undef in args, two unions, another promise
 }
 
 TEST_F(MarkingTestFixture, promiseCallbackFinally)
@@ -318,14 +380,18 @@ TEST_F(MarkingTestFixture, promiseCallbackFinally)
     auto* finally = new test::Union{};
     auto* endPromise = startPromise->finally(finally);
 
+    Roots roots{reinterpret_cast<Object**>(&endPromise)};
+    TimerStorage timers;
+    GCObjectMarker marker(roots, timers);
+
     const auto& allObjects = getActualAllocatedObjects();
 
     EXPECT_EQ(4u, allObjects.size());
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(false)));
 
-    startPromise->mark();
-    endPromise->mark();
+    marker.mark();
 
-    EXPECT_THAT(allObjects, ::testing::Each(IsMarked(true)));
+    EXPECT_THAT(
+        marker.getMarked().size(),
+        8); // promise, closure + 2 enviroment el., resolove promise and undef in ars, one union, another promise
 }
 } // anonymous namespace

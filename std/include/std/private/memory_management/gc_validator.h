@@ -11,18 +11,15 @@
 
 #pragma once
 
+#include "std/private/memory_management/gc_types.h"
 #include "std/private/memory_management/igc_validator.h"
 
 #include <functional>
-#include <unordered_set>
 
 class GCValidator : public IGCValidator
 {
 public:
-    using Heap = std::unordered_set<Object*>;
-    using Roots = std::unordered_set<Object**>;
-
-    GCValidator(const Heap& heap, const Roots& roots);
+    GCValidator(const UniqueObjects& heap, const Roots& roots, const UniqueConstObjects& marked);
 
     ~GCValidator();
 
@@ -31,9 +28,10 @@ public:
     void onObjectAboutToDelete(void* ptr) const override;
 
 private:
-    void checkRoots(const std::function<void(const Object&)>& checker) const;
+    void checkRoots(const std::function<void(const Object*)>& checker) const;
 
 private:
-    const Heap& _heap;
+    const UniqueObjects& _heap;
     const Roots& _roots;
+    const UniqueConstObjects& _marked;
 };
