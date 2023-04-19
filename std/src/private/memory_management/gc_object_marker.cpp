@@ -17,7 +17,10 @@
 #include "std/timer_object.h"
 
 template <typename Element, typename Condition>
-void markStorage(AsyncObjectStorage<Element>& storage, const Condition& isReady, UniqueConstObjects& marked)
+void markStorage(AsyncObjectStorage<Element>& storage,
+                 const Condition& isReady,
+                 UniqueConstObjects& marked,
+                 UniqueConstObjects& visited)
 {
     for (auto it = storage.begin(); it != storage.end();)
     {
@@ -28,7 +31,7 @@ void markStorage(AsyncObjectStorage<Element>& storage, const Condition& isReady,
             continue;
         }
 
-        marked.insert(&object);
+        utils::visit(&object, visited, [&marked](const Object* obj) { marked.insert(obj); });
         ++it;
     }
 }
@@ -43,10 +46,10 @@ GCObjectMarker::~GCObjectMarker() = default;
 
 void GCObjectMarker::mark()
 {
-    const auto isTimerReady = [](const TimerObject& t) { return !t.active(); };
-    markStorage(_timers, isTimerReady, _marked);
-
     UniqueConstObjects visited;
+
+    const auto isTimerReady = [](const TimerObject& t) { return !t.active(); };
+    markStorage(_timers, isTimerReady, _marked, visited);
 
     for (Object** r : _roots)
     {
