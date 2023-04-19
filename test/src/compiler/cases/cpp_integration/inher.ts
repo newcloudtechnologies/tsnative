@@ -13,6 +13,7 @@ import { CXXBase } from "cpp_integration_exts";
 import { DerivedFromBaseInOtherNamespace } from "cpp_integration_exts";
 import { DerivedFromVirtualBase } from "cpp_integration_exts";
 import { Point } from "cpp_integration_exts";
+import { Worker } from "cpp_integration_exts";
 
 const derivedFromVirtualBase = new DerivedFromVirtualBase();
 console.assert(derivedFromVirtualBase.virtualMethod() === "base virtual method", "'DerivedFromVirtualBase.virtualMethod' test failed");
@@ -86,4 +87,31 @@ console.assert(obj.callMemberClosure() === "Hello from CXX", "CXX derived class 
 
     new BasePoint(BasePoint.tag)
     new DerivedPoint(DerivedPoint.tag)
+}
+
+{
+    class Base extends Worker {
+        constructor() {
+            super();
+            this.someMethod(); // <-- OK. We have a valid fully constructed Worker object as 'this' after 'super()' call
+
+            // part of TSN-586
+            // Once we left the constructor body ORIGINAL 'this' will be restored therefore
+            // D1.constructor and other methods won't be able to call Worker methods correctly.
+        }
+    }
+
+    class D1 extends Base {
+        constructor() {
+            super();
+
+            // part of TSN-586
+            // lines below are lead to crash once uncommented
+            // this.someMethod();
+            // super.someMethod();
+        }
+    }
+
+    const d1 = new D1();
+    d1.someMethod();
 }

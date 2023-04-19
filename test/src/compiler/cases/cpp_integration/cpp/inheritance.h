@@ -69,4 +69,24 @@ private:
     int* dummyField2 = new int(2);
 };
 
+class OnlyCpp
+{
+public:
+    void callme(){};
+
+    int n = 999;
+};
+
+class TS_EXPORT Worker : public Object
+{
+public:
+    TS_METHOD Worker();
+    ~Worker() override;
+
+    TS_METHOD void someMethod();
+
+private:
+    OnlyCpp* cppClass = nullptr;
+};
+
 } // namespace IS_TS_MODULE
