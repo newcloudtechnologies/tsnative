@@ -11,6 +11,7 @@
 
 #include "inheritance.h"
 
+#include <iostream>
 #include <std/tsclosure.h>
 
 using namespace cpp_integration;
@@ -55,4 +56,22 @@ String* CXXBase::callMemberClosure() const
     String* result = static_cast<String*>(closure->call());
 
     return result->concat(new String("CXX"));
+}
+
+Worker::Worker()
+    : cppClass(new OnlyCpp())
+{
+}
+
+Worker::~Worker()
+{
+    delete cppClass;
+}
+
+void Worker::someMethod()
+{
+    cppClass->callme();
+
+    // Access property to check if memory valid; std::cout to prevent compiler optimizations
+    std::cout << cppClass->n << std::endl;
 }

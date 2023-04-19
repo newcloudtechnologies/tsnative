@@ -196,6 +196,19 @@ Boolean* Object::operatorIn(String* key) const
     return new Boolean(false);
 }
 
+const Object* Object::getMostDerived() const
+{
+    String parentKey{parentKeyCpp};
+    const Object* result = this;
+
+    while (result->has(&parentKey))
+    {
+        result = result->get(&parentKey);
+    }
+
+    return result;
+}
+
 Array<String*>* Object::getKeysArray() const
 {
     return Array<String*>::fromStdVector(getKeys());
@@ -283,8 +296,23 @@ Array<String*>* Object::keys(Object* entity)
 
 void Object::copyPropsTo(Object* target)
 {
-    // @todo: handle 'super' key?
-    _props->forEachEntry([this, &target](const auto& pair) { target->set(pair.first, pair.second); });
+    const Object* mostDerived = getMostDerived();
+
+    String superKey(superKeyCpp);
+    String parentKey(parentKeyCpp);
+
+    mostDerived->_props->forEachEntry(
+        [mostDerived, &target, &superKey, &parentKey](const auto& pair)
+        {
+            const auto& key = pair.first;
+
+            if (key->cpp_str() == superKeyCpp)
+            {
+                mostDerived->get(&superKey)->set(&parentKey, target);
+            }
+
+            target->set(key, pair.second);
+        });
 }
 
 std::vector<Object*> Object::getChildObjects() const

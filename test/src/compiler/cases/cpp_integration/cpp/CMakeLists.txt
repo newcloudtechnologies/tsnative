@@ -74,7 +74,7 @@ ts_generate_declarations(${PROJECT_NAME}
 )
 
 ts_generate_index(${PROJECT_NAME}
-    EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod, TSObjectCache, sum"
+    EXPORTED_NAME "exts, N2, innerNS, Button, Point, Rect, Aggregate, LargerAggregate, E, EnumArgs, DerivedFromVirtualBase, DerivedFromBaseInOtherNamespace, CXXBase, WithOptionalArgs, Printable, UnionTest, Component, AnotherWidget, Handler, ClassWithTemplateMethod, ClassWithTemplateMembers, TemplateClassWithTemplateMethod, TSObjectCache, sum, Worker"
     MODULE_NAME "cpp_integration"
     DECLARATIONS ${TS_DECLARATIONS}
     OUT_DIRECTORY ${PROJECT_BASE_URL}/${PROJECT_NAME}
