@@ -294,10 +294,15 @@ TEST_F(MarkingTestFixture, timer)
 {
     UVLoopAdapter uvLoopAdapter{};
     auto* closure = makeClosure<test::Closure>([] { return nullptr; });
-    auto* timer = new test::Timer{uvLoopAdapter, closure, 1};
+    const auto id = 1;
+    auto* timer = new test::Timer{uvLoopAdapter, closure, id};
 
-    Roots roots{reinterpret_cast<Object**>(&timer)};
+    using namespace std::chrono_literals;
+    timer->setTimeout(500ms);
+
+    Roots roots;
     TimerStorage timers;
+    timers.emplace(id, *timer);
     GCObjectMarker marker(roots, timers);
 
     const auto& allObjects = getActualAllocatedObjects();
