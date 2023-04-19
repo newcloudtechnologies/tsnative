@@ -253,6 +253,23 @@
         f();
     }
 
+    function testForLoopCaptureCounterInsideObject() {
+        type MyType = {
+            n: number,
+        }
+        
+        const arr = [{ n: 1 }, { n: 2 }, { n: 3 }] as MyType[];
+        
+        for (let i = 0; i < arr.length; i++) {
+            let qqq = arr[i];
+            qqq = { n : 7 };
+        }
+        
+        console.assert(arr[0].n === 1, "For: capture inside object failed at index 0");
+        console.assert(arr[1].n === 2, "For: capture inside object failed at index 0");
+        console.assert(arr[2].n === 3, "For: capture inside object failed at index 0");
+    }
+
     testForLoopBodyCaptureCounterWithPrefixIncrement();
     testForLoopBodyCaptureCounterWithPostfixIncrement();
     testForLoopBodyCaptureCounterWithAssignment();
@@ -261,4 +278,5 @@
     testMultipleCounters();
     testNestedForLoop();
     testForLoopBodyCaptureCounterWithoutIncrementor();
+    testForLoopCaptureCounterInsideObject();
 }
