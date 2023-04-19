@@ -82,6 +82,9 @@ protected:
     virtual Array<String*>* getKeysArray() const;
     TS_METHOD Boolean* operatorIn(String* key) const;
 
+private:
+    const Object* getMostDerived() const;
+
 public:
     TS_METHOD Boolean* isUndefined_CompilerAPI() const;
 

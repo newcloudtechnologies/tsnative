@@ -1309,11 +1309,17 @@ export class FunctionHandler extends AbstractExpressionHandler {
         LLVMConstantInt.get(this.generator, thisValueIdx),
       ]);
 
-      thisValuePtr = this.generator.builder.createLoad(thisValuePtrFromEnv);
-      thisValuePtr = this.generator.builder.createBitCast(thisValuePtr, valueDeclaration.type.getLLVMType().getPointer());
+      thisValuePtr = thisValuePtrFromEnv.derefToPtrLevel1();
+
+      const superProperty = this.generator.ts.obj.get(thisValuePtr, "super");
+      const detachedParent = this.generator.ts.obj.get(superProperty, "parent");
+
+      thisValuePtr = detachedParent;
+
+      thisValuePtr = this.generator.builder.createBitCast(thisValuePtr, valueDeclaration.type.getLLVMType());
     }
 
-    this.patchVTable(valueDeclaration, scope, thisValuePtr.derefToPtrLevel1(), env);
+    this.patchVTable(valueDeclaration, scope, thisValuePtr, env);
 
     return thisValuePtr;
   }
