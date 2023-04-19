@@ -23,7 +23,11 @@ TimerObject::TimerObject(TSClosure* closure)
 
 const TSClosure& TimerObject::getClosure() const
 {
-    assert(_closure && "TimerObject: Closure was nullptr");
+    if (!_closure)
+    {
+        throw std::runtime_error("No valid closure");
+    }
+
     return *_closure;
 }
 

@@ -187,14 +187,14 @@ export function setLLVMFunctionScope(
   fn: LLVMValue,
   scope: Scope,
   generator: LLVMGenerator,
-  source: ts.Expression | Declaration,
-  makeRoot: boolean = true
+  source: ts.Expression | Declaration
 ) {
   LLVMFunction.verify(fn, source);
 
   // Function declaration may be in scope with same name.
   // @todo: overwrite?
   if (!scope.get(fn.unwrapped.name)) {
+    const makeRoot = false;
     scope.set(fn.unwrapped.name, LLVMValue.create(fn.unwrapped, generator), makeRoot);
   }
 }
