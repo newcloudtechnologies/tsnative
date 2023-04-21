@@ -19,7 +19,6 @@ import com.ncloudtech.emb.devops.pipeline.JobUtils
 import com.ncloudtech.emb.devops.pipeline.notificationUtils
 import com.ncloudtech.emb.devops.pipeline.VersioningUtils
 import com.ncloudtech.git.Gitea
-import com.ncloudtech.atlassian.Jira
 
 def gitUtils = new gitUtils()
 
@@ -44,10 +43,12 @@ pipeline {
     parameters {
         string(name: 'CONAN_DEPLOY_REPO', defaultValue: 'antiq/conan_deploy', description: '')
         string(name: 'CONAN_DEPLOY_BRANCH', defaultValue: 'master', description: '')
+        booleanParam(name: 'DEBUG_BUILD', defaultValue: false, description: 'Enable debug build')
     }
 
     options {
-        timeout(time: 4, unit: 'HOURS')   // timeout on whole pipeline job
+        timeout(time: 4, unit: 'HOURS') // timeout on whole pipeline job
+        timestamps()
     }
 
     stages {
@@ -111,11 +112,19 @@ pipeline {
                             if (!version) {
                                 error "Failed to detect version: ${version}"
                             }
+
+                            if (branch == "master" && (params.DEBUG_BUILD != null) && params.DEBUG_BUILD) {
+                                user = "ci"
+                                channel = "debug_build"
+                            }
                         }
                     }
                 }
 
                 stage("Build compiler") {
+                    options {
+                        timeout(time: 10, unit: 'MINUTES')
+                    }
                     steps {
                         script {
                             echo "Build compiler"
@@ -135,6 +144,9 @@ pipeline {
                 }
 
                 stage("Build declarator") {
+                    options {
+                        timeout(time: 10, unit: 'MINUTES')
+                    }
                     steps {
                         script {
                             echo "Build declarator"
@@ -154,6 +166,9 @@ pipeline {
                 }
 
                 stage("Build std - Release") {
+                    options {
+                        timeout(time: 15, unit: 'MINUTES')
+                    }
                     steps {
                         script {
                             echo "Build std (Release)"
@@ -174,6 +189,12 @@ pipeline {
                 }
 
                 stage("Build std - Debug") {
+                    when {
+                        expression { params.DEBUG_BUILD != null && params.DEBUG_BUILD }
+                    }
+                    options {
+                        timeout(time: 20, unit: 'MINUTES')
+                    }
                     steps {
                         script {
                             echo "Build std (Debug)"
@@ -194,6 +215,9 @@ pipeline {
                 }
 
                 stage("Tests - Release") {
+                    options {
+                        timeout(time: 1, unit: 'HOURS')
+                    }
                     steps {
                         script {
                             echo "Build tests (Release)"
@@ -215,6 +239,12 @@ pipeline {
                 }
 
                 stage("Tests - Debug") {
+                    when {
+                        expression { params.DEBUG_BUILD != null && params.DEBUG_BUILD }
+                    }
+                    options {
+                        timeout(time: 2, unit: 'HOURS')
+                    }
                     steps {
                         script {
                             echo "Build tests (Debug)"
