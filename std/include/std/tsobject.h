@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include "std/utils/assert_cast.h"
+
 class Boolean;
 class String;
 
@@ -98,7 +100,7 @@ public:
     T get(const std::string& key) const
     {
         static_assert(std::is_pointer<T>::value, "Expected T to be a pointer type");
-        return static_cast<T>(get(key));
+        return assertCast<T>(get(key));
     }
 
     // virtual because compiler tries to find it using vtable

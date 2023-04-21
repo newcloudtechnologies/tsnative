@@ -17,6 +17,8 @@
 #include "std/tsstring.h"
 #include "std/tsundefined.h"
 
+#include "std/utils/assert_cast.h"
+
 #include <ostream>
 
 class Boolean;
@@ -40,7 +42,7 @@ public:
     {
         static_assert(std::is_pointer<T>::value &&
                       std::is_base_of<Object, typename std::remove_pointer<T>::type>::value);
-        return static_cast<T>(_value);
+        return assertCast<T>(_value);
     }
 
     bool hasValue();
