@@ -250,6 +250,8 @@ if (BUILD_TEST)
                      test/primitive_types/string/replace_tests.cpp
                      test/primitive_types/number/unary.cpp
                      test/primitive_types/to_string_test.cpp
+                     test/primitive_types/object/object_get_tests.cpp
+                     test/primitive_types/union/get_value_test.cpp
                      test/promise/expected_tests.cpp
                      test/promise/general_finite_state_machine_tests.cpp
                      test/infrastructure/promise_wrapper.cpp
@@ -261,6 +263,7 @@ if (BUILD_TEST)
                      test/mocks/stub_event_loop.cpp
                      test/utils/to_string_converter_tests.cpp
                      test/utils/make_closure_test.cpp
+                     test/utils/assert_cast_test.cpp
                      )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
