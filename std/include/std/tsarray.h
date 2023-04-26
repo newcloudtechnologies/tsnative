@@ -15,6 +15,8 @@
 
 #include "std/private/options.h"
 
+#include "std/utils/assert_cast.h"
+
 #include "std/iterable.h"
 #include "std/tsboolean.h"
 #include "std/tsclosure.h"
@@ -62,7 +64,7 @@ public:
 
     TS_METHOD TS_SIGNATURE("push(...items: T[]): number") Number* push(Array<T>* other);
 
-    inline void push(T v)
+    void INLINE_ATTR push(T v)
     {
         _d->push(v);
     }
