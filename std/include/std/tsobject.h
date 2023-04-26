@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "std/utils/assert_cast.h"
+#include "std/utils/attributes.h"
 
 class Boolean;
 class String;
@@ -97,7 +98,7 @@ public:
     void set(const std::string& key, void* value);
 
     template <typename T>
-    T get(const std::string& key) const
+    T INLINE_ATTR get(const std::string& key) const
     {
         static_assert(std::is_pointer<T>::value, "Expected T to be a pointer type");
         return assertCast<T>(get(key));
