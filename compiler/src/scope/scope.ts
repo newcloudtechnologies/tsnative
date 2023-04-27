@@ -239,7 +239,7 @@ export function addClassScope(
   expression: ts.Expression | ts.Declaration,
   parentScope: Scope,
   generator: LLVMGenerator
-): void {
+): { message: string } {
   let thisType: TSType;
   if (ts.isArrayLiteralExpression(expression)) {
     thisType = generator.ts.array.getType(expression);
@@ -256,15 +256,24 @@ export function addClassScope(
   }
 
   if (thisType.isSymbolless()) {
-    return;
+    return {
+      message: "symbolless!"
+    };
   }
 
   const symbol = thisType.getSymbol();
-
   const declaration = symbol.declarations.find((decl) => decl.isClass());
 
   if (!declaration) {
-    return;
+    return {
+      message: "not declaration!"
+    };
+  }
+
+  if (generator.meta.isThisDataRegistered(symbol)) {
+    return {
+      message: "already registered!"
+    };
   }
 
   const llvmType = generator.symbolTable.withLocalScope((scope) => {
@@ -293,9 +302,6 @@ export function addClassScope(
   mangledTypename = declarationNamespace.concat(mangledTypename).join(".");
 
   const name = declaration.name!.getText();
-  if (parentScope.get(mangledTypename)) {
-    return;
-  }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
   const staticProperties = ClassHandler.getStaticPropertiesFromDeclaration(
@@ -304,6 +310,9 @@ export function addClassScope(
     generator
   );
 
+  if (declaration.name?.getText() === "MyClass") {
+    console.trace("!!! REGISTER")
+  }
   generator.meta.registerThisData(symbol, {
     declaration,
     llvmType,
@@ -321,6 +330,10 @@ export function addClassScope(
   );
 
   parentScope.set(mangledTypename, scope);
+
+  return {
+    message: "added!"
+  };
 }
 
 export class HeapVariableDeclaration {

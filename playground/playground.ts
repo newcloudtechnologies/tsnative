@@ -1,12 +1,15 @@
-// {
-class Foo {
-  static error: string = "throws from method";
+class MyClass<T> {
+  field: T;
 
-  echo() {
-    Foo.error;
+  constructor(t: T) {
+    this.field = t;
+  }
+
+  foo() {
+    let other = this.field;
   }
 }
 
-const foo = new Foo();
-// //   console.assert(foo.echo("") === Foo.error);
-// }
+let obj1 = new MyClass<number>(10);
+let obj2 = new MyClass({s: "12"});
+obj2.foo()

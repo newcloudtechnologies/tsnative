@@ -11,7 +11,7 @@
 
 import { ExternalSymbolsProvider } from "../mangling";
 import * as ts from "typescript";
-import { LLVMGenerator } from "../generator";
+import { GenericTypeMapper, LLVMGenerator } from "../generator";
 import { TSType } from "../ts/type";
 import { Declaration } from "../ts/declaration";
 
@@ -56,9 +56,34 @@ export class FunctionMangler {
     const scopePrefix = parentName ? parentName + "__" : "";
 
     let typeParametersNames = "";
-    const typeParameters = declaration.typeParameters;
 
+    if (declaration.isMethod()) {
+      const classDeclaration = Declaration.create(declaration.parent as ts.ClassDeclaration, generator);
+      const classTypeParameters = classDeclaration.typeParameters;
+      if (classTypeParameters) {
+        const typeMapper = generator.meta.getClassTypeMapper(classDeclaration);
+
+        const types = classTypeParameters.map((typeParameter) => {
+          let type = generator.ts.checker.getTypeAtLocation(typeParameter);
+          if (!type.isSupported()) {
+            type = typeMapper.get(type.toString());
+          }
+          return type.toString();
+        });
+
+        console.log("types", types)
+      }
+    }
+
+    const typeParameters = declaration.typeParameters;
     if (typeParameters?.length) {
+
+      console.log("===========================")
+      console.log(expression?.getText())
+      typeParameters.forEach((typeParameter) => {
+        console.log(typeParameter.expression?.getText())
+      })
+
       typeParametersNames = argumentTypes.reduce((acc, curr) => {
         return acc + "__" + curr.toString();
       }, "");

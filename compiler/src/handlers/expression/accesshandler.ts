@@ -140,11 +140,16 @@ export class AccessHandler extends AbstractExpressionHandler {
     } catch (_) { }
 
     if (scope && scope instanceof Scope) {
+      console.log(">>>", Boolean(scope.symbol))
+
       if (!scope.symbol) {
         return;
       }
 
-      const thisData:ThisData = this.generator.meta.getThisData(scope.symbol);
+      const thisData: ThisData = this.generator.meta.getThisData(scope.symbol);
+
+      console.log("+++", thisData.staticProperties ? Array.from(thisData.staticProperties?.keys()) : "nope")
+
       return thisData.staticProperties?.get(propertyName);
     }
 

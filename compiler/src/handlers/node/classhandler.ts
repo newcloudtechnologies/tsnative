@@ -103,11 +103,13 @@ export class ClassHandler extends AbstractNodeHandler {
 
     const name = declaration.name!.getText();
     const thisType = declaration.type;
-    const mangledTypename = thisType.mangle();
+    const symbol = thisType.getSymbol();
 
-    if (thisType.isDeclared() && parentScope.get(mangledTypename)) {
+    if (thisType.isDeclared() && this.generator.meta.isThisDataRegistered(symbol)) {
       return;
     }
+
+    const mangledTypename = thisType.mangle();
 
     this.generator.symbolTable.withLocalScope((localScope) => {
       this.handleHeritageClauses(declaration, localScope, parentScope);
@@ -119,15 +121,13 @@ export class ClassHandler extends AbstractNodeHandler {
         this.generator
       );
 
-      const symbol = thisType.getSymbol();
+      // console.log("?? CLASS HANDLER ADDING", Boolean(declaration.typeParameters), declaration.getText())
       this.generator.meta.registerThisData(symbol, {
         declaration,
         llvmType,
         tsType: thisType,
         staticProperties,
       });
-      
-      // console.log("..........>>>", name, Boolean(symbol), Array.from(staticProperties.keys()))
 
       const scope = new Scope(
         name,
@@ -180,18 +180,16 @@ export class ClassHandler extends AbstractNodeHandler {
           );
 
           // Register generic class specialization since actual types are known at this point
-          const thisType = baseClassDeclaration.type;
-          const mangledTypename = thisType.mangle();
+          if (!this.generator.meta.isThisDataRegistered(symbol)) {
+            const thisType = baseClassDeclaration.type;
+            const mangledTypename = thisType.mangle();
 
-          if (!parentScope.get(mangledTypename)) {
             const llvmType = thisType.getLLVMType();
             const staticProperties = ClassHandler.getStaticPropertiesFromDeclaration(
               declaration,
               parentScope,
               this.generator
             );
-
-            const symbol = thisType.getSymbol();
 
             if (symbol) {
               this.generator.meta.registerThisData(symbol, {
