@@ -82,7 +82,7 @@ public:
 template <typename FirstMemberType, typename SecondMemberType>
 ClassWithTemplateMembers<FirstMemberType, SecondMemberType>::ClassWithTemplateMembers(FirstMemberType value)
 {
-    set("first", value);
+    set("first", static_cast<Object*>(value));
 }
 
 template <typename FirstMemberType, typename SecondMemberType>
@@ -122,7 +122,7 @@ public:
 template <typename T>
 TemplateClassWithTemplateMethod<T>::TemplateClassWithTemplateMethod(T transformBase)
 {
-    set("transformBase", transformBase);
+    set("transformBase", static_cast<Object*>(transformBase));
 }
 
 template class TemplateClassWithTemplateMethod<Number*>;

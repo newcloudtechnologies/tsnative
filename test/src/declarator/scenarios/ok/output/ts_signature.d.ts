@@ -8,7 +8,7 @@ export class FileInfo_t {
 }
 
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
@@ -34,7 +34,7 @@ export function someFunc(n: number, m: number): number;
 export function someFunc2(n: number, m: number): data.FileInfo_t[];
 
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
