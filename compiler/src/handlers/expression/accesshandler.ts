@@ -16,6 +16,7 @@ import { AbstractExpressionHandler } from "./expressionhandler";
 import { LLVMValue } from "../../llvm/value";
 import { Declaration } from "../../ts/declaration";
 import { IfBlockCreator } from "../ifblockcreator"
+import { LLVMGenerator, ThisData } from "../../generator";
 
 export class AccessHandler extends AbstractExpressionHandler {
   handle(expression: ts.Expression, env?: Environment): LLVMValue | undefined {
@@ -139,11 +140,12 @@ export class AccessHandler extends AbstractExpressionHandler {
     } catch (_) { }
 
     if (scope && scope instanceof Scope) {
-      const value = scope.getStatic(propertyName);
-
-      if (value instanceof LLVMValue) {
-        return value;
+      if (!scope.symbol) {
+        return;
       }
+
+      const thisData:ThisData = this.generator.meta.getThisData(scope.symbol);
+      return thisData.staticProperties?.get(propertyName);
     }
 
     return;

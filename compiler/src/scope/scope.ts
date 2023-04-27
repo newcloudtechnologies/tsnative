@@ -10,7 +10,7 @@
  */
 
 import * as ts from "typescript";
-import { GenericTypeMapper, LLVMGenerator } from "../generator";
+import { GenericTypeMapper, LLVMGenerator, ThisData } from "../generator";
 
 import { TSType } from "../ts/type";
 import { flatten } from "lodash";
@@ -19,6 +19,8 @@ import { LLVMConstant, LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { Signature } from "../ts/signature";
 import { LLVMFunction } from "../llvm/function";
+import { TSSymbol } from "../ts/symbol";
+import { ClassHandler } from "../handlers/node";
 
 export class Environment {
   private readonly pVariables: string[];
@@ -28,9 +30,20 @@ export class Environment {
   private readonly pGenerator: LLVMGenerator;
   private pFixedArgsCount: number = 0;
 
-  constructor(variables: string[], parameterNames: string[], allocated: LLVMValue, llvmType: LLVMStructType, generator: LLVMGenerator) {
-    if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
-      throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
+  constructor(
+    variables: string[],
+    parameterNames: string[],
+    allocated: LLVMValue,
+    llvmType: LLVMStructType,
+    generator: LLVMGenerator
+  ) {
+    if (
+      !allocated.type.isPointer() ||
+      !allocated.type.getPointerElementType().isIntegerType(8)
+    ) {
+      throw new Error(
+        `Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`
+      );
     }
 
     this.pVariables = variables;
@@ -45,8 +58,13 @@ export class Environment {
   }
 
   set untyped(allocated: LLVMValue) {
-    if (!allocated.type.isPointer() || !allocated.type.getPointerElementType().isIntegerType(8)) {
-      throw new Error(`Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`);
+    if (
+      !allocated.type.isPointer() ||
+      !allocated.type.getPointerElementType().isIntegerType(8)
+    ) {
+      throw new Error(
+        `Expected allocated environment to be of i8*, got '${allocated.type.toString()}'`
+      );
     }
 
     this.pAllocated = allocated;
@@ -57,7 +75,10 @@ export class Environment {
   }
 
   get typed() {
-    return this.pGenerator.builder.createBitCast(this.pAllocated, this.pLLVMType.getPointer());
+    return this.pGenerator.builder.createBitCast(
+      this.pAllocated,
+      this.pLLVMType.getPointer()
+    );
   }
 
   get type() {
@@ -92,7 +113,11 @@ export class Environment {
     this.pFixedArgsCount = count;
   }
 
-  static merge(base: Environment, envs: Environment[], generator: LLVMGenerator) {
+  static merge(
+    base: Environment,
+    envs: Environment[],
+    generator: LLVMGenerator
+  ) {
     const baseValues = [];
 
     const envValue = generator.builder.createLoad(base.typed);
@@ -104,8 +129,8 @@ export class Environment {
     const mergedParameterNames: string[] = [];
 
     envs.forEach((e) => {
-      mergedParameterNames.push(...e.pParameterNames)
-    })
+      mergedParameterNames.push(...e.pParameterNames);
+    });
 
     const values = flatten(
       envs.map((e) => {
@@ -113,7 +138,9 @@ export class Environment {
 
         const structValue = generator.builder.createLoad(e.typed);
         for (let i = 0; i < e.type.numElements; ++i) {
-          const value = generator.builder.createSafeExtractValue(structValue, [i]);
+          const value = generator.builder.createSafeExtractValue(structValue, [
+            i,
+          ]);
           envValues.push(value);
         }
 
@@ -135,15 +162,22 @@ export class Environment {
       return acc;
     }, new Array<string>());
 
-    const mergedValues = baseValues.concat(values).filter((_, index) => uniqueIndexes.includes(index));
+    const mergedValues = baseValues
+      .concat(values)
+      .filter((_, index) => uniqueIndexes.includes(index));
     const mergedEnvironmentType = LLVMStructType.get(
       generator,
       mergedValues.map((v) => v.type)
     );
-    const allocatedMergedEnvironment = generator.gc.allocate(mergedEnvironmentType);
+    const allocatedMergedEnvironment = generator.gc.allocate(
+      mergedEnvironmentType
+    );
 
     for (let i = 0; i < mergedValues.length; ++i) {
-      const elementPtr = generator.builder.createSafeInBoundsGEP(allocatedMergedEnvironment, [0, i]);
+      const elementPtr = generator.builder.createSafeInBoundsGEP(
+        allocatedMergedEnvironment,
+        [0, i]
+      );
       generator.builder.createSafeStore(mergedValues[i], elementPtr);
     }
 
@@ -159,7 +193,9 @@ export class Environment {
   static getEnvironmentType(types: LLVMType[], generator: LLVMGenerator) {
     if (types.some((type) => !type.isPointer())) {
       throw new Error(
-        `Expected all the types to be of PointerType, got:\n${types.map((type) => "  " + type.toString()).join(",\n")}`
+        `Expected all the types to be of PointerType, got:\n${types
+          .map((type) => "  " + type.toString())
+          .join(",\n")}`
       );
     }
 
@@ -214,14 +250,18 @@ export function addClassScope(
   ) {
     thisType = generator.ts.array.getType(expression.initializer);
   } else {
-    thisType = generator.ts.checker.getTypeAtLocation(expression).getApparentType();
+    thisType = generator.ts.checker
+      .getTypeAtLocation(expression)
+      .getApparentType();
   }
 
   if (thisType.isSymbolless()) {
     return;
   }
 
-  const declaration = thisType.getSymbol().declarations.find((decl) => decl.isClass());
+  const symbol = thisType.getSymbol();
+
+  const declaration = symbol.declarations.find((decl) => decl.isClass());
 
   if (!declaration) {
     return;
@@ -258,7 +298,27 @@ export function addClassScope(
   }
 
   const tsType = generator.ts.checker.getTypeAtLocation(declaration.unwrapped);
-  const scope = new Scope(name, mangledTypename, generator, false, parentScope, { declaration, llvmType, tsType });
+  const staticProperties = ClassHandler.getStaticPropertiesFromDeclaration(
+    declaration,
+    parentScope,
+    generator
+  );
+
+  generator.meta.registerThisData(symbol, {
+    declaration,
+    llvmType,
+    tsType,
+    staticProperties,
+  });
+
+  const scope = new Scope(
+    name,
+    mangledTypename,
+    generator,
+    false,
+    parentScope,
+    symbol
+  );
 
   parentScope.set(mangledTypename, scope);
 }
@@ -269,7 +329,12 @@ export class HeapVariableDeclaration {
   name: string;
   declaration: ts.VariableDeclaration | undefined;
 
-  constructor(allocated: LLVMValue, initializer: LLVMValue, name: string, declaration?: ts.VariableDeclaration) {
+  constructor(
+    allocated: LLVMValue,
+    initializer: LLVMValue,
+    name: string,
+    declaration?: ts.VariableDeclaration
+  ) {
     this.allocated = allocated;
     this.initializer = initializer;
     this.name = name;
@@ -287,7 +352,10 @@ export function createEnvironment(
 ) {
   const map = new Map<string, { type: LLVMType; allocated: LLVMValue }>();
 
-  const parameterNames = functionData?.signature?.getParameters().map((param) => param.escapedName.toString()) || [];
+  const parameterNames =
+    functionData?.signature
+      ?.getParameters()
+      .map((param) => param.escapedName.toString()) || [];
 
   if (functionData?.signature) {
     const argsTypes = functionData.args.map((arg, index) => {
@@ -322,7 +390,10 @@ export function createEnvironment(
 
   context.forEach((value) => {
     if (!map.has(value.name)) {
-      map.set(value.name, { type: value.allocated.type, allocated: value.allocated });
+      map.set(value.name, {
+        type: value.allocated.type,
+        allocated: value.allocated,
+      });
     }
   });
 
@@ -341,7 +412,11 @@ export function createEnvironment(
         continue;
       }
 
-      if (variableName === generator.internalNames.This && typeof preferLocalThis !== "undefined" && preferLocalThis) {
+      if (
+        variableName === generator.internalNames.This &&
+        typeof preferLocalThis !== "undefined" &&
+        preferLocalThis
+      ) {
         continue;
       }
 
@@ -353,7 +428,10 @@ export function createEnvironment(
       let extracted = generator.builder.createSafeExtractValue(data, [index]);
 
       // @todo: remove pointer level check
-      if (extracted.type.getPointerLevel() === 2 && outerEnv.isParameterIndex(index)) {
+      if (
+        extracted.type.getPointerLevel() === 2 &&
+        outerEnv.isParameterIndex(index)
+      ) {
         extracted = generator.builder.createLoad(extracted);
         const mem = generator.gc.allocate(extracted.type);
         generator.builder.createSafeStore(extracted, mem);
@@ -365,7 +443,10 @@ export function createEnvironment(
 
     for (let i = 0; i < outerEnvValuesIndexes.length; ++i) {
       const value = outerValues[i];
-      map.set(outerEnv.variables[outerEnvValuesIndexes[i]], { type: value.type, allocated: value });
+      map.set(outerEnv.variables[outerEnvValuesIndexes[i]], {
+        type: value.type,
+        allocated: value,
+      });
     }
   }
 
@@ -390,27 +471,51 @@ export function createEnvironment(
 
   const environmentDataType = Environment.getEnvironmentType(types, generator);
   const environmentData = allocations.reduce(
-    (acc, allocation, idx) => generator.builder.createSafeInsert(acc, allocation, [idx]),
+    (acc, allocation, idx) =>
+      generator.builder.createSafeInsert(acc, allocation, [idx]),
     LLVMConstant.createNullValue(environmentDataType, generator)
   );
 
   const environmentAlloca = generator.gc.allocate(environmentDataType);
   generator.builder.createSafeStore(environmentData, environmentAlloca);
 
-  return new Environment(names, parameterNames, generator.builder.asVoidStar(environmentAlloca), environmentDataType, generator);
+  return new Environment(
+    names,
+    parameterNames,
+    generator.builder.asVoidStar(environmentAlloca),
+    environmentDataType,
+    generator
+  );
 }
 
 function populateStaticContext(scope: Scope, environmentVariables: string[]) {
   const staticContext: HeapVariableDeclaration[] = [];
 
-  scope.thisData?.staticProperties?.forEach((value, key) => {
+  // console.log(
+  //   "!!!!!!! populate static context for:",
+  //   scope.name,
+  //   Boolean(scope.symbol)
+  // );
+
+  if (!scope.symbol) {
+    return staticContext;
+  }
+
+  const thisData: ThisData = scope.generator.meta.getThisData(scope.symbol);
+
+  // console.log("!!!!!!! THISDATA STATIC:", thisData.staticProperties);
+
+  thisData.staticProperties?.forEach((value, key) => {
     const idx = environmentVariables.findIndex((variable) => {
       if (variable === key) {
         return true;
       }
 
       const [identifier, property] = variable.split(".");
-      return (identifier === scope.name || identifier === scope.mangledName) && property === key;
+      return (
+        (identifier === scope.name || identifier === scope.mangledName) &&
+        property === key
+      );
     });
 
     if (idx === -1) {
@@ -421,9 +526,13 @@ function populateStaticContext(scope: Scope, environmentVariables: string[]) {
       value.name = environmentVariables[idx];
       staticContext.push(value);
     } else if (value instanceof LLVMValue) {
-      staticContext.push(new HeapVariableDeclaration(value, value, environmentVariables[idx]));
+      staticContext.push(
+        new HeapVariableDeclaration(value, value, environmentVariables[idx])
+      );
     }
   });
+
+  // console.log("!!!!!!! THISDATA CONTEXT:", staticContext);
 
   return staticContext;
 }
@@ -436,25 +545,46 @@ export function populateContext(
 ) {
   const context: HeapVariableDeclaration[] = [];
 
-  const addToContextRecursively = (value: ScopeValue, key: string, variables: string[]) => {
+  const addToContextRecursively = (
+    value: ScopeValue,
+    key: string,
+    variables: string[]
+  ) => {
     if (key === "undefined") {
       return;
     }
 
     const index = variables.findIndex((variable) => {
-      if (variable === key || (key.startsWith(variable + "__class") && value instanceof Scope)) {
+      if (
+        variable === key ||
+        (key.startsWith(variable + "__class") && value instanceof Scope)
+      ) {
         return true;
       }
 
       if (value instanceof Scope && variable.includes(".")) {
         const [identifier, property] = variable.split(".");
-        return value.name === identifier && (value.get(property) || value.getStatic(property));
+
+        if (value.name === identifier && value.get(property)) {
+          return true;
+        }
+
+        if (!value.symbol) {
+          return false;
+        }
+
+        const thisData = generator.meta.getThisData(value.symbol);
+        return thisData.staticProperties?.get(identifier);
       }
 
       return false;
     });
 
-    if (value instanceof Scope && !seenScopes.includes(value) && !value.isNamespace) {
+    if (
+      value instanceof Scope &&
+      !seenScopes.includes(value) &&
+      !value.isNamespace
+    ) {
       seenScopes.push(value);
       value.forEach((v, k) => {
         addToContextRecursively(v, k, variables);
@@ -463,7 +593,9 @@ export function populateContext(
       context.push(...populateStaticContext(value, variables));
 
       if (value.parent && !seenScopes.includes(value.parent)) {
-        context.push(...populateContext(generator, value.parent, variables, seenScopes));
+        context.push(
+          ...populateContext(generator, value.parent, variables, seenScopes)
+        );
       }
     }
 
@@ -479,14 +611,18 @@ export function populateContext(
   };
 
   context.push(...populateStaticContext(root, environmentVariables));
-  root.forEach((value, key) => addToContextRecursively(value, key, environmentVariables));
+  root.forEach((value, key) =>
+    addToContextRecursively(value, key, environmentVariables)
+  );
 
   const isPropertyAccess = (value: string) => value.includes(".");
-  const propertyAccesses = environmentVariables.filter(isPropertyAccess).reduce((acc, value) => {
-    const parts = value.split(".");
-    acc.push(parts);
-    return acc;
-  }, new Array<string[]>());
+  const propertyAccesses = environmentVariables
+    .filter(isPropertyAccess)
+    .reduce((acc, value) => {
+      const parts = value.split(".");
+      acc.push(parts);
+      return acc;
+    }, new Array<string[]>());
 
   const findPropertyAccess = (
     scope: Scope,
@@ -548,7 +684,14 @@ export function populateContext(
 
   if (root.parent && !seenScopes.includes(root.parent)) {
     seenScopes.push(root.parent);
-    context.push(...populateContext(generator, root.parent, environmentVariables, seenScopes));
+    context.push(
+      ...populateContext(
+        generator,
+        root.parent,
+        environmentVariables,
+        seenScopes
+      )
+    );
   }
 
   return context;
@@ -556,32 +699,32 @@ export function populateContext(
 
 export type ScopeValue = LLVMValue | HeapVariableDeclaration | Scope;
 
-export interface ThisData {
-  readonly declaration: Declaration | undefined;
-  readonly llvmType: LLVMType;
-  readonly tsType: TSType;
-  readonly staticProperties?: Map<string, LLVMValue>;
-}
-
 export class Scope {
   private map: Map<string, ScopeValue>;
 
   readonly name: string | undefined;
   readonly mangledName: string | undefined;
-  readonly thisData: ThisData | undefined;
   readonly parent: Scope | undefined;
   typeMapper: GenericTypeMapper;
 
   readonly isNamespace: boolean;
 
-  private generator: LLVMGenerator;
+  readonly generator: LLVMGenerator;
   private isDeinitialized = false;
+
+  readonly symbol?: TSSymbol;
 
   keys(): string[] {
     return Array.from(this.map.keys());
   }
 
-  forEach(visitor: (value: ScopeValue, key: string, map: Map<string, ScopeValue>) => void): void {
+  forEach(
+    visitor: (
+      value: ScopeValue,
+      key: string,
+      map: Map<string, ScopeValue>
+    ) => void
+  ): void {
     this.map.forEach(visitor);
   }
 
@@ -593,18 +736,20 @@ export class Scope {
     return this.map[Symbol.iterator]();
   }
 
-  constructor(name: string | undefined,
+  constructor(
+    name: string | undefined,
     mangledName: string | undefined,
     generator: LLVMGenerator,
     isNamespace: boolean = false,
     parent?: Scope,
-    data?: ThisData) {
+    symbol?: TSSymbol
+  ) {
     this.generator = generator;
     this.map = new Map<string, ScopeValue>();
     this.name = name;
     this.mangledName = mangledName;
     this.parent = parent;
-    this.thisData = data;
+    this.symbol = symbol;
 
     this.typeMapper = new GenericTypeMapper();
     if (parent && parent.typeMapper) {
@@ -622,10 +767,11 @@ export class Scope {
     for (const identifier of this.map.keys()) {
       const value = this.get(identifier);
       if (!value || value instanceof Scope) {
-        continue
+        continue;
       }
 
-      const ptrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
+      const ptrPtr =
+        value instanceof HeapVariableDeclaration ? value.allocated : value;
       if (ptrPtr.type.getPointerLevel() == 2) {
         this.generator.gc.removeRoot(ptrPtr);
       }
@@ -653,10 +799,6 @@ export class Scope {
     return result;
   }
 
-  getStatic(identifier: string) {
-    return this.thisData?.staticProperties?.get(identifier);
-  }
-
   tryGetThroughParentChain(identifier: string): ScopeValue | undefined {
     const value = this.map.get(identifier);
 
@@ -669,18 +811,23 @@ export class Scope {
     return;
   }
 
-  setOrAssign(identifier: string, valuePtr: ScopeValue, makeRoot: boolean = true) {
+  setOrAssign(
+    identifier: string,
+    valuePtr: ScopeValue,
+    makeRoot: boolean = true
+  ) {
     if (this.get(identifier)) {
       this.assign(identifier, valuePtr);
-    }
-    else {
+    } else {
       this.set(identifier, valuePtr, makeRoot);
     }
   }
 
   set(identifier: string, value: ScopeValue, makeRoot: boolean = true) {
     if (this.get(identifier)) {
-      throw new Error(`Identifier '${identifier}' already exists. Use 'Scope.assign' instead of 'Scope.set'`);
+      throw new Error(
+        `Identifier '${identifier}' already exists. Use 'Scope.assign' instead of 'Scope.set'`
+      );
     }
 
     if (value instanceof Scope) {
@@ -688,28 +835,26 @@ export class Scope {
       return;
     }
 
-    const extractedValue = value instanceof HeapVariableDeclaration ? value.allocated : value;
+    const extractedValue =
+      value instanceof HeapVariableDeclaration ? value.allocated : value;
 
     if (extractedValue.type.getPointerLevel() === 2) {
-
       if (makeRoot) {
         this.generator.gc.addRoot(extractedValue, identifier, this.name);
       }
 
       this.map.set(identifier, extractedValue);
       return;
-    }
-    else if (extractedValue.type.getPointerLevel() === 1) {
+    } else if (extractedValue.type.getPointerLevel() === 1) {
       const vPtrPtr = this.generator.gc.allocate(extractedValue.type);
       this.generator.builder.createSafeStore(extractedValue, vPtrPtr);
-  
+
       this.map.set(identifier, vPtrPtr);
 
       if (makeRoot) {
         this.generator.gc.addRoot(vPtrPtr, identifier, this.name);
       }
-    }
-    else {
+    } else {
       this.map.set(identifier, extractedValue);
     }
   }
@@ -720,7 +865,9 @@ export class Scope {
     }
 
     if (newValue.type.getPointerLevel() !== 2) {
-      throw new Error(`newValue of '${identifier}' is not **: ${newValue.type.toString()}`);
+      throw new Error(
+        `newValue of '${identifier}' is not **: ${newValue.type.toString()}`
+      );
     }
     this.map.set(identifier, newValue);
   }
@@ -728,7 +875,9 @@ export class Scope {
   assign(identifier: string, value: ScopeValue) {
     const valuePtrPtr = this.get(identifier);
     if (!valuePtrPtr) {
-      throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+      throw new Error(
+        `Identifier '${identifier}' being overwritten not found in symbol table`
+      );
     }
 
     if (value instanceof Scope) {
@@ -737,16 +886,23 @@ export class Scope {
     }
 
     if (!(valuePtrPtr instanceof LLVMValue)) {
-      throw new Error(`Identifier '${identifier}' is not LLVMValue(**) inside of a scope`);
+      throw new Error(
+        `Identifier '${identifier}' is not LLVMValue(**) inside of a scope`
+      );
     }
 
     if (valuePtrPtr.type.getPointerLevel() != 2) {
-      throw new Error(`Identifier '${identifier}' assignment failed: valuePtrPtr is not **`);
+      throw new Error(
+        `Identifier '${identifier}' assignment failed: valuePtrPtr is not **`
+      );
     }
 
-    const actualVal = value instanceof HeapVariableDeclaration ? value.allocated : value;
+    const actualVal =
+      value instanceof HeapVariableDeclaration ? value.allocated : value;
     if (actualVal.type.getPointerLevel() != 1) {
-      throw new Error(`Identifier '${identifier}' assignment failed: or actualVal is not *: ${actualVal.type.toString()}`);
+      throw new Error(
+        `Identifier '${identifier}' assignment failed: or actualVal is not *: ${actualVal.type.toString()}`
+      );
     }
 
     if (actualVal.type.isClosure()) {
@@ -767,7 +923,9 @@ export class Scope {
       return;
     }
 
-    throw new Error(`Identifier '${identifier}' being overwritten not found in symbol table`);
+    throw new Error(
+      `Identifier '${identifier}' being overwritten not found in symbol table`
+    );
   }
 
   withThisKeeping<R>(action: () => R): R {
@@ -797,7 +955,8 @@ export class Scope {
   private remove(identifier: string) {
     const value = this.get(identifier);
     if (value && !(value instanceof Scope)) {
-      const ptrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
+      const ptrPtr =
+        value instanceof HeapVariableDeclaration ? value.allocated : value;
       this.generator.gc.removeRoot(ptrPtr);
     }
 

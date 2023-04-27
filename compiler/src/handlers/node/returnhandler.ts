@@ -14,6 +14,7 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { LLVMType } from "../../llvm/type";
 import { Declaration } from "../../ts/declaration";
+import { LLVMGenerator } from "../../generator";
 
 export class ReturnHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {

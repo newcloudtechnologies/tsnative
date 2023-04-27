@@ -19,6 +19,7 @@ import { ConciseBody } from "../../ts/concisebody";
 import { Declaration } from "../../ts/declaration";
 import { FunctionHandler } from "../expression/functionhandler";
 import { DummyArgumentsCreator } from "../dummyargumentscreator";
+import { LLVMGenerator } from "../../generator";
 
 export class FunctionDeclarationHandler extends AbstractNodeHandler {
     private readonly dummyArgsCreator = new DummyArgumentsCreator(this.generator);

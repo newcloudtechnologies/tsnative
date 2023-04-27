@@ -19,7 +19,10 @@ import { Declaration } from "../../ts/declaration";
 const utilityReturnType = "ReturnType";
 const utilityTypeNames = [utilityReturnType];
 
-function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator: LLVMGenerator) {
+function adjustDeducedReturnType(
+  typeReference: ts.TypeReferenceNode,
+  generator: LLVMGenerator
+) {
   // Handling something like `type DocStoreType = ReturnType<typeof createInitialStore>` where `createInitialStore` (e.g.) is a function that returns a closure
   let llvmType: LLVMType | undefined;
   const typeArgument = typeReference.typeArguments![0];
@@ -35,9 +38,14 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
           if (declaration.name.getText() === initializerName) {
             if (declaration.initializer) {
               if (ts.isFunctionLike(declaration.initializer)) {
-                const symbol = generator.ts.checker.getTypeAtLocation(declaration.initializer).getSymbol();
+                const symbol = generator.ts.checker
+                  .getTypeAtLocation(declaration.initializer)
+                  .getSymbol();
                 const valueDeclaration = symbol.declarations[0];
-                const signature = generator.ts.checker.getSignatureFromDeclaration(valueDeclaration);
+                const signature =
+                  generator.ts.checker.getSignatureFromDeclaration(
+                    valueDeclaration
+                  );
                 const tsReturnType = signature.getReturnType();
 
                 if (!declaration.initializer) {
@@ -46,7 +54,9 @@ function adjustDeducedReturnType(typeReference: ts.TypeReferenceNode, generator:
 
                 llvmType = tsReturnType.getLLVMReturnType();
               } else if (ts.isCallExpression(declaration.initializer)) {
-                const type = generator.ts.checker.getTypeAtLocation(declaration.initializer);
+                const type = generator.ts.checker.getTypeAtLocation(
+                  declaration.initializer
+                );
                 llvmType = type.getLLVMType();
               }
             }
@@ -77,7 +87,9 @@ export class TypeAliasHandler extends AbstractNodeHandler {
 
         let declaration: Declaration | undefined;
 
-        const type = this.generator.ts.checker.getTypeFromTypeNode(typeAlias.type);
+        const type = this.generator.ts.checker.getTypeFromTypeNode(
+          typeAlias.type
+        );
 
         if (!type.isSymbolless()) {
           const symbol = type.getSymbol();
@@ -94,12 +106,22 @@ export class TypeAliasHandler extends AbstractNodeHandler {
         if (!llvmType) {
           llvmType = type.getLLVMType();
         }
+        if (!type.isSymbolless()) {
+          this.generator.meta.registerThisData(type.getSymbol(), {
+            declaration,
+            llvmType: llvmType.ensurePointer(),
+            tsType: type,
+          });
+        }
 
-        const scope: Scope = new Scope(name, name, this.generator, false, parentScope, {
-          declaration,
-          llvmType: llvmType.ensurePointer(),
-          tsType: type,
-        });
+        const scope: Scope = new Scope(
+          name,
+          name,
+          this.generator,
+          false,
+          parentScope,
+          type.isSymbolless() ? undefined : type.getSymbol()
+        );
 
         // @todo: this logic is required because of builtins
         parentScope.setOrAssign(name, scope);

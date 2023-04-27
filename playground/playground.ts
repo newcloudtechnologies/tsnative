@@ -1,14 +1,12 @@
-/*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2023
- *
- * You can not use the contents of the file in any way without
- * New Cloud Technologies, Ltd. written permission.
- *
- * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
- * at http://ncloudtech.com/contact.html
- *
- */
+// {
+class Foo {
+  static error: string = "throws from method";
 
-{
-    console.log("I am playground");
+  echo() {
+    Foo.error;
+  }
 }
+
+const foo = new Foo();
+// //   console.assert(foo.echo("") === Foo.error);
+// }
