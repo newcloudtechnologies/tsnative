@@ -113,6 +113,7 @@ void DefaultGC::removeRoot(Object** o)
 void DefaultGC::collect()
 {
     LOG_METHOD_CALL;
+    LOG_GC("Alive objects count before collect " + std::to_string(_heap.size()));
 
     LOG_INFO("Calling mark");
     _marker.mark();
@@ -123,6 +124,7 @@ void DefaultGC::collect()
     LOG_INFO("Calling unmark");
     _marker.unmark();
 
+    LOG_GC("Alive objects count after collect " + std::to_string(_heap.size()));
     LOG_INFO("Finished collect call");
 }
 
@@ -142,7 +144,7 @@ void DefaultGC::sweep()
         }
 
         LOG_ADDRESS("Calling object's dtor ", object);
-        _callbacks.afterDelete(object);
+        _callbacks.deleteObject(object);
 
         it = _heap.erase(it);
     }

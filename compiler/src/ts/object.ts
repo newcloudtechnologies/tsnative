@@ -396,7 +396,7 @@ export class TSObject {
     }
 
     const thisUntyped = this.generator.builder.asVoidStar(thisValue.derefToPtrLevel1());
-    const llvmKey = this.generator.ts.str.createGlobal(key);
+    const llvmKey = this.generator.ts.str.create(key);
 
     const value = this.generator.builder.createSafeCall(this.getFn, [thisUntyped, llvmKey]);
     return value;
@@ -410,7 +410,7 @@ export class TSObject {
     const thisUntyped = this.generator.builder.createBitCast(thisValue.derefToPtrLevel1(), this.llvmType);
     const valueUntyped = this.generator.builder.createBitCast(value.derefToPtrLevel1(), this.llvmType);
 
-    const wrappedKey = this.generator.ts.str.createGlobal(key);
+    const wrappedKey = this.generator.ts.str.create(key);
 
     return this.generator.builder.createSafeCall(this.setFn, [thisUntyped, wrappedKey, valueUntyped]);
   }

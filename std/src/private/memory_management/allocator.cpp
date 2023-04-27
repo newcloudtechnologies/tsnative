@@ -30,7 +30,7 @@ void* Allocator::allocate(std::size_t n)
 void* Allocator::doAllocate(std::size_t n)
 {
     LOG_METHOD_CALL;
-    return malloc(n);
+    return ::operator new(n);
 }
 
 void* Allocator::allocateObject(std::size_t n)
