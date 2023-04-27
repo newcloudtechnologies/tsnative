@@ -9,7 +9,7 @@
  *
  */
 
-import { Environment, HeapVariableDeclaration, IdentifierNotFound, Scope } from "../../scope";
+import { Environment, IdentifierNotFound, Scope } from "../../scope";
 import * as ts from "typescript";
 
 import { AbstractExpressionHandler } from "./expressionhandler";
@@ -72,46 +72,13 @@ export class AccessHandler extends AbstractExpressionHandler {
         return this.generator.builder.createSafeExtractValue(env.typed.getValue(), [index]);
       }
     }
-
-    const maybeNamespaceMember = this.tryHandleNamespaceMemberAccess(expression);
-    if (maybeNamespaceMember) {
-      return maybeNamespaceMember;
-    }
-
+    
     const maybeStaticProperty = this.tryHandleStaticPropertyAccess(expression);
     if (maybeStaticProperty) {
       return maybeStaticProperty;
     }
 
     return this.handlePropertyAccessGEP(expression, env);
-  }
-
-  private tryHandleNamespaceMemberAccess(expression: ts.PropertyAccessExpression) {
-    const left = expression.expression;
-    const propertyName = expression.name.text;
-
-    let scope;
-    let identifier = left.getText();
-
-    try {
-      scope = this.generator.symbolTable.get(identifier);
-    } catch (e) {
-      if (!(e instanceof IdentifierNotFound)) {
-        throw e;
-      }
-    }
-
-    if (scope && scope instanceof Scope) {
-      const value = scope.get(propertyName);
-
-      if (value instanceof LLVMValue) {
-        return value;
-      } else if (value instanceof HeapVariableDeclaration) {
-        return value.allocated;
-      }
-    }
-
-    return;
   }
 
   private tryHandleStaticPropertyAccess(expression: ts.PropertyAccessExpression) {
