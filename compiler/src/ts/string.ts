@@ -225,13 +225,13 @@ export class TSString {
     return this.lengthFn;
   }
 
-  createGlobal(value: string) {
+  create(value: string) {
     const llvmThisType = this.llvmType;
     const constructor = this.getLLVMConstructor();
     const ptr = this.generator.builder.createGlobalStringPtr(value);
-    const allocated = this.generator.gc.allocate(llvmThisType.getPointerElementType());
+    const allocated = this.generator.gc.allocateObject(llvmThisType.getPointerElementType());
     const thisUntyped = this.generator.builder.asVoidStar(allocated);
-    this.generator.builder.createSafeCall(constructor, [thisUntyped, ptr]);
+    this.generator.builder.createSafeCall(constructor, [thisUntyped, ptr]); // calling String ctor from char*
     return allocated;
   }
 

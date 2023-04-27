@@ -53,9 +53,10 @@ void* MemoryManager::allocateMemoryForObject(std::size_t size)
 
     if (needToFreeMemory())
     {
-        LOG_INFO("Need to free memory. Memory threshold " + std::to_string(_memoryThreshold) +
-                 ", currently memory consumption " +
-                 std::to_string(_memoryDiagnosticPimpl->getCurrentAllocatedBytes()) + " bytes");
+        if (!_memoryCleaner->isCollectScheduled())
+            LOG_INFO("Need to free memory. Memory threshold " + std::to_string(_memoryThreshold) +
+                     ", currently memory consumption " +
+                     std::to_string(_memoryDiagnosticPimpl->getCurrentAllocatedBytes()) + " bytes");
 
         _memoryCleaner->asyncClear([this]() { onAfterMemoryClean(); });
     }
