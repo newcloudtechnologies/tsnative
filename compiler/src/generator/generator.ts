@@ -25,6 +25,7 @@ import { Builder } from "../builder/builder";
 import { LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
 import { DebugInfo } from "./debug_info";
+import { Hoisting } from "../hoisting";
 
 const stdlib = require("std/constants");
 
@@ -198,8 +199,8 @@ export class LLVMGenerator {
 
     this.symbolTable.addScope(sourceFileScope);
 
-    this.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(this.currentSourceFile, this);
-    this.hoistFunctionDeclarations();
+    Hoisting.hoistVariablesInScope(this.currentSourceFile, this.symbolTable.currentScope, this);
+    this.initializeHoistedFunctionDeclarations();
 
     this.currentSourceFile.forEachChild((node) => {
       if (!this.shouldHandleNodeInFunctionHoistingContext(node)) {
@@ -208,7 +209,7 @@ export class LLVMGenerator {
     });
   }
 
-  private hoistFunctionDeclarations() {
+  private initializeHoistedFunctionDeclarations() {
     this.currentSourceFile.forEachChild((node) => {
       if (this.shouldHandleNodeInFunctionHoistingContext(node)) {
         this.handleNode(node, this.symbolTable.currentScope)

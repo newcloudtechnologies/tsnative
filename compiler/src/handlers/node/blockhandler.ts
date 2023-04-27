@@ -13,6 +13,7 @@ import * as ts from "typescript";
 import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { LLVMGenerator } from "../../generator";
+import { Hoisting } from "../../hoisting";
 
 export class BlockHandler extends AbstractNodeHandler {
   private readonly prepare?: () => void;
@@ -32,7 +33,7 @@ export class BlockHandler extends AbstractNodeHandler {
             this.prepare();
           }
 
-          scope.initializeVariablesAndFunctionDeclarations(block, this.generator);
+          Hoisting.hoistVariablesInScope(block, scope, this.generator);
           this.hoistFunctionDeclarations(block, scope, env);
 
           this.handleBlock(block, scope, env);

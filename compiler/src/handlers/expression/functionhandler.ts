@@ -35,6 +35,7 @@ import { getInvocableBody, needUnwind } from "../../builder/builder";
 import { TSSymbol } from "../../ts/symbol";
 import { DummyArgumentsCreator } from "../dummyargumentscreator";
 import { VariableFinder } from "../variablefinder"
+import { Hoisting } from "../../hoisting";
 
 export class FunctionHandler extends AbstractExpressionHandler {
   private readonly sysVFunctionHandler: SysVFunctionHandler;
@@ -469,7 +470,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const expressionDeclaration = Declaration.create(expression, this.generator);
     const scope = this.generator.symbolTable.currentScope;
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
+    Hoisting.hoistVariablesInScope(expression.body, this.generator.symbolTable.currentScope, this.generator);
 
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
       signature,
@@ -1248,7 +1249,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
       const body = matchingConstructorDeclaration.body || baseClassConstructorDeclaration?.body;
 
       if (body) {
-        scope.initializeVariablesAndFunctionDeclarations(body, this.generator);
+        Hoisting.hoistVariablesInScope(body, scope, this.generator);
         environmentVariables.push(
           ...ConciseBody.create(body, this.generator).getEnvironmentVariables(signature, scope, outerEnv)
         );
@@ -1514,7 +1515,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const scope = this.generator.symbolTable.currentScope;
     const dummyArguments = this.dummyArgsCreator.create(llvmArgumentTypes);
 
-    this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(expression.body, this.generator);
+    Hoisting.hoistVariablesInScope(expression.body, this.generator.symbolTable.currentScope, this.generator);
 
     // @todo: 'this' is bindable by 'bind', 'call', 'apply' so it should be stored somewhere
     const environmentVariables = ConciseBody.create(expression.body, this.generator).getEnvironmentVariables(
@@ -1591,7 +1592,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
                 dbg.emitLocation(declaration?.body);
               }
 
-              bodyScope.initializeVariablesAndFunctionDeclarations(declaration.body!, generator);
+              Hoisting.hoistVariablesInScope(declaration.body!, bodyScope, generator);
 
               if (ts.isBlock(declaration.body!) && declaration.body!.statements.length > 0) {
                 declaration.body.forEachChild((node) => {
@@ -1847,7 +1848,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
           this.generator
         );
 
-        this.generator.symbolTable.currentScope.initializeVariablesAndFunctionDeclarations(method.body, this.generator);
+        Hoisting.hoistVariablesInScope(method.body, this.generator.symbolTable.currentScope, this.generator);
 
         const environmentVariables = ConciseBody.create(method.body, this.generator).getEnvironmentVariables(
           signature,
