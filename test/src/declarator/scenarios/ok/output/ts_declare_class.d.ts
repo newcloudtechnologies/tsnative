@@ -1,5 +1,5 @@
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
@@ -9,7 +9,7 @@ declare class MyOuterClass {
 }
 
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
@@ -20,7 +20,7 @@ export declare class ExportAndDeclareClass {
 
 declare namespace exts {
     //@ts-ignore
-    @Size(3)
+    @Size(2)
     //@ts-ignore
     @VTableSize(9)
     //@ts-ignore

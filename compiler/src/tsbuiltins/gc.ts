@@ -72,14 +72,14 @@ export class GC {
         if (!this.generator.enableOptimizations) {
             const allocatedObj = this.generator.ts.obj.create();
 
-            const variableNameObj = this.generator.ts.str.createGlobal(associatedName !== undefined ? associatedName : "__no_name__");
+            const variableNameObj = this.generator.ts.str.create(associatedName !== undefined ? associatedName : "__no_name__");
             this.generator.ts.obj.set(allocatedObj, "__variable_name__", variableNameObj);
 
             let scopeBaseName = "__no_name__";
             if (scopeName) {
                 scopeBaseName = path.basename(scopeName);
             }
-            const scopeNameObj = this.generator.ts.str.createGlobal(scopeBaseName);
+            const scopeNameObj = this.generator.ts.str.create(scopeBaseName);
             this.generator.ts.obj.set(allocatedObj, "__scope_name__", scopeNameObj);
 
             i8PtrAssociatedVarName = this.generator.builder.createBitCast(allocatedObj, i8PtrType);

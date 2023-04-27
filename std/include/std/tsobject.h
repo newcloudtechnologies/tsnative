@@ -13,23 +13,19 @@
 
 #include <TS.h>
 
-#include <ostream>
 #include <string>
 #include <vector>
+
+#include "std/utils/assert_cast.h"
+#include "std/utils/attributes.h"
+
+class ObjectPrivate;
 
 class Boolean;
 class String;
 
 template <typename T>
 class Array;
-
-template <typename K, typename V>
-class Map;
-
-template <typename K, typename V>
-class MapPrivate;
-
-class ToStringConverter;
 
 enum class TSTypeID
 {
@@ -55,7 +51,6 @@ class TS_DECLARE Object
 {
 public:
     TS_METHOD TS_SIGNATURE("constructor(initializer?: any)") Object();
-    Object(Map<String*, Object*>* props);
     Object(TSTypeID typeId);
 
     virtual ~Object();
@@ -78,37 +73,37 @@ public:
     bool isLazyClosure() const;
 
 protected:
-    bool has(String* key) const;
     virtual Array<String*>* getKeysArray() const;
-    TS_METHOD Boolean* operatorIn(String* key) const;
-
-private:
     const Object* getMostDerived() const;
 
 public:
+    TS_METHOD static Array<String*>* keys(Object* entity);
+
     TS_METHOD Boolean* isUndefined_CompilerAPI() const;
 
     TS_METHOD TS_SIGNATURE("get(key: string): Object") Object* get(String* key) const;
     TS_METHOD TS_SIGNATURE("set(key: string, value: Object): void") void set(String* key, Object* value);
 
+    TS_METHOD Boolean* operatorIn(String* key) const;
+    bool operatorIn(const std::string& key) const;
+
+    bool has(String* key) const;
+    bool has(const std::string& key) const;
+
     Object* get(const std::string& key) const;
-    void set(const std::string& key, void* value);
+    void set(const std::string& key, Object* value);
 
     template <typename T>
-    T get(const std::string& key) const
+    T INLINE_ATTR get(const std::string& key) const
     {
         static_assert(std::is_pointer<T>::value, "Expected T to be a pointer type");
-        return static_cast<T>(get(key));
+        return assertCast<T>(get(key));
     }
 
     // virtual because compiler tries to find it using vtable
     TS_METHOD virtual String* toString() const;
-
     TS_METHOD virtual Boolean* toBool() const;
-
     TS_METHOD virtual Boolean* equals(Object* other) const;
-
-    TS_METHOD static Array<String*>* keys(Object* entity);
 
     TS_METHOD void copyPropsTo(Object* target);
 
@@ -144,11 +139,6 @@ public:
 
     std::vector<String*> getKeys() const;
 
-private:
-    MapPrivate<String*, Object*>* _props = nullptr;
-
-    TSTypeID _typeid = TSTypeID::Object;
-
-private:
-    friend class ToStringConverter;
+protected:
+    ObjectPrivate* _d;
 };

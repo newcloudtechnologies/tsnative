@@ -11,10 +11,10 @@
 
 #include <unordered_set>
 
+#include "std/private/tsobject_p.h"
 #include "std/tsobject.h"
 
 #include "std/private/logger.h"
-#include "std/private/tsmap_p.h"
 
 #include "std/runtime.h"
 #include "std/tsarray.h"
@@ -28,31 +28,21 @@ static constexpr auto superKeyCpp = "super";
 static constexpr auto parentKeyCpp = "parent";
 
 Object::Object()
-#ifdef USE_MAP_STD_BACKEND
-    : _props(new MapStdPrivate<String*, Object*>())
-#endif
+    : _d(new ObjectPrivate)
 {
     LOG_ADDRESS("Calling default object ctor ", this);
 }
 
-Object::Object(Map<String*, Object*>* props)
-    : _props(props->_d)
-{
-    LOG_ADDRESS("Calling object ctor with props ", this);
-}
-
 Object::Object(TSTypeID typeId)
-    : Object()
+    : _d(new ObjectPrivate(typeId))
 {
-    _typeid = typeId;
-
     LOG_ADDRESS("Calling object ctor with TypeID ", this);
 }
 
 Object::~Object()
 {
     LOG_ADDRESS("Calling object dtor ", this);
-    delete _props;
+    delete _d;
 }
 
 Boolean* Object::isUndefined_CompilerAPI() const
@@ -62,138 +52,112 @@ Boolean* Object::isUndefined_CompilerAPI() const
 
 bool Object::isObject() const
 {
-    return _typeid == TSTypeID::Object;
+    return _d->getTSTypeID() == TSTypeID::Object;
 }
 
 bool Object::isUnion() const
 {
-    return _typeid == TSTypeID::Union;
+    return _d->getTSTypeID() == TSTypeID::Union;
 }
 
 bool Object::isBoolean() const
 {
-    return _typeid == TSTypeID::Boolean;
+    return _d->getTSTypeID() == TSTypeID::Boolean;
 }
 
 bool Object::isNumber() const
 {
-    return _typeid == TSTypeID::Number;
+    return _d->getTSTypeID() == TSTypeID::Number;
 }
 
 bool Object::isString() const
 {
-    return _typeid == TSTypeID::String;
+    return _d->getTSTypeID() == TSTypeID::String;
 }
 
 bool Object::isUndefined() const
 {
-    return _typeid == TSTypeID::Undefined;
+    return _d->getTSTypeID() == TSTypeID::Undefined;
 }
 
 bool Object::isNull() const
 {
-    return _typeid == TSTypeID::Null;
+    return _d->getTSTypeID() == TSTypeID::Null;
 }
 
 bool Object::isArray() const
 {
-    return _typeid == TSTypeID::Array;
+    return _d->getTSTypeID() == TSTypeID::Array;
 }
 
 bool Object::isTuple() const
 {
-    return _typeid == TSTypeID::Tuple;
+    return _d->getTSTypeID() == TSTypeID::Tuple;
 }
 
 bool Object::isSet() const
 {
-    return _typeid == TSTypeID::Set;
+    return _d->getTSTypeID() == TSTypeID::Set;
 }
 
 bool Object::isTimer() const
 {
-    return _typeid == TSTypeID::Timer;
+    return _d->getTSTypeID() == TSTypeID::Timer;
 }
 
 bool Object::isMap() const
 {
-    return _typeid == TSTypeID::Map;
+    return _d->getTSTypeID() == TSTypeID::Map;
 }
 
 bool Object::isClosure() const
 {
-    return _typeid == TSTypeID::Closure;
+    return _d->getTSTypeID() == TSTypeID::Closure;
 }
 
 bool Object::isDate() const
 {
-    return _typeid == TSTypeID::Date;
+    return _d->getTSTypeID() == TSTypeID::Date;
 }
 
 bool Object::isPromise() const
 {
-    return _typeid == TSTypeID::Promise;
+    return _d->getTSTypeID() == TSTypeID::Promise;
 }
 
 bool Object::isLazyClosure() const
 {
-    return _typeid == TSTypeID::LazyClosure;
+    return _d->getTSTypeID() == TSTypeID::LazyClosure;
 }
 
 bool Object::has(String* key) const
 {
-    return _props->has(key);
+    return _d->has(key);
+}
+
+bool Object::has(const std::string& key) const
+{
+    return _d->has(key);
 }
 
 std::vector<String*> Object::getKeys() const
 {
-    std::vector<String*> uniqueKeys;
-
-    String superKey(superKeyCpp);
-    if (has(&superKey))
-    {
-        auto* superObject = get(&superKey);
-        std::vector<String*> superUniqueKeys = superObject->getKeys();
-        uniqueKeys.insert(uniqueKeys.end(),
-                          std::make_move_iterator(superUniqueKeys.begin()),
-                          std::make_move_iterator(superUniqueKeys.end()));
-    }
-
-    // To process properties shadowing we need to search for super keys those are shadowed
-    std::unordered_set<String*> superKeys(uniqueKeys.begin(), uniqueKeys.end());
-
-    const std::vector<String*>& keys = _props->orderedKeys();
-
-    for (String* key : keys)
-    {
-        const std::string& keyCppStr = key->cpp_str();
-        if (keyCppStr == superKeyCpp || keyCppStr == parentKeyCpp || superKeys.count(key))
-        {
-            continue;
-        }
-
-        uniqueKeys.push_back(key);
-    }
-
-    return uniqueKeys;
+    return _d->getKeys();
 }
 
 Boolean* Object::operatorIn(String* key) const
 {
-    String superKey(superKeyCpp);
+    return new Boolean(_d->operatorIn(key));
+}
 
-    // Local lookup O(1)
-    if (has(key))
-    {
-        return new Boolean(true);
-    }
-    else if (has(&superKey))
-    {
-        // Super lookup (linear)
-        auto* superObject = get(&superKey);
-        return superObject->operatorIn(key);
-    }
-    return new Boolean(false);
+bool Object::operatorIn(const std::string& key) const
+{
+    return _d->operatorIn(key);
+}
+
+Array<String*>* Object::getKeysArray() const
+{
+    return Array<String*>::fromStdVector(getKeys());
 }
 
 const Object* Object::getMostDerived() const
@@ -209,68 +173,26 @@ const Object* Object::getMostDerived() const
     return result;
 }
 
-Array<String*>* Object::getKeysArray() const
-{
-    return Array<String*>::fromStdVector(getKeys());
-}
-
 Object* Object::get(String* key) const
 {
     LOG_INFO("Calling object::get for key " + key->cpp_str());
 
-    if (has(key))
-    {
-        return _props->get(key);
-    }
-
-    String superKey(superKeyCpp);
-    if (has(&superKey))
-    {
-        auto superValue = get(&superKey);
-        while (superValue)
-        {
-            if (superValue->has(key))
-            {
-                return superValue->get(key);
-            }
-
-            if (superValue->has(&superKey))
-            {
-                superValue = superValue->get(&superKey);
-            }
-            else
-            {
-                superValue = nullptr;
-            }
-        }
-    }
-
-    return Undefined::instance();
+    return _d->get(key);
 }
 
 void Object::set(String* key, Object* value)
 {
-    _props->set(key, value);
+    _d->set(key, value);
 }
 
 Object* Object::get(const std::string& key) const
 {
-    // @todo: this method should behave as Object::get(String* key)
-    auto keyWrapped = new String(key);
-
-    if (_props->has(keyWrapped))
-    {
-        return _props->get(keyWrapped);
-    }
-
-    return Undefined::instance();
+    return _d->get(key);
 }
 
-void Object::set(const std::string& key, void* value)
+void Object::set(const std::string& key, Object* value)
 {
-    auto keyWrapped = new String(key);
-
-    _props->set(keyWrapped, static_cast<Object*>(value));
+    _d->set(key, value);
 }
 
 String* Object::toString() const
@@ -285,8 +207,7 @@ Boolean* Object::toBool() const
 
 Boolean* Object::equals(Object* other) const
 {
-    // Consider Object as properties map wrapper
-    return new Boolean(other->_props == _props);
+    return new Boolean(_d == other->_d);
 }
 
 Array<String*>* Object::keys(Object* entity)
@@ -301,7 +222,7 @@ void Object::copyPropsTo(Object* target)
     String superKey(superKeyCpp);
     String parentKey(parentKeyCpp);
 
-    mostDerived->_props->forEachEntry(
+    mostDerived->_d->forEachProperty(
         [mostDerived, &target, &superKey, &parentKey](const auto& pair)
         {
             const auto& key = pair.first;
@@ -318,9 +239,8 @@ void Object::copyPropsTo(Object* target)
 std::vector<Object*> Object::getChildObjects() const
 {
     std::vector<Object*> result;
-    result.reserve(_props->size());
 
-    const auto callable = [&result](auto& entry)
+    const auto callable = [&result](const std::pair<String*, Object*>& entry)
     {
         auto* key = entry.first;
         auto* value = entry.second;
@@ -335,7 +255,7 @@ std::vector<Object*> Object::getChildObjects() const
         }
     };
 
-    _props->forEachEntry(callable);
+    _d->forEachProperty(callable);
 
     return result;
 }
@@ -365,6 +285,3 @@ void Object::operator delete(void* ptr)
     ::operator delete(ptr);
 }
 #endif
-
-class String;
-template class Map<String*, Object*>;

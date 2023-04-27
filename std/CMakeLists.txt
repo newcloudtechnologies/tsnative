@@ -115,6 +115,7 @@ set(SOURCES
     src/private/uv_timer_creator.cpp
     src/private/algorithms.cpp
     src/private/args_to_array.cpp
+    src/private/tsobject_p.cpp
 )
     
 
@@ -235,7 +236,8 @@ if (BUILD_TEST)
                      test/infrastructure/object_wrappers.h
                      test/infrastructure/object_factory.h
                      test/mocks/mock_inline_executor.h
-                     test/mocks/stub_event_loop.h)
+                     test/mocks/stub_event_loop.h
+    )
 
     set(TEST_SOURCES test/infrastructure/equality_checkers.cpp
                      test/infrastructure/test_allocator.cpp
@@ -250,6 +252,7 @@ if (BUILD_TEST)
                      test/primitive_types/string/replace_tests.cpp
                      test/primitive_types/number/unary.cpp
                      test/primitive_types/to_string_test.cpp
+                     test/union/get_value_test.cpp
                      test/promise/expected_tests.cpp
                      test/promise/general_finite_state_machine_tests.cpp
                      test/infrastructure/promise_wrapper.cpp
@@ -258,9 +261,21 @@ if (BUILD_TEST)
                      test/array/splice_tests.cpp
                      test/array/join.cpp
                      test/array/args_to_array_tests.cpp
+                     test/object/object_get.cpp
+                     test/object/object_get_child_objects.cpp
+                     test/object/object_copy_props.cpp
+                     test/object/object_get_most_derived.cpp
+                     test/object/objectprivate/cases/object_private_empty.cpp
+                     test/object/objectprivate/cases/object_private_empty_with_closure_typeid.cpp
+                     test/object/objectprivate/cases/object_private_props_shadowing.cpp
+                     test/object/objectprivate/cases/object_private_with_inheritance_chain_all_empty.cpp
+                     test/object/objectprivate/cases/object_private_with_inheritance_chain_non_empty.cpp
+                     test/object/objectprivate/cases/object_private_with_inheritance_chain_non_unique_props.cpp
+                     test/object/objectprivate/cases/object_private_with_single_property.cpp
                      test/mocks/stub_event_loop.cpp
                      test/utils/to_string_converter_tests.cpp
                      test/utils/make_closure_test.cpp
+                     test/utils/assert_cast_test.cpp
                      )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})

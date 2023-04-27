@@ -29,7 +29,7 @@ class DefaultGC : public IGCImpl
 public:
     struct Callbacks final
     {
-        std::function<void(void*)> afterDelete = [](void*) {};
+        std::function<void(void*)> deleteObject = [](void*) {};
     };
 
     DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks);

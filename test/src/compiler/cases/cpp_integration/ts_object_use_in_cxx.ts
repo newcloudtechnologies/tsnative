@@ -89,7 +89,7 @@ console.log(str);
 
 console.assert(str === "[Function]", "GC check saved object - use saved closure");
 
-gcTest(testSaveClassClosure, "test save class closure", 3);
+gcTest(testSaveClassClosure, "test save class closure", 5);
 
 user.callClassClosure();
 
