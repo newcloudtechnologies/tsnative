@@ -1,5 +1,5 @@
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(11)
 //@ts-ignore

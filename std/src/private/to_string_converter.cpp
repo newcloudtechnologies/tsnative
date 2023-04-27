@@ -140,7 +140,7 @@ std::string ToStringConverter::toString(const Object* obj, Visited& visited)
     }
 
     String parentKey("parent");
-    const auto* parent = obj->_props->get(&parentKey);
+    const auto* parent = obj->get(&parentKey);
     if (parent && parent != Undefined::instance())
     {
         auto data = formatParent(ToStringConverter::convert(parent));

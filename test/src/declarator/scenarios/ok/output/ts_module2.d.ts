@@ -2,7 +2,7 @@ declare module "global" {
 
     export namespace stuffs1 {
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         //@ts-ignore
         @VTableSize(9)
         //@ts-ignore
@@ -15,7 +15,7 @@ declare module "global" {
 
     export namespace stuffs2 {
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         //@ts-ignore
         @VTableSize(9)
         //@ts-ignore

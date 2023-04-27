@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../../infrastructure/object_wrappers.h"
+#include "../infrastructure/object_wrappers.h"
 
 class UnionGetValueTest : public test::GlobalTestAllocatorFixture
 {

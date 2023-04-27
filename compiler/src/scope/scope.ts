@@ -664,7 +664,7 @@ export class Scope {
 
       const llvmType = tsType.getLLVMType();
       const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
-      const inplaceAllocatedPtr = generator.ts.obj.createInplace(allocated, undefined);
+      const inplaceAllocatedPtr = generator.ts.obj.createInplace(allocated);
 
       const inplaceAllocatedPtrPtr = generator.gc.allocate(inplaceAllocatedPtr.type);
       generator.builder.createSafeStore(inplaceAllocatedPtr, inplaceAllocatedPtrPtr);

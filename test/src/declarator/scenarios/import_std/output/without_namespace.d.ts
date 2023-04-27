@@ -3,7 +3,7 @@ import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/dec
 import { TSClosure } from "tsnative/std/definitions/tsclosure"
 
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore

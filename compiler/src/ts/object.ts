@@ -26,7 +26,6 @@ export class TSObject {
   private readonly declaration: Declaration;
 
   private ctorFn: LLVMValue | undefined;
-  private defaultCtorFn: LLVMValue | undefined;
   private getFn: LLVMValue | undefined;
   private setFn: LLVMValue | undefined;
   private keysFn: LLVMValue | undefined;
@@ -83,27 +82,9 @@ export class TSObject {
     const llvmReturnType = LLVMType.getVoidType(this.generator);
     const llvmArgumentTypes = [LLVMType.getInt8Type(this.generator).getPointer()];
 
-    const { fn: defaultCtor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, defaultCtorQualifiedName);
+    const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, defaultCtorQualifiedName);
 
-    const { qualifiedName: constructorQualifiedName, isExternalSymbol: isConstructorExternalSymbol } = FunctionMangler.mangle(
-      ctorDeclaration,
-      undefined,
-      this.declaration.type,
-      [],
-      this.generator,
-      undefined,
-      ["Map<String*, Object*>*"]
-    );
-
-    if (!isConstructorExternalSymbol) {
-      throw new Error("Unable to find constructor CXX for 'Object'");
-    }
-
-    llvmArgumentTypes.push(LLVMType.getInt8Type(this.generator).getPointer());
-
-    const { fn: ctor } = this.generator.llvm.function.create(llvmReturnType, llvmArgumentTypes, constructorQualifiedName);
-
-    return { ctor, defaultCtor };
+    return ctor;
   }
 
   private initSetFn() {
@@ -353,15 +334,9 @@ export class TSObject {
     return this.generator.builder.createLoad(toStringFn);
   }
 
-  private getCtorFn(isDefault: boolean) {
-    if (!this.ctorFn || !this.defaultCtorFn) {
-      const { ctor, defaultCtor } = this.initCtors();
-      this.ctorFn = ctor;
-      this.defaultCtorFn = defaultCtor;
-    }
-
-    if (isDefault) {
-      return this.defaultCtorFn;
+  private getCtorFn() {
+    if (!this.ctorFn) {
+      this.ctorFn = this.initCtors();
     }
 
     return this.ctorFn;
@@ -385,24 +360,18 @@ export class TSObject {
     this.generator.builder.createSafeCall(this.copyPropsFn, [castedSource, castedTarget]);
   }
 
-  create(props?: LLVMValue) {
+  create() {
     let allocated = this.generator.gc.allocateObject(this.llvmType.getPointerElementType());
-    allocated = this.createInplace(allocated, props);
+    allocated = this.createInplace(allocated);
     return allocated;
   }
 
-  createInplace(memory: LLVMValue, props?: LLVMValue) {
+  createInplace(memory: LLVMValue) {
     const thisUntyped = this.generator.builder.asVoidStar(memory);
 
-    const args = [thisUntyped];
-    if (props) {
-      const propsUntyped = this.generator.builder.asVoidStar(props);
-      args.push(propsUntyped);
-    }
+    const ctor = this.getCtorFn();
 
-    const ctor = this.getCtorFn(!props);
-
-    this.generator.builder.createSafeCall(ctor, args);
+    this.generator.builder.createSafeCall(ctor, [thisUntyped]);
 
     return memory;
   }

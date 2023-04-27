@@ -44,7 +44,30 @@ public:
     }
 };
 
-using Object = GloballyAllocatedObjectWrapper<::Object>;
+class ObjectWithObjectPrivateConstructor : public ::Object
+{
+public:
+    ObjectWithObjectPrivateConstructor(TSTypeID id)
+        : ::Object(id)
+    {
+    }
+    ObjectWithObjectPrivateConstructor()
+        : ::Object()
+    {
+    }
+    ObjectWithObjectPrivateConstructor(ObjectPrivate* d)
+        : ::Object()
+    {
+        _d = d;
+    }
+
+    const ::Object* getMostDerived() const
+    {
+        return ::Object::getMostDerived();
+    }
+};
+
+using Object = GloballyAllocatedObjectWrapper<ObjectWithObjectPrivateConstructor>;
 using Boolean = GloballyAllocatedObjectWrapper<::Boolean>;
 using Null = GloballyAllocatedObjectWrapper<::Null>;
 using Undefined = GloballyAllocatedObjectWrapper<::Undefined>;
