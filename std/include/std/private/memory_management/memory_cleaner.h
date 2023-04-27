@@ -24,6 +24,8 @@ public:
 
     void asyncClear(const std::function<void()> afterClear);
 
+    bool isCollectScheduled() const;
+
 private:
     IEventLoop& _eventLoop;
     IGCImpl& _gc;

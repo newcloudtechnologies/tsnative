@@ -65,7 +65,7 @@ public:
     void SetUp() override
     {
         DefaultGC::Callbacks gcCallbacks;
-        gcCallbacks.afterDelete = [this](void* o)
+        gcCallbacks.deleteObject = [this](void* o)
         {
             auto it = std::find(_actualAliveObjects.begin(), _actualAliveObjects.end(), static_cast<Object*>(o));
             ASSERT_NE(_actualAliveObjects.end(), it);

@@ -2,7 +2,7 @@ declare module "global" {
 
     export namespace snippets {
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         //@ts-ignore
         @VTableSize(9)
         //@ts-ignore
@@ -12,7 +12,7 @@ declare module "global" {
         }
 
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         //@ts-ignore
         @VTableSize(9)
         //@ts-ignore

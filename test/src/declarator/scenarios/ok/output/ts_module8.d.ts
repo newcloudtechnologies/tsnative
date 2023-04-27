@@ -2,7 +2,7 @@ declare module "poc" {
 
     export namespace exts {
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         //@ts-ignore
         @VTableSize(9)
         //@ts-ignore

@@ -24,12 +24,13 @@ MemoryCleaner::MemoryCleaner(IEventLoop& loop, IGCImpl& gc, const IGCValidator* 
 {
 }
 
+bool MemoryCleaner::isCollectScheduled() const
+{
+    return _collectScheduled;
+}
+
 void MemoryCleaner::asyncClear(const std::function<void()> afterClear)
 {
-    // @Note temporally disable async gc collect
-    // Waiting until the task https://jira.ncloudtech.ru:8090/browse/TSN-583 would be finished
-    return;
-
     if (_collectScheduled)
     {
         LOG_INFO("Garbage collection is already scheduled");
@@ -44,10 +45,12 @@ void MemoryCleaner::asyncClear(const std::function<void()> afterClear)
         [this, fn = afterClear]()
         {
             _gc.collect();
+
             if (_gcValidator)
             {
                 _gcValidator->validate();
             }
+
             _collectScheduled = false;
             fn();
         });

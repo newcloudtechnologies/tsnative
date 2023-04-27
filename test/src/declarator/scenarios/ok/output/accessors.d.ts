@@ -1,5 +1,5 @@
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore
@@ -13,7 +13,7 @@ export class Collection {
 }
 
 //@ts-ignore
-@Size(3)
+@Size(2)
 //@ts-ignore
 @VTableSize(9)
 //@ts-ignore

@@ -23,7 +23,7 @@ std::unique_ptr<MemoryManager> createMemoryManager(TimerStorage& storage, IEvent
     auto memStorage = std::make_unique<MemoryDiagnosticsStorage>();
 
     DefaultGC::Callbacks gcCallbacks;
-    gcCallbacks.afterDelete = [alloc = allocator.get(), storage = memStorage.get()](void* o)
+    gcCallbacks.deleteObject = [alloc = allocator.get(), storage = memStorage.get()](void* o)
     {
         storage->onDeleted(o);
         alloc->deallocateObject(Object::asObjectPtr(o));

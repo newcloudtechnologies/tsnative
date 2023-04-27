@@ -2,12 +2,12 @@ declare module "global" {
 
     export namespace snippets {
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         export class IteratorResult<T> {
         }
 
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         export class Iterator<T> {
             //@ts-ignore
             @VTableIndex(7)
@@ -15,7 +15,7 @@ declare module "global" {
         }
 
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         export class Iterable<T> {
             //@ts-ignore
             @VTableIndex(7)
@@ -23,7 +23,7 @@ declare module "global" {
         }
 
         //@ts-ignore
-        @Size(3)
+        @Size(2)
         export class Entity<T> extends Iterable<T> {
             constructor();
 
