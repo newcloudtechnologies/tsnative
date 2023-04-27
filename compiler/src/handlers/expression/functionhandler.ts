@@ -22,7 +22,7 @@ import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { AbstractExpressionHandler } from "./expressionhandler";
 import { SysVFunctionHandler } from "./functionhandler_sysv";
-import { last } from "lodash";
+import { add, last } from "lodash";
 import { TSType } from "../../ts/type";
 import { LLVMConstantInt, LLVMGlobalVariable, LLVMValue } from "../../llvm/value";
 import { LLVMArrayType, LLVMType } from "../../llvm/type";
@@ -337,12 +337,12 @@ export class FunctionHandler extends AbstractExpressionHandler {
     const { isExternalSymbol } = manglingResult;
     let { qualifiedName } = manglingResult;
 
-    const parentScope = valueDeclaration.getScope(thisType);
-    if (!parentScope.symbol) {
-      throw new Error(
-        `No symbol stored for class of type '${thisType.toString()}'`
-      );
-    }
+    // const parentScope = valueDeclaration.getScope(thisType);
+    // if (!parentScope.symbol) {
+    //   throw new Error(
+    //     `No symbol stored for class of type '${thisType.toString()}'`
+    //   );
+    // }
 
     const currentScope = this.generator.symbolTable.currentScope;
 
@@ -432,7 +432,7 @@ export class FunctionHandler extends AbstractExpressionHandler {
     );
     this.handleConstructor(expression, valueDeclaration, constructor, currentScope, env);
 
-    setLLVMFunctionScope(constructor, parentScope, this.generator, expression);
+    setLLVMFunctionScope(constructor, currentScope, this.generator, expression);
 
     this.invoke(expression, constructorDeclaration.body, constructor, [env.untyped]);
 
@@ -1181,7 +1181,9 @@ export class FunctionHandler extends AbstractExpressionHandler {
     }
 
     if ((!valueDeclaration.isAmbient() && valueDeclaration.typeParameters) || !thisType.isDeclared()) {
-      addClassScope(expression, this.generator.symbolTable.globalScope, this.generator);
+      const added = addClassScope(expression, this.generator.symbolTable.globalScope, this.generator);
+
+      console.log("......", expression.getText(), "WAS ADDED??", added.message)
     }
 
     const argumentTypes = expression.arguments?.map((arg) => this.generator.ts.checker.getTypeAtLocation(arg)) || [];
@@ -1211,6 +1213,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     const { isExternalSymbol } = manglingResult;
     const { qualifiedName } = manglingResult;
+
+    console.log("&&&", expression.getText(), qualifiedName)
 
     if (isExternalSymbol) {
       return this.sysVFunctionHandler.handleNewExpression(expression, qualifiedName, outerEnv);

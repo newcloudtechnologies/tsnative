@@ -152,9 +152,14 @@ export class MetaInfoStorage {
   }
 
   registerThisData(symbol: TSSymbol, data: ThisData) {
+    console.log("^^^^^^^^^^^^^^^^^^^^", symbol.unwrapped.toString());
     this.thisData.storage.set(symbol.unwrapped, data);
-    // if (symbol.name === "Foo") 
-    //   console.trace("SSSSETTTT ----", symbol.name, Boolean(data.staticProperties))
+    if (symbol.name === "B") 
+      console.trace("SSSSETTTT ----", symbol.name, data.staticProperties ? Array.from(data.staticProperties.keys()) : "nope")
+  }
+
+  isThisDataRegistered(symbol: TSSymbol) {
+    return this.thisData.storage.has(symbol.unwrapped);
   }
 
   getThisData(symbol: TSSymbol): ThisData {
