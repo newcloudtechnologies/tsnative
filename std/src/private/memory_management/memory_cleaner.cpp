@@ -50,6 +50,7 @@ void MemoryCleaner::asyncClear(const std::function<void()> afterClear)
             {
                 _gcValidator->validate();
             }
+
             _collectScheduled = false;
             fn();
         });
