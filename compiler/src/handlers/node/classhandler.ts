@@ -14,6 +14,7 @@ import { AbstractNodeHandler } from "./nodehandler";
 import { Scope, Environment } from "../../scope";
 import { LLVMValue } from "../../llvm/value";
 import { Declaration } from "../../ts/declaration";
+import { LLVMGenerator, ThisData } from "../../generator";
 
 export class ClassHandler extends AbstractNodeHandler {
   handle(node: ts.Node, parentScope: Scope, env?: Environment): boolean {
@@ -29,13 +30,13 @@ export class ClassHandler extends AbstractNodeHandler {
     return false;
   }
 
-  private getStaticPropertiesFromDeclaration(declaration: Declaration, parentScope: Scope) {
+  static getStaticPropertiesFromDeclaration(declaration: Declaration, parentScope: Scope, generator: LLVMGenerator) {
     const staticProperties = new Map<string, LLVMValue>();
 
     if (declaration.heritageClauses) {
       for (const clause of declaration.heritageClauses) {
         for (const type of clause.types) {
-          const symbol = this.generator.ts.checker.getSymbolAtLocation(type.expression);
+          const symbol = generator.ts.checker.getSymbolAtLocation(type.expression);
           const baseClassDeclaration = symbol.declarations[0];
 
           const baseClassThisType = baseClassDeclaration.type;
@@ -43,11 +44,29 @@ export class ClassHandler extends AbstractNodeHandler {
 
           const namespace = baseClassDeclaration.getNamespace();
           const qualifiedName = namespace.concat(mangledBaseClassTypename).join(".");
-          const baseClassScope = parentScope.get(qualifiedName) as Scope;
+          const baseClassScope = parentScope.get(qualifiedName);
 
-          baseClassScope?.thisData?.staticProperties?.forEach((value, key) => {
+          if (!baseClassScope) {
+            continue;
+            // throw new Error(`Could not find Scope for class '${qualifiedName}'`);
+          }
+
+          if (!(baseClassScope instanceof Scope)) {
+            throw new Error(`Expecting Scope for class '${qualifiedName}'`);
+          }
+
+          if (!baseClassScope.symbol) {
+            throw new Error(`No symbol stored for class '${qualifiedName}'`);
+          }
+
+          const thisData: ThisData = generator.meta.getThisData(
+            baseClassScope.symbol
+          );
+          thisData.staticProperties?.forEach((value, key) => {
             if (value.type.getPointerLevel() !== 2) {
-              throw new Error(`Expected static property to be of pointer-to-pointer type, got '${value.type.toString()}' (base scope)`);
+              throw new Error(
+                `Expected static property to be of pointer-to-pointer type, got '${value.type.toString()}' (base scope)`
+              );
             }
 
             staticProperties.set(key, value);
@@ -58,14 +77,14 @@ export class ClassHandler extends AbstractNodeHandler {
 
     for (const memberDecl of declaration.members) {
       if (memberDecl.isProperty() && memberDecl.initializer && memberDecl.isStatic()) {
-        let initializerValue = this.generator.handleExpression(memberDecl.initializer);
+        let initializerValue = generator.handleExpression(memberDecl.initializer);
         if (initializerValue.type.getPointerLevel() !== 1 && initializerValue.type.getPointerLevel() !== 2) {
           throw new Error(`Expected static property initializer to be of pointer or pointer-to-pointer type, got '${initializerValue.type.toString()}', error at: '${memberDecl.getText()}'`);
         }
 
         if (initializerValue.type.getPointerLevel() !== 2) {
-          const initializerValuePtrPtr = this.generator.gc.allocate(initializerValue.type);
-          this.generator.builder.createSafeStore(initializerValue, initializerValuePtrPtr);
+          const initializerValuePtrPtr = generator.gc.allocate(initializerValue.type);
+          generator.builder.createSafeStore(initializerValue, initializerValuePtrPtr);
           initializerValue = initializerValuePtrPtr;
         }
 
@@ -94,14 +113,30 @@ export class ClassHandler extends AbstractNodeHandler {
       this.handleHeritageClauses(declaration, localScope, parentScope);
 
       const llvmType = thisType.getLLVMType();
-      const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
+      const staticProperties = ClassHandler.getStaticPropertiesFromDeclaration(
+        declaration,
+        parentScope,
+        this.generator
+      );
 
-      const scope = new Scope(name, mangledTypename, this.generator, false, parentScope, {
+      const symbol = thisType.getSymbol();
+      this.generator.meta.registerThisData(symbol, {
         declaration,
         llvmType,
         tsType: thisType,
         staticProperties,
       });
+      
+      // console.log("..........>>>", name, Boolean(symbol), Array.from(staticProperties.keys()))
+
+      const scope = new Scope(
+        name,
+        mangledTypename,
+        this.generator,
+        false,
+        parentScope,
+        symbol
+      );
 
       // @todo: this logic is required because of builtins
       parentScope.setOrAssign(mangledTypename, scope);
@@ -139,7 +174,10 @@ export class ClassHandler extends AbstractNodeHandler {
             );
           });
 
-          this.generator.meta.registerClassTypeMapper(baseClassDeclaration, localScope.typeMapper);
+          this.generator.meta.registerClassTypeMapper(
+            baseClassDeclaration,
+            localScope.typeMapper
+          );
 
           // Register generic class specialization since actual types are known at this point
           const thisType = baseClassDeclaration.type;
@@ -147,14 +185,31 @@ export class ClassHandler extends AbstractNodeHandler {
 
           if (!parentScope.get(mangledTypename)) {
             const llvmType = thisType.getLLVMType();
-            const staticProperties = this.getStaticPropertiesFromDeclaration(declaration, parentScope);
-
-            const scope = new Scope(undefined, mangledTypename, this.generator, false, parentScope, {
+            const staticProperties = ClassHandler.getStaticPropertiesFromDeclaration(
               declaration,
-              llvmType,
-              tsType: thisType,
-              staticProperties,
-            });
+              parentScope,
+              this.generator
+            );
+
+            const symbol = thisType.getSymbol();
+
+            if (symbol) {
+              this.generator.meta.registerThisData(symbol, {
+                declaration,
+                llvmType,
+                tsType: thisType,
+                staticProperties,
+              });
+            }
+
+            const scope = new Scope(
+              undefined,
+              mangledTypename,
+              this.generator,
+              false,
+              parentScope,
+              symbol
+            );
 
             parentScope.set(mangledTypename, scope);
           }

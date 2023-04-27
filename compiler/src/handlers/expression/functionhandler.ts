@@ -338,8 +338,10 @@ export class FunctionHandler extends AbstractExpressionHandler {
     let { qualifiedName } = manglingResult;
 
     const parentScope = valueDeclaration.getScope(thisType);
-    if (!parentScope.thisData) {
-      throw new Error("This data required");
+    if (!parentScope.symbol) {
+      throw new Error(
+        `No symbol stored for class of type '${thisType.toString()}'`
+      );
     }
 
     const currentScope = this.generator.symbolTable.currentScope;
@@ -434,7 +436,8 @@ export class FunctionHandler extends AbstractExpressionHandler {
 
     this.invoke(expression, constructorDeclaration.body, constructor, [env.untyped]);
 
-    const llvmThisType = parentScope.thisData.llvmType;
+    const thisData = this.generator.meta.getThisData(symbol);
+    const llvmThisType = thisData.llvmType;
 
     return this.generator.builder.createBitCast(
       this.generator.builder.createSafeInBoundsGEP(env.typed, [

@@ -16,6 +16,7 @@ import { LLVMType } from "../llvm/type";
 import { Declaration } from "../ts/declaration";
 
 import { TSSymbol } from "./symbol";
+import { LLVMGenerator } from "../generator";
 
 export class TSType {
   private type: ts.Type;

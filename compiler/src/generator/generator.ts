@@ -40,7 +40,7 @@ export class LLVMGenerator {
   readonly module: llvm.Module;
   readonly context: llvm.LLVMContext;
   readonly symbolTable: SymbolTable;
-  private readonly metainfoStorage = new MetaInfoStorage();
+  readonly meta: MetaInfoStorage = new MetaInfoStorage();
 
   readonly program: ts.Program;
   private currentSource: ts.SourceFile | undefined;
@@ -288,10 +288,6 @@ export class LLVMGenerator {
     throw new Error(
       `Unhandled expression of kind ${expression.kind}: '${ts.SyntaxKind[expression.kind]}' at ${expression.getText()}`
     );
-  }
-
-  get meta() {
-    return this.metainfoStorage;
   }
 
   get currentSourceFile(): ts.SourceFile {

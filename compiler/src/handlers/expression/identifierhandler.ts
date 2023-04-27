@@ -74,6 +74,8 @@ export class IdentifierHandler extends AbstractExpressionHandler {
 
     const memoryPtrPtr = value instanceof HeapVariableDeclaration ? value.allocated : value;
 
+    console.log(">>>>", expression.parent.parent.getText(), env?.variables)
+
     if (memoryPtrPtr instanceof Scope) {
       throw new Error(`Identifier handler: LLVMValue for '${expression.text}' not found (Scope)`);
     }

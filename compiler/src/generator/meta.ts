@@ -17,6 +17,8 @@ import { TSType } from "../ts/type";
 import { LLVMValue } from "../llvm/value";
 import { Declaration } from "../ts/declaration";
 import { LLVMGenerator } from "./generator";
+import { LLVMType } from "../llvm/type";
+import { TSSymbol } from "../ts/symbol";
 
 class ClosureParametersMetaStorage {
   readonly storage = new Map<string, Map<string, Declaration>>();
@@ -38,12 +40,24 @@ class SuperCallTracker {
   value = false;
 }
 
+export interface ThisData {
+  readonly declaration: Declaration | undefined;
+  readonly llvmType: LLVMType;
+  readonly tsType: TSType;
+  readonly staticProperties?: Map<string, LLVMValue>;
+}
+
+class ThisDataStorage {
+  readonly storage = new Map<ts.Symbol, ThisData>();
+}
+
 export class MetaInfoStorage {
   private readonly closureParametersMeta = new ClosureParametersMetaStorage();
   private readonly functionExpressionEnv = new FunctionExpressionEnvStorage();
   private readonly superCallTracker = new SuperCallTracker();
   private readonly classDeclarationTypeMapper = new ClassDeclarationTypeMapperStorage();
   private readonly fixedArgs = new FixedArgsCountStorage();
+  private readonly thisData = new ThisDataStorage();
   private currentClassDeclaration: Declaration | undefined;
 
   registerClosureParameter(parentFunction: string, closureParameter: string, closureFunctionDeclaration: Declaration) {
@@ -135,6 +149,24 @@ export class MetaInfoStorage {
 
   getCurrentClassDeclaration() {
     return this.currentClassDeclaration;
+  }
+
+  registerThisData(symbol: TSSymbol, data: ThisData) {
+    this.thisData.storage.set(symbol.unwrapped, data);
+    // if (symbol.name === "Foo") 
+    //   console.trace("SSSSETTTT ----", symbol.name, Boolean(data.staticProperties))
+  }
+
+  getThisData(symbol: TSSymbol): ThisData {
+    const data = this.thisData.storage.get(symbol.unwrapped);
+    if (!data) {
+      throw new Error(`No ThisData registered for symbol: '${symbol.name}'`);
+    }
+
+    // if (symbol.name === "Foo")
+    //   console.trace("+++++++", symbol.name, Boolean(data.staticProperties))
+
+    return data;
   }
 
   try<A, T>(getter: (_: A) => T, arg: A) {
