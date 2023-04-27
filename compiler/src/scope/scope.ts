@@ -622,55 +622,6 @@ export class Scope {
     this.isDeinitialized = true;
   }
 
-  initializeVariablesAndFunctionDeclarations(root: ts.Node, generator: LLVMGenerator) {
-    const initializeFrom = (node: ts.Node) => {
-      // ignore nested blocks and modules/namespaces
-      if (ts.isBlock(node) || ts.isModuleBlock(node)) {
-        return;
-      }
-
-      // ignore destructuring assignment since no scope values actually creating for them
-      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name)) {
-        return;
-      }
-
-      // ignore counters
-      if (ts.isVariableDeclarationList(node) && ts.isIterationStatement(node.parent, false)) {
-        return;
-      }
-
-      node.forEachChild(initializeFrom);
-
-      // only interested in variables and functions declarations
-      if (!ts.isVariableDeclaration(node) && !ts.isFunctionDeclaration(node)) {
-        return;
-      }
-
-      if (!node.name) {
-        return;
-      }
-
-      const tsType = generator.ts.checker.getTypeAtLocation(node);
-      if (!tsType.isSupported()) {
-        // mkrv @todo resolve generic type
-        return;
-      }
-
-      const llvmType = tsType.getLLVMType();
-      const allocated = generator.gc.allocateObject(llvmType.getPointerElementType());
-      const inplaceAllocatedPtr = generator.ts.obj.createInplace(allocated);
-
-      const inplaceAllocatedPtrPtr = generator.gc.allocate(inplaceAllocatedPtr.type);
-      generator.builder.createSafeStore(inplaceAllocatedPtr, inplaceAllocatedPtrPtr);
-
-      const name = node.name.getText();
-
-      this.set(name, inplaceAllocatedPtrPtr);
-    }
-
-    root.forEachChild(initializeFrom);
-  }
-
   get(identifier: string): ScopeValue | undefined {
     let result: ScopeValue | undefined;
 
