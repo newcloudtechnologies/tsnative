@@ -68,6 +68,47 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 }
 
 {
+  let numbers: number[] = [];
+
+  numbers.push(10);
+  numbers.push(20);
+  numbers.push(30);
+
+  let l1 = [10, 20, 30];
+  console.assert(is_equal(numbers, l1), "array: pop: [10,20,30] failed");
+
+  let popedValue = numbers.pop();
+
+  let l2 = [10, 20];
+  console.assert(is_equal(numbers, l2), "array: pop: [10,20] failed");
+  console.assert(popedValue === 30, "array: pop: popedValue === 30 failed");
+
+  numbers.push(40);
+
+  let l3 = [10, 20, 40];
+  console.assert(is_equal(numbers, l3), "array: pop: [10,20,40] failed");
+
+  popedValue = numbers.pop();
+
+  let l4 = [10, 20];
+  console.assert(is_equal(numbers, l4), "array: pop: [10,20] failed");
+  console.assert(popedValue === 40, "array: pop: popedValue === 40 failed");
+
+  popedValue = numbers.pop();
+
+  let l5 = [10];
+  console.assert(is_equal(numbers, l5), "array: pop: [10] failed");
+  console.assert(popedValue === 20, "array: pop: popedValue === 20 failed");
+
+  popedValue = numbers.pop();
+  console.assert(numbers.length === 0, "array: pop: [] failed");
+  console.assert(popedValue === 10, "array: pop: popedValue === 10 failed");
+
+  popedValue = numbers.pop();
+  console.assert(popedValue === undefined, "array: pop: popedValue === undefined failed");
+}
+
+{
   const set_by_index = function (a: number[], i: number, v: number) {
     a[i] = v;
     return a;
