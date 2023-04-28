@@ -274,6 +274,10 @@ export class Builder {
     return LLVMValue.create(condBr, this.generator);
   }
 
+  createPhi(type: LLVMType, numWays: number ) {
+    return this.builder.createPhi(type.unwrapped, numWays);
+  }
+
   createRetVoid() {
     this.generator.symbolTable.currentScope.deinitialize();
     this.builder.createRetVoid();
