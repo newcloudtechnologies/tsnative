@@ -9,31 +9,14 @@
  *
  */
 
-#include "../infrastructure/global_test_allocator_fixture.h"
-#include "../infrastructure/object_factory.h"
+#include "../infrastructure/array_fixture.h"
 
 #include <gtest/gtest.h>
 
 namespace
 {
-class ArraySpliceTestFixture : public test::GlobalTestAllocatorFixture
-{
-};
 
-std::vector<int> toIntVector(const std::vector<test::Number*>& array)
-{
-    std::vector<int> result;
-
-    for (std::size_t i = 0; i < array.size(); ++i)
-    {
-        const auto number = array[i]->unboxed();
-        result.push_back(static_cast<int>(number));
-    }
-
-    return result;
-}
-
-TEST_F(ArraySpliceTestFixture, spliceWithBooleanFalse)
+TEST_F(ArrayFixture, spliceWithBooleanFalse)
 {
     auto array = new test::Array<test::Number*>();
     array->push(new test::Number(1));
@@ -43,10 +26,10 @@ TEST_F(ArraySpliceTestFixture, spliceWithBooleanFalse)
     auto start = new test::Number(1);
     auto deleteCount = new test::Union(new test::Boolean(false));
 
-    const auto* const result = array->splice(start, deleteCount);
+    const auto* result = array->splice(start, deleteCount);
 
-    const auto removed = toIntVector(result->toStdVector());
-    const auto left = toIntVector(array->toStdVector());
+    const auto removed = toVector<int>(result);
+    const auto left = toVector<int, test::Array>(array);
 
     const std::vector<int> expectedLeft{1, 2, 3};
     const std::vector<int> expectedRemoved{};
@@ -55,7 +38,7 @@ TEST_F(ArraySpliceTestFixture, spliceWithBooleanFalse)
     EXPECT_THAT(left, ::testing::ElementsAreArray(expectedLeft));
 }
 
-TEST_F(ArraySpliceTestFixture, spliceWithBooleanTrue)
+TEST_F(ArrayFixture, spliceWithBooleanTrue)
 {
     auto array = new test::Array<test::Number*>();
     array->push(new test::Number(1));
@@ -67,8 +50,8 @@ TEST_F(ArraySpliceTestFixture, spliceWithBooleanTrue)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toIntVector(result->toStdVector());
-    const auto left = toIntVector(array->toStdVector());
+    const auto removed = toVector<int>(result);
+    const auto left = toVector<int, test::Array>(array);
 
     const std::vector<int> expectedLeft{1, 3};
     const std::vector<int> expectedRemoved{2};
@@ -77,7 +60,7 @@ TEST_F(ArraySpliceTestFixture, spliceWithBooleanTrue)
     EXPECT_THAT(left, ::testing::ElementsAreArray(expectedLeft));
 }
 
-TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountUndefined)
+TEST_F(ArrayFixture, spliceWithDeleteCountUndefined)
 {
     auto array = new test::Array<test::Number*>();
     array->push(new test::Number(1));
@@ -89,8 +72,8 @@ TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountUndefined)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toIntVector(result->toStdVector());
-    const auto left = toIntVector(array->toStdVector());
+    const auto removed = toVector<int>(result);
+    const auto left = toVector<int, test::Array>(array);
 
     const std::vector<int> expectedLeft{1};
     const std::vector<int> expectedRemoved{2, 3};
@@ -99,7 +82,7 @@ TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountUndefined)
     EXPECT_THAT(left, ::testing::ElementsAreArray(expectedLeft));
 }
 
-TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountNull)
+TEST_F(ArrayFixture, spliceWithDeleteCountNull)
 {
     auto array = new test::Array<test::Number*>();
     array->push(new test::Number(1));
@@ -111,8 +94,8 @@ TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountNull)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toIntVector(result->toStdVector());
-    const auto left = toIntVector(array->toStdVector());
+    const auto removed = toVector<int>(result);
+    const auto left = toVector<int, test::Array>(array);
 
     const std::vector<int> expectedLeft{1, 2, 3};
     const std::vector<int> expectedRemoved{};
@@ -121,7 +104,7 @@ TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountNull)
     EXPECT_THAT(left, ::testing::ElementsAreArray(expectedLeft));
 }
 
-TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountString)
+TEST_F(ArrayFixture, spliceWithDeleteCountString)
 {
     auto array = new test::Array<test::Number*>();
     array->push(new test::Number(1));
@@ -133,8 +116,8 @@ TEST_F(ArraySpliceTestFixture, spliceWithDeleteCountString)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toIntVector(result->toStdVector());
-    const auto left = toIntVector(array->toStdVector());
+    const auto removed = toVector<int>(result);
+    const auto left = toVector<int, test::Array>(array);
 
     const std::vector<int> expectedLeft{1, 2, 3};
     const std::vector<int> expectedRemoved{};

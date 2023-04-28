@@ -21,6 +21,7 @@
 #include <iterator>
 #include <numeric>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 class StringConverter;
@@ -36,6 +37,10 @@ public:
 
     template <typename... Ts>
     std::size_t push(T t, Ts... ts);
+
+    bool empty() const override;
+
+    T pop() override;
 
     std::size_t length() const override;
     void length(std::size_t len) override;
@@ -74,6 +79,20 @@ std::size_t DequeueBackend<T>::push(T t)
 }
 
 template <typename T>
+T DequeueBackend<T>::pop()
+{
+    if (empty())
+    {
+        throw std::runtime_error("can't pop element, array is empty");
+    }
+
+    auto result = _storage.back();
+    _storage.pop_back();
+
+    return result;
+}
+
+template <typename T>
 std::size_t DequeueBackend<T>::length() const
 {
     return _storage.size();
@@ -88,6 +107,12 @@ void DequeueBackend<T>::length(std::size_t len)
     }
 
     _storage.resize(len);
+}
+
+template <typename T>
+bool DequeueBackend<T>::empty() const
+{
+    return _storage.empty();
 }
 
 template <typename T>
