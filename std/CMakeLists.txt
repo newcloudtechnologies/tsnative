@@ -261,6 +261,8 @@ if (BUILD_TEST)
                      test/array/splice_tests.cpp
                      test/array/join.cpp
                      test/array/args_to_array_tests.cpp
+                     test/array/push_pop_tests.cpp
+                     test/array/dequeue_backend_tests.cpp
                      test/object/object_get.cpp
                      test/object/object_get_child_objects.cpp
                      test/object/object_copy_props.cpp

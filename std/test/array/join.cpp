@@ -11,20 +11,16 @@
 
 #include <gtest/gtest.h>
 
-#include "../infrastructure/object_wrappers.h"
+#include "../infrastructure/dequeue_backend_fixtures.h"
 #include "std/private/tsarray_std_p.h"
 
-class DequeueBackendJoinFixture : public test::GlobalTestAllocatorFixture
-{
-};
-
-TEST_F(DequeueBackendJoinFixture, EmptyArray)
+TEST_F(DequeueBackendFixture, EmptyArray)
 {
     DequeueBackend<Object*> arrayImpl;
     EXPECT_EQ(arrayImpl.join("~~~~~"), "");
 }
 
-TEST_F(DequeueBackendJoinFixture, SimpleJoin)
+TEST_F(DequeueBackendFixture, SimpleJoin)
 {
     DequeueBackend<Object*> arrayImpl;
     arrayImpl.push(new test::Boolean(true));
@@ -37,7 +33,7 @@ TEST_F(DequeueBackendJoinFixture, SimpleJoin)
     EXPECT_EQ(arrayImpl.join(), "true,false,true");
 }
 
-TEST_F(DequeueBackendJoinFixture, ObjectsJoin)
+TEST_F(DequeueBackendFixture, ObjectsJoin)
 {
     DequeueBackend<Object*> arrayImpl;
     arrayImpl.push(new test::Object());
@@ -47,7 +43,7 @@ TEST_F(DequeueBackendJoinFixture, ObjectsJoin)
     EXPECT_EQ(arrayImpl.join(), "[object Object],[object Object],[object Object]");
 }
 
-TEST_F(DequeueBackendJoinFixture, CustomSeparatorJoin)
+TEST_F(DequeueBackendFixture, CustomSeparatorJoin)
 {
     DequeueBackend<Object*> arrayImpl;
     arrayImpl.push(new test::Boolean(true));

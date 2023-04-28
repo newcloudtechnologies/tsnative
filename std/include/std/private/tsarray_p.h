@@ -22,8 +22,12 @@ public:
 
     virtual std::size_t push(T v) = 0;
 
+    virtual T pop() = 0;
+
     virtual std::size_t length() const = 0;
     virtual void length(std::size_t len) = 0;
+
+    virtual bool empty() const = 0;
 
     virtual T operator[](std::size_t index) const = 0;
 
