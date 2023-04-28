@@ -82,4 +82,11 @@ namespace O {
 console.assert(M.N.val5 === 1000, "Namespaces: M.N.val5 failed");
 console.assert(O.N.val6 === 5000, "Namespaces: O.N.val6 failed");
 
+const variable = 150;
+namespace L {
+    export const variable = 20;
+}
+console.assert(variable === 150, "Namespaces: variable failed");
+console.assert(L.variable === 20, "Namespaces: L.variable failed");
+
 // TODO Classes and interfaces inside of namespaces are not supported for now
