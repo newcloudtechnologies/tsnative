@@ -9,26 +9,12 @@
  *
  */
 
-#include "../infrastructure/object_factory.h"
+#include "../infrastructure/dequeue_backend_fixtures.h"
 
 #include <gtest/gtest.h>
 
 namespace
 {
-struct TestParamWithTwoArgs final
-{
-    std::vector<int> inputArray;
-    std::vector<int> expectedLeft;
-    std::vector<int> expectedRemoved;
-
-    int start = 0;
-    int deleteCount = 0;
-};
-
-class DequeBackendSpliceWithTwoArgsTestFixture : public ::testing::TestWithParam<TestParamWithTwoArgs>
-{
-};
-
 // clang-format off
 TestParamWithTwoArgs twoArgsTests[] =
 {   

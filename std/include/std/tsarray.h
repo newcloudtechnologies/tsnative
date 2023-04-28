@@ -23,6 +23,7 @@
 #include "std/tsnumber.h"
 #include "std/tsobject.h"
 #include "std/tsstring.h"
+#include "std/tsundefined.h"
 #include "std/tsunion.h"
 
 #ifdef USE_STD_ARRAY_BACKEND
@@ -68,6 +69,8 @@ public:
     {
         _d->push(v);
     }
+
+    TS_METHOD TS_RETURN_TYPE("T | undefined") Union* pop();
 
     TS_METHOD void setElementAtIndex(Number* index, T value);
 
@@ -177,6 +180,17 @@ Number* Array<T>::push(Array<T>* other)
     }
 
     return length();
+}
+
+template <typename T>
+Union* Array<T>::pop()
+{
+    if (_d->empty())
+    {
+        return new Union(Undefined::instance());
+    }
+
+    return new Union(Object::asObjectPtr(_d->pop()));
 }
 
 template <typename T>
