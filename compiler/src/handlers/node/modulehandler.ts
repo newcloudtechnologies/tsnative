@@ -66,8 +66,8 @@ export class ModuleHandler extends AbstractNodeHandler {
 
   private getNextParent(namespace: ts.ModuleDeclaration): ts.ModuleDeclaration | undefined {
     let probe:ts.Node = namespace.parent;
+
     while(true) {
-      
       if (ts.isSourceFile(probe)) {
         return undefined;
       }
@@ -113,21 +113,23 @@ export class ModuleHandler extends AbstractNodeHandler {
                               parentScope: Scope, 
                               env?: Environment) {
     const thisNamespaceName = this.getNamespaceName(thisNamespace);
-    const fakeScope = new Scope(thisNamespaceName, thisNamespaceName, this.generator, true, parentScope);
 
-    thisNamespace.body!.forEachChild(childNode => {
-      this.generator.handleNode(childNode, fakeScope, env);
-    });
-
-    // Handles everything that has LLVM value.
-    // Other things like classes, interfaces, type aliases are just skipped
-    // All those things should be implemented as objects. Hence they will have LLVM Value.
-    for(const [n, v] of fakeScope.map) {
-      if (!(v instanceof Scope)) {
-        const llvmValue = v instanceof HeapVariableDeclaration ? v.allocated : v;
-        this.generator.ts.obj.set(thisNamespacePtr, n, llvmValue);
+    this.generator.symbolTable.withLocalScope((scope: Scope) => 
+    {
+      thisNamespace.body!.forEachChild(childNode => {
+        this.generator.handleNode(childNode, scope, env);
+      });
+  
+      // Handles everything that has LLVM value.
+      // Other things like classes, interfaces, type aliases are just skipped
+      // All those things should be implemented as objects. Hence they will have LLVM Value.
+      for(const [n, v] of scope.map) {
+        if (!(v instanceof Scope)) {
+          const llvmValue = v instanceof HeapVariableDeclaration ? v.allocated : v;
+          this.generator.ts.obj.set(thisNamespacePtr, n, llvmValue);
+        }
       }
-    }
+    }, parentScope, thisNamespaceName);
   }
 
   // namespace A {
