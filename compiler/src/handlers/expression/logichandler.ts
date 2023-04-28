@@ -89,31 +89,58 @@ export class LogicHandler extends AbstractExpressionHandler {
   }
 
   private handleLogicalAnd(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const lhsBlock = llvm.BasicBlock.create(this.generator.context, "logical_and.lhs", this.generator.currentFunction);
+    const rhsBlock = llvm.BasicBlock.create(this.generator.context, "logical_and.rhs", this.generator.currentFunction);
+    const endBlock = llvm.BasicBlock.create(this.generator.context, "logical_and.end", this.generator.currentFunction);
+
+    const expressionType = this.generator.ts.obj.getLLVMType();
+    // Phi instruction requires value and block label as parameter,
+    // therefore we have to create explicit logical_and.lhs basic block
+    // and jump into it first.
+    this.generator.builder.createBr(lhsBlock);
+    this.generator.builder.setInsertionPoint(lhsBlock);
     const left = this.generator.handleExpression(lhs, env).derefToPtrLevel1();
+    const leftObject = this.generator.builder.createBitCast(left, expressionType);
+    const leftBoolean = left.makeBoolean().derefToPtrLevel1();
+    this.generator.builder.createCondBr(leftBoolean, rhsBlock, endBlock);
+
+    this.generator.builder.setInsertionPoint(rhsBlock);
     const right = this.generator.handleExpression(rhs, env).derefToPtrLevel1();
+    const rightObject = this.generator.builder.createBitCast(right, expressionType);
+    this.generator.builder.createBr(endBlock);
 
-    const lhsBoolean = left.makeBoolean();
-
-    if (left.type.equals(right.type)) {
-      return this.generator.builder.createSelect(lhsBoolean, right, left);
-    }
-
-    throw new Error(`Invalid operand types to logical AND:
-        lhs: ${left.type.toString()}
-        rhs: ${right.type.toString()}
-        Error at: ${lhs.parent.getText()}`);
+    this.generator.builder.setInsertionPoint(endBlock);
+    const phi = this.generator.builder.createPhi(expressionType, 2);
+    phi.addIncoming(leftObject.unwrapped, lhsBlock);
+    phi.addIncoming(rightObject.unwrapped, rhsBlock);
+    return LLVMValue.create(phi, this.generator);
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
+    const lhsBlock = llvm.BasicBlock.create(this.generator.context, "logical_or.lhs", this.generator.currentFunction);
+    const rhsBlock = llvm.BasicBlock.create(this.generator.context, "logical_or.rhs", this.generator.currentFunction);
+    const endBlock = llvm.BasicBlock.create(this.generator.context, "logical_or.end", this.generator.currentFunction);
+
+    const expressionType = this.generator.ts.obj.getLLVMType();
+    // Phi instruction requires value and block label as parameter,
+    // therefore we have to create explicit logical_and.lhs basic block
+    // and jump into it first.
+    this.generator.builder.createBr(lhsBlock);
+    this.generator.builder.setInsertionPoint(lhsBlock);
     const left = this.generator.handleExpression(lhs, env).derefToPtrLevel1();
+    const leftObject = this.generator.builder.createBitCast(left, expressionType);
+    const leftBoolean = left.makeBoolean().derefToPtrLevel1();
+    this.generator.builder.createCondBr(leftBoolean, endBlock, rhsBlock);
+
+    this.generator.builder.setInsertionPoint(rhsBlock);
     const right = this.generator.handleExpression(rhs, env).derefToPtrLevel1();
+    const rightObject = this.generator.builder.createBitCast(right, expressionType);
+    this.generator.builder.createBr(endBlock);
 
-    const lhsBoolean = left.makeBoolean();
-
-    if (left.type.equals(right.type)) {
-      return this.generator.builder.createSelect(lhsBoolean, left, right);
-    }
-
-    throw new Error("Invalid operand types to logical OR");
+    this.generator.builder.setInsertionPoint(endBlock);
+    const phi = this.generator.builder.createPhi(expressionType, 2);
+    phi.addIncoming(leftObject.unwrapped, lhsBlock);
+    phi.addIncoming(rightObject.unwrapped, rhsBlock);
+    return LLVMValue.create(phi, this.generator);
   }
 }

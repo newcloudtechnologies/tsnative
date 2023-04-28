@@ -75,7 +75,8 @@ export class LoopHandler extends AbstractNodeHandler {
     builder.createBr(condition);
     builder.setInsertionPoint(condition);
     const conditionValue = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
-    builder.createCondBr(conditionValue, body, exiting);
+    const conditionValueBoolean = conditionValue.makeBoolean().derefToPtrLevel1();
+    builder.createCondBr(conditionValueBoolean, body, exiting);
 
     currentFunction.addBasicBlock(bodyLatch);
     builder.setInsertionPoint(bodyLatch);
@@ -132,7 +133,8 @@ export class LoopHandler extends AbstractNodeHandler {
 
     builder.setInsertionPoint(condition);
     const conditionValue = this.generator.handleExpression(statement.expression, env).derefToPtrLevel1();
-    builder.createCondBr(conditionValue, body, exiting);
+    const conditionValueBoolean = conditionValue.makeBoolean().derefToPtrLevel1();
+    builder.createCondBr(conditionValueBoolean, body, exiting);
 
     builder.setInsertionPoint(exiting);
     builder.createBr(end);
@@ -162,7 +164,8 @@ export class LoopHandler extends AbstractNodeHandler {
         currentFunction.addBasicBlock(condition);
         builder.setInsertionPoint(condition);
         const conditionValue = this.generator.handleExpression(statement.condition, env).derefToPtrLevel1();
-        builder.createCondBr(conditionValue, body, exiting);
+        const conditionValueBoolean = conditionValue.makeBoolean().derefToPtrLevel1();
+        builder.createCondBr(conditionValueBoolean, body, exiting);
       } else {
         builder.createBr(body);
       }
