@@ -344,6 +344,6 @@
             ++counter;
         }
 
-        console.assert((are_equal_arrays(arr, expected) && arr[1].n === 99) && expected[1].n === 99, "For..of shouldn't change iteration source (array of objects), iterable's properties should be able to change");
+        console.assert(are_equal_arrays(arr, expected) && arr[1].n === 99 && expected[1].n === 99, "For..of shouldn't change iteration source (array of objects), iterable's properties should be able to change");
     }
 }
