@@ -278,6 +278,9 @@ if (BUILD_TEST)
                      test/utils/to_string_converter_tests.cpp
                      test/utils/make_closure_test.cpp
                      test/utils/assert_cast_test.cpp
+                     test/utils/try_cast_test.cpp
+                     test/utils/cast_from_union_test.cpp
+                     test/utils/handle_union_test.cpp
                      )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})
