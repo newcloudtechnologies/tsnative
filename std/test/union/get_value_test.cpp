@@ -42,8 +42,8 @@ TEST_F(UnionGetValueTest, GetUnion)
         FAIL();
     }
 
-    EXPECT_THROW(val->getValue<Bb*>(), std::runtime_error);
-    EXPECT_THROW(val->getValue<test::String*>(), std::runtime_error);
+    EXPECT_THROW(val->getValue<Bb*>(), BadCast);
+    EXPECT_THROW(val->getValue<test::String*>(), BadCast);
 
     delete tested;
 }
