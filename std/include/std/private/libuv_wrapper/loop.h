@@ -23,7 +23,7 @@ namespace uv
 {
 
 class TimerEventHandler;
-class AsyncEventHandler;
+class IdleEventHandler;
 
 enum class UVRunMode : std::underlying_type_t<uv_run_mode>
 {
@@ -35,7 +35,6 @@ enum class UVRunMode : std::underlying_type_t<uv_run_mode>
 enum class EventHandlerType : std::underlying_type_t<uv_handle_type>
 {
     UNKNOWN = UV_UNKNOWN_HANDLE,
-    ASYNC = UV_ASYNC,
     HANDLE = UV_HANDLE,
     IDLE = UV_IDLE,
     TIMER = UV_TIMER,
@@ -45,8 +44,6 @@ static EventHandlerType uvHandleToEventHandlerType(uv_handle_type uvHandleType)
 {
     switch (uvHandleType)
     {
-        case UV_ASYNC:
-            return EventHandlerType::ASYNC;
         case UV_HANDLE:
             return EventHandlerType::HANDLE;
         case UV_IDLE:
@@ -63,7 +60,6 @@ class Loop final : public EmitterBase<Loop, ErrorEvent>
     static std::unique_ptr<uv_loop_t> createUvLoop();
 
 public:
-    using Time = std::chrono::duration<uint64_t, std::milli>;
     using RunMode = UVRunMode;
 
     explicit Loop() noexcept;
@@ -120,13 +116,9 @@ public:
                     cb(*static_cast<TimerEventHandler*>(handle->data));
                     break;
                 }
-                case EventHandlerType::ASYNC:
-                {
-                    cb(*static_cast<AsyncEventHandler*>(handle->data));
-                    break;
-                }
                 case EventHandlerType::IDLE:
                 {
+                    cb(*static_cast<IdleEventHandler*>(handle->data));
                     break;
                 }
                 default:

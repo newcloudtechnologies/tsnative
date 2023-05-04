@@ -218,3 +218,72 @@ TEST_F(UVLoopAdapterTest, CheckPingPong)
     emitter_1.notify(std::string{"PING"});
     loop.run();
 }
+
+TEST_F(UVLoopAdapterTest, checkWithoutExplicitlyStoping)
+{
+    int count{0};
+    {
+        loop.enqueue(
+            [this, &count]()
+            {
+                ++count;
+                EXPECT_TRUE(loop.isRunning());
+            });
+        loop.enqueue(
+            [this, &count]()
+            {
+                ++count;
+                EXPECT_TRUE(loop.isRunning());
+            });
+        loop.run();
+    }
+    EXPECT_EQ(count, 2);
+    EXPECT_FALSE(loop.isRunning());
+    EXPECT_FALSE(loop.hasEventHandlers());
+}
+
+TEST_F(UVLoopAdapterTest, checkRunRun)
+{
+    int count{0};
+
+    loop.enqueue([&count] { ++count; });
+    loop.enqueue([&count] { ++count; });
+
+    EXPECT_EQ(count, 0);
+
+    loop.run();
+
+    EXPECT_FALSE(loop.isRunning());
+    loop.enqueue(
+        [this, &count]
+        {
+            ++count;
+            EXPECT_TRUE(loop.isRunning());
+        });
+
+    loop.run();
+
+    EXPECT_EQ(count, 3);
+    EXPECT_FALSE(loop.isRunning());
+}
+
+TEST_F(UVLoopAdapterTest, checkProcessEvents)
+{
+    int count{0};
+
+    loop.enqueue([&count] { ++count; });
+    loop.enqueue([&count] { ++count; });
+
+    loop.processEvents();
+
+    EXPECT_FALSE(loop.isRunning());
+    EXPECT_FALSE(loop.hasEventHandlers());
+
+    loop.enqueue([&count] { ++count; });
+
+    EXPECT_EQ(count, 2);
+
+    loop.run();
+
+    EXPECT_EQ(count, 3);
+}

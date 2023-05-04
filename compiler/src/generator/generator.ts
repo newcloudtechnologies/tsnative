@@ -67,11 +67,9 @@ export class LLVMGenerator {
 
   private initialized = false;
 
-  private runEventLoop: string | undefined;
-
   private readonly _enableOptimizations: boolean;
 
-  constructor(program: ts.Program, runEventLoop?: string, enableOptimizations: boolean = true, generateDebugInfo = false) {
+  constructor(program: ts.Program, enableOptimizations: boolean = true, generateDebugInfo = false) {
     this.program = program;
     this.context = new llvm.LLVMContext();
     this.module = new llvm.Module("main", this.context);
@@ -86,7 +84,6 @@ export class LLVMGenerator {
     if (generateDebugInfo) {
       this.debugInfo = new DebugInfo(this);
     }
-    this.runEventLoop = runEventLoop;
     this._enableOptimizations = enableOptimizations;
   }
 
@@ -129,11 +126,7 @@ export class LLVMGenerator {
 
     this.handleSources(this.program.getSourceFiles());
 
-    let result = LLVMConstantInt.get(this, 0);
-    if (this.runEventLoop) {
-      result = this.runtime.getLoop().run(undefined, this.runEventLoop != "oneshot").asLLVMInteger()
-    }
-
+    const result = this.runtime.getLoop().run().asLLVMInteger();
     this.builder.createSafeRet(result);
 
     if (dbg) {

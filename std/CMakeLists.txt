@@ -88,7 +88,7 @@ set(SOURCES
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
     src/private/libuv_wrapper/timer_event_handler.cpp
-    src/private/libuv_wrapper/async_event_handler.cpp
+    src/private/libuv_wrapper/idle_event_handler.cpp
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp

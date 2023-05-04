@@ -59,7 +59,6 @@ argv
     }
   )
   .option("--debug", "Generate debug information")
-  .option("--runEventLoop <[lock|oneshot]>", "Run event loop and lock execution (lock) or exit immediately (oneshot)")
   .option("--enableOptimizations <[ON|OFF]>", "If 'ON', it disables all unnecessary allocations")
   .parse(process.argv);
 
@@ -226,7 +225,7 @@ async function main() {
   let llvmModule;
   try {
     const enableOptimizations = argv.enableOptimizations === "ON";
-    llvmModule = new LLVMGenerator(program, argv.runEventLoop, enableOptimizations, argv.debug).init().createModule();
+    llvmModule = new LLVMGenerator(program, enableOptimizations, argv.debug).init().createModule();
   } catch (e) {
     console.log(files);
     console.log(e);

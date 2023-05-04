@@ -16,20 +16,21 @@
 namespace uv
 {
 
-struct AsyncEvent
+struct IdleEvent
 {
 };
 
-class AsyncEventHandler final : public EventHandler<AsyncEventHandler, uv_async_t, AsyncEvent>
+class IdleEventHandler : public EventHandler<IdleEventHandler, uv_idle_t, IdleEvent>
 {
-    static void sendCallback(uv_async_t* handle);
+    static void startCallback(uv_idle_t* handle);
 
 public:
     using EventHandler::EventHandler;
 
     int init() override;
 
-    int send();
-};
+    int start() noexcept;
 
+    int stop() noexcept;
+};
 } // namespace uv

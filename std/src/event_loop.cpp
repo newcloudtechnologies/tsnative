@@ -30,10 +30,10 @@ EventLoop::~EventLoop()
     LOG_ADDRESS("EventLoop::~EventLoop() address: ", this);
 }
 
-Number* EventLoop::run(Boolean* lock)
+Number* EventLoop::run()
 {
     LOG_METHOD_CALL;
-    auto ret = _eventLoop.run(lock->unboxed());
+    auto ret = _eventLoop.run();
     return new Number(ret);
 }
 
