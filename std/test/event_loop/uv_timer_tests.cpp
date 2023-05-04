@@ -90,7 +90,6 @@ TEST_F(UVTimerTestFixture, checkStartSetTimeout)
         [&flag, this]()
         {
             flag = true;
-            getLoop().stop();
             return nullptr;
         });
 
@@ -113,7 +112,6 @@ TEST_F(UVTimerTestFixture, checkNestedTimeout)
     auto f2 = [&val, this]
     {
         val = true;
-        getLoop().stop();
         return nullptr;
     };
     auto* closure2 = createClosure(std::move(f2));
@@ -147,7 +145,6 @@ TEST_F(UVTimerTestFixture, checkTimeoutArgs)
         [this, f = std::move(f)]()
         {
             f(1, 2);
-            getLoop().stop();
             return nullptr;
         });
 
@@ -175,7 +172,6 @@ TEST_F(UVTimerTestFixture, checkStopTimeout)
         {
             timer->setTimeout(0s);
             timer->stop();
-            getLoop().enqueue([this] { getLoop().stop(); });
         });
     getLoop().run();
 }
@@ -208,7 +204,6 @@ TEST_F(UVTimerTestFixture, checkSetIntervalStopping)
             if (count == 10)
             {
                 timer->stop();
-                getLoop().stop();
                 return nullptr;
             }
             ++count;
@@ -225,4 +220,22 @@ TEST_F(UVTimerTestFixture, checkSetIntervalStopping)
 
     EXPECT_EQ(10, count);
     ASSERT_FALSE(timer->active());
+}
+
+TEST_F(UVTimerTestFixture, checkSetTimeoutNotZero)
+{
+    bool flag = false;
+    auto* closure = createClosure(
+        [&flag, this]()
+        {
+            flag = true;
+            return nullptr;
+        });
+
+    auto* timer = createTimer(closure, 1);
+    timer->setTimeout(50ms);
+
+    getLoop().run();
+
+    EXPECT_TRUE(flag);
 }

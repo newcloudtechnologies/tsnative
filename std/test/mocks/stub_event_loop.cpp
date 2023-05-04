@@ -23,7 +23,7 @@ StubEventLoop::~StubEventLoop()
     stopLoop();
 }
 
-int StubEventLoop::run(bool lock)
+int StubEventLoop::run()
 {
     _running = true;
     _condVar.notify_one();

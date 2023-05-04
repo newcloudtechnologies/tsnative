@@ -143,3 +143,37 @@ let count = 0;
         console.assert(flag === true, "Timers case[7-E]. flag expects true");
     }, -Infinity);
 }
+
+{
+    let flag = false;
+    setTimeout(() => {
+        flag = true;
+        setTimeout(() => {
+            console.assert(flag, "Timers case[8-A]. flag expects true. Actual false");
+        }, 100)
+    }, 50);
+
+    console.assert(!flag, "Timers case[8-B]. flag expects false. Actual true");
+}
+
+{
+    const id = setTimeout(() => {
+        console.assert(false, "Timers case[9-A]. This callback do not call");
+    }, 50);
+
+    setTimeout(() => {
+        clearTimeout(id);
+    }, 10);
+}
+
+{
+    let count = 0;
+    const id = setInterval(() => { ++count; }, 20);
+
+    setTimeout(() => {
+        clearInterval(id);
+        console.assert(count !== 0, "Timers case[10-A]. Expect not zero. Actual zero");
+    }, 50);
+
+    console.assert(count === 0, "Timers case[10-B]. Expect zero. Actual not zero");
+}

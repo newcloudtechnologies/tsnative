@@ -10,44 +10,45 @@
  */
 
 #include "std/private/uv_loop_adapter.h"
+#include "std/private/libuv_wrapper/idle_event_handler.h"
+#include "std/private/libuv_wrapper/timer_event_handler.h"
 #include "std/private/logger.h"
-#include "std/private/visitor.h"
-
-#include "std/private/libuv_wrapper/async_event_handler.h"
 
 UVLoopAdapter::UVLoopAdapter()
     : _loop{}
     , _isRunning{false}
     , _pendingCallbacks{}
-    , _asyncEventHandler{_loop.get<uv::AsyncEventHandler>()}
+    , _postEventHandler{_loop.get<uv::IdleEventHandler>()}
 {
     LOG_METHOD_CALL;
     if (!_loop.isInitialized())
     {
         throw std::runtime_error{"Error: Event loop is not initialized"};
     }
-    _asyncEventHandler->on<uv::AsyncEvent>([this](auto&&...) { /* weak up */ processQueue(); });
+    if (!_postEventHandler)
+    {
+        throw std::runtime_error{"Error: Post event handler is not initialized"};
+    }
+    initProcessingQueue();
 }
 
 UVLoopAdapter::~UVLoopAdapter()
 {
     LOG_METHOD_CALL;
     stopLoop();
+    closeLoop();
     _pendingCallbacks.clear();
 }
 
-int UVLoopAdapter::run(bool lock)
+int UVLoopAdapter::run()
 {
     LOG_METHOD_CALL;
     int res = 0;
     if (!isRunning())
     {
         _isRunning = true;
-        res = _loop.run(lock ? uv::UVRunMode::DEFAULT : uv::UVRunMode::NOWAIT);
-        if (!lock)
-        {
-            return 0;
-        }
+        res = _loop.run(uv::UVRunMode::DEFAULT);
+        _isRunning = false;
     }
     return res;
 }
@@ -68,7 +69,7 @@ void UVLoopAdapter::enqueue(Callback&& callback)
 {
     LOG_METHOD_CALL;
     _pendingCallbacks.push_back(std::move(callback));
-    _asyncEventHandler->send();
+    _postEventHandler->start();
 }
 
 void UVLoopAdapter::processEvents()
@@ -85,19 +86,14 @@ bool UVLoopAdapter::hasEventHandlers() const
 void UVLoopAdapter::stopLoop()
 {
     LOG_METHOD_CALL;
-    if (isRunning())
-    {
-        _loop.stop();
-        _isRunning = false;
-    }
-    if (!(hasEventHandlers()))
-    {
-        return;
-    }
+    _loop.stop();
+    _isRunning = false;
+}
 
-    _loop.walk(makeVisitors([](uv::TimerEventHandler& timerHandle) { timerHandle.close(); },
-                            [](uv::AsyncEventHandler& asyncHandle) { asyncHandle.close(); },
-                            [](auto&&...) {}));
+void UVLoopAdapter::closeLoop()
+{
+    LOG_METHOD_CALL;
+    _loop.walk([](auto& handle) { handle.close(); });
     int res = _loop.close();
     if (res == UV_EBUSY)
     {
@@ -116,5 +112,18 @@ void UVLoopAdapter::processQueue()
         Callback& callback = _pendingCallbacks.front();
         callback();
         _pendingCallbacks.pop_front();
+    }
+}
+
+void UVLoopAdapter::initProcessingQueue()
+{
+    if (_postEventHandler)
+    {
+        _postEventHandler->on<uv::IdleEvent>(
+            [this](auto&, auto& handle)
+            {
+                processQueue();
+                handle.stop();
+            });
     }
 }

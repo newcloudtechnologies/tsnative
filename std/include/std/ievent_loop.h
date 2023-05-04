@@ -29,7 +29,7 @@ public:
     IEventLoop& operator=(const IEventLoop&) = delete;
     IEventLoop& operator=(IEventLoop&&) noexcept = delete;
 
-    virtual int run(bool lock = true) = 0;
+    virtual int run() = 0;
 
     virtual bool isRunning() const = 0;
 

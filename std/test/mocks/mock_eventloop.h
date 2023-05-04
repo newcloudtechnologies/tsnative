@@ -21,7 +21,7 @@ namespace test
 class MockEventLoop final : public IEventLoop
 {
 public:
-    MOCK_METHOD(int, run, (bool), (override));
+    MOCK_METHOD(int, run, (), (override));
     MOCK_METHOD(void, stop, (), (override));
 
     MOCK_METHOD(bool, isRunning, (), (const, override));

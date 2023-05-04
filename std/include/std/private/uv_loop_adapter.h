@@ -13,7 +13,6 @@
 
 #include "libuv_wrapper/loop.h"
 #include "std/ievent_loop.h"
-#include "uv_timer_adapter.h"
 
 #include <atomic>
 #include <deque>
@@ -21,8 +20,6 @@
 class UVLoopAdapter : public IEventLoop
 {
 public:
-    using Time = uv::TimerEventHandler::Time;
-
     template <typename T, typename... E>
     using EventEmitter = EmitterBase<T, uv::ErrorEvent, E...>;
 
@@ -37,7 +34,7 @@ public:
     UVLoopAdapter(UVLoopAdapter&&) = delete;
     UVLoopAdapter& operator=(UVLoopAdapter&&) = delete;
 
-    int run(bool lock = true) override;
+    int run() override;
 
     bool isRunning() const override;
 
@@ -57,12 +54,14 @@ public:
 
 private:
     void stopLoop();
+    void closeLoop();
     void processQueue();
+    void initProcessingQueue();
 
 private:
     uv::Loop _loop;
     std::atomic_bool _isRunning;
     std::deque<Callback> _pendingCallbacks;
-    // Prevents run of exiting event loop.
-    std::shared_ptr<uv::AsyncEventHandler> _asyncEventHandler;
+    // use as post event
+    std::shared_ptr<uv::IdleEventHandler> _postEventHandler;
 };
