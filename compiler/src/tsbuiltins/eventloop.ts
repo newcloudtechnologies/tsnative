@@ -43,16 +43,11 @@ export class EventLoop {
     return this.eventLoopType;
   }
 
-  run(name?: string, lock: boolean = true) {
+  run(name?: string) {
     const eventLoopAddress = this.runtime.getEventLoopAddress();
     return this.generator.builder.createSafeCall(
       this.runLoopFn,
-      [
-        eventLoopAddress,
-        this.generator.builtinBoolean.createStack(
-          lock ? LLVMConstantInt.getTrue(this.generator)
-            : LLVMConstantInt.getFalse(this.generator))
-      ],
+      [eventLoopAddress],
       name
     );
   }
@@ -79,7 +74,7 @@ export class EventLoop {
     );
 
     const returnType = LLVMType.getInt32Type(this.generator);
-    const llvmArgumentTypes = [thisType.getLLVMType(), this.generator.builtinBoolean.getLLVMType()];
+    const llvmArgumentTypes = [thisType.getLLVMType()];
 
     const { fn: runFN } = this.generator.llvm.function.create(
       this.generator.builtinNumber.getLLVMType(),

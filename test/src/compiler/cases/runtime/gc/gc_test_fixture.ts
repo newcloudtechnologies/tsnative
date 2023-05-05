@@ -21,11 +21,7 @@ export function gcTest(testBody: () => void, description: string, savedObjects =
     memInfo.printGCState();
     testBody();
 
-    Runtime.getLoop().processEvents();
-    Runtime.getLoop().processEvents(); // On Windows, callbacks are processed on the second iteration of the loop
-
     // Checks that everything in the gc's heap is alive
-
 
     gc.collect();
     const afterAliveObjects = memInfo.getAliveObjectsCount();

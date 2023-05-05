@@ -88,7 +88,7 @@ set(SOURCES
     src/private/libuv_wrapper/error_event.cpp
     src/private/libuv_wrapper/loop.cpp
     src/private/libuv_wrapper/timer_event_handler.cpp
-    src/private/libuv_wrapper/async_event_handler.cpp
+    src/private/libuv_wrapper/idle_event_handler.cpp
     src/private/tsboolean_cxx_builtin_p.cpp
     src/private/tsnumber_cxx_builtin_p.cpp
     src/private/tsstring_std_p.cpp
@@ -262,6 +262,7 @@ if (BUILD_TEST)
                      test/array/join.cpp
                      test/array/args_to_array_tests.cpp
                      test/array/push_pop_tests.cpp
+                     test/array/sort_tests.cpp
                      test/array/dequeue_backend_tests.cpp
                      test/object/object_get.cpp
                      test/object/object_get_child_objects.cpp
@@ -278,6 +279,9 @@ if (BUILD_TEST)
                      test/utils/to_string_converter_tests.cpp
                      test/utils/make_closure_test.cpp
                      test/utils/assert_cast_test.cpp
+                     test/utils/try_cast_test.cpp
+                     test/utils/cast_from_union_test.cpp
+                     test/utils/handle_union_test.cpp
                      )
 
     add_executable(${PROJECT_NAME}_GTEST ${TEST_HEADERS} ${TEST_SOURCES})

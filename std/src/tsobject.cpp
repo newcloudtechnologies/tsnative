@@ -130,6 +130,11 @@ bool Object::isLazyClosure() const
     return _d->getTSTypeID() == TSTypeID::LazyClosure;
 }
 
+bool Object::isSameTypes(Object* object1, Object* object2)
+{
+    return object1->_d->getTSTypeID() == object2->_d->getTSTypeID();
+}
+
 bool Object::has(String* key) const
 {
     return _d->has(key);

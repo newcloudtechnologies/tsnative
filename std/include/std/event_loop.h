@@ -27,11 +27,11 @@ public:
 
     ~EventLoop();
 
-    TS_METHOD Number* run(Boolean* lock);
+    TS_METHOD Number* run();
 
     void stop();
 
-    TS_METHOD void processEvents();
+    void processEvents();
 
     void enqueue(IEventLoop::Callback&& callback);
 

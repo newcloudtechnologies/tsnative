@@ -34,7 +34,7 @@ public:
     StubEventLoop& operator=(const StubEventLoop&) = delete;
     StubEventLoop& operator=(StubEventLoop&&) noexcept = delete;
 
-    int run(bool lock = true) override;
+    int run() override;
     void stop() override;
 
     bool isRunning() const override;

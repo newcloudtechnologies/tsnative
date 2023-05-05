@@ -33,6 +33,7 @@
 #include "std/private/logger.h"
 
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 template <typename T>
@@ -84,6 +85,8 @@ public:
         "forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void): void") void forEach(TSClosure*
                                                                                                               closure)
         const;
+
+    TS_METHOD TS_SIGNATURE("sort(compareFn?: (a: T, b: T) => number): this") Array<T>* sort(Union* compareFn);
 
     Number* indexOf(T value) const;
     TS_METHOD TS_SIGNATURE("indexOf(searchElement: T, fromIndex?: number): number") Number* indexOf(
@@ -252,6 +255,34 @@ void Array<T>::forEach(TSClosure* closure) const
 
         closure->call();
     }
+}
+
+template <typename T>
+Array<T>* Array<T>::sort(Union* compareFn)
+{
+    TSClosure* closure = nullptr;
+
+    auto comparator = impl::sort::makeDefaultComparator<T>();
+
+    if (compareFn->hasValue())
+    {
+        Object* value = compareFn->getValue();
+        if (!value || !value->isClosure())
+        {
+            throw std::runtime_error{"sort: invalid argument"};
+        }
+
+        closure = static_cast<TSClosure*>(value);
+    }
+
+    if (closure)
+    {
+        comparator = impl::sort::makeClosureBasedComparator<T>(closure);
+    }
+
+    _d->sort(comparator);
+
+    return this;
 }
 
 template <typename T>

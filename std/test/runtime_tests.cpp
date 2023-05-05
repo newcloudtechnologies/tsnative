@@ -51,7 +51,7 @@ TEST_F(RuntimeTestFixture, runCustomEventLoop)
     EXPECT_FALSE(eventLoop->isRunning());
 
     auto eventLoopWrapper = Runtime::getLoop();
-    eventLoopWrapper->run(new Boolean(false));
+    eventLoopWrapper->run();
 
     EXPECT_TRUE(eventLoop->isRunning());
 }

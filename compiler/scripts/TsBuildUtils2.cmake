@@ -55,7 +55,6 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 #  PRINT_IR             Print IR code to console.
 #  TRACE_IMPORT         Enable ts module resolution tracing
 #  OPT_LEVEL            Optimization level that will be passed to llc "as is"
-#  RUN_EVENT_LOOP       <lock|oneshot> Make compiler embed code that starts internal event loop automatically.
 #  WATCH_SOURCES        List of files, because of changes in which, it is necessary to rebuild the project.
 #                       If not provided, the all sources from the directory containing main ts file will be used as
 #                       the files from TS_HEADERS property defined in LIBRARIES targets.
@@ -66,7 +65,7 @@ set(CACHED_CMAKE_CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 function (add_ts_library ARG_NAME ...)
     set(options )
-    set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG PRINT_IR TRACE_IMPORT OPT_LEVEL RUN_EVENT_LOOP ENABLE_OPTIMIZATIONS)
+    set(oneValueArgs SRC TS_CONFIG BASE_URL TS_DEBUG PRINT_IR TRACE_IMPORT OPT_LEVEL ENABLE_OPTIMIZATIONS)
     set(multiValueArgs DEFINES LIBRARIES WATCH_SOURCES DEPENDS)
 
     cmake_parse_arguments(PARSE_ARGV 1 "ARG" "${options}" "${oneValueArgs}" "${multiValueArgs}")
@@ -108,7 +107,6 @@ function (add_ts_library ARG_NAME ...)
         $<$<BOOL:${ARG_PRINT_IR}>:--printIR;>
         $<$<BOOL:${ARG_TS_DEBUG}>:--debug;>
         $<$<BOOL:${ARG_TRACE_IMPORT}>:--trace;>
-        $<$<BOOL:${ARG_RUN_EVENT_LOOP}>:--runEventLoop ${ARG_RUN_EVENT_LOOP};>
         --enableOptimizations ${ARG_ENABLE_OPTIMIZATIONS}
     )
     set(watchSources ${ARG_WATCH_SOURCES})

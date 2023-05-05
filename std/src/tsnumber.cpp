@@ -300,3 +300,13 @@ bool Number::operator==(double other) const noexcept
 {
     return *(this->_d) == other;
 }
+
+bool Number::operator<(const Number& other) const noexcept
+{
+    return this->unboxed() < other.unboxed();
+}
+
+bool Number::operator<(double other) const noexcept
+{
+    return this->unboxed() < other;
+}

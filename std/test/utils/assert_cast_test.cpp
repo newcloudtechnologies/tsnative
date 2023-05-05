@@ -41,7 +41,7 @@ TEST_F(AssertCastTest, BadCastToArray)
     arr->push(new test::Number(33.0));
     Object* obj = arr;
 
-    EXPECT_THROW(assertCast<test::Array<test::String*>*>(obj), std::runtime_error);
+    EXPECT_THROW(assertCast<test::Array<test::String*>*>(obj), BadCast);
 }
 
 TEST_F(AssertCastTest, CastToUnion)

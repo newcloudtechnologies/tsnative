@@ -28,8 +28,8 @@ TEST_F(ArrayFixture, spliceWithBooleanFalse)
 
     const auto* result = array->splice(start, deleteCount);
 
-    const auto removed = toVector<int>(result);
-    const auto left = toVector<int, test::Array>(array);
+    const auto removed = Serializer<int, ::Array>::toVector(result);
+    const auto left = IntArray::toVector(array);
 
     const std::vector<int> expectedLeft{1, 2, 3};
     const std::vector<int> expectedRemoved{};
@@ -50,8 +50,8 @@ TEST_F(ArrayFixture, spliceWithBooleanTrue)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toVector<int>(result);
-    const auto left = toVector<int, test::Array>(array);
+    const auto removed = Serializer<int, ::Array>::toVector(result);
+    const auto left = IntArray::toVector(array);
 
     const std::vector<int> expectedLeft{1, 3};
     const std::vector<int> expectedRemoved{2};
@@ -72,8 +72,8 @@ TEST_F(ArrayFixture, spliceWithDeleteCountUndefined)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toVector<int>(result);
-    const auto left = toVector<int, test::Array>(array);
+    const auto removed = Serializer<int, ::Array>::toVector(result);
+    const auto left = IntArray::toVector(array);
 
     const std::vector<int> expectedLeft{1};
     const std::vector<int> expectedRemoved{2, 3};
@@ -94,8 +94,8 @@ TEST_F(ArrayFixture, spliceWithDeleteCountNull)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toVector<int>(result);
-    const auto left = toVector<int, test::Array>(array);
+    const auto removed = Serializer<int, ::Array>::toVector(result);
+    const auto left = IntArray::toVector(array);
 
     const std::vector<int> expectedLeft{1, 2, 3};
     const std::vector<int> expectedRemoved{};
@@ -116,8 +116,8 @@ TEST_F(ArrayFixture, spliceWithDeleteCountString)
 
     const auto result = array->splice(start, deleteCount);
 
-    const auto removed = toVector<int>(result);
-    const auto left = toVector<int, test::Array>(array);
+    const auto removed = Serializer<int, ::Array>::toVector(result);
+    const auto left = IntArray::toVector(array);
 
     const std::vector<int> expectedLeft{1, 2, 3};
     const std::vector<int> expectedRemoved{};
