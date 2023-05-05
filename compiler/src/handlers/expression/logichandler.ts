@@ -79,7 +79,7 @@ export class LogicHandler extends AbstractExpressionHandler {
       this.generator.builder.setInsertionPoint(endBlock);
 
 
-      return result;
+      return result.derefToPtrLevel1();
     }
 
     if (this.next) {
@@ -107,7 +107,7 @@ export class LogicHandler extends AbstractExpressionHandler {
     this.generator.builder.createBr(endBlock);
 
     this.generator.builder.setInsertionPoint(endBlock);
-    return result;
+    return result.derefToPtrLevel1();
   }
 
   private handleLogicalOr(lhs: ts.Expression, rhs: ts.Expression, env?: Environment): LLVMValue {
@@ -128,6 +128,6 @@ export class LogicHandler extends AbstractExpressionHandler {
     this.generator.builder.createBr(endBlock);
 
     this.generator.builder.setInsertionPoint(endBlock);
-    return result;
+    return result.derefToPtrLevel1();
   }
 }
