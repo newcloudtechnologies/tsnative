@@ -95,6 +95,8 @@ public:
 
     Array<String*>* getKeysArray() const override;
 
+    bool operator<(const String& other) const noexcept;
+
 private:
     StringPrivate* _d = nullptr;
 

@@ -28,6 +28,57 @@ const is_equal = function <T>(a: T[], b: T[]): boolean {
 };
 
 {
+  let numbers: number[] = [40, 90, 60, 10, 70, 20, 80, 30, 50];
+
+  numbers.sort((a: number, b: number) => {
+    return a - b;   // ascending
+  });
+
+  let l1 = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+  console.assert(is_equal(numbers, l1), "array: sort: [10, 20, 30, 40, 50, 60, 70, 80, 90] failed");
+}
+
+{
+  let numbers: number[] = [40, 90, 60, 10, 70, 20, 80, 30, 50];
+
+  numbers.sort((a: number, b: number) => {
+    return b - a;   // descending
+  });
+
+  let l1 = [90, 80, 70, 60, 50, 40, 30, 20, 10];
+  console.assert(is_equal(numbers, l1), "array: sort: [90, 80, 70, 60, 50, 40, 30, 20, 10] failed");
+}
+
+{
+  interface Candidate {
+    name: string;
+    age: number;
+  }
+
+  const array = [
+    { name: "John", age: 43 },
+    { name: "Alex", age: 39 },
+    { name: "Bob", age: 33 },
+    { name: "Artem", age: 40 },
+  ];
+
+  const namesAsArray = function (objects: Candidate[]): string[] {
+    const names: string[] = [];
+    for (let it of objects) {
+      names.push(it.name);
+    }
+    return names;
+  };
+
+  let l1 = ["John", "Alex", "Bob", "Artem"];
+  console.assert(is_equal(namesAsArray(array), l1), "array: sort: ['John', 'Alex', 'Bob', 'Artem'] failed");
+
+  array.sort();
+
+  console.assert(is_equal(namesAsArray(array), l1), "array: sort: ['John', 'Alex', 'Bob', 'Artem'] failed");
+}
+
+{
   const push = function (a: number[], x: number): number[] {
     a.push(x);
     return a;

@@ -341,3 +341,8 @@ TS_METHOD Number* String::negate() const
 
     return new Number{-parsed};
 }
+
+bool String::operator<(const String& other) const noexcept
+{
+    return this->toString()->cpp_str() < other.toString()->cpp_str();
+}
