@@ -14,12 +14,13 @@
 #include "std/private/tsarray_std_p.h"
 
 #include <gtest/gtest.h>
+#include <string>
 #include <vector>
 
 class DequeueBackendFixture : public test::GlobalTestAllocatorFixture
 {
 public:
-    DequeueBackend<Number*> getEmptyArray() const
+    DequeueBackend<Number*> getEmptyBackend() const
     {
         DequeueBackend<Number*> backend;
         return backend;
@@ -34,18 +35,20 @@ public:
         return backend;
     }
 
-    template <typename R, template <typename> class A, typename T>
-    std::vector<R> toVector(const A<T*>& backend) const
+    DequeueBackend<Number*> getUnorderedBackend() const
     {
-        std::vector<R> result;
-
-        for (const auto& it : backend.toStdVector())
-        {
-            auto element = it->unboxed();
-            result.push_back(static_cast<R>(element));
-        }
-
-        return result;
+        DequeueBackend<Number*> backend;
+        backend.push(new test::Number(44));
+        backend.push(new test::Number(16));
+        backend.push(new test::Number(32));
+        backend.push(new test::Number(78));
+        backend.push(new test::Number(1));
+        backend.push(new test::Number(36));
+        backend.push(new test::Number(8));
+        backend.push(new test::Number(17));
+        backend.push(new test::Number(6));
+        backend.push(new test::Number(12));
+        return backend;
     }
 };
 
@@ -62,3 +65,41 @@ struct TestParamWithTwoArgs final
 class DequeBackendSpliceWithTwoArgsTestFixture : public ::testing::TestWithParam<TestParamWithTwoArgs>
 {
 };
+
+template <typename R, template <typename> class A>
+struct Serializer
+{
+    template <typename T>
+    static std::vector<R> toVector(const A<T*>& backend)
+    {
+        std::vector<R> result;
+
+        for (const auto& it : backend.toStdVector())
+        {
+            auto element = it->unboxed();
+            result.push_back(static_cast<R>(element));
+        }
+
+        return result;
+    }
+};
+
+template <template <typename> class A>
+struct Serializer<std::string, A>
+{
+    template <typename T>
+    static std::vector<std::string> toVector(const A<T*>& backend)
+    {
+        std::vector<std::string> result;
+
+        for (const auto& it : backend.toStdVector())
+        {
+            result.push_back(it->cpp_str());
+        }
+
+        return result;
+    }
+};
+
+using IntDequeueBackend = Serializer<int, DequeueBackend>;
+using StringDequeueBackend = Serializer<std::string, DequeueBackend>;

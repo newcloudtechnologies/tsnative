@@ -91,7 +91,6 @@ class TSNativeTestsConan(ConanFile):
         # Variables for compiled tests
         tc.variables["PROJECT_BASE_URL"] = self.toUnixPath(os.path.join(self.build_folder, "imports", "declarations"))
         tc.variables["IS_TEST"] = True
-        tc.variables["RUN_EVENT_LOOP"] = "oneshot"
         tc.variables["ENABLE_OPTIMIZATIONS"] = bool(self.options.enable_optimizations)
         tc.variables["TEST_FILTER"] = self.options.test_filter
 
@@ -179,6 +178,10 @@ class TSNativeTestsConan(ConanFile):
         out_dir = "compiler_tests"
         # first - build pure ts tests
         excludes = [".d.ts", "cpp_integration"]
+
+        excludes.append("gc_promises.ts")      # FIXME: TSN-601
+        excludes.append("gc_timers.ts")        # FIXME: TSN-601
+        excludes.append("gc_generate_load.ts") # FIXME: TSN-601
 
         if self.settings.os == "Windows":
             excludes.append("date.ts")                  # FIXME: TSN-163

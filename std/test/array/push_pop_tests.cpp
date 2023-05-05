@@ -26,7 +26,7 @@ TEST_F(ArrayFixture, push)
     numbers->push(new test::Number(30));
     numbers->push(new test::Number(40));
 
-    const auto left = toVector<int, test::Array>(numbers);
+    const auto left = IntArray::toVector(numbers);
 
     EXPECT_THAT(left, ::testing::ElementsAreArray({10, 20, 30, 40}));
 }
@@ -35,7 +35,7 @@ TEST_F(ArrayFixture, pop)
 {
     auto numbers = getFilledNumberArray();
 
-    const auto left1 = toVector<int, test::Array>(numbers);
+    const auto left1 = IntArray::toVector(numbers);
     EXPECT_THAT(left1, ::testing::ElementsAreArray({10, 20, 30, 40}));
 
     auto* popedValue = numbers->pop();
@@ -43,7 +43,7 @@ TEST_F(ArrayFixture, pop)
 
     numbers->push(new test::Number(50));
 
-    const auto left2 = toVector<int, test::Array>(numbers);
+    const auto left2 = IntArray::toVector(numbers);
     EXPECT_THAT(left2, ::testing::ElementsAreArray({10, 20, 30, 50}));
 
     popedValue = numbers->pop();
