@@ -101,6 +101,8 @@ public:
 
     bool operator==(const Number& other) const noexcept;
     bool operator==(double other) const noexcept;
+    bool operator<(const Number& other) const noexcept;
+    bool operator<(double other) const noexcept;
 
 private:
     NumberPrivate* _d = nullptr;

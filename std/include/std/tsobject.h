@@ -72,6 +72,8 @@ public:
     bool isTimer() const;
     bool isLazyClosure() const;
 
+    static bool isSameTypes(Object* object1, Object* object2);
+
 protected:
     virtual Array<String*>* getKeysArray() const;
     const Object* getMostDerived() const;

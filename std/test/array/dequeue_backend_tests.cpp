@@ -18,7 +18,7 @@ namespace
 
 TEST_F(DequeueBackendFixture, push)
 {
-    auto backend = getEmptyArray();
+    auto backend = getEmptyBackend();
 
     backend.push(new test::Number(10));
     backend.push(new test::Number(20));
@@ -27,7 +27,7 @@ TEST_F(DequeueBackendFixture, push)
     EXPECT_EQ(backend.empty(), false);
     EXPECT_EQ(backend.length(), 3);
 
-    auto left = toVector<int>(backend);
+    auto left = IntDequeueBackend::toVector(backend);
 
     EXPECT_THAT(left, ::testing::ElementsAreArray({10, 20, 30}));
 }
@@ -38,7 +38,7 @@ TEST_F(DequeueBackendFixture, pop)
 
     EXPECT_EQ(backend.length(), 3);
 
-    auto left1 = toVector<int>(backend);
+    auto left1 = IntDequeueBackend::toVector(backend);
     EXPECT_THAT(left1, ::testing::ElementsAreArray({10, 20, 30}));
 
     auto* poped_value = backend.pop();
@@ -46,7 +46,7 @@ TEST_F(DequeueBackendFixture, pop)
 
     EXPECT_EQ(backend.length(), 2);
 
-    auto left2 = toVector<int>(backend);
+    auto left2 = IntDequeueBackend::toVector(backend);
     EXPECT_THAT(left2, ::testing::ElementsAreArray({10, 20}));
 
     backend.push(new test::Number(40));
@@ -54,7 +54,7 @@ TEST_F(DequeueBackendFixture, pop)
 
     EXPECT_EQ(backend.length(), 4);
 
-    auto left3 = toVector<int>(backend);
+    auto left3 = IntDequeueBackend::toVector(backend);
     EXPECT_THAT(left3, ::testing::ElementsAreArray({10, 20, 40, 50}));
 
     poped_value = backend.pop();
@@ -74,7 +74,7 @@ TEST_F(DequeueBackendFixture, pop)
 
 TEST_F(DequeueBackendFixture, popWhenEmpty)
 {
-    auto backend = getEmptyArray();
+    auto backend = getEmptyBackend();
 
     EXPECT_THROW(
         {
@@ -93,7 +93,7 @@ TEST_F(DequeueBackendFixture, popWhenEmpty)
 
 TEST_F(DequeueBackendFixture, empty)
 {
-    auto backend = getEmptyArray();
+    auto backend = getEmptyBackend();
 
     EXPECT_EQ(backend.empty(), true);
 
@@ -104,6 +104,21 @@ TEST_F(DequeueBackendFixture, empty)
     backend.pop();
 
     EXPECT_EQ(backend.empty(), true);
+}
+
+TEST_F(DequeueBackendFixture, sort)
+{
+    auto backend = getUnorderedBackend();
+
+    auto left1 = IntDequeueBackend::toVector(backend);
+
+    EXPECT_THAT(left1, ::testing::ElementsAreArray({44, 16, 32, 78, 1, 36, 8, 17, 6, 12}));
+
+    backend.sort([](const auto& a, const auto& b) { return a->unboxed() < b->unboxed(); });
+
+    auto left2 = IntDequeueBackend::toVector(backend);
+
+    EXPECT_THAT(left2, ::testing::ElementsAreArray({1, 6, 8, 12, 16, 17, 32, 36, 44, 78}));
 }
 
 // TODO: add other tests for DequeueBackend

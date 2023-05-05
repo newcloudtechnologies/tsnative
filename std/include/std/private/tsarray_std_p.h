@@ -53,6 +53,8 @@ public:
     std::vector<T> splice(int start) override;
     std::vector<T> splice(int start, int deleteCount) override;
 
+    void sort(std::function<typename ArrayPrivate<T>::SortComparator> comparator) override;
+
     void setElementAtIndex(std::size_t index, T value) override;
 
     std::vector<T> concat(const std::vector<T>& other) const override;
@@ -247,6 +249,12 @@ std::vector<T> DequeueBackend<T>::splice(int start, int deleteCount)
     }();
 
     return doSplice(unsignedStart, unsignedDeleteCount);
+}
+
+template <typename T>
+void DequeueBackend<T>::sort(std::function<typename ArrayPrivate<T>::SortComparator> comparator)
+{
+    std::stable_sort(_storage.begin(), _storage.end(), comparator);
 }
 
 template <typename T>
