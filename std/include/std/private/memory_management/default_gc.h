@@ -46,6 +46,8 @@ public:
     void collect() override;
     void print(const std::string& fileName = "") const override;
 
+    void clearAll() override;
+
     const UniqueObjects& getHeap() const;
     const Roots& getRoots() const;
     const UniqueConstObjects& getMarked() const;
