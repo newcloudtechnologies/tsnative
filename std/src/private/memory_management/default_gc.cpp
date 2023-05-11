@@ -25,7 +25,11 @@ DefaultGC::DefaultGC(TimerStorage& timers, Callbacks&& gcCallbacks)
 {
 }
 
-DefaultGC::~DefaultGC() = default;
+DefaultGC::~DefaultGC()
+{
+    _roots.clear();
+    collect();
+}
 
 void DefaultGC::addObject(Object* o)
 {
@@ -122,12 +126,6 @@ void DefaultGC::collect()
 
     LOG_GC("Alive objects count after collect " + std::to_string(_heap.size()));
     LOG_INFO("Finished collect call");
-}
-
-void DefaultGC::clearAll()
-{
-    _roots.clear();
-    collect();
 }
 
 void DefaultGC::sweep()
