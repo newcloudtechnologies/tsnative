@@ -207,12 +207,12 @@ void Runtime::destroy()
 
     LOG_INFO("Calling destroy");
 
+    _isInitialized = false;
+
     _cmdArgs.clear();
     _timerCreator = nullptr;
     _loop = nullptr;
     _memoryManager = nullptr;
-
-    _isInitialized = false;
 
     LOG_INFO("Runtime destroy finished");
 }
