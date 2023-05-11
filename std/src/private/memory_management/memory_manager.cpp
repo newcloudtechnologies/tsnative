@@ -42,7 +42,7 @@ MemoryManager::MemoryManager(std::unique_ptr<Allocator>&& allocator,
 
 MemoryManager::~MemoryManager()
 {
-    _gc->clearAll();
+    _gc.reset();
 }
 
 void* MemoryManager::allocateMemoryForObject(std::size_t size)

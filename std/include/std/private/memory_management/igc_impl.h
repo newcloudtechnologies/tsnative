@@ -33,7 +33,5 @@ public:
 
     virtual void collect() = 0;
 
-    virtual void clearAll() = 0;
-
     virtual void print(const std::string& fileName = "") const = 0;
 };
