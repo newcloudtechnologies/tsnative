@@ -55,7 +55,6 @@ class TSNativePlayground(ConanFile):
         # Variables for compiled tests
         tc.variables["PROJECT_BASE_URL"] = to_unix(os.path.join(self.build_folder, "imports/declarations"))
         tc.variables["IS_TEST"] = True
-        tc.variables["RUN_EVENT_LOOP"] = "oneshot"
         tc.variables["PRINT_IR"] = False
         tc.variables["TRACE_IMPORT"] = False
 
