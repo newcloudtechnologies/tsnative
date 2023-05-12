@@ -58,6 +58,10 @@ export class CXXForwardsDeclarator {
         return line.startsWith(this.TEMPLATE_CLASS_PATTERN);
     }
 
+    private isTemplateMethod(line: string) {
+        return line.startsWith(this.TEMPLATE_PATTERN) && this.normalizeCppSignature(line).split(" ").length === 3;
+    }
+
     private isTemplateClass(qualifiedClassName: string) {
         return qualifiedClassName.includes(this.OPEN_ANGLE_BRACKET);
     }
@@ -83,6 +87,16 @@ export class CXXForwardsDeclarator {
                 for (const arg of args) {
                     requiredForwardDeclarations.add(this.removePointers(arg));
                 }
+
+                if (this.isTemplateMethod(instance)) {
+                const returnType = this.getReturnTypeIfTemplate(instance);
+                    if (returnType) {
+                        const classes = this.getLastTemplateArguments(returnType);
+                        for (const cls of classes) {
+                            requiredForwardDeclarations.add(this.removePointers(cls));
+                        }
+                    }
+                }
             }
         }
 
@@ -96,6 +110,20 @@ export class CXXForwardsDeclarator {
         const templateArgumentsString = functionSignature.substring(openBracketPos + 1, closeBracketPos);
 
         return this.splitParameterTypesByComma(templateArgumentsString.replace(" ", ""));
+    }
+
+    private getReturnTypeIfTemplate(functionSignature: string) {
+        const normalized = this.normalizeCppSignature(functionSignature);
+        const parts = normalized.split(" ");
+
+        if (parts.length !== 3) {
+            return;
+        }
+
+        const returnType = parts[1];
+        return returnType.includes("<") && returnType.includes(">")
+            ? returnType
+            : undefined;
     }
 
     private splitParameterTypesByComma(parameterTypes: string) {
@@ -173,5 +201,48 @@ export class CXXForwardsDeclarator {
 
     private isClassInNamespace(qualifiedClassName: string) {
         return qualifiedClassName.includes(this.DOUBLECOLON);
+    }
+
+    private normalizeCppSignature(signature: string) {
+        let result = "";
+
+        const stack = [];
+
+        const isStackEmpty = () => stack.length === 0;
+
+        const isOpenBracket = (c: string) => c === this.OPEN_BRACKET || c === this.OPEN_ANGLE_BRACKET;
+        const isCloseBracket = (c: string) => c === this.CLOSE_BRACKET || c === this.CLOSE_ANGLE_BRACKET;
+
+        const checkConsistence = (close: string, open: string) => {
+            if (
+                (close === this.CLOSE_BRACKET && open !== this.OPEN_BRACKET) ||
+                (close === this.CLOSE_ANGLE_BRACKET && open !== this.OPEN_ANGLE_BRACKET)
+            ) {
+                throw new Error(`Brackets mismatch`);
+            }
+        };
+
+        for (const c of signature) {
+            if (isOpenBracket(c)) {
+                stack.push(c);
+            }
+
+            if (isCloseBracket(c)) {
+                const open = stack.pop();
+                if (!open) {
+                    throw new Error("Stack unexpectedly empty");
+                }
+
+                checkConsistence(c, open);
+            }
+
+            if (!isStackEmpty() && c === " ") {
+                continue;
+            }
+
+            result += c;
+        }
+
+        return result;
     }
 }
