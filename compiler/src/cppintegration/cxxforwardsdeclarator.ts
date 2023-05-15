@@ -52,7 +52,7 @@ export class CXXForwardsDeclarator {
     private getTemplateInstances() {
         return this.generatedContent.filter((value) => value.startsWith(this.TEMPLATE_PATTERN));
     }
- 
+
     private isClassTemplateInstance(line: string) {
 
         return line.startsWith(this.TEMPLATE_CLASS_PATTERN);
