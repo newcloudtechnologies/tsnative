@@ -59,7 +59,8 @@ export class CXXForwardsDeclarator {
     }
 
     private isTemplateMethod(line: string) {
-        return line.startsWith(this.TEMPLATE_PATTERN) && this.normalizeCppSignature(line).split(" ").length === 3;
+        const normalizedParts = this.normalizeCppSignature(line).split(" ");
+        return line.startsWith(this.TEMPLATE_PATTERN) && normalizedParts.length > 2;
     }
 
     private isTemplateClass(qualifiedClassName: string) {
