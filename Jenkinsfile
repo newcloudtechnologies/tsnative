@@ -15,7 +15,7 @@
 // imported need class from Jenkins shared library
 import com.ncloudtech.emb.devops.pipeline.gitUtils
 import com.ncloudtech.emb.devops.pipeline.complexUtils
-import com.ncloudtech.emb.devops.pipeline.JobUtils
+import com.ncloudtech.jenkins.Jenkins
 import com.ncloudtech.emb.devops.pipeline.notificationUtils
 import com.ncloudtech.emb.devops.pipeline.VersioningUtils
 import com.ncloudtech.git.Gitea
@@ -55,7 +55,7 @@ pipeline {
         stage('Check Previous Builds') {
             steps {
                 script {
-                    JobUtils.cancelPreviousPRBuilds(env.JOB_NAME, env.BUILD_NUMBER.toInteger(), currentBuild)
+                    Jenkins.cancelPreviousPRBuilds(env.JOB_NAME, env.BUILD_NUMBER.toInteger(), currentBuild)
                 }
             }
         }
