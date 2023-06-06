@@ -10,7 +10,7 @@
  */
 
 // Used Jenkins shared library
-@Library('shared-lib@master') _
+@Library('shared-lib@antiq-freezed-v2023-06-05') _
 
 // imported need class from Jenkins shared library
 import com.ncloudtech.emb.devops.pipeline.gitUtils
