@@ -1,0 +1,45 @@
+From 568a0884123259cc3f02ee7430c3b28522bff08e Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Tue, 31 Jan 2023 16:01:11 +0300
+Subject: [PATCH 7/8] fix producing invalid graphviz file in node text contains
+ spaces
+
+---
+ include/gvl.h | 4 +++-
+ src/gvl.cpp   | 4 +++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/include/gvl.h b/include/gvl.h
+index 5ae40bc..a2da559 100644
+--- a/include/gvl.h
++++ b/include/gvl.h
+@@ -19,7 +19,9 @@ struct NodeId {
+   std::string name;
+   std::string port;
+ 
+-  NodeId(const char* name, const char* port = "") : name(name), port(port) {}
++  NodeId(const std::string& name, const char* port = "") : name("\"" + name + "\""), port(port) {}
++  
++  explicit NodeId(const char* name) : name("\"" + std::string(name) + "\"") {}
+ };
+ 
+ struct Edge {
+diff --git a/src/gvl.cpp b/src/gvl.cpp
+index 9c1673e..6447d4b 100644
+--- a/src/gvl.cpp
++++ b/src/gvl.cpp
+@@ -17,8 +17,10 @@ std::ostream& operator<<(std::ostream& out, const NodeId& node_id) {
+ std::ostream& operator<<(std::ostream& out, const std::vector<Property>& properties) {
+   if (!properties.empty()) {
+     out << "[ ";
++    char splitter = ' ';
+     for (const Property& prop : properties) {
+-      out << prop.name << "=\"" << prop.value << "\" ";
++      out << splitter << prop.name << "=" << prop.value;
++      splitter = ',';
+     }
+     out << "]";
+   }
+-- 
+2.34.1
+

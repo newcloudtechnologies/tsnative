@@ -1,0 +1,4917 @@
+From f6705f314e0b356ef7722cad793b2371446ca190 Mon Sep 17 00:00:00 2001
+From: Golubov Gleb <gleb.golubov@myoffice.team>
+Date: Mon, 7 Apr 2025 23:30:11 +0300
+Subject: [PATCH] update to 3.0.9
+
+---
+ CMakeLists.txt               |   6 +-
+ llvm-node.d.ts               | 341 ++++++++++++++++++++++++++++++++++-
+ package.json                 |   1 -
+ src/ir/call-inst.cc          |  13 +-
+ src/ir/call-inst.h           |   1 +
+ src/ir/constant-expr.cc      |  72 ++++++++
+ src/ir/constant-expr.h       |  37 ++++
+ src/ir/constant.cc           |   4 +
+ src/ir/constant.h            |   1 +
+ src/ir/data-layout.cc        |  11 ++
+ src/ir/data-layout.h         |   1 +
+ src/ir/debugloc.cc           |  51 ++++++
+ src/ir/debugloc.h            |  36 ++++
+ src/ir/di-basic-type.cc      |  56 ++++++
+ src/ir/di-basic-type.h       |  32 ++++
+ src/ir/di-builder.cc         | 302 +++++++++++++++++++++++++++++++
+ src/ir/di-builder.h          |  42 +++++
+ src/ir/di-comp-type.cc       |  56 ++++++
+ src/ir/di-comp-type.h        |  32 ++++
+ src/ir/di-compile-unit.cc    |  62 +++++++
+ src/ir/di-compile-unit.h     |  33 ++++
+ src/ir/di-derived-type.cc    |  54 ++++++
+ src/ir/di-derived-type.h     |  33 ++++
+ src/ir/di-expression.cc      |  60 ++++++
+ src/ir/di-expression.h       |  35 ++++
+ src/ir/di-file.cc            |  71 ++++++++
+ src/ir/di-file.h             |  36 ++++
+ src/ir/di-local-scope.cc     |  54 ++++++
+ src/ir/di-local-scope.h      |  28 +++
+ src/ir/di-local-variable.cc  |  58 ++++++
+ src/ir/di-local-variable.h   |  35 ++++
+ src/ir/di-location.cc        |  84 +++++++++
+ src/ir/di-location.h         |  31 ++++
+ src/ir/di-node.cc            | 126 +++++++++++++
+ src/ir/di-node.h             |  34 ++++
+ src/ir/di-scope.cc           |  67 +++++++
+ src/ir/di-scope.h            |  35 ++++
+ src/ir/di-subprogram.cc      |  92 ++++++++++
+ src/ir/di-subprogram.h       |  33 ++++
+ src/ir/di-subroutine-type.cc |  55 ++++++
+ src/ir/di-subroutine-type.h  |  31 ++++
+ src/ir/di-type-ref-array.cc  |  43 +++++
+ src/ir/di-type-ref-array.h   |  34 ++++
+ src/ir/di-type.cc            |  55 ++++++
+ src/ir/di-type.h             |  32 ++++
+ src/ir/di-variable.cc        |  58 ++++++
+ src/ir/di-variable.h         |  35 ++++
+ src/ir/dwarf.cc              | 182 +++++++++++++++++++
+ src/ir/dwarf.h               |  22 +++
+ src/ir/eh-generator.cc       | 202 +++++++++++++++++++++
+ src/ir/function.cc           |  28 +++
+ src/ir/function.h            |   3 +
+ src/ir/instr-types.cc        |  56 ++++++
+ src/ir/instr-types.h         |  36 ++++
+ src/ir/instruction.cc        |  55 ++++++
+ src/ir/instruction.h         |  35 ++++
+ src/ir/invoke-inst.cc        |  56 ++++++
+ src/ir/invoke-inst.h         |  37 ++++
+ src/ir/ir-builder.cc         |  89 ++++++++-
+ src/ir/ir-builder.h          |   4 +
+ src/ir/ir.cc                 |  53 ++++++
+ src/ir/landing-pad-inst.cc   |  78 ++++++++
+ src/ir/landing-pad-inst.h    |  38 ++++
+ src/ir/llvm-constants.cc     |  16 ++
+ src/ir/llvm-constants.h      |  12 ++
+ src/ir/md-node.cc            |  54 ++++++
+ src/ir/md-node.h             |  36 ++++
+ src/ir/metadata.cc           |  87 +++++++++
+ src/ir/metadata.h            |  37 ++++
+ src/ir/module.cc             |  39 ++++
+ src/ir/module.h              |   1 +
+ src/ir/value.cc              |   7 +
+ src/ir/value.h               |   1 +
+ src/llvm-node.cc             |   2 +-
+ src/support/support.cc       |  32 +++-
+ src/support/support.h        |   7 +
+ src/target/target.h          |   2 +
+ src/target/triple.cc         | 101 +++++++++++
+ src/target/triple.h          |  46 +++++
+ src/win_delay_load_hook.cc   |  36 ++++
+ 80 files changed, 3970 insertions(+), 19 deletions(-)
+ create mode 100644 src/ir/constant-expr.cc
+ create mode 100644 src/ir/constant-expr.h
+ create mode 100644 src/ir/debugloc.cc
+ create mode 100644 src/ir/debugloc.h
+ create mode 100644 src/ir/di-basic-type.cc
+ create mode 100644 src/ir/di-basic-type.h
+ create mode 100644 src/ir/di-builder.cc
+ create mode 100644 src/ir/di-builder.h
+ create mode 100644 src/ir/di-comp-type.cc
+ create mode 100644 src/ir/di-comp-type.h
+ create mode 100644 src/ir/di-compile-unit.cc
+ create mode 100644 src/ir/di-compile-unit.h
+ create mode 100644 src/ir/di-derived-type.cc
+ create mode 100644 src/ir/di-derived-type.h
+ create mode 100644 src/ir/di-expression.cc
+ create mode 100644 src/ir/di-expression.h
+ create mode 100644 src/ir/di-file.cc
+ create mode 100644 src/ir/di-file.h
+ create mode 100644 src/ir/di-local-scope.cc
+ create mode 100644 src/ir/di-local-scope.h
+ create mode 100644 src/ir/di-local-variable.cc
+ create mode 100644 src/ir/di-local-variable.h
+ create mode 100644 src/ir/di-location.cc
+ create mode 100644 src/ir/di-location.h
+ create mode 100644 src/ir/di-node.cc
+ create mode 100644 src/ir/di-node.h
+ create mode 100644 src/ir/di-scope.cc
+ create mode 100644 src/ir/di-scope.h
+ create mode 100644 src/ir/di-subprogram.cc
+ create mode 100644 src/ir/di-subprogram.h
+ create mode 100644 src/ir/di-subroutine-type.cc
+ create mode 100644 src/ir/di-subroutine-type.h
+ create mode 100644 src/ir/di-type-ref-array.cc
+ create mode 100644 src/ir/di-type-ref-array.h
+ create mode 100644 src/ir/di-type.cc
+ create mode 100644 src/ir/di-type.h
+ create mode 100644 src/ir/di-variable.cc
+ create mode 100644 src/ir/di-variable.h
+ create mode 100644 src/ir/dwarf.cc
+ create mode 100644 src/ir/dwarf.h
+ create mode 100644 src/ir/eh-generator.cc
+ create mode 100644 src/ir/instr-types.cc
+ create mode 100644 src/ir/instr-types.h
+ create mode 100644 src/ir/instruction.cc
+ create mode 100644 src/ir/instruction.h
+ create mode 100644 src/ir/invoke-inst.cc
+ create mode 100644 src/ir/invoke-inst.h
+ create mode 100644 src/ir/landing-pad-inst.cc
+ create mode 100644 src/ir/landing-pad-inst.h
+ create mode 100644 src/ir/llvm-constants.cc
+ create mode 100644 src/ir/llvm-constants.h
+ create mode 100755 src/ir/md-node.cc
+ create mode 100755 src/ir/md-node.h
+ create mode 100755 src/ir/metadata.cc
+ create mode 100755 src/ir/metadata.h
+ create mode 100644 src/target/triple.cc
+ create mode 100644 src/target/triple.h
+ create mode 100644 src/win_delay_load_hook.cc
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e617ac2..77fab0a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -24,5 +24,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
+ 
+ llvm_map_components_to_libnames(llvm_libs ${LLVM_TARGETS_TO_BUILD} bitwriter codegen core support tablegen target)
+ 
++if (WIN32)
++        set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/DELAYLOAD:node.exe")
++endif()
++
+ # Link against LLVM libraries
+-target_link_libraries(${PROJECT_NAME} ${llvm_libs} ${CMAKE_JS_LIB} )
+\ No newline at end of file
++target_link_libraries(${PROJECT_NAME} ${llvm_libs} ${CMAKE_JS_LIB} )
+diff --git a/llvm-node.d.ts b/llvm-node.d.ts
+index 6b1acd9..834cb8d 100644
+--- a/llvm-node.d.ts
++++ b/llvm-node.d.ts
+@@ -20,6 +20,8 @@ declare namespace llvm {
+ 
+   function initializeAllAsmPrinters(): void;
+ 
++  function getProcessTriple(): string;
++
+   namespace Attribute {
+     enum AttrKind {
+       Alignment,
+@@ -131,6 +133,8 @@ declare namespace llvm {
+     replaceAllUsesWith(value: Value): void;
+ 
+     useEmpty(): boolean;
++
++    address(): number;
+   }
+ 
+   class Argument extends Value {
+@@ -264,6 +268,12 @@ declare namespace llvm {
+     getBasicBlocks(): BasicBlock[];
+ 
+     viewCFG(): void;
++
++    public setSubprogram(sp: DISubprogram): void;
++
++    public getSubprogram(): DISubprogram | undefined;
++
++    public setPersonalityFn(fn: Constant): void;
+   }
+ 
+   class GlobalVariable extends Constant {
+@@ -310,6 +320,8 @@ declare namespace llvm {
+     paramHasAttr(index: number, kind: AttrKind): boolean;
+ 
+     getNumArgOperands(): number;
++
++    setDebugLoc(location: DebugLoc): void
+   }
+ 
+   enum CallingConv {
+@@ -373,6 +385,8 @@ declare namespace llvm {
+ 
+     getPointerSize(as: number): number;
+ 
++    getPointerSizeInBits(as: number): number;
++
+     getPrefTypeAlignment(type: Type): number;
+ 
+     getTypeStoreSize(type: Type): number;
+@@ -540,7 +554,7 @@ declare namespace llvm {
+     constructor(context: LLVMContext);
+     constructor(basicBlock: BasicBlock, beforeInstruction?: Value);
+ 
+-    setInsertionPoint(basicBlock: BasicBlock): void;
++    setInsertionPoint(insertPoint: BasicBlock | Instruction): void;
+ 
+     createAdd(lhs: Value, rhs: Value, name?: string): Value;
+ 
+@@ -683,6 +697,14 @@ declare namespace llvm {
+     createZExt(value: Value, destType: Type, name?: string): Value;
+ 
+     getInsertBlock(): BasicBlock | undefined;
++
++    public SetCurrentDebugLocation(location: DebugLoc): void;
++
++    public CreateUnreachable(): void;
++
++    public CreateInvoke(callee: Value, normalDestBB: BasicBlock, unwindDEstBB: BasicBlock, args: Value[], name?: String): InvokeInst;
++
++    public CreateLandingPad(type: Type, numClauses: number, name?: String): LandingPadInst
+   }
+ 
+   namespace AtomicRMWInst {
+@@ -713,6 +735,18 @@ declare namespace llvm {
+   }
+ 
+   class Module {
++    public static readonly ModFlagBehavior: {
++      Error: number;
++      Warning: number;
++      Require: number;
++      Override: number;
++      Append: number;
++      AppendUnique: number;
++      Max: number;
++      ModFlagBehaviorFirstVal: number;
++      ModFlagBehaviorLastVal: number;
++    };
++
+     empty: boolean;
+     readonly name: string;
+     moduleIdentifier: string;
+@@ -733,6 +767,8 @@ declare namespace llvm {
+     getGlobalVariable(name: string, allowInternal?: boolean): GlobalVariable;
+ 
+     getTypeByName(name: string): StructType | null;
++
++    public addModuleFlag(behavior: number, key: string, val: number): void;
+   }
+ 
+   // support
+@@ -759,6 +795,309 @@ declare namespace llvm {
+     LLVM_VERSION_STRING: string;
+     LLVM_DEFAULT_TARGET_TRIPLE: string;
+   }>;
++
++  // support debug info
++
++  class dwarf {
++    public static DW_ATE_float: number;
++    public static DW_ATE_signed: number;
++    public static DW_ATE_boolean: number;
++    public static DW_TAG_class_type: number;
++    public static DW_TAG_pointer_type: number;
++    public static DW_TAG_null: number;
++
++    public static readonly SourceLanguage: {
++      C89: number;
++      C: number;
++      Ada83: number;
++      C_plus_plus: number;
++      Cobol74: number;
++      Cobol85: number;
++      Fortran77: number;
++      Fortran90: number;
++      Pascal83: number;
++      Modula2: number;
++      Java: number;
++      C99: number;
++      Ada95: number;
++      Fortran95: number;
++      PLI: number;
++      ObjC: number;
++      ObjC_plus_plus: number;
++      UPC: number;
++      D: number;
++      Python: number;
++      OpenCL: number;
++      Go: number;
++      Modula3: number;
++      Haskell: number;
++      C_plus_plus_03: number;
++      C_plus_plus_11: number;
++      OCaml: number;
++      Rust: number;
++      C11: number;
++      Swift: number;
++      Julia: number;
++      Dylan: number;
++      C_plus_plus_14: number;
++      Fortran03: number;
++      Fortran08: number;
++      RenderScript: number;
++      BLISS: number;
++    };
++
++    public static readonly AttributeEncoding: {
++      address: number;
++      boolean: number;
++      complex_float: number;
++      float: number;
++      signed: number;
++      signed_char: number;
++      unsigned: number;
++      unsigned_char: number;
++      imaginary_float: number;
++      packed_decimal: number;
++      numeric_string: number;
++      edited: number;
++      signed_fixed: number;
++      unsigned_fixed: number;
++      decimal_float: number;
++      UTF: number;
++      UCS: number;
++      ASCII: number;
++    };
++
++    protected constructor();
++  }
++
++
++  class Metadata {
++    protected constructor();
++  }
++
++  class MDNode extends Metadata {
++    protected constructor();
++  }
++
++  class DINode extends MDNode {
++    public static readonly DIFlags: {
++      FlagZero: number;
++      FlagPrivate: number;
++      FlagProtected: number;
++      FlagPublic: number;
++      FlagFwdDecl: number;
++      FlagAppleBlock: number;
++      FlagReservedBit4: number;
++      FlagVirtual: number;
++      FlagArtificial: number;
++      FlagExplicit: number;
++      FlagPrototyped: number;
++      FlagObjcClassComplete: number;
++      FlagObjectPointer: number;
++      FlagVector: number;
++      FlagStaticMember: number;
++      FlagLValueReference: number;
++      FlagRValueReference: number;
++      FlagExportSymbols: number;
++      FlagSingleInheritance: number;
++      FlagMultipleInheritance: number;
++      FlagVirtualInheritance: number;
++      FlagIntroducedVirtual: number;
++      FlagBitField: number;
++      FlagNoReturn: number;
++      FlagTypePassByValue: number;
++      FlagTypePassByReference: number;
++      FlagEnumClass: number;
++      FlagThunk: number;
++      FlagNonTrivial: number;
++      FlagBigEndian: number;
++      FlagLittleEndian: number;
++      FlagAllCallsDescribed: number;
++      FlagIndirectVirtualBase: number;
++      FlagAccessibility: number;
++      FlagPtrToMemberRep: number;
++    }
++
++    protected constructor();
++  }
++
++  class DIScope extends DINode {
++    protected constructor();
++
++    public getFile(): DIFile;
++  }
++
++  class DILocalScope extends DIScope {
++    protected constructor();
++  }
++
++  class DILocation extends MDNode {
++    protected constructor();
++
++    public static get(context: LLVMContext, line: number, column: number, metadata: Metadata): DILocation;
++  }
++
++  class DebugLoc {
++    public constructor(location?: DILocation);
++  }
++
++  class DITypeRefArray {
++    public constructor();
++  }
++
++  class DIFile extends DIScope {
++    protected constructor();
++
++    public getFilename(): string;
++    public getDirectory(): string;
++  }
++
++  class DICompileUnit extends DIScope {
++    protected constructor();
++
++    public getFile(): DIFile
++  }
++
++  class DIType extends DIScope {
++    protected constructor();
++  }
++
++  class DISubroutineType extends DIType {
++    protected constructor();
++  }
++
++  class DISubprogram extends DILocalScope {
++    public static readonly DISPFlags: {
++      SPFlagZero: number;
++      SPFlagVirtual: number;
++      SPFlagPureVirtual: number;
++      SPFlagLocalToUnit: number;
++      SPFlagDefinition: number;
++      SPFlagOptimized: number;
++      SPFlagPure: number;
++      SPFlagElemental: number;
++      SPFlagRecursive: number;
++      SPFlagMainSubprogram: number;
++      SPFlagDeleted: number;
++      SPFlagObjCDirect: number;
++      SPFlagNonvirtual: number;
++      SPFlagVirtuality: number;
++    }
++
++    protected constructor();
++  }
++
++  class DIBasicType extends DIType {
++    protected constructor();
++  }
++
++  class DIDerivedType extends DIType {
++    protected constructor();
++  }
++
++  class DIVariable extends DINode {
++    protected constructor();
++  }
++
++  class DILocalVariable extends DIVariable {
++    protected constructor();
++  }
++
++  class DIExpression extends MDNode {
++    protected constructor();
++  }
++
++  class DICompositeType extends DIType {
++    protected constructor();
++  }
++
++  class DIBuilder {
++    public constructor(module: Module);
++
++    public createFile(filename: string, directory: string): DIFile;
++
++    public createCompileUnit(lang: number, file: DIFile, producer: string, isOptimized: boolean, flags: string, rv: number): DICompileUnit;
++
++    public createFunction(scope: DIScope, name: string, linkage: string, file: DIFile, line: number, type: DISubroutineType, scopeLine: number, flags: number, spFlags: number): DISubprogram;
++
++    public getOrCreateTypeArray(elements: (Metadata | null)[]): DITypeRefArray;
++
++    public createSubroutineType(paramTypes: DITypeRefArray): DISubroutineType;
++
++    public finalizeSubprogram(sp: DISubprogram | undefined): void
++
++    public finalize(): void;
++
++    public createBasicType(name: string, sizeInBits: number, encoding: number, flags?: number): DIBasicType;
++
++    public createPointerType(pointedType: DIType | undefined, sizeInBits: number): DIDerivedType;
++
++    public createNullPtrType(): DIBasicType;
++
++    public createAutoVariable(scope: DIScope, name: string, file: DIFile, lineNo: number, type: DIType): DILocalVariable;
++
++    public createForwardDecl(tag: number, name: string, scope: DIScope, file: DIFile, lineNo: number, uniqueID?: string): DICompositeType;
++
++    public createExpression(): DIExpression;
++
++    public insertDeclare(storage: Value, varInfo: DILocalVariable, expression: DIExpression, location: DILocation, insertAtEnd: BasicBlock): Instruction;
++
++    public insertDbgValueIntrinsic(value: Value, varInfo: DILocalVariable, expression: DIExpression, location: DILocation, insertAtEnd: BasicBlock): Instruction;
++  }
++
++  namespace LLVMConstants {
++    const DEBUG_METADATA_VERSION: number;
++  }
++
++  // end support debug info
++
++  class Triple {
++    public constructor(twine: string);
++
++    public isOSDarwin(): boolean;
++
++    public isOSWindows(): boolean;
++
++    public isOSLinux(): boolean;
++
++    public isAndroid(): boolean;
++
++    public getTriple(): string;
++
++    public getArchName(): string;
++
++    public getVendorName(): string;
++
++    public getOSName(): string;
++
++    public getEnvironmentName(): string;
++  }
++
++  class Instruction extends Value {
++    protected constructor();
++  }
++
++  class CallBase extends Instruction {
++    protected constructor();
++  }
++
++  class InvokeInst extends CallBase {
++    protected constructor();
++  }
++
++  class LandingPadInst extends Instruction {
++    protected constructor();
++
++    public addClause(clauseVal: Constant): void;
++
++    public setCleanup(needCleanUp: Boolean): void;
++  }
++
++  class ConstantExpr extends Constant {
++    protected constructor();
++
++    public static getBitCast(constant: Constant, type: Type, onlyIfReduced?: Boolean): Constant;
++  }
+ }
+ 
+ export = llvm;
+diff --git a/package.json b/package.json
+index 0de1628..8af7538 100644
+--- a/package.json
++++ b/package.json
+@@ -28,7 +28,6 @@
+   "scripts": {
+     "configure": "cmake-js configure",
+     "build": "cmake-js compile",
+-    "install": "cmake-js compile",
+     "clean": "cmake-js clean",
+     "rebuild": "cmake-js rebuild",
+     "pretest": "tsc --strict --noEmit --types . llvm-node.d.ts ",
+diff --git a/src/ir/call-inst.cc b/src/ir/call-inst.cc
+index 581e1a8..2e13edd 100644
+--- a/src/ir/call-inst.cc
++++ b/src/ir/call-inst.cc
+@@ -3,6 +3,7 @@
+ //
+ 
+ #include "call-inst.h"
++#include "debugloc.h"
+ 
+ NAN_MODULE_INIT(CallInstWrapper::Init) {
+     auto callInstruction = Nan::GetFunction(Nan::New(callInstTemplate())).ToLocalChecked();
+@@ -125,9 +126,19 @@ Nan::Persistent<v8::FunctionTemplate>& CallInstWrapper::callInstTemplate() {
+         Nan::SetPrototypeMethod(localTemplate, "paramHasAttr", CallInstWrapper::paramHasAttr);
+         Nan::SetPrototypeMethod(localTemplate, "hasRetAttr", CallInstWrapper::hasRetAttr);
+         Nan::SetPrototypeMethod(localTemplate, "getNumArgOperands", CallInstWrapper::getNumArgOperands);
++        Nan::SetPrototypeMethod(localTemplate, "setDebugLoc", CallInstWrapper::setDebugLoc);
+ 
+         functionTemplate.Reset(localTemplate);
+     }
+ 
+     return functionTemplate;
+-}
+\ No newline at end of file
++}
++
++NAN_METHOD(CallInstWrapper::setDebugLoc) {
++    if (info.Length() != 1 || !DebugLocWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("SetCurrentDebugLocation needs to be called with: location: DebugLoc");
++    }
++    auto debugLoc = DebugLocWrapper::FromValue(info[0])->getDebugLoc();
++    auto* callInst = CallInstWrapper::FromValue(info.Holder())->getCallInst();
++    callInst->setDebugLoc(debugLoc);
++}
+diff --git a/src/ir/call-inst.h b/src/ir/call-inst.h
+index 511d3df..b2339f1 100644
+--- a/src/ir/call-inst.h
++++ b/src/ir/call-inst.h
+@@ -26,6 +26,7 @@ private:
+     static NAN_METHOD(hasRetAttr);
+     static NAN_METHOD(paramHasAttr);
+     static NAN_METHOD(getNumArgOperands);
++    static NAN_METHOD(setDebugLoc);
+ 
+     explicit CallInstWrapper(llvm::CallInst* value) : ValueWrapper { value } {}
+ 
+diff --git a/src/ir/constant-expr.cc b/src/ir/constant-expr.cc
+new file mode 100644
+index 0000000..324a49a
+--- /dev/null
++++ b/src/ir/constant-expr.cc
+@@ -0,0 +1,72 @@
++//
++// Created by tutyne on 03.06.22.
++//
++
++#include "constant-expr.h"
++
++void ConstantExprWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto constantExpr = Nan::GetFunction(Nan::New(ConstantExprWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("ConstantExpr").ToLocalChecked(), constantExpr);
++}
++
++v8::Local <v8::Object> ConstantExprWrapper::of(llvm::ConstantExpr *constantExpr) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(ConstantExprWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(constantExpr)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool ConstantExprWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(ConstantExprWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::ConstantExpr *ConstantExprWrapper::getConstantExpr() {
++    return static_cast<llvm::ConstantExpr *>(getValue());
++}
++
++ConstantExprWrapper::ConstantExprWrapper(llvm::ConstantExpr *constantExpr) : ConstantWrapper(constantExpr) {}
++
++Nan::Persistent <v8::FunctionTemplate> &ConstantExprWrapper::Constructor() {
++    static Nan::Persistent <v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(ConstantExprWrapper::New);
++        tpl->SetClassName(Nan::New("ConstantExpr").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(ConstantWrapper::constantTemplate()));
++
++        Nan::SetMethod(tpl, "getBitCast", ConstantExprWrapper::getBitCast);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE ConstantExprWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class ConstantExpr cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("ConstantExpr constructor requires: constant: External");
++    }
++    auto *constantExpr = static_cast<llvm::ConstantExpr *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new ConstantExprWrapper{constantExpr};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE ConstantExprWrapper::getBitCast(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() < 2 || !ConstantWrapper::isInstance(info[0]) || !TypeWrapper::isInstance(info[1])
++        || !info[2]->IsBoolean()) {
++        return Nan::ThrowTypeError("getBitCast needs to be called with: constant: Constant, type: Type, "
++                                   "onlyIfReduced: Boolean");
++    }
++    auto *constant = ConstantWrapper::FromValue(info[0])->getConstant();
++    auto *type = TypeWrapper::FromValue(info[1])->getType();
++    bool onlyIfReduced = false;
++    onlyIfReduced = Nan::To<bool>(info[2]).FromJust();
++
++    auto *resultCast = llvm::ConstantExpr::getBitCast(constant, type, onlyIfReduced);
++    info.GetReturnValue().Set(ConstantWrapper::of(resultCast));
++}
+diff --git a/src/ir/constant-expr.h b/src/ir/constant-expr.h
+new file mode 100644
+index 0000000..7161f96
+--- /dev/null
++++ b/src/ir/constant-expr.h
+@@ -0,0 +1,37 @@
++//
++// Created by tutyne on 03.06.22.
++//
++
++#ifndef LLVM_NODE_CONSTANT_EXPR_H
++#define LLVM_NODE_CONSTANT_EXPR_H
++
++#include "constant.h"
++#include "type.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class ConstantExprWrapper : public ConstantWrapper, public FromValueMixin<ConstantExprWrapper> {
++public:
++    using FromValueMixin<ConstantExprWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::ConstantExpr *constantExpr);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::ConstantExpr *getConstantExpr();
++
++protected:
++    explicit ConstantExprWrapper(llvm::ConstantExpr *constantExpr);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(getBitCast);
++};
++
++#endif //LLVM_NODE_CONSTANT_EXPR_H
+diff --git a/src/ir/constant.cc b/src/ir/constant.cc
+index 2d8aa28..ae4fc1b 100644
+--- a/src/ir/constant.cc
++++ b/src/ir/constant.cc
+@@ -54,6 +54,10 @@ v8::Local<v8::Object> ConstantWrapper::of(llvm::Constant *constant) {
+     return escapeScope.Escape(result);
+ }
+ 
++bool ConstantWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(ConstantWrapper::constantTemplate())->HasInstance(value);
++}
++
+ NAN_METHOD(ConstantWrapper::New) {
+     if (!info.IsConstructCall()) {
+         return Nan::ThrowTypeError("Class Constructor Constant cannot be invoked without new");
+diff --git a/src/ir/constant.h b/src/ir/constant.h
+index f07419c..8f7c7be 100644
+--- a/src/ir/constant.h
++++ b/src/ir/constant.h
+@@ -14,6 +14,7 @@ class ConstantWrapper: public ValueWrapper, public FromValueMixin<ConstantWrappe
+ public:
+     static NAN_MODULE_INIT(Init);
+     static v8::Local<v8::Object> of(llvm::Constant* constant);
++    static bool isInstance(v8::Local <v8::Value> value);
+     using FromValueMixin<ConstantWrapper>::FromValue;
+     llvm::Constant* getConstant();
+ 
+diff --git a/src/ir/data-layout.cc b/src/ir/data-layout.cc
+index ed8a62c..8a90f96 100644
+--- a/src/ir/data-layout.cc
++++ b/src/ir/data-layout.cc
+@@ -28,6 +28,7 @@ NAN_MODULE_INIT(DataLayoutWrapper::Init) {
+     Nan::SetPrototypeMethod(tpl, "getPrefTypeAlignment", DataLayoutWrapper::getPrefTypeAlignment);
+     Nan::SetPrototypeMethod(tpl, "getTypeStoreSize", DataLayoutWrapper::getTypeStoreSize);
+     Nan::SetPrototypeMethod(tpl, "getPointerSize", DataLayoutWrapper::getPointerSize);
++    Nan::SetPrototypeMethod(tpl, "getPointerSizeInBits", DataLayoutWrapper::getPointerSizeInBits);
+     Nan::SetPrototypeMethod(tpl, "getIntPtrType", DataLayoutWrapper::getIntPtrType);
+ 
+     functionTemplate.Reset(tpl);
+@@ -67,6 +68,16 @@ NAN_METHOD(DataLayoutWrapper::getPointerSize) {
+     info.GetReturnValue().Set(Nan::New(dataLayout.getPointerSize(as)));
+ }
+ 
++NAN_METHOD(DataLayoutWrapper::getPointerSizeInBits) {
++    if (info.Length() != 1 || !info[0]->IsUint32()) {
++        return Nan::ThrowTypeError("getPointerSize needs to be called with: AS: uint32");
++    }
++
++    auto as = Nan::To<uint32_t>(info[0]).FromJust();
++    auto dataLayout = DataLayoutWrapper::FromValue(info.Holder())->getDataLayout();
++    info.GetReturnValue().Set(Nan::New(dataLayout.getPointerSizeInBits(as)));
++}
++
+ NAN_METHOD(DataLayoutWrapper::getPrefTypeAlignment) {
+     if (info.Length() != 1 || !TypeWrapper::isInstance(info[0])) {
+         return Nan::ThrowTypeError("getPrefTypeAlignment needs to be called with: type: Type");
+diff --git a/src/ir/data-layout.h b/src/ir/data-layout.h
+index 1536784..0744117 100644
+--- a/src/ir/data-layout.h
++++ b/src/ir/data-layout.h
+@@ -26,6 +26,7 @@ private:
+     static NAN_METHOD(New);
+     static NAN_METHOD(getStringRepresentation);
+     static NAN_METHOD(getPointerSize);
++    static NAN_METHOD(getPointerSizeInBits);
+     static NAN_METHOD(getPrefTypeAlignment);
+     static NAN_METHOD(getTypeStoreSize);
+     static NAN_METHOD(getIntPtrType);
+diff --git a/src/ir/debugloc.cc b/src/ir/debugloc.cc
+new file mode 100644
+index 0000000..c2d9adb
+--- /dev/null
++++ b/src/ir/debugloc.cc
+@@ -0,0 +1,51 @@
++
++#include "debugloc.h"
++#include "md-node.h"
++#include "di-location.h"
++
++#include "llvm/Support/raw_ostream.h"
++
++void DebugLocWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DebugLocWrapper::New);
++    tpl->SetClassName(Nan::New("DebugLoc").ToLocalChecked());
++    tpl->InstanceTemplate()->SetInternalFieldCount(1);
++
++    DebugLocWrapper::Constructor().Reset(tpl);
++    Nan::Set(target, Nan::New("DebugLoc").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
++}
++
++Nan::Persistent<v8::FunctionTemplate> &DebugLocWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++    return constructor;
++}
++
++bool DebugLocWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DebugLocWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DebugLoc &DebugLocWrapper::getDebugLoc() {
++    return debugLoc_;
++}
++
++DebugLocWrapper::DebugLocWrapper(llvm::DILocation *location) : debugLoc_{location} {}
++
++DebugLocWrapper::DebugLocWrapper() : debugLoc_{} {}
++
++Nan::NAN_METHOD_RETURN_TYPE DebugLocWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class DebugLoc Metadata cannot be invoked without new");
++    }
++    DebugLocWrapper *wrapper = nullptr;
++    if (info.Length() == 1) {
++        if (!DILocationWrapper::isInstance(info[0])) {
++            return Nan::ThrowTypeError(
++                    "The DebugLoc needs to be called with: location: DILocation");
++        }
++        auto *location = DILocationWrapper::FromValue(info[0])->getDILocation();
++        wrapper = new DebugLocWrapper{location};
++    } else {
++        wrapper = new DebugLocWrapper{};
++    }
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+\ No newline at end of file
+diff --git a/src/ir/debugloc.h b/src/ir/debugloc.h
+new file mode 100644
+index 0000000..36c1782
+--- /dev/null
++++ b/src/ir/debugloc.h
+@@ -0,0 +1,36 @@
++
++#ifndef LLVM_NODE_DEBUGLOC_H
++#define LLVM_NODE_DEBUGLOC_H
++
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/DebugLoc.h"
++#include <nan.h>
++
++class DebugLocWrapper : public Nan::ObjectWrap, public FromValueMixin<DebugLocWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DebugLoc &getDebugLoc();
++
++    using FromValueMixin<DebugLocWrapper>::FromValue;
++
++protected:
++
++    explicit DebugLocWrapper();
++
++    explicit DebugLocWrapper(llvm::DILocation *location);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++
++    static NAN_METHOD(New);
++
++private:
++    llvm::DebugLoc debugLoc_;
++};
++
++#endif //LLVM_NODE_DEBUGLOC_H
+diff --git a/src/ir/di-basic-type.cc b/src/ir/di-basic-type.cc
+new file mode 100644
+index 0000000..835bf06
+--- /dev/null
++++ b/src/ir/di-basic-type.cc
+@@ -0,0 +1,56 @@
++//
++// Created by tutyne on 08.06.22.
++//
++
++#include "di-basic-type.h"
++
++void DIBasicTypeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diBasicType = Nan::GetFunction(Nan::New(DIBasicTypeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIBasicType").ToLocalChecked(), diBasicType);
++}
++
++v8::Local <v8::Object> DIBasicTypeWrapper::of(llvm::DIBasicType *diBasicType) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DIBasicTypeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diBasicType)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DIBasicType *DIBasicTypeWrapper::getDIBasicType() {
++    return static_cast<llvm::DIBasicType *>(getMetadata());
++}
++
++DIBasicTypeWrapper::DIBasicTypeWrapper(llvm::DIBasicType *diBasicType) : DITypeWrapper(diBasicType) {
++
++}
++
++Nan::Persistent <v8::FunctionTemplate> &DIBasicTypeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIBasicTypeWrapper::New);
++        tpl->SetClassName(Nan::New("DIBasicType").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DITypeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBasicTypeWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIBasicType cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIBasicType Pointer required");
++    }
++
++    auto *dIBasicType = static_cast<llvm::DIBasicType *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DIBasicTypeWrapper{dIBasicType};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-basic-type.h b/src/ir/di-basic-type.h
+new file mode 100644
+index 0000000..b69c68e
+--- /dev/null
++++ b/src/ir/di-basic-type.h
+@@ -0,0 +1,32 @@
++//
++// Created by tutyne on 08.06.22.
++//
++
++#ifndef LLVM_NODE_DI_BASIC_TYPE_H
++#define LLVM_NODE_DI_BASIC_TYPE_H
++
++#include "di-type.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DIBasicTypeWrapper : public DITypeWrapper, public FromValueMixin<DIBasicTypeWrapper> {
++public:
++    using FromValueMixin<DIBasicTypeWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DIBasicType *diBasicType);
++
++    llvm::DIBasicType *getDIBasicType();
++
++protected:
++    explicit DIBasicTypeWrapper(llvm::DIBasicType *diBasicType);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++#endif //LLVM_NODE_DI_BASIC_TYPE_H
+diff --git a/src/ir/di-builder.cc b/src/ir/di-builder.cc
+new file mode 100644
+index 0000000..e83c825
+--- /dev/null
++++ b/src/ir/di-builder.cc
+@@ -0,0 +1,302 @@
++
++#include "di-builder.h"
++#include "di-file.h"
++#include "di-compile-unit.h"
++#include "di-scope.h"
++#include "di-subroutine-type.h"
++#include "di-subprogram.h"
++#include "di-comp-type.h"
++#include "di-basic-type.h"
++#include "di-derived-type.h"
++#include "di-type-ref-array.h"
++#include "di-local-variable.h"
++#include "metadata.h"
++#include "module.h"
++#include "value.h"
++#include "di-expression.h"
++#include "di-location.h"
++#include "instruction.h"
++#include "basic-block.h"
++#include "../util/string.h"
++
++void DIBuilderWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diBuilder = Nan::GetFunction(Nan::New(DIBuilderWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIBuilder").ToLocalChecked(), diBuilder);
++}
++
++llvm::DIBuilder *DIBuilderWrapper::getDIBuilder() {
++    return diBuilder_;
++}
++
++DIBuilderWrapper::DIBuilderWrapper(llvm::DIBuilder *diBuilder) : diBuilder_{diBuilder} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DIBuilderWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIBuilderWrapper::New);
++        tpl->SetClassName(Nan::New("DIBuilder").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++
++        Nan::SetPrototypeMethod(tpl, "createFile", DIBuilderWrapper::createFile);
++        Nan::SetPrototypeMethod(tpl, "createCompileUnit", DIBuilderWrapper::createCompileUnit);
++        Nan::SetPrototypeMethod(tpl, "createFunction", DIBuilderWrapper::createFunction);
++        Nan::SetPrototypeMethod(tpl, "createSubroutineType", DIBuilderWrapper::createSubroutineType);
++        Nan::SetPrototypeMethod(tpl, "getOrCreateTypeArray", DIBuilderWrapper::getOrCreateTypeArray);
++        Nan::SetPrototypeMethod(tpl, "finalizeSubprogram", DIBuilderWrapper::finalizeSubprogram);
++        Nan::SetPrototypeMethod(tpl, "finalize", DIBuilderWrapper::finalize);
++        Nan::SetPrototypeMethod(tpl, "createBasicType", DIBuilderWrapper::createBasicType);
++        Nan::SetPrototypeMethod(tpl, "createPointerType", DIBuilderWrapper::createPointerType);
++        Nan::SetPrototypeMethod(tpl, "createNullPtrType", DIBuilderWrapper::createNullPtrType);
++        Nan::SetPrototypeMethod(tpl, "createAutoVariable", DIBuilderWrapper::createAutoVariable);
++        Nan::SetPrototypeMethod(tpl, "createForwardDecl", DIBuilderWrapper::createForwardDecl);
++        Nan::SetPrototypeMethod(tpl, "createExpression", DIBuilderWrapper::createExpression);
++        Nan::SetPrototypeMethod(tpl, "insertDbgValueIntrinsic", DIBuilderWrapper::insertDbgValueIntrinsic);
++        Nan::SetPrototypeMethod(tpl, "insertDeclare", DIBuilderWrapper::insertDeclare);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("DIBuilder constructor needs to be called with new");
++    }
++    if (info.Length() != 1 || !ModuleWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("DIBuilder require llvm.Module instance");
++    }
++    auto *module = ModuleWrapper::FromValue(info[0])->getModule();
++    auto *diBuilder = new llvm::DIBuilder{*module};
++    auto *wrapper = new DIBuilderWrapper{diBuilder};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createFile(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 2 || !info[0]->IsString() || !info[1]->IsString()) {
++        return Nan::ThrowTypeError("createFile needs to be called with filename: string, directory: string");
++    }
++    llvm::DIBuilder *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    std::string fileName = ToString(info[0]);
++    std::string parentDirectory = ToString(info[1]);
++    llvm::DIFile *diFile = diBuilder->createFile(fileName, parentDirectory);
++    info.GetReturnValue().Set(DIFileWrapper::of(diFile));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createCompileUnit(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 6 || !info[0]->IsUint32() || !DIFileWrapper::isInstance(info[1]) || !info[2]->IsString() ||
++        !info[3]->IsBoolean() || !info[4]->IsString() || !info[5]->IsUint32()) {
++        return Nan::ThrowTypeError(
++                "createCompileUnit needs to be called with language: dwarf.SourceLanguage, file: DIFile, "
++                "producer: string, isOptimized: boolean, flags: string, runtimeVersion: number");
++    }
++
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    unsigned dwarfLang = Nan::To<unsigned>(info[0]).FromJust();
++    llvm::DIFile *diFile = DIFileWrapper::FromValue(info[1])->getDIFile();
++    std::string producer = ToString(info[2]);
++    bool isOptimized = Nan::To<bool>(info[3]).FromJust();
++    std::string flags = ToString(info[4]);
++    unsigned objCRunTimeVersion = Nan::To<unsigned>(info[5]).FromJust();
++    llvm::DICompileUnit::DebugEmissionKind emissionKind =
++            llvm::DICompileUnit::DebugEmissionKind::FullDebug;
++
++    llvm::DICompileUnit *compileUnit = diBuilder->createCompileUnit(dwarfLang, diFile, producer, isOptimized, flags,
++                                                                    objCRunTimeVersion, llvm::StringRef{},
++                                                                    emissionKind);
++    info.GetReturnValue().Set(DICompileUnitWrapper::of(compileUnit));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createFunction(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 9 || !DIScopeWrapper::isInstance(info[0]) || !info[1]->IsString() || !info[2]->IsString() ||
++        !DIFileWrapper::isInstance(info[3]) || !info[4]->IsUint32() || !DISubroutineTypeWrapper::isInstance(info[5]) ||
++        !info[6]->IsUint32() || !info[7]->IsUint32() || !info[8]->IsUint32()) {
++        return Nan::ThrowTypeError(
++                "createFunction needs to be called with scope: DIScope, name: string, linkage: string, file: DIFIle, "
++                "line: number, type: DISubroutineType, scopeLine: number, flags: number, spFlags: number");
++    }
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto *diScope = DIScopeWrapper::FromValue(info[0])->getDIScope();
++    auto name = ToString(info[1]);
++    auto linkageName = ToString(info[2]);
++    auto *diFile = DIFileWrapper::FromValue(info[3])->getDIFile();
++    auto lineNo = Nan::To<unsigned>(info[4]).FromJust();
++    auto *diSubroutineType = DISubroutineTypeWrapper::FromValue(info[5])->getDISubroutineType();
++    auto scopeLine = Nan::To<unsigned>(info[6]).FromJust();
++    auto diFlag = static_cast<llvm::DINode::DIFlags>(Nan::To<unsigned>(info[7]).FromJust());
++    auto spFlag = static_cast<llvm::DISubprogram::DISPFlags>(Nan::To<unsigned>(info[8]).FromJust());
++
++    auto *diSubprogram = diBuilder->createFunction(diScope, name, linkageName, diFile, lineNo, diSubroutineType,
++                                                   scopeLine, diFlag, spFlag);
++    info.GetReturnValue().Set(DISubprogramWrapper::of(diSubprogram));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::getOrCreateTypeArray(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 1 || !info[0]->IsArray()) {
++        return Nan::ThrowTypeError("getOrCreateTypeArray needs to be called with elements: Metadata[]");
++    }
++    auto diArguments = v8::Array::Cast(*info[0]);
++    std::vector<llvm::Metadata *> argumentTypes{diArguments->Length()};
++    for (size_t i = 0; i < diArguments->Length(); ++i) {
++        auto argumentTypeObject = diArguments->Get(info.GetIsolate()->GetCurrentContext(), i).ToLocalChecked();
++        if (!MetadataWrapper::isInstance(argumentTypeObject)) {
++            return Nan::ThrowTypeError("Expected Metadata in arguments array");
++        }
++        argumentTypes[i] = MetadataWrapper::FromValue(argumentTypeObject)->getMetadata();
++    }
++    llvm::DIBuilder *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    llvm::DITypeRefArray diTypeRefArray = diBuilder->getOrCreateTypeArray(argumentTypes);
++    info.GetReturnValue().Set(DITypeRefArrayWrapper::of(diTypeRefArray));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createSubroutineType(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 1 || !DITypeRefArrayWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("createSubroutineType needs to be called with paramTypes: DITypeRefArray");
++    }
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto diTypeRefArrayParams = DITypeRefArrayWrapper::FromValue(info[0])->getDITypeRefArray();
++    auto *diSubroutineType = diBuilder->createSubroutineType(diTypeRefArrayParams);
++
++    info.GetReturnValue().Set(DISubroutineTypeWrapper::of(diSubroutineType));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::finalizeSubprogram(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 1 || !DISubprogramWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("finalizeSubprogram needs to be called with sp: DISubprogram");
++    }
++    auto *diSubProgram = DISubprogramWrapper::FromValue(info[0])->getDISubprogram();
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    diBuilder->finalizeSubprogram(diSubProgram);
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::finalize(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    diBuilder->finalize();
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createBasicType(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() < 3 || !info[0]->IsString() || !info[1]->IsUint32() || !info[2]->IsUint32() ||
++        (info.Length() == 4 && !info[4]->IsUint32())) {
++        return Nan::ThrowTypeError(
++                "createBasicType needs to be called with name: String, sizeInBits: number, encoding: number, flags?: number");
++    }
++    auto name = ToString(info[0]);
++    auto sizeInBits = Nan::To<unsigned>(info[1]).FromJust();
++    auto encoding = Nan::To<unsigned>(info[2]).FromJust();
++    auto flag = llvm::DINode::DIFlags::FlagZero;
++    if (info.Length() == 4) {
++        flag = static_cast<llvm::DINode::DIFlags>(Nan::To<unsigned>(info[3]).FromJust());
++    }
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++
++    auto *diBasicType = diBuilder->createBasicType(name, sizeInBits, encoding, flag);
++    info.GetReturnValue().Set(DIBasicTypeWrapper::of(diBasicType));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createPointerType(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 2 || !(!info[0]->IsUndefined() || !DITypeWrapper::isInstance(info[0])) || !info[1]->IsUint32()) {
++        return Nan::ThrowTypeError(
++                "createPointerType needs to be called with pointedType: DIType, sizeInBits: number");
++    }
++    llvm::DIType * pointedType = nullptr;
++    if (!info[0]->IsUndefined()) {
++        pointedType = DITypeWrapper::FromValue(info[0])->getDIType();
++    }
++    auto sizeInBits = Nan::To<unsigned>(info[1]).FromJust();
++
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto *diDerivedType = diBuilder->createPointerType(pointedType, sizeInBits);
++    info.GetReturnValue().Set(DIDerivedTypeWrapper::of(diDerivedType));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createNullPtrType(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto nullPtrType = diBuilder->createNullPtrType();
++    info.GetReturnValue().Set(DIBasicTypeWrapper::of(nullPtrType));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createAutoVariable(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() < 5 || !DIScopeWrapper::isInstance(info[0]) || !info[1]->IsString() ||
++        !DIFileWrapper::isInstance(info[2]) || !info[3]->IsUint32() || !DITypeWrapper::isInstance(info[4])) {
++        return Nan::ThrowTypeError(
++                "createAutoVariable needs to be called with scope: DIScope, name: string, file: DIFile, lineNo: number, type: DIType");
++    }
++    auto *scope = DIScopeWrapper::FromValue(info[0])->getDIScope();
++    auto name = ToString(info[1]);
++    auto *file = DIFileWrapper::FromValue(info[2])->getDIFile();
++    auto lineNo = Nan::To<unsigned>(info[3]).FromJust();
++    auto *type = DITypeWrapper::FromValue(info[4])->getDIType();
++
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto *diLocalVariable = diBuilder->createAutoVariable(scope, name, file, lineNo, type);
++
++    info.GetReturnValue().Set(DILocalVariableWrapper::of(diLocalVariable));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createForwardDecl(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() < 5 || !info[0]->IsUint32() || !info[1]->IsString() || !DIScopeWrapper::isInstance(info[2]) ||
++        !DIFileWrapper::isInstance(info[3]) || !info[4]->IsUint32() ) {
++        return Nan::ThrowTypeError(
++                "createForwardDecl needs to be called with tag: number, name: string, scope: DIScope, file: DIFile, lineNo: number");
++    }
++    auto tag = Nan::To<unsigned>(info[0]).FromJust();
++    auto name = ToString(info[1]);
++    auto *scope = DIScopeWrapper::FromValue(info[2])->getDIScope();
++    auto *file = DIFileWrapper::FromValue(info[3])->getDIFile();
++    auto lineNo = Nan::To<unsigned>(info[4]).FromJust();
++    const char *empty = "";
++    auto uniqueId = info.Length() == 6? ToString(info[5]) : empty;
++
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto *diForwardDecl= diBuilder->createForwardDecl(tag, name, scope, file, lineNo, 0, 0, 0, uniqueId);
++
++    info.GetReturnValue().Set(DICompositeTypeWrapper::of(diForwardDecl));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::createExpression(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto * expression = diBuilder->createExpression();
++    info.GetReturnValue().Set(DIExpressionWrapper::of(expression));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::insertDeclare(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 5 || !ValueWrapper::isInstance(info[0]) || !DILocalVariableWrapper::isInstance(info[1]) ||
++        !DIExpressionWrapper::isInstance(info[2]) || !DILocationWrapper::isInstance(info[3]) ||
++        !BasicBlockWrapper::isInstance(info[4])) {
++        return Nan::ThrowTypeError(
++                "insertDeclare needs to be called with storage: Value, varInfo: DILocalVariable, "
++                "expression: DIExpression, location: DILocation, insertAtEnd: BasicBlock");
++    }
++
++    auto *storage = ValueWrapper::FromValue(info[0])->getValue();
++    auto *varInfo = DILocalVariableWrapper::FromValue(info[1])->getDILocalVariable();
++    auto *expression = DIExpressionWrapper::FromValue(info[2])->getDIExpression();
++    auto *location = DILocationWrapper::FromValue(info[3])->getDILocation();
++    auto *insertAtEnd = BasicBlockWrapper::FromValue(info[4])->getBasicBlock();
++
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto *instruction = diBuilder->insertDeclare(storage, varInfo, expression, location, insertAtEnd);
++
++    info.GetReturnValue().Set(InstructionWrapper::of(instruction));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIBuilderWrapper::insertDbgValueIntrinsic(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 5 || !ValueWrapper::isInstance(info[0]) || !DILocalVariableWrapper::isInstance(info[1]) ||
++        !DIExpressionWrapper::isInstance(info[2]) || !DILocationWrapper::isInstance(info[3]) ||
++        !BasicBlockWrapper::isInstance(info[4])) {
++        return Nan::ThrowTypeError(
++                "insertDbgValueIntrinsic needs to be called with value: Value, varInfo: DILocalVariable, "
++                "expression: DIExpression, location: DILocation, insertAtEnd: BasicBlock");
++    }
++    auto *value = ValueWrapper::FromValue(info[0])->getValue();
++    auto *varInfo = DILocalVariableWrapper::FromValue(info[1])->getDILocalVariable();
++    auto *expression = DIExpressionWrapper::FromValue(info[2])->getDIExpression();
++    auto *location = DILocationWrapper::FromValue(info[3])->getDILocation();
++    auto *insertAtEnd = BasicBlockWrapper::FromValue(info[4])->getBasicBlock();
++
++    auto *diBuilder = DIBuilderWrapper::FromValue(info.Holder())->getDIBuilder();
++    auto *instruction = diBuilder->insertDbgValueIntrinsic(value, varInfo, expression, location, insertAtEnd);
++
++    info.GetReturnValue().Set(InstructionWrapper::of(instruction));
++}
+\ No newline at end of file
+diff --git a/src/ir/di-builder.h b/src/ir/di-builder.h
+new file mode 100644
+index 0000000..5904a6b
+--- /dev/null
++++ b/src/ir/di-builder.h
+@@ -0,0 +1,42 @@
++
++#ifndef LLVM_NODE_DI_BUILDER_H
++#define LLVM_NODE_DI_BUILDER_H
++
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/DIBuilder.h"
++#include <nan.h>
++
++class DIBuilderWrapper: public Nan::ObjectWrap, public FromValueMixin<DIBuilderWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    llvm::DIBuilder * getDIBuilder();
++protected:
++    explicit DIBuilderWrapper(llvm::DIBuilder * diBuilder);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++private:
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(createFile);
++    static NAN_METHOD(createCompileUnit);
++    static NAN_METHOD(createFunction);
++    static NAN_METHOD(getOrCreateTypeArray);
++    static NAN_METHOD(createSubroutineType);
++    static NAN_METHOD(finalizeSubprogram);
++    static NAN_METHOD(finalize);
++    static NAN_METHOD(createBasicType);
++    static NAN_METHOD(createPointerType);
++    static NAN_METHOD(createNullPtrType);
++    static NAN_METHOD (createAutoVariable);
++    static NAN_METHOD (createForwardDecl);
++    static NAN_METHOD (createExpression);
++    static NAN_METHOD (insertDeclare);
++    static NAN_METHOD (insertDbgValueIntrinsic);
++
++private:
++    llvm::DIBuilder * diBuilder_;
++};
++
++#endif //LLVM_NODE_DI_BUILDER_H
+diff --git a/src/ir/di-comp-type.cc b/src/ir/di-comp-type.cc
+new file mode 100644
+index 0000000..722523c
+--- /dev/null
++++ b/src/ir/di-comp-type.cc
+@@ -0,0 +1,56 @@
++//
++// Created by Eduard Borovitski  on 02.04.23.
++//
++
++#include "di-comp-type.h"
++
++void DICompositeTypeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diCompositeType = Nan::GetFunction(Nan::New(DICompositeTypeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DICompositeType").ToLocalChecked(), diCompositeType);
++}
++
++v8::Local <v8::Object> DICompositeTypeWrapper::of(llvm::DICompositeType *diCompositeType) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DICompositeTypeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diCompositeType)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DICompositeType *DICompositeTypeWrapper::getDICompositeType() {
++    return static_cast<llvm::DICompositeType *>(getMetadata());
++}
++
++DICompositeTypeWrapper::DICompositeTypeWrapper(llvm::DICompositeType *diCompositeType) : DITypeWrapper(diCompositeType) {
++
++}
++
++Nan::Persistent <v8::FunctionTemplate> &DICompositeTypeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DICompositeTypeWrapper::New);
++        tpl->SetClassName(Nan::New("DICompositeType").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DITypeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DICompositeTypeWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DICompositeType cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DICompositeType Pointer required");
++    }
++
++    auto *dIBasicType = static_cast<llvm::DICompositeType *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DICompositeTypeWrapper{dIBasicType};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-comp-type.h b/src/ir/di-comp-type.h
+new file mode 100644
+index 0000000..4c8e259
+--- /dev/null
++++ b/src/ir/di-comp-type.h
+@@ -0,0 +1,32 @@
++
++#ifndef LLVM_NODE_DI_COMP_TYPE_H
++#define LLVM_NODE_DI_COMP_TYPE_H
++
++#include "di-type.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DICompositeTypeWrapper : public DITypeWrapper, public FromValueMixin<DICompositeTypeWrapper> {
++public:
++    using FromValueMixin<DICompositeTypeWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DICompositeType * diType);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DICompositeType *getDICompositeType();
++
++protected:
++    explicit DICompositeTypeWrapper(llvm::DICompositeType * diCompType);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_COMP_TYPE_H
+diff --git a/src/ir/di-compile-unit.cc b/src/ir/di-compile-unit.cc
+new file mode 100644
+index 0000000..01d4859
+--- /dev/null
++++ b/src/ir/di-compile-unit.cc
+@@ -0,0 +1,62 @@
++
++#include "di-compile-unit.h"
++#include "di-file.h"
++
++void DICompileUnitWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diCompileUnit = Nan::GetFunction(Nan::New(DICompileUnitWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DICompileUnit").ToLocalChecked(), diCompileUnit);
++}
++
++v8::Local <v8::Object> DICompileUnitWrapper::of(llvm::DICompileUnit *diCompileUnit) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DICompileUnitWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diCompileUnit)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DICompileUnit *DICompileUnitWrapper::getDICompileUnit() {
++    return static_cast<llvm::DICompileUnit *>(getMetadata());
++}
++
++DICompileUnitWrapper::DICompileUnitWrapper(llvm::DICompileUnit *diCompileUnit) : DIScopeWrapper{diCompileUnit} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DICompileUnitWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DICompileUnitWrapper::New);
++        tpl->SetClassName(Nan::New("DICompileUnit").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DIScopeWrapper::Constructor()));
++
++        Nan::SetPrototypeMethod(tpl, "getFile", DICompileUnitWrapper::getFile);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DICompileUnitWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DICompileUnit cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DICompileUnit Pointer required");
++    }
++
++    auto *diLocalScope = static_cast<llvm::DICompileUnit *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DICompileUnitWrapper{diLocalScope};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DICompileUnitWrapper::getFile(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto *diCompileUnit = DICompileUnitWrapper::FromValue(info.Holder())->getDICompileUnit();
++
++    auto * diFile = diCompileUnit->getFile();
++    info.GetReturnValue().Set(DIFileWrapper::of(diFile));
++}
+diff --git a/src/ir/di-compile-unit.h b/src/ir/di-compile-unit.h
+new file mode 100644
+index 0000000..f94773f
+--- /dev/null
++++ b/src/ir/di-compile-unit.h
+@@ -0,0 +1,33 @@
++
++#ifndef LLVM_NODE_DI_COMPILE_UNIT_H
++#define LLVM_NODE_DI_COMPILE_UNIT_H
++
++#include "di-scope.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DICompileUnitWrapper : public DIScopeWrapper, public FromValueMixin<DICompileUnitWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DICompileUnit *diCompileUnit);
++
++    llvm::DICompileUnit *getDICompileUnit();
++
++    using FromValueMixin<DICompileUnitWrapper>::FromValue;
++
++protected:
++    explicit DICompileUnitWrapper(llvm::DICompileUnit *diCompileUnit);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(getFile);
++};
++
++
++#endif //LLVM_NODE_DI_COMPILE_UNIT_H
+diff --git a/src/ir/di-derived-type.cc b/src/ir/di-derived-type.cc
+new file mode 100644
+index 0000000..78baa5b
+--- /dev/null
++++ b/src/ir/di-derived-type.cc
+@@ -0,0 +1,54 @@
++//
++// Created by tutyne on 20.06.22.
++//
++
++#include "di-derived-type.h"
++
++void DIDerivedTypeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diDerivedType = Nan::GetFunction(Nan::New(DIDerivedTypeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIDerivedType").ToLocalChecked(), diDerivedType);
++}
++
++v8::Local <v8::Object> DIDerivedTypeWrapper::of(llvm::DIDerivedType *diDerivedType) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DIDerivedTypeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diDerivedType)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DIDerivedType *DIDerivedTypeWrapper::getDIDerivedType() {
++    return static_cast<llvm::DIDerivedType *>(getMetadata());
++}
++
++DIDerivedTypeWrapper::DIDerivedTypeWrapper(llvm::DIDerivedType *diDerivedType) : DITypeWrapper(diDerivedType) {}
++
++Nan::Persistent <v8::FunctionTemplate> &DIDerivedTypeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIDerivedTypeWrapper::New);
++        tpl->SetClassName(Nan::New("DIDerivedType").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DITypeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIDerivedTypeWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIDerivedType cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIDerivedType Pointer required");
++    }
++
++    auto *diDerivedType = static_cast<llvm::DIDerivedType *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DIDerivedTypeWrapper{diDerivedType};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-derived-type.h b/src/ir/di-derived-type.h
+new file mode 100644
+index 0000000..9e6c06a
+--- /dev/null
++++ b/src/ir/di-derived-type.h
+@@ -0,0 +1,33 @@
++//
++// Created by tutyne on 17.06.22.
++//
++
++#ifndef LLVM_NODE_DI_DERIVED_TYPE_H
++#define LLVM_NODE_DI_DERIVED_TYPE_H
++
++#include "di-type.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DIDerivedTypeWrapper : public DITypeWrapper, public FromValueMixin<DIDerivedTypeWrapper> {
++public:
++    using FromValueMixin<DIDerivedTypeWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DIDerivedType *diDerivedType);
++
++    llvm::DIDerivedType *getDIDerivedType();
++
++protected:
++    explicit DIDerivedTypeWrapper(llvm::DIDerivedType *diDerivedType);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_DERIVED_TYPE_H
+diff --git a/src/ir/di-expression.cc b/src/ir/di-expression.cc
+new file mode 100644
+index 0000000..7dd9856
+--- /dev/null
++++ b/src/ir/di-expression.cc
+@@ -0,0 +1,60 @@
++//
++// Created by tutyne on 09.06.22.
++//
++
++#include "di-expression.h"
++
++#include "llvm/IR/DebugInfoMetadata.h"
++
++void DIExpressionWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diExpression = Nan::GetFunction(Nan::New(DIExpressionWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIExpression").ToLocalChecked(), diExpression);
++}
++
++v8::Local <v8::Object> DIExpressionWrapper::of(llvm::DIExpression *diExpression) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DIExpressionWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diExpression)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool DIExpressionWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DIExpressionWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DIExpression *DIExpressionWrapper::getDIExpression() {
++    return static_cast<llvm::DIExpression *>(getMetadata());
++}
++
++DIExpressionWrapper::DIExpressionWrapper(llvm::DIExpression *diExpression) : MDNodeWrapper(diExpression) {}
++
++Nan::Persistent <v8::FunctionTemplate> &DIExpressionWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIExpressionWrapper::New);
++        tpl->SetClassName(Nan::New("DIExpression").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(MDNodeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIExpressionWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIExpression cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIExpression Pointer required");
++    }
++
++    auto *diExpression = static_cast<llvm::DIExpression *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DIExpressionWrapper{diExpression};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-expression.h b/src/ir/di-expression.h
+new file mode 100644
+index 0000000..933978c
+--- /dev/null
++++ b/src/ir/di-expression.h
+@@ -0,0 +1,35 @@
++//
++// Created by tutyne on 09.06.22.
++//
++
++#ifndef LLVM_NODE_DI_EXPRESSION_H
++#define LLVM_NODE_DI_EXPRESSION_H
++
++#include "md-node.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DIExpressionWrapper: public MDNodeWrapper, public FromValueMixin<DIExpressionWrapper> {
++public:
++    using FromValueMixin<DIExpressionWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DIExpression *diExpression);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DIExpression *getDIExpression();
++
++protected:
++    explicit DIExpressionWrapper(llvm::DIExpression *diExpression);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_EXPRESSION_H
+diff --git a/src/ir/di-file.cc b/src/ir/di-file.cc
+new file mode 100644
+index 0000000..2dc9182
+--- /dev/null
++++ b/src/ir/di-file.cc
+@@ -0,0 +1,71 @@
++
++#include "di-file.h"
++
++void DIFileWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diFile = Nan::GetFunction(Nan::New(DIFileWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIFile").ToLocalChecked(), diFile);
++}
++
++v8::Local <v8::Object> DIFileWrapper::of(llvm::DIFile *diFile) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DIFileWrapper::Constructor())).ToLocalChecked();
++    v8::Local<v8::Value> args[1] = {Nan::New<v8::External>(diFile)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DIFile *DIFileWrapper::getDIFile() {
++    return static_cast<llvm::DIFile *>(getMetadata());
++}
++
++bool DIFileWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DIFileWrapper::Constructor())->HasInstance(value);
++}
++
++DIFileWrapper::DIFileWrapper(llvm::DIFile *diFile) : DIScopeWrapper{diFile} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DIFileWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIFileWrapper::New);
++        tpl->SetClassName(Nan::New("DIFile").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DIScopeWrapper::Constructor()));
++
++        Nan::SetPrototypeMethod(tpl, "getFilename", DIFileWrapper::getFilename);
++        Nan::SetPrototypeMethod(tpl, "getDirectory", DIFileWrapper::getDirectory);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIFileWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIFile cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIFile Pointer required");
++    }
++
++    auto *diFile = static_cast<llvm::DIFile *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DIFileWrapper{diFile};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIFileWrapper::getFilename(Nan::NAN_METHOD_ARGS_TYPE info) {
++    llvm::DIFile *diFile = DIFileWrapper::FromValue(info.Holder())->getDIFile();
++    auto result = Nan::New(diFile->getFilename().str()).ToLocalChecked();
++    info.GetReturnValue().Set(result);
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIFileWrapper::getDirectory(Nan::NAN_METHOD_ARGS_TYPE info) {
++    llvm::DIFile *diFile = DIFileWrapper::FromValue(info.Holder())->getDIFile();
++    auto result = Nan::New(diFile->getDirectory().str()).ToLocalChecked();
++    info.GetReturnValue().Set(result);
++}
+\ No newline at end of file
+diff --git a/src/ir/di-file.h b/src/ir/di-file.h
+new file mode 100644
+index 0000000..f63252b
+--- /dev/null
++++ b/src/ir/di-file.h
+@@ -0,0 +1,36 @@
++
++#ifndef LLVM_NODE_DI_FILE_H
++#define LLVM_NODE_DI_FILE_H
++
++#include "di-scope.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DIFileWrapper : public DIScopeWrapper, public FromValueMixin<DIFileWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local<v8::Object> of(llvm::DIFile *diFile);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DIFile *getDIFile();
++
++    using FromValueMixin<DIFileWrapper>::FromValue;
++
++protected:
++    explicit DIFileWrapper(llvm::DIFile *diFile);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(getFilename);
++
++    static NAN_METHOD(getDirectory);
++};
++
++
++#endif //LLVM_NODE_DI_FILE_H
+diff --git a/src/ir/di-local-scope.cc b/src/ir/di-local-scope.cc
+new file mode 100644
+index 0000000..4258eb3
+--- /dev/null
++++ b/src/ir/di-local-scope.cc
+@@ -0,0 +1,54 @@
++//
++// Created by tutyne on 18.04.22.
++//
++
++#include "di-local-scope.h"
++
++void DILocalScopeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diLocalScope = Nan::GetFunction(Nan::New(DILocalScopeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DILocalScope").ToLocalChecked(), diLocalScope);
++}
++
++v8::Local<v8::Object> DILocalScopeWrapper::of(llvm::DILocalScope *localScope) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DILocalScopeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(localScope)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DILocalScope *DILocalScopeWrapper::getDILocalScope() {
++    return static_cast<llvm::DILocalScope *>(getMetadata());
++}
++
++DILocalScopeWrapper::DILocalScopeWrapper(llvm::DILocalScope *diLocalScope) : DIScopeWrapper{diLocalScope} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DILocalScopeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DILocalScopeWrapper::New);
++        tpl->SetClassName(Nan::New("DILocalScope").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DIScopeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++void DILocalScopeWrapper::New(const Nan::FunctionCallbackInfo<v8::Value> &info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DILocalScope cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DILocalScope Pointer required");
++    }
++
++    auto *diLocalScope = static_cast<llvm::DILocalScope *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DILocalScopeWrapper{diLocalScope};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-local-scope.h b/src/ir/di-local-scope.h
+new file mode 100644
+index 0000000..b71d52c
+--- /dev/null
++++ b/src/ir/di-local-scope.h
+@@ -0,0 +1,28 @@
++#ifndef LLVM_NODE_DI_LOCAL_SCOPE_H
++#define LLVM_NODE_DI_LOCAL_SCOPE_H
++
++#include "di-scope.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DILocalScopeWrapper : public DIScopeWrapper, FromValueMixin<DILocalScopeWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local<v8::Object> of(llvm::DILocalScope *localScope);
++
++    llvm::DILocalScope *getDILocalScope();
++
++protected:
++    explicit DILocalScopeWrapper(llvm::DILocalScope *diLocalScope);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_LOCAL_SCOPE_H
+diff --git a/src/ir/di-local-variable.cc b/src/ir/di-local-variable.cc
+new file mode 100644
+index 0000000..24d25db
+--- /dev/null
++++ b/src/ir/di-local-variable.cc
+@@ -0,0 +1,58 @@
++//
++// Created by tutyne on 08.06.22.
++//
++
++#include "di-local-variable.h"
++
++void DILocalVariableWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diLocalVariable = Nan::GetFunction(Nan::New(DILocalVariableWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DILocalVariable").ToLocalChecked(), diLocalVariable);
++}
++
++v8::Local <v8::Object> DILocalVariableWrapper::of(llvm::DILocalVariable *diLocalVariable) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DILocalVariableWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diLocalVariable)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool DILocalVariableWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DILocalVariableWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DILocalVariable *DILocalVariableWrapper::getDILocalVariable() {
++    return static_cast<llvm::DILocalVariable *>(getMetadata());
++}
++
++DILocalVariableWrapper::DILocalVariableWrapper(llvm::DILocalVariable *diLocalVariable) : DIVariableWrapper(diLocalVariable) {}
++
++Nan::Persistent <v8::FunctionTemplate> &DILocalVariableWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DILocalVariableWrapper::New);
++        tpl->SetClassName(Nan::New("DILocalVariable").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DIVariableWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DILocalVariableWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DILocalVariable cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DILocalVariable Pointer required");
++    }
++
++    auto *diLocalVariable = static_cast<llvm::DILocalVariable *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DILocalVariableWrapper{diLocalVariable};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-local-variable.h b/src/ir/di-local-variable.h
+new file mode 100644
+index 0000000..dd815be
+--- /dev/null
++++ b/src/ir/di-local-variable.h
+@@ -0,0 +1,35 @@
++//
++// Created by tutyne on 08.06.22.
++//
++
++#ifndef LLVM_NODE_DI_LOCAL_VARIABLE_H
++#define LLVM_NODE_DI_LOCAL_VARIABLE_H
++
++#include "di-variable.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DILocalVariableWrapper: public DIVariableWrapper, public FromValueMixin<DILocalVariableWrapper> {
++public:
++    using FromValueMixin<DILocalVariableWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DILocalVariable *diLocalVariable);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DILocalVariable *getDILocalVariable();
++
++protected:
++    explicit DILocalVariableWrapper(llvm::DILocalVariable *diLocalVariable);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_LOCAL_VARIABLE_H
+diff --git a/src/ir/di-location.cc b/src/ir/di-location.cc
+new file mode 100644
+index 0000000..ee09abc
+--- /dev/null
++++ b/src/ir/di-location.cc
+@@ -0,0 +1,84 @@
++
++#include "di-location.h"
++#include "llvm-context.h"
++
++#include "llvm/IR/DebugInfoMetadata.h"
++
++void DILocationWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diLocation = Nan::GetFunction(Nan::New(DILocationWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DILocation").ToLocalChecked(), diLocation);
++}
++
++v8::Local <v8::Object> DILocationWrapper::Create(llvm::DILocation *diLocation) {
++    Nan::EscapableHandleScope escapeScope {};
++
++    v8::Local<v8::FunctionTemplate> tpl = Nan::New(DILocationWrapper::Constructor());
++    auto constructorFunction = Nan::GetFunction(tpl).ToLocalChecked();
++    v8::Local<v8::Value> argv[1] = { Nan::New<v8::External>(diLocation) };
++    v8::Local<v8::Object> instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++
++    return escapeScope.Escape(instance);
++}
++
++v8::Local <v8::Object> DILocationWrapper::of(llvm::DILocation *diLocation) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DILocationWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diLocation)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DILocation *DILocationWrapper::getDILocation() {
++    return static_cast<llvm::DILocation *>(getMetadata());
++}
++
++DILocationWrapper::DILocationWrapper(llvm::DILocation *diLocation) : MDNodeWrapper(diLocation) {}
++
++Nan::Persistent<v8::FunctionTemplate> &DILocationWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DILocationWrapper::New);
++        tpl->SetClassName(Nan::New("DILocation").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(MDNodeWrapper::Constructor()));
++
++        Nan::SetMethod(tpl, "get", DILocationWrapper::get);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DILocationWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DILocation cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DILocation Pointer required");
++    }
++
++    auto *diScope = static_cast<llvm::DILocation *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DILocationWrapper{diScope};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DILocationWrapper::get(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 4 || !LLVMContextWrapper::isInstance(info[0]) || !info[1]->IsUint32() ||
++        !info[2]->IsUint32() || !MetadataWrapper::isInstance(info[3])) {
++        return Nan::ThrowTypeError(
++                "The Module functionTemplate needs to be called with: (moduleId: string, context: LLVMContext)");
++    }
++    auto & llvmContext = LLVMContextWrapper::FromValue(info[0])->getContext();
++    auto lineNo = Nan::To<unsigned>(info[1]).FromJust();
++    auto column = Nan::To<unsigned>(info[2]).FromJust();
++    auto * metaData = MetadataWrapper::FromValue(info[3])->getMetadata();
++
++    auto * diLocation = llvm::DILocation::get(llvmContext, lineNo, column, metaData);
++
++    info.GetReturnValue().Set(DILocationWrapper::Create(diLocation));
++}
+diff --git a/src/ir/di-location.h b/src/ir/di-location.h
+new file mode 100644
+index 0000000..d4e620c
+--- /dev/null
++++ b/src/ir/di-location.h
+@@ -0,0 +1,31 @@
++#ifndef LLVM_NODE_DI_LOCATION_H
++#define LLVM_NODE_DI_LOCATION_H
++
++#include "md-node.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DILocationWrapper : public MDNodeWrapper, public FromValueMixin<DILocationWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local<v8::Object> Create(llvm::DILocation * diLocation);
++    static v8::Local<v8::Object> of(llvm::DILocation *diLocation);
++
++    llvm::DILocation *getDILocation();
++
++    using FromValueMixin<DILocationWrapper>::FromValue;
++
++protected:
++    explicit DILocationWrapper(llvm::DILocation * diLocation);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(get);
++};
++
++#endif //LLVM_NODE_DI_LOCATION_H
+diff --git a/src/ir/di-node.cc b/src/ir/di-node.cc
+new file mode 100644
+index 0000000..6a7a9cd
+--- /dev/null
++++ b/src/ir/di-node.cc
+@@ -0,0 +1,126 @@
++#include "di-node.h"
++
++void DINodeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diNode = Nan::GetFunction(Nan::New(DINodeWrapper::Constructor())).ToLocalChecked();
++
++    auto diFlags = Nan::New<v8::Object>();
++
++    Nan::Set(diFlags, Nan::New("FlagZero").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagZero)));
++    Nan::Set(diFlags, Nan::New("FlagPrivate").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagPrivate)));
++    Nan::Set(diFlags, Nan::New("FlagProtected").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagProtected)));
++    Nan::Set(diFlags, Nan::New("FlagPublic").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagPublic)));
++    Nan::Set(diFlags, Nan::New("FlagFwdDecl").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagFwdDecl)));
++    Nan::Set(diFlags, Nan::New("FlagAppleBlock").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagAppleBlock)));
++    Nan::Set(diFlags, Nan::New("FlagReservedBit4").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagReservedBit4)));
++    Nan::Set(diFlags, Nan::New("FlagVirtual").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagVirtual)));
++    Nan::Set(diFlags, Nan::New("FlagArtificial").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagArtificial)));
++    Nan::Set(diFlags, Nan::New("FlagExplicit").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagExplicit)));
++    Nan::Set(diFlags, Nan::New("FlagPrototyped").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagPrototyped)));
++    Nan::Set(diFlags, Nan::New("FlagObjcClassComplete").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagObjcClassComplete)));
++    Nan::Set(diFlags, Nan::New("FlagObjectPointer").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagObjectPointer)));
++    Nan::Set(diFlags, Nan::New("FlagVector").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagVector)));
++    Nan::Set(diFlags, Nan::New("FlagStaticMember").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagStaticMember)));
++    Nan::Set(diFlags, Nan::New("FlagLValueReference").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagLValueReference)));
++    Nan::Set(diFlags, Nan::New("FlagRValueReference").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagRValueReference)));
++    Nan::Set(diFlags, Nan::New("FlagExportSymbols").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagExportSymbols)));
++    Nan::Set(diFlags, Nan::New("FlagSingleInheritance").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagSingleInheritance)));
++    Nan::Set(diFlags, Nan::New("FlagMultipleInheritance").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagMultipleInheritance)));
++    Nan::Set(diFlags, Nan::New("FlagVirtualInheritance").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagVirtualInheritance)));
++    Nan::Set(diFlags, Nan::New("FlagIntroducedVirtual").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagIntroducedVirtual)));
++    Nan::Set(diFlags, Nan::New("FlagBitField").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagBitField)));
++    Nan::Set(diFlags, Nan::New("FlagNoReturn").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagNoReturn)));
++    Nan::Set(diFlags, Nan::New("FlagTypePassByValue").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagTypePassByValue)));
++    Nan::Set(diFlags, Nan::New("FlagTypePassByReference").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagTypePassByReference)));
++    Nan::Set(diFlags, Nan::New("FlagEnumClass").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagEnumClass)));
++    Nan::Set(diFlags, Nan::New("FlagThunk").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagThunk)));
++    Nan::Set(diFlags, Nan::New("FlagNonTrivial").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagNonTrivial)));
++    Nan::Set(diFlags, Nan::New("FlagBigEndian").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagBigEndian)));
++    Nan::Set(diFlags, Nan::New("FlagLittleEndian").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagLittleEndian)));
++    Nan::Set(diFlags, Nan::New("FlagAllCallsDescribed").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagAllCallsDescribed)));
++    Nan::Set(diFlags, Nan::New("FlagIndirectVirtualBase").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagIndirectVirtualBase)));
++    Nan::Set(diFlags, Nan::New("FlagAccessibility").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagAccessibility)));
++    Nan::Set(diFlags, Nan::New("FlagPtrToMemberRep").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DINode::DIFlags::FlagPtrToMemberRep)));
++
++    Nan::Set(diNode, Nan::New("DIFlags").ToLocalChecked(), diFlags);
++
++    Nan::Set(target, Nan::New("DINode").ToLocalChecked(), diNode);
++}
++
++v8::Local <v8::Object> DINodeWrapper::of(llvm::DINode *diNode) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(MDNodeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(diNode)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DINode *DINodeWrapper::getDINode() {
++    return static_cast<llvm::DINode *>(getMetadata());
++}
++
++DINodeWrapper::DINodeWrapper(llvm::DINode *diNode) : MDNodeWrapper(diNode) {}
++
++Nan::Persistent<v8::FunctionTemplate> &DINodeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DINodeWrapper::New);
++        tpl->SetClassName(Nan::New("DINode").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(MDNodeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DINodeWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DINode cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("DINode constructor needs to be called with: DINode: external");
++    }
++
++    auto *diNode = static_cast<llvm::DINode *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DINodeWrapper{diNode};
++    wrapper->Wrap(info.This());
++
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-node.h b/src/ir/di-node.h
+new file mode 100644
+index 0000000..1895916
+--- /dev/null
++++ b/src/ir/di-node.h
+@@ -0,0 +1,34 @@
++//
++// Created by tutyne on 12.04.2022.
++//
++
++#ifndef LLVM_NODE_DI_NODE_H
++#define LLVM_NODE_DI_NODE_H
++
++#include "md-node.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/DebugInfoMetadata.h"
++
++#include <nan.h>
++
++class DINodeWrapper : public MDNodeWrapper, public FromValueMixin<DINodeWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DINode *diNode);
++
++    using FromValueMixin<DINodeWrapper>::FromValue;
++
++    llvm::DINode *getDINode();
++
++protected:
++    explicit DINodeWrapper(llvm::DINode *diNode);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++#endif //LLVM_NODE_DI_NODE_H
+\ No newline at end of file
+diff --git a/src/ir/di-scope.cc b/src/ir/di-scope.cc
+new file mode 100644
+index 0000000..175c051
+--- /dev/null
++++ b/src/ir/di-scope.cc
+@@ -0,0 +1,67 @@
++
++#include "di-scope.h"
++#include "di-file.h"
++
++void DIScopeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diScope = Nan::GetFunction(Nan::New(DIScopeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIScope").ToLocalChecked(), diScope);
++}
++
++v8::Local <v8::Object> DIScopeWrapper::of(llvm::DIScope *diScope) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DIScopeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diScope)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::DIScope *DIScopeWrapper::getDIScope() {
++    return static_cast<llvm::DIScope *>(getMetadata());
++}
++
++bool DIScopeWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DIScopeWrapper::Constructor())->HasInstance(value);
++}
++
++DIScopeWrapper::DIScopeWrapper(llvm::DIScope *diScope) : DINodeWrapper{diScope} {
++}
++
++Nan::Persistent<v8::FunctionTemplate> &DIScopeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIScopeWrapper::New);
++        tpl->SetClassName(Nan::New("DIScope").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DINodeWrapper::Constructor()));
++
++        Nan::SetPrototypeMethod(tpl, "getFile", DIScopeWrapper::getFile);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIScopeWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIScope cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIScope Pointer required");
++    }
++
++    auto *diScope = static_cast<llvm::DIScope *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DIScopeWrapper{diScope};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIScopeWrapper::getFile(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto *self = DIScopeWrapper::FromValue(info.Holder())->getDIScope();
++    auto * diFile = self->getFile();
++
++    info.GetReturnValue().Set(DIFileWrapper::of(diFile));
++}
+diff --git a/src/ir/di-scope.h b/src/ir/di-scope.h
+new file mode 100644
+index 0000000..91b42ad
+--- /dev/null
++++ b/src/ir/di-scope.h
+@@ -0,0 +1,35 @@
++#ifndef LLVM_NODE_DI_SCOPE_H
++#define LLVM_NODE_DI_SCOPE_H
++
++#include "di-node.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/DebugInfoMetadata.h"
++#include <nan.h>
++
++class DIScopeWrapper : public DINodeWrapper, public FromValueMixin<DIScopeWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DIScope *diScope);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DIScope *getDIScope();
++
++    using FromValueMixin<DIScopeWrapper>::FromValue;
++
++protected:
++    explicit DIScopeWrapper(llvm::DIScope *diScope);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(getFile);
++};
++
++
++#endif //LLVM_NODE_DI_SCOPE_H
+diff --git a/src/ir/di-subprogram.cc b/src/ir/di-subprogram.cc
+new file mode 100644
+index 0000000..1c192aa
+--- /dev/null
++++ b/src/ir/di-subprogram.cc
+@@ -0,0 +1,92 @@
++//
++// Created by tutyne on 18.04.22.
++//
++
++#include "di-subprogram.h"
++
++void DISubprogramWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diSubprogram = Nan::GetFunction(Nan::New(DISubprogramWrapper::Constructor())).ToLocalChecked();
++
++    auto diSPFlags = Nan::New<v8::Object>();
++
++    Nan::Set(diSPFlags, Nan::New("SPFlagZero").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagZero)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagVirtual").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagVirtual)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagPureVirtual").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagPureVirtual)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagLocalToUnit").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagDefinition").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagDefinition)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagOptimized").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagOptimized)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagPure").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagPure)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagElemental").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagElemental)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagRecursive").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagRecursive)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagMainSubprogram").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagMainSubprogram)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagDeleted").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagDeleted)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagObjCDirect").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagObjCDirect)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagNonvirtual").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagNonvirtual)));
++    Nan::Set(diSPFlags, Nan::New("SPFlagVirtuality").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::DISubprogram::DISPFlags::SPFlagVirtuality)));
++
++    Nan::Set(diSubprogram, Nan::New("DISPFlags").ToLocalChecked(), diSPFlags);
++
++    Nan::Set(target, Nan::New("DISubprogram").ToLocalChecked(), diSubprogram);
++}
++
++v8::Local <v8::Object> DISubprogramWrapper::of(llvm::DISubprogram *subprogram) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DISubprogramWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(subprogram)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool DISubprogramWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DISubprogramWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DISubprogram *DISubprogramWrapper::getDISubprogram() {
++    return static_cast<llvm::DISubprogram *>(getMetadata());
++}
++
++DISubprogramWrapper::DISubprogramWrapper(llvm::DISubprogram *diSubprogram) : DILocalScopeWrapper{diSubprogram} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DISubprogramWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DISubprogramWrapper::New);
++        tpl->SetClassName(Nan::New("DISubprogram").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DILocalScopeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++void DISubprogramWrapper::New(const Nan::FunctionCallbackInfo<v8::Value> &info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DISubprogram cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DISubprogram Pointer required");
++    }
++
++    auto *diSubprogram = static_cast<llvm::DISubprogram *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DISubprogramWrapper{diSubprogram};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-subprogram.h b/src/ir/di-subprogram.h
+new file mode 100644
+index 0000000..45bebe1
+--- /dev/null
++++ b/src/ir/di-subprogram.h
+@@ -0,0 +1,33 @@
++
++#ifndef LLVM_NODE_DI_SUBPROGRAM_H
++#define LLVM_NODE_DI_SUBPROGRAM_H
++
++#include "di-local-scope.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DISubprogramWrapper : public DILocalScopeWrapper, public FromValueMixin<DISubprogramWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local<v8::Object> of(llvm::DISubprogram *subprogram);
++
++    static bool isInstance(v8::Local<v8::Value> value);
++
++    llvm::DISubprogram *getDISubprogram();
++
++    using FromValueMixin<DISubprogramWrapper>::FromValue;
++
++protected:
++    explicit DISubprogramWrapper(llvm::DISubprogram *diSubprogram);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_SUBPROGRAM_H
+diff --git a/src/ir/di-subroutine-type.cc b/src/ir/di-subroutine-type.cc
+new file mode 100644
+index 0000000..4975e2d
+--- /dev/null
++++ b/src/ir/di-subroutine-type.cc
+@@ -0,0 +1,55 @@
++
++#include "di-subroutine-type.h"
++
++void DISubroutineTypeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diSubroutineType = Nan::GetFunction(Nan::New(DISubroutineTypeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DISubroutineType").ToLocalChecked(), diSubroutineType);
++}
++
++v8::Local<v8::Object> DISubroutineTypeWrapper::of(llvm::DISubroutineType *diSubroutineType) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DISubroutineTypeWrapper::Constructor())).ToLocalChecked();
++    v8::Local<v8::Value> args[1] = {Nan::New<v8::External>(diSubroutineType)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool DISubroutineTypeWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DISubroutineTypeWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DISubroutineType *DISubroutineTypeWrapper::getDISubroutineType() {
++    return static_cast<llvm::DISubroutineType *>(getMetadata());
++}
++
++DISubroutineTypeWrapper::DISubroutineTypeWrapper(llvm::DISubroutineType *diSubroutineType) : DITypeWrapper{diSubroutineType} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DISubroutineTypeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DISubroutineTypeWrapper::New);
++        tpl->SetClassName(Nan::New("DISubroutineType").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DITypeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++void DISubroutineTypeWrapper::New(const Nan::FunctionCallbackInfo<v8::Value> &info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DISubroutineType cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DISubroutineType Pointer required");
++    }
++
++    auto *diSubroutineType = static_cast<llvm::DISubroutineType *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DISubroutineTypeWrapper{diSubroutineType};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+\ No newline at end of file
+diff --git a/src/ir/di-subroutine-type.h b/src/ir/di-subroutine-type.h
+new file mode 100644
+index 0000000..5e7b50f
+--- /dev/null
++++ b/src/ir/di-subroutine-type.h
+@@ -0,0 +1,31 @@
++#ifndef LLVM_NODE_DI_SUBROUTINE_TYPE_H
++#define LLVM_NODE_DI_SUBROUTINE_TYPE_H
++
++#include "di-type.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DISubroutineTypeWrapper : public DITypeWrapper, public FromValueMixin<DISubroutineTypeWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local<v8::Object> of(llvm::DISubroutineType *diSubroutineType);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DISubroutineType *getDISubroutineType();
++
++    using FromValueMixin<DISubroutineTypeWrapper>::FromValue;
++
++protected:
++    explicit DISubroutineTypeWrapper(llvm::DISubroutineType *diSubroutineType);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_SUBROUTINE_TYPE_H
+diff --git a/src/ir/di-type-ref-array.cc b/src/ir/di-type-ref-array.cc
+new file mode 100644
+index 0000000..5a9c4ae
+--- /dev/null
++++ b/src/ir/di-type-ref-array.cc
+@@ -0,0 +1,43 @@
++
++#include "di-type-ref-array.h"
++
++void DITypeRefArrayWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
++    tpl->SetClassName(Nan::New("DITypeRefArray").ToLocalChecked());
++    tpl->InstanceTemplate()->SetInternalFieldCount(1);
++
++    DITypeRefArrayWrapper::Constructor().Reset(tpl);
++    Nan::Set(target, Nan::New("DITypeRefArray").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
++}
++
++v8::Local <v8::Object> DITypeRefArrayWrapper::of(llvm::DITypeRefArray &diTypeRefArray) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DITypeRefArrayWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(&diTypeRefArray)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++Nan::Persistent<v8::FunctionTemplate> &DITypeRefArrayWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++    return constructor;
++}
++
++bool DITypeRefArrayWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DITypeRefArrayWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DITypeRefArray &DITypeRefArrayWrapper::getDITypeRefArray() {
++    return diTypeRefArray_;
++}
++
++DITypeRefArrayWrapper::DITypeRefArrayWrapper() : diTypeRefArray_{} {}
++
++Nan::NAN_METHOD_RETURN_TYPE DITypeRefArrayWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class DITypeRefArray cannot be invoked without new");
++    }
++    auto *wrapper = new DITypeRefArrayWrapper{};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-type-ref-array.h b/src/ir/di-type-ref-array.h
+new file mode 100644
+index 0000000..37adea4
+--- /dev/null
++++ b/src/ir/di-type-ref-array.h
+@@ -0,0 +1,34 @@
++
++#ifndef LLVM_NODE_DI_TYPE_REF_ARRAY_H
++#define LLVM_NODE_DI_TYPE_REF_ARRAY_H
++
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/DebugInfoMetadata.h"
++#include <nan.h>
++
++class DITypeRefArrayWrapper : public Nan::ObjectWrap, public FromValueMixin<DITypeRefArrayWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DITypeRefArray & diTypeRefArray);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DITypeRefArray &getDITypeRefArray();
++
++    using FromValueMixin<DITypeRefArrayWrapper>::FromValue;
++
++protected:
++    DITypeRefArrayWrapper();
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++
++private:
++    llvm::DITypeRefArray diTypeRefArray_;
++};
++
++#endif //LLVM_NODE_DI_TYPE_REF_ARRAY_H
+diff --git a/src/ir/di-type.cc b/src/ir/di-type.cc
+new file mode 100644
+index 0000000..77c6094
+--- /dev/null
++++ b/src/ir/di-type.cc
+@@ -0,0 +1,55 @@
++
++#include "di-type.h"
++
++void DITypeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diLocalScope = Nan::GetFunction(Nan::New(DITypeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIType").ToLocalChecked(), diLocalScope);
++}
++
++v8::Local<v8::Object> DITypeWrapper::of(llvm::DIType *diType) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DITypeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diType)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool DITypeWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DITypeWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DIType *DITypeWrapper::getDIType() {
++    return static_cast<llvm::DIType *>(getMetadata());
++}
++
++DITypeWrapper::DITypeWrapper(llvm::DIType *diType) : DIScopeWrapper{diType} {}
++
++Nan::Persistent<v8::FunctionTemplate> &DITypeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DITypeWrapper::New);
++        tpl->SetClassName(Nan::New("DIType").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DIScopeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++void DITypeWrapper::New(const Nan::FunctionCallbackInfo<v8::Value> &info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIType cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIType Pointer required");
++    }
++
++    auto *diType = static_cast<llvm::DIType *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DITypeWrapper{diType};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-type.h b/src/ir/di-type.h
+new file mode 100644
+index 0000000..09ac310
+--- /dev/null
++++ b/src/ir/di-type.h
+@@ -0,0 +1,32 @@
++
++#ifndef LLVM_NODE_DI_TYPE_H
++#define LLVM_NODE_DI_TYPE_H
++
++#include "di-scope.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DITypeWrapper : public DIScopeWrapper, public FromValueMixin<DITypeWrapper> {
++public:
++    using FromValueMixin<DITypeWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DIType * diType);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DIType *getDIType();
++
++protected:
++    explicit DITypeWrapper(llvm::DIType * diType);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_TYPE_H
+diff --git a/src/ir/di-variable.cc b/src/ir/di-variable.cc
+new file mode 100644
+index 0000000..353f435
+--- /dev/null
++++ b/src/ir/di-variable.cc
+@@ -0,0 +1,58 @@
++//
++// Created by tutyne on 08.06.22.
++//
++
++#include "di-variable.h"
++
++void DIVariableWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto diVariable = Nan::GetFunction(Nan::New(DIVariableWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("DIVariable").ToLocalChecked(), diVariable);
++}
++
++v8::Local <v8::Object> DIVariableWrapper::of(llvm::DIVariable *diVariable) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(DIVariableWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> args[1] = {Nan::New<v8::External>(diVariable)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, args).ToLocalChecked();
++
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool DIVariableWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(DIVariableWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::DIVariable *DIVariableWrapper::getDIVariable() {
++    return static_cast<llvm::DIVariable *>(getMetadata());
++}
++
++DIVariableWrapper::DIVariableWrapper(llvm::DIVariable *diVariable) : DINodeWrapper(diVariable) {}
++
++Nan::Persistent <v8::FunctionTemplate> &DIVariableWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DIVariableWrapper::New);
++        tpl->SetClassName(Nan::New("DIVariable").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(DINodeWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DIVariableWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor DIVariable cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External DIVariable Pointer required");
++    }
++
++    auto *diVariable = static_cast<llvm::DIVariable *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new DIVariableWrapper{diVariable};
++
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/di-variable.h b/src/ir/di-variable.h
+new file mode 100644
+index 0000000..857e1fd
+--- /dev/null
++++ b/src/ir/di-variable.h
+@@ -0,0 +1,35 @@
++//
++// Created by tutyne on 08.06.22.
++//
++
++#ifndef LLVM_NODE_DI_VARIABLE_H
++#define LLVM_NODE_DI_VARIABLE_H
++
++#include "di-node.h"
++#include "../util/from-value-mixin.h"
++
++#include <nan.h>
++
++class DIVariableWrapper: public DINodeWrapper, public FromValueMixin<DIVariableWrapper> {
++public:
++    using FromValueMixin<DIVariableWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::DIVariable *diVariable);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::DIVariable *getDIVariable();
++
++protected:
++    explicit DIVariableWrapper(llvm::DIVariable *diVariable);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DI_VARIABLE_H
+diff --git a/src/ir/dwarf.cc b/src/ir/dwarf.cc
+new file mode 100644
+index 0000000..3295114
+--- /dev/null
++++ b/src/ir/dwarf.cc
+@@ -0,0 +1,182 @@
++
++#include "dwarf.h"
++
++#include "llvm/IR/GlobalValue.h"
++#include "llvm/BinaryFormat/Dwarf.h"
++
++void DwarfWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto dwarf = Nan::GetFunction(Nan::New(DwarfWrapper::Constructor())).ToLocalChecked();
++
++    // =============== DW_ATE_ ==============================================
++    //
++    Nan::Set(dwarf, Nan::New("DW_ATE_float").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_float)));
++    Nan::Set(dwarf, Nan::New("DW_ATE_signed").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_signed)));
++    Nan::Set(dwarf, Nan::New("DW_ATE_boolean").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_boolean)));
++    //
++    // ============== End DW_ATE_ ===========================================
++
++    // ============= DW_TAG_ ===========================================
++    //
++    Nan::Set(dwarf, Nan::New("DW_TAG_class_type").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_TAG_class_type)));
++    Nan::Set(dwarf, Nan::New("DW_TAG_pointer_type").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_TAG_pointer_type)));
++    Nan::Set(dwarf, Nan::New("DW_TAG_null").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_TAG_null)));
++    //
++    // ============= End DW_TAG_ =======================================
++
++
++    // ==================== Source language ====================================
++    auto sourceLanguage = Nan::New<v8::Object>();
++    Nan::Set(sourceLanguage, Nan::New("C89").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C89)));
++    Nan::Set(sourceLanguage, Nan::New("C").ToLocalChecked(), Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C)));
++    Nan::Set(sourceLanguage, Nan::New("Ada83").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Ada83)));
++    Nan::Set(sourceLanguage, Nan::New("C_plus_plus").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C_plus_plus)));
++    Nan::Set(sourceLanguage, Nan::New("Cobol74").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Cobol74)));
++    Nan::Set(sourceLanguage, Nan::New("Cobol85").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Cobol85)));
++    Nan::Set(sourceLanguage, Nan::New("Fortran77").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Fortran77)));
++    Nan::Set(sourceLanguage, Nan::New("Fortran90").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Fortran90)));
++    Nan::Set(sourceLanguage, Nan::New("Pascal83").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Pascal83)));
++    Nan::Set(sourceLanguage, Nan::New("Modula2").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Modula2)));
++    Nan::Set(sourceLanguage, Nan::New("Java").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Java)));
++    Nan::Set(sourceLanguage, Nan::New("C99").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C99)));
++    Nan::Set(sourceLanguage, Nan::New("Ada95").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Ada95)));
++    Nan::Set(sourceLanguage, Nan::New("Fortran95").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Fortran95)));
++    Nan::Set(sourceLanguage, Nan::New("PLI").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_PLI)));
++    Nan::Set(sourceLanguage, Nan::New("ObjC").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_ObjC)));
++    Nan::Set(sourceLanguage, Nan::New("ObjC_plus_plus").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_ObjC_plus_plus)));
++    Nan::Set(sourceLanguage, Nan::New("UPC").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_UPC)));
++    Nan::Set(sourceLanguage, Nan::New("D").ToLocalChecked(), Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_D)));
++    Nan::Set(sourceLanguage, Nan::New("Python").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Python)));
++    Nan::Set(sourceLanguage, Nan::New("OpenCL").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_OpenCL)));
++    Nan::Set(sourceLanguage, Nan::New("Go").ToLocalChecked(), Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Go)));
++    Nan::Set(sourceLanguage, Nan::New("Modula3").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Modula3)));
++    Nan::Set(sourceLanguage, Nan::New("Haskell").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Haskell)));
++    Nan::Set(sourceLanguage, Nan::New("C_plus_plus_03").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C_plus_plus_03)));
++    Nan::Set(sourceLanguage, Nan::New("C_plus_plus_11").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C_plus_plus_11)));
++    Nan::Set(sourceLanguage, Nan::New("OCaml").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_OCaml)));
++    Nan::Set(sourceLanguage, Nan::New("Rust").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Rust)));
++    Nan::Set(sourceLanguage, Nan::New("C11").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C11)));
++    Nan::Set(sourceLanguage, Nan::New("Swift").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Swift)));
++    Nan::Set(sourceLanguage, Nan::New("Julia").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Julia)));
++    Nan::Set(sourceLanguage, Nan::New("Dylan").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Dylan)));
++    Nan::Set(sourceLanguage, Nan::New("C_plus_plus_14").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_C_plus_plus_14)));
++    Nan::Set(sourceLanguage, Nan::New("Fortran03").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Fortran03)));
++    Nan::Set(sourceLanguage, Nan::New("Fortran08").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_Fortran08)));
++    Nan::Set(sourceLanguage, Nan::New("RenderScript").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_RenderScript)));
++    Nan::Set(sourceLanguage, Nan::New("BLISS").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_LANG_BLISS)));
++    //
++    // ==================== End Source language ====================================
++
++    // ==================== AttributeEncoding ======================================
++    //
++    auto attributeEncoding = Nan::New<v8::Object>();
++    Nan::Set(attributeEncoding, Nan::New("address").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_address)));
++    Nan::Set(attributeEncoding, Nan::New("boolean").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_boolean)));
++    Nan::Set(attributeEncoding, Nan::New("complex_float").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_complex_float)));
++    Nan::Set(attributeEncoding, Nan::New("float").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_float)));
++    Nan::Set(attributeEncoding, Nan::New("signed").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_signed)));
++    Nan::Set(attributeEncoding, Nan::New("signed_char").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_signed_char)));
++    Nan::Set(attributeEncoding, Nan::New("unsigned").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_unsigned)));
++    Nan::Set(attributeEncoding, Nan::New("unsigned_char").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_unsigned_char)));
++    Nan::Set(attributeEncoding, Nan::New("imaginary_float").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_imaginary_float)));
++    Nan::Set(attributeEncoding, Nan::New("packed_decimal").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_packed_decimal)));
++    Nan::Set(attributeEncoding, Nan::New("numeric_string").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_numeric_string)));
++    Nan::Set(attributeEncoding, Nan::New("edited").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_edited)));
++    Nan::Set(attributeEncoding, Nan::New("signed_fixed").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_signed_fixed)));
++    Nan::Set(attributeEncoding, Nan::New("unsigned_fixed").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_unsigned_fixed)));
++    Nan::Set(attributeEncoding, Nan::New("decimal_float").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_decimal_float)));
++    Nan::Set(attributeEncoding, Nan::New("UTF").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_UTF)));
++    Nan::Set(attributeEncoding, Nan::New("UCS").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_UCS)));
++    Nan::Set(attributeEncoding, Nan::New("ASCII").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::dwarf::DW_ATE_ASCII)));
++    //
++    // ==================== End AttributeEncoding ====================================
++
++    Nan::Set(dwarf, Nan::New("SourceLanguage").ToLocalChecked(), sourceLanguage);
++    Nan::Set(dwarf, Nan::New("AttributeEncoding").ToLocalChecked(), attributeEncoding);
++
++    Nan::Set(target, Nan::New("dwarf").ToLocalChecked(), dwarf);
++}
++
++Nan::Persistent<v8::FunctionTemplate> &DwarfWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(DwarfWrapper::New);
++        tpl->SetClassName(Nan::New("dwarf").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE DwarfWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor dwarf cannot be invoked without new");
++    }
++
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("dwarf constructor needs to be called with: DINode: external");
++    }
++
++    auto *wrapper = new DwarfWrapper{};
++    wrapper->Wrap(info.This());
++
++    info.GetReturnValue().Set(info.This());
++}
+\ No newline at end of file
+diff --git a/src/ir/dwarf.h b/src/ir/dwarf.h
+new file mode 100644
+index 0000000..6f52447
+--- /dev/null
++++ b/src/ir/dwarf.h
+@@ -0,0 +1,22 @@
++
++#ifndef LLVM_NODE_DWARF_H
++#define LLVM_NODE_DWARF_H
++
++#include <nan.h>
++
++class DwarfWrapper: public Nan::ObjectWrap {
++public:
++    static NAN_MODULE_INIT(Init);
++
++protected:
++    explicit DwarfWrapper() = default;
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    // static
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_DWARF_H
+diff --git a/src/ir/eh-generator.cc b/src/ir/eh-generator.cc
+new file mode 100644
+index 0000000..3e3fb4d
+--- /dev/null
++++ b/src/ir/eh-generator.cc
+@@ -0,0 +1,202 @@
++
++#include "llvm/IR/IRBuilder.h"
++#include "llvm/IR/Instructions.h"
++#include "llvm/IR/Module.h"
++#include "llvm/Support/TargetSelect.h"
++#include "llvm/Support/raw_ostream.h"
++#include "llvm/Transforms/Utils/BasicBlockUtils.h"
++#include <nan.h>
++
++#include "alloca-inst.h"
++#include "basic-block.h"
++#include "call-inst.h"
++#include "function-type.h"
++#include "function.h"
++#include "global-variable.h"
++#include "ir-builder.h"
++#include "module.h"
++#include "value.h"
++
++using namespace llvm;
++
++class Generator {
++public:
++  Generator(Module *M, IRBuilder<> *builder) : mModule(M), mBuilder(builder) {
++    mInt8Ty = Type::getInt8Ty(M->getContext());
++    mInt32Ty = Type::getInt32Ty(M->getContext());
++    mInt8PtrTy = PointerType::get(mInt8Ty, 0);
++  }
++
++  Module *module() const { return mModule; }
++
++  IRBuilder<> *builder() const { return mBuilder; }
++
++  Type *int32Ty() const { return mInt32Ty; }
++
++  PointerType *int8PtrTy() const { return mInt8PtrTy; }
++
++private:
++  Module *mModule{nullptr};
++  IRBuilder<> *mBuilder{nullptr};
++  Type *mInt8Ty{nullptr};
++  Type *mInt32Ty{nullptr};
++  PointerType *mInt8PtrTy{nullptr};
++};
++
++class ExceptionHandlingGenerator : public Nan::ObjectWrap {
++public:
++  static NAN_MODULE_INIT(Init) {
++
++    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
++    tpl->SetClassName(Nan::New("ExceptionHandlingGenerator").ToLocalChecked());
++    tpl->InstanceTemplate()->SetInternalFieldCount(1);
++
++    Nan::SetPrototypeMethod(tpl, "createUnreachable",
++                            ExceptionHandlingGenerator::createUnreachable);
++    Nan::SetPrototypeMethod(tpl, "createInvoke",
++                            ExceptionHandlingGenerator::createInvoke);
++    Nan::SetPrototypeMethod(tpl, "setPersonalityFn",
++                            ExceptionHandlingGenerator::setPersonalityFn);
++    Nan::SetPrototypeMethod(tpl, "addLandingPad",
++                            ExceptionHandlingGenerator::addLandingPad);
++
++    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
++    Nan::Set(target, Nan::New("ExceptionHandlingGenerator").ToLocalChecked(),
++             Nan::GetFunction(tpl).ToLocalChecked());
++  }
++
++private:
++  explicit ExceptionHandlingGenerator(llvm::Module *module,
++                                      llvm::IRBuilder<> *builder)
++      : mGenerator{new Generator{module, builder}} {}
++
++  ~ExceptionHandlingGenerator() override = default;
++
++  static NAN_METHOD(New) {
++    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
++    if (!info.IsConstructCall()) {
++      return Nan::ThrowError(
++          Nan::New(
++              "ExceptionHandlingGenerator::New - called without 'new' keyword")
++              .ToLocalChecked());
++    }
++    ModuleWrapper *moduleWrapper = Nan::ObjectWrap::Unwrap<ModuleWrapper>(
++        info[0]->ToObject(context).ToLocalChecked());
++
++    IRBuilderWrapper *builderWrapper =
++        Nan::ObjectWrap::Unwrap<IRBuilderWrapper>(
++            info[1]->ToObject(context).ToLocalChecked());
++
++    auto *obj = new ExceptionHandlingGenerator{moduleWrapper->getModule(),
++                                               &builderWrapper->getIRBuilder()};
++    obj->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++  }
++
++  static NAN_METHOD(createUnreachable) {
++    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
++    ExceptionHandlingGenerator *self =
++        ObjectWrap::Unwrap<ExceptionHandlingGenerator>(info.Holder());
++    self->mGenerator->builder()->CreateUnreachable();
++  }
++
++  static NAN_METHOD(createInvoke) {
++    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
++    ExceptionHandlingGenerator *self =
++        ObjectWrap::Unwrap<ExceptionHandlingGenerator>(info.Holder());
++
++    ValueWrapper *valueWrapper = Nan::ObjectWrap::Unwrap<ValueWrapper>(
++        info[0]->ToObject(context).ToLocalChecked());
++    BasicBlockWrapper *normalDestWarapper =
++        Nan::ObjectWrap::Unwrap<BasicBlockWrapper>(
++            info[1]->ToObject(context).ToLocalChecked());
++    BasicBlockWrapper *unwindDestWarapper =
++        Nan::ObjectWrap::Unwrap<BasicBlockWrapper>(
++            info[2]->ToObject(context).ToLocalChecked());
++
++    v8::Local<v8::Array> tsArgs = v8::Local<v8::Array>::Cast(info[3]);
++    std::vector<Value *> argValues(tsArgs->Length());
++    for (size_t i = 0; i < tsArgs->Length(); ++i) {
++      v8::Local<v8::Value> tsElement =
++          tsArgs->Get(info.GetIsolate()->GetCurrentContext(), i)
++              .ToLocalChecked();
++      argValues[i] = ValueWrapper::FromValue(tsElement)->getValue();
++    }
++    ArrayRef<Value *> refs{argValues.data(), argValues.size()};
++    auto function = dyn_cast<Function>(valueWrapper->getValue());
++    self->mGenerator->builder()->CreateInvoke(
++        function, normalDestWarapper->getBasicBlock(),
++        unwindDestWarapper->getBasicBlock(), refs);
++  }
++
++  static NAN_METHOD(setPersonalityFn) {
++    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
++    ExceptionHandlingGenerator *self =
++        ObjectWrap::Unwrap<ExceptionHandlingGenerator>(info.Holder());
++    FunctionWrapper *functionWrapperDestFn =
++        Nan::ObjectWrap::Unwrap<FunctionWrapper>(
++            info[0]->ToObject(context).ToLocalChecked());
++    auto destFn = functionWrapperDestFn->getFunction();
++
++    auto *persFnTy = FunctionType::get(self->mGenerator->int32Ty(), None, true);
++    auto persFn = self->mGenerator->module()->getOrInsertFunction(
++        "__gxx_personality_v0", persFnTy);
++
++    auto *bc = self->mGenerator->builder()->CreateBitCast(
++        dyn_cast<Constant>(persFn.getCallee()), self->mGenerator->int8PtrTy());
++    destFn->setPersonalityFn(dyn_cast<Constant>(dyn_cast<Constant>(bc)));
++  }
++
++  static NAN_METHOD(addLandingPad) {
++    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
++    ExceptionHandlingGenerator *self =
++        ObjectWrap::Unwrap<ExceptionHandlingGenerator>(info.Holder());
++
++    // Get temporary alloca instruction. Temporary solution, because can't
++    // obtain invocation result to ts environment
++    AllocaInstWrapper *allocaInstWrapper =
++        Nan::ObjectWrap::Unwrap<AllocaInstWrapper>(
++            info[0]->ToObject(context).ToLocalChecked());
++
++    auto *generator = self->mGenerator;
++    auto *builder = generator->builder();
++    LandingPadInst *exceptionInst = builder->CreateLandingPad(
++        StructType::get(self->mGenerator->int8PtrTy(), generator->int32Ty()), 1,
++        "exception");
++
++    // Get typeinfo associate C++ Runtime ("_ZTIPv" --> void*) See C++ ABI
++    // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#rtti-layout and
++    // https://opensource.apple.com/source/libcppabi/libcppabi-26/exports/libcppabi-.exp.auto.html
++    GlobalVariable *typeInfo = generator->module()->getGlobalVariable("_ZTIPv");
++
++    // Need move instruction after start exception instruction, because ir
++    // verified is failed
++    exceptionInst->moveBefore(allocaInstWrapper->getAllocaInst());
++    exceptionInst->addClause(
++        ConstantExpr::getBitCast(typeInfo, builder->getInt8PtrTy()));
++    exceptionInst->setCleanup(false); // avoid double free with GC
++
++    // Get exception Ptr store in exception slot
++    Value *excPtr = builder->CreateExtractValue(exceptionInst, {0}, "exc.ptr");
++    auto *cxaBeginCatchTy = FunctionType::get(generator->int8PtrTy(),
++                                              {generator->int8PtrTy()}, false);
++    auto cxaBeginCatchCallee = generator->module()->getOrInsertFunction(
++        "__cxa_begin_catch", cxaBeginCatchTy);
++    CallInst *beginCallInst =
++        builder->CreateCall(cxaBeginCatchCallee, {excPtr});
++
++    // Need store extracted allocated exception and store in alloca as output
++    // value
++    builder->CreateStore(beginCallInst, allocaInstWrapper->getAllocaInst());
++  }
++
++  static inline Nan::Persistent<v8::Function> &constructor() {
++    static Nan::Persistent<v8::Function> my_constructor;
++    return my_constructor;
++  }
++
++private:
++  Generator *mGenerator;
++};
++
++NODE_MODULE(ExceptionHandlingGenerator, ExceptionHandlingGenerator::Init);
+diff --git a/src/ir/function.cc b/src/ir/function.cc
+index b2d5979..a0585d0 100644
+--- a/src/ir/function.cc
++++ b/src/ir/function.cc
+@@ -8,6 +8,7 @@
+ #include "module.h"
+ #include "argument.h"
+ #include "basic-block.h"
++#include "di-subprogram.h"
+ 
+ FunctionWrapper::FunctionWrapper(llvm::Function *function) : ConstantWrapper { function } {}
+ 
+@@ -55,6 +56,9 @@ Nan::Persistent<v8::FunctionTemplate> &FunctionWrapper::functionTemplate() {
+         Nan::SetPrototypeMethod(localTemplate, "viewCFG", FunctionWrapper::viewCFG);
+         Nan::SetAccessor(localTemplate->InstanceTemplate(), Nan::New("callingConv").ToLocalChecked(), FunctionWrapper::getCallingConv, FunctionWrapper::setCallingConv);
+         Nan::SetAccessor(localTemplate->InstanceTemplate(), Nan::New("visibility").ToLocalChecked(), FunctionWrapper::getVisibility, FunctionWrapper::setVisibility);
++        Nan::SetPrototypeMethod(localTemplate, "setSubprogram", FunctionWrapper::setSubprogram);
++        Nan::SetPrototypeMethod(localTemplate, "getSubprogram", FunctionWrapper::getSubprogram);
++        Nan::SetPrototypeMethod(localTemplate, "setPersonalityFn", FunctionWrapper::setPersonalityFn);
+ 
+         tmpl.Reset(localTemplate);
+     }
+@@ -233,6 +237,30 @@ NAN_METHOD(FunctionWrapper::viewCFG) {
+     FunctionWrapper::FromValue(info.Holder())->getFunction()->viewCFG();
+ }
+ 
++NAN_METHOD(FunctionWrapper::setSubprogram) {
++    if (info.Length() != 1 || !DISubprogramWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("setSubprogram needs to be called with: argumentIndex: uint32, bytes: uint32");
++    }
++    auto * subprogram = DISubprogramWrapper::FromValue(info[0])->getDISubprogram();
++    auto * function = FunctionWrapper::FromValue(info.Holder())->getFunction();
++    function->setSubprogram(subprogram);
++}
++
++NAN_METHOD(FunctionWrapper::getSubprogram) {
++    llvm::Function * function = FunctionWrapper::FromValue(info.Holder())->getFunction();
++    auto * diSubProgram =  function->getSubprogram();
++    info.GetReturnValue().Set(DISubprogramWrapper::of(diSubProgram));
++}
++
++NAN_METHOD(FunctionWrapper::setPersonalityFn) {
++    if (info.Length() != 1 || !ConstantWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("setPersonalityFn needs to be called fn: Constant");
++    }
++    llvm::Function * fn = FunctionWrapper::FromValue(info.Holder())->getFunction();
++    llvm::Constant * persFn = ConstantWrapper::FromValue(info[0])->getConstant();
++    fn->setPersonalityFn(persFn);
++}
++
+ llvm::Function *FunctionWrapper::getFunction() {
+     return static_cast<llvm::Function*>(getValue());
+ }
+diff --git a/src/ir/function.h b/src/ir/function.h
+index 5841663..4691790 100644
+--- a/src/ir/function.h
++++ b/src/ir/function.h
+@@ -41,6 +41,9 @@ private:
+     static NAN_GETTER(getVisibility);
+     static NAN_SETTER(setVisibility);
+     static NAN_METHOD(viewCFG);
++    static NAN_METHOD(setSubprogram);
++    static NAN_METHOD(getSubprogram);
++    static NAN_METHOD(setPersonalityFn);
+ 
+     static Nan::Persistent<v8::FunctionTemplate>& functionTemplate();
+ };
+diff --git a/src/ir/instr-types.cc b/src/ir/instr-types.cc
+new file mode 100644
+index 0000000..e72ed01
+--- /dev/null
++++ b/src/ir/instr-types.cc
+@@ -0,0 +1,56 @@
++//
++// Created by tutyne on 31.05.22.
++//
++
++#include "instr-types.h"
++
++void CallBaseWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto callBase = Nan::GetFunction(Nan::New(CallBaseWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("CallBase").ToLocalChecked(), callBase);
++}
++
++v8::Local <v8::Object> CallBaseWrapper::of(llvm::CallBase *callBase) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(CallBaseWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(callBase)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::CallBase *CallBaseWrapper::getCallBase() {
++    return static_cast<llvm::CallBase *>(getValue());
++}
++
++bool CallBaseWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(CallBaseWrapper::Constructor())->HasInstance(value);
++}
++
++CallBaseWrapper::CallBaseWrapper(llvm::CallBase *callBase) : InstructionWrapper{callBase} {
++
++}
++
++Nan::Persistent<v8::FunctionTemplate> &CallBaseWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(CallBaseWrapper::New);
++        tpl->SetClassName(Nan::New("CallBase").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(InstructionWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE CallBaseWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor CallBase cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("CallBase constructor requires: constant: External");
++    }
++    auto *callBase = static_cast<llvm::CallBase *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new CallBaseWrapper{callBase};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/instr-types.h b/src/ir/instr-types.h
+new file mode 100644
+index 0000000..33d4a2b
+--- /dev/null
++++ b/src/ir/instr-types.h
+@@ -0,0 +1,36 @@
++//
++// Created by tutyne on 31.05.22.
++//
++
++#ifndef LLVM_NODE_INSTR_TYPES_H
++#define LLVM_NODE_INSTR_TYPES_H
++
++#include "instruction.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/InstrTypes.h"
++#include <nan.h>
++
++class CallBaseWrapper : public InstructionWrapper, FromValueMixin<CallBaseWrapper> {
++public:
++    using FromValueMixin<CallBaseWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::CallBase *callBase);
++
++    llvm::CallBase *getCallBase();
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++protected:
++    explicit CallBaseWrapper(llvm::CallBase *callBase);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_INSTR_TYPES_H
+diff --git a/src/ir/instruction.cc b/src/ir/instruction.cc
+new file mode 100644
+index 0000000..168a7c6
+--- /dev/null
++++ b/src/ir/instruction.cc
+@@ -0,0 +1,55 @@
++//
++// Created by tutyne on 31.05.22.
++//
++
++#include "instruction.h"
++
++void InstructionWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto instruction = Nan::GetFunction(Nan::New(InstructionWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("Instruction").ToLocalChecked(), instruction);
++}
++
++v8::Local <v8::Object> InstructionWrapper::of(llvm::Instruction *instruction) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(InstructionWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(instruction)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++llvm::Instruction *InstructionWrapper::getInstruction() {
++    return static_cast<llvm::Instruction *>(getValue());
++}
++
++bool InstructionWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(InstructionWrapper::Constructor())->HasInstance(value);
++}
++
++InstructionWrapper::InstructionWrapper(llvm::Instruction *instruction) : ValueWrapper{instruction} {
++}
++
++Nan::Persistent<v8::FunctionTemplate> &InstructionWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(InstructionWrapper::New);
++        tpl->SetClassName(Nan::New("Instruction").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(ValueWrapper::valueTemplate()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE InstructionWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor Instruction cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("Instruction constructor requires: constant: External");
++    }
++    auto *instruction = static_cast<llvm::Instruction *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new InstructionWrapper{instruction};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/instruction.h b/src/ir/instruction.h
+new file mode 100644
+index 0000000..3fe66b8
+--- /dev/null
++++ b/src/ir/instruction.h
+@@ -0,0 +1,35 @@
++//
++// Created by tutyne on 31.05.22.
++//
++
++#ifndef LLVM_NODE_INSTRUCTION_H
++#define LLVM_NODE_INSTRUCTION_H
++
++#include "value.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/Instruction.h"
++#include <nan.h>
++
++class InstructionWrapper : public ValueWrapper, public FromValueMixin<InstructionWrapper> {
++public:
++    using FromValueMixin<InstructionWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::Instruction *instruction);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::Instruction *getInstruction();
++
++protected:
++    explicit InstructionWrapper(llvm::Instruction *instruction);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++#endif //LLVM_NODE_INSTRUCTION_H
+diff --git a/src/ir/invoke-inst.cc b/src/ir/invoke-inst.cc
+new file mode 100644
+index 0000000..5cd3de7
+--- /dev/null
++++ b/src/ir/invoke-inst.cc
+@@ -0,0 +1,56 @@
++//
++// Created by tutyne on 31.05.22.
++//
++
++#include "invoke-inst.h"
++
++void InvokeInstWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto invokeInst = Nan::GetFunction(Nan::New(InvokeInstWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("InvokeInst").ToLocalChecked(), invokeInst);
++}
++
++v8::Local <v8::Object> InvokeInstWrapper::of(llvm::InvokeInst *invokeInst) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(InvokeInstWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(invokeInst)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool InvokeInstWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(InvokeInstWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::InvokeInst *InvokeInstWrapper::getInvokeInst() {
++    return static_cast<llvm::InvokeInst *>(getValue());
++}
++
++InvokeInstWrapper::InvokeInstWrapper(llvm::InvokeInst *invokeInst) : CallBaseWrapper{invokeInst} {
++
++}
++
++Nan::Persistent<v8::FunctionTemplate> &InvokeInstWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(InvokeInstWrapper::New);
++        tpl->SetClassName(Nan::New("InvokeInst").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(CallBaseWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE InvokeInstWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class InvokeInst cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("InvokeInst constructor requires: constant: External");
++    }
++    auto *invokeInst = static_cast<llvm::InvokeInst *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new InvokeInstWrapper{invokeInst};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/invoke-inst.h b/src/ir/invoke-inst.h
+new file mode 100644
+index 0000000..779f9d2
+--- /dev/null
++++ b/src/ir/invoke-inst.h
+@@ -0,0 +1,37 @@
++//
++// Created by tutyne on 31.06.22.
++//
++
++#ifndef LLVM_NODE_INVOKE_INST_H
++#define LLVM_NODE_INVOKE_INST_H
++
++#include "instr-types.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/Instructions.h"
++
++#include <nan.h>
++
++class InvokeInstWrapper : public CallBaseWrapper, public FromValueMixin<InvokeInstWrapper> {
++public:
++    using FromValueMixin<InvokeInstWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::InvokeInst *invokeInst);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::InvokeInst *getInvokeInst();
++
++protected:
++    explicit InvokeInstWrapper(llvm::InvokeInst *invokeInst);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_INVOKE_INST_H
+diff --git a/src/ir/ir-builder.cc b/src/ir/ir-builder.cc
+index 0d80264..41f2944 100644
+--- a/src/ir/ir-builder.cc
++++ b/src/ir/ir-builder.cc
+@@ -12,6 +12,10 @@
+ #include "call-inst.h"
+ #include "../util/array.h"
+ #include "function-type.h"
++#include "debugloc.h"
++#include "invoke-inst.h"
++#include "landing-pad-inst.h"
++
+ 
+ typedef llvm::Value* (*BinaryOpFn)(IRBuilderBaseType* builder, llvm::Value*, llvm::Value*, const llvm::Twine&);
+ template<BinaryOpFn method>
+@@ -137,6 +141,10 @@ NAN_MODULE_INIT(IRBuilderWrapper::Init) {
+     Nan::SetPrototypeMethod(functionTemplate, "createZExt", IRBuilderWrapper::ConvertOperation<&llvm::IRBuilder<>::CreateZExt>);
+     Nan::SetPrototypeMethod(functionTemplate, "getInsertBlock", IRBuilderWrapper::GetInsertBlock);
+     Nan::SetPrototypeMethod(functionTemplate, "setInsertionPoint", IRBuilderWrapper::SetInsertionPoint);
++    Nan::SetPrototypeMethod(functionTemplate, "SetCurrentDebugLocation", IRBuilderWrapper::SetCurrentDebugLocation);
++    Nan::SetPrototypeMethod(functionTemplate, "CreateUnreachable", IRBuilderWrapper::CreateUnreachable);
++    Nan::SetPrototypeMethod(functionTemplate, "CreateInvoke", IRBuilderWrapper::CreateInvoke);
++    Nan::SetPrototypeMethod(functionTemplate, "CreateLandingPad", IRBuilderWrapper::CreateLandingPad);
+ 
+     auto constructorFunction = Nan::GetFunction(functionTemplate).ToLocalChecked();
+     irBuilderConstructor().Reset(constructorFunction);
+@@ -674,14 +682,23 @@ NAN_METHOD(IRBuilderWrapper::GetInsertBlock) {
+ }
+ 
+ NAN_METHOD(IRBuilderWrapper::SetInsertionPoint) {
+-    if (info.Length() != 1 || !BasicBlockWrapper::isInstance(info[0])) {
+-        return Nan::ThrowTypeError("setInsertionPoint needs to be called with: basicBlock: BasicBlock");
++    if (info.Length() != 1) {
++        return Nan::ThrowTypeError("setInsertionPoint requires one argument");
++    }
++
++    if (!BasicBlockWrapper::isInstance(info[0]) && !ValueWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("setInsertionPoint requires block or value as argument");
+     }
+ 
+-    auto* basicBlock = BasicBlockWrapper::FromValue(info[0])->getBasicBlock();
+     auto* builder = IRBuilderWrapper::FromValue(info.Holder());
+ 
+-    builder->irBuilder.SetInsertPoint(basicBlock);
++    if (BasicBlockWrapper::isInstance(info[0])) {
++        auto* basicBlock = BasicBlockWrapper::FromValue(info[0])->getBasicBlock();
++        builder->irBuilder.SetInsertPoint(basicBlock);
++    } else if (ValueWrapper::isInstance(info[0])) {
++        auto *instruction = static_cast<InstructionWrapper *>(ValueWrapper::FromValue(info[0]))->getInstruction();
++        builder->irBuilder.SetInsertPoint(instruction);
++    }
+ }
+ 
+ NAN_METHOD(IRBuilderWrapper::CreateBr) {
+@@ -729,3 +746,67 @@ NAN_METHOD(IRBuilderWrapper::CreateFNeg) {
+ llvm::IRBuilder<> &IRBuilderWrapper::getIRBuilder() {
+     return this->irBuilder;
+ }
++
++NAN_METHOD(IRBuilderWrapper::SetCurrentDebugLocation) {
++    if (info.Length() != 1 || !DebugLocWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("SetCurrentDebugLocation needs to be called with: location: DebugLoc");
++    }
++    auto & irBuilder = IRBuilderWrapper::FromValue(info.Holder())->irBuilder;
++    auto debugLoc = DebugLocWrapper::FromValue(info[0])->getDebugLoc();
++    irBuilder.SetCurrentDebugLocation(debugLoc);
++}
++
++NAN_METHOD(IRBuilderWrapper::CreateUnreachable) {
++    auto &irBuilder = IRBuilderWrapper::FromValue(info.Holder())->irBuilder;
++    irBuilder.CreateUnreachable();
++}
++
++NAN_METHOD(IRBuilderWrapper::CreateInvoke) {
++    if (info.Length() < 4 || !ValueWrapper::isInstance(info[0]) || !BasicBlockWrapper::isInstance(info[1]) ||
++        !BasicBlockWrapper::isInstance(info[2]) || !info[3]->IsArray() ||
++        (info.Length() == 5 && !info[4]->IsString())) {
++
++        return Nan::ThrowTypeError(
++                "CreateInvoke needs to be called with: callee: Value, normalDest: BasicBlock, unwindDest: BasicBlock, "
++                "args: Value[], name?: String");
++    }
++    auto *callee = ValueWrapper::FromValue(info[0])->getValue();
++    auto *normalDestBB = BasicBlockWrapper::FromValue(info[1])->getBasicBlock();
++    auto *unwindDestBB = BasicBlockWrapper::FromValue(info[2])->getBasicBlock();
++
++    auto jsArgs = v8::Local<v8::Array>::Cast(info[3]);
++    std::vector<llvm::Value *> args(jsArgs->Length());
++    for (uint32_t i = 0; i < jsArgs->Length(); ++i) {
++        if (!ValueWrapper::isInstance(jsArgs->Get(info.GetIsolate()->GetCurrentContext(), i).ToLocalChecked())) {
++            return Nan::ThrowTypeError("Expected Value");
++        }
++        v8::Local <v8::Value> arg = jsArgs->Get(info.GetIsolate()->GetCurrentContext(), i).ToLocalChecked();
++        args[i] = ValueWrapper::FromValue(arg)->getValue();
++    }
++    std::string name{};
++    if (info.Length() == 5) {
++        name = ToString(Nan::To<v8::String>(info[4]).ToLocalChecked());
++    }
++
++    llvm::IRBuilder<> &irBuilder = IRBuilderWrapper::FromValue(info.Holder())->irBuilder;
++    auto *fn = llvm::dyn_cast<llvm::Function>(callee);
++    llvm::InvokeInst *invokeInst = irBuilder.CreateInvoke(fn, normalDestBB, unwindDestBB,
++                                                          {args.data(), args.size()}, name);
++    info.GetReturnValue().Set(InvokeInstWrapper::of(invokeInst));
++}
++
++NAN_METHOD(IRBuilderWrapper::CreateLandingPad) {
++    if (info.Length() < 2 || !TypeWrapper::isInstance(info[0]) || !info[1]->IsUint32() ||
++        (info.Length() == 3 && !info[2]->IsString())) {
++        return Nan::ThrowTypeError("CreateLandingPad needs to be called with: type: Type, numClauses: number, "
++                                   "name?: String");
++    }
++    auto *type = TypeWrapper::FromValue(info[0])->getType();
++    auto numClauses = Nan::To<uint32_t>(info[1]).FromJust();
++    auto name = ToString(Nan::To<v8::String>(info[2]).ToLocalChecked());
++
++    llvm::IRBuilder<> &irBuilder = IRBuilderWrapper::FromValue(info.Holder())->irBuilder;
++    llvm::LandingPadInst *landingPadInst = irBuilder.CreateLandingPad(type, numClauses, name);
++
++    info.GetReturnValue().Set(LandingPadInstWrapper::of(landingPadInst));
++}
+diff --git a/src/ir/ir-builder.h b/src/ir/ir-builder.h
+index 98dd4d8..7a31329 100644
+--- a/src/ir/ir-builder.h
++++ b/src/ir/ir-builder.h
+@@ -73,6 +73,10 @@ private:
+     static NAN_METHOD(CreateStore);
+     static NAN_METHOD(GetInsertBlock);
+     static NAN_METHOD(SetInsertionPoint);
++    static NAN_METHOD(SetCurrentDebugLocation);
++    static NAN_METHOD(CreateUnreachable);
++    static NAN_METHOD(CreateInvoke);
++    static NAN_METHOD(CreateLandingPad);
+ 
+     static inline Nan::Persistent<v8::Function>& irBuilderConstructor() {
+         static Nan::Persistent<v8::Function> constructor {};
+diff --git a/src/ir/ir.cc b/src/ir/ir.cc
+index e274e67..a4694a4 100644
+--- a/src/ir/ir.cc
++++ b/src/ir/ir.cc
+@@ -35,6 +35,33 @@
+ #include "attribute.h"
+ #include "atomic-rmw-inst.h"
+ #include "undef-value.h"
++#include "metadata.h"
++#include "md-node.h"
++#include "di-node.h"
++#include "di-scope.h"
++#include "di-local-scope.h"
++#include "di-location.h"
++#include "debugloc.h"
++#include "di-file.h"
++#include "di-compile-unit.h"
++#include "di-type.h"
++#include "di-comp-type.h"
++#include "di-subroutine-type.h"
++#include "di-subprogram.h"
++#include "di-builder.h"
++#include "di-type-ref-array.h"
++#include "dwarf.h"
++#include "llvm-constants.h"
++#include "instruction.h"
++#include "instr-types.h"
++#include "invoke-inst.h"
++#include "landing-pad-inst.h"
++#include "constant-expr.h"
++#include "di-basic-type.h"
++#include "di-variable.h"
++#include "di-local-variable.h"
++#include "di-expression.h"
++#include "di-derived-type.h"
+ 
+ NAN_MODULE_INIT(InitIR) {
+     AllocaInstWrapper::Init(target);
+@@ -70,4 +97,30 @@ NAN_MODULE_INIT(InitIR) {
+     ValueWrapper::Init(target);
+     InitVerifier(target);
+     InitVisibilityTypes(target);
++    MetadataWrapper::Init(target);
++    MDNodeWrapper::Init(target);
++    DINodeWrapper::Init(target);
++    DIScopeWrapper::Init(target);
++    DILocalScopeWrapper::Init(target);
++    DILocationWrapper::Init(target);
++    DebugLocWrapper::Init(target);
++    DIFileWrapper::Init(target);
++    DICompileUnitWrapper::Init(target);
++    DITypeWrapper::Init(target);
++    DISubroutineTypeWrapper::Init(target);
++    DISubprogramWrapper::Init(target);
++    DIBuilderWrapper::Init(target);
++    DITypeRefArrayWrapper::Init(target);
++    DwarfWrapper::Init(target);
++    InitLLVMConstants(target);
++    InstructionWrapper::Init(target);
++    CallBaseWrapper::Init(target);
++    InvokeInstWrapper::Init(target);
++    LandingPadInstWrapper::Init(target);
++    ConstantExprWrapper::Init(target);
++    DIBasicTypeWrapper::Init(target);
++    DIVariableWrapper::Init(target);
++    DILocalVariableWrapper::Init(target);
++    DIExpressionWrapper::Init(target);
++    DIDerivedTypeWrapper::Init(target);
+ }
+\ No newline at end of file
+diff --git a/src/ir/landing-pad-inst.cc b/src/ir/landing-pad-inst.cc
+new file mode 100644
+index 0000000..2359660
+--- /dev/null
++++ b/src/ir/landing-pad-inst.cc
+@@ -0,0 +1,78 @@
++//
++// Created by tutyne on 01.06.22.
++//
++
++#include "landing-pad-inst.h"
++#include "constant.h"
++
++void LandingPadInstWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto landingPadInst = Nan::GetFunction(Nan::New(LandingPadInstWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("LandingPadInst").ToLocalChecked(), landingPadInst);
++}
++
++v8::Local <v8::Object> LandingPadInstWrapper::of(llvm::LandingPadInst *landingPadInst) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(LandingPadInstWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(landingPadInst)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool LandingPadInstWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(LandingPadInstWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::LandingPadInst *LandingPadInstWrapper::getLandingPadInst() {
++    return static_cast<llvm::LandingPadInst *>(getValue());
++}
++
++LandingPadInstWrapper::LandingPadInstWrapper(llvm::LandingPadInst *landingPadInst) : InstructionWrapper(
++        landingPadInst) {}
++
++Nan::Persistent<v8::FunctionTemplate> &LandingPadInstWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(LandingPadInstWrapper::New);
++        tpl->SetClassName(Nan::New("LandingPadInst").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(InstructionWrapper::Constructor()));
++
++        Nan::SetPrototypeMethod(tpl, "addClause", LandingPadInstWrapper::addClause);
++        Nan::SetPrototypeMethod(tpl, "setCleanup", LandingPadInstWrapper::setCleanup);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE LandingPadInstWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class LandingPadInst constructor cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("LandingPadInst constructor requires: constant: External");
++    }
++    auto *landingPadInst = static_cast<llvm::LandingPadInst *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new LandingPadInstWrapper{landingPadInst};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE LandingPadInstWrapper::addClause(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 1 || !ConstantWrapper::isInstance(info[0])) {
++        return Nan::ThrowTypeError("addClause needs to be called with: clauseVal: Constant");
++    }
++    auto * clauseVal = ConstantWrapper::FromValue(info[0])->getConstant();
++    auto * landingPadInst = LandingPadInstWrapper::FromValue(info.Holder())->getLandingPadInst();
++    landingPadInst->addClause(clauseVal);
++}
++
++Nan::NAN_METHOD_RETURN_TYPE LandingPadInstWrapper::setCleanup(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (info.Length() != 1 || !info[0]->IsBoolean()) {
++        return Nan::ThrowTypeError("setCleanup needs to be called with: needCleanUp: Boolean");
++    }
++    bool needCleanUp = Nan::To<bool>(info[0]).FromJust();
++    auto * landingPadInst = LandingPadInstWrapper::FromValue(info.Holder())->getLandingPadInst();
++    landingPadInst->setCleanup(needCleanUp);
++}
+diff --git a/src/ir/landing-pad-inst.h b/src/ir/landing-pad-inst.h
+new file mode 100644
+index 0000000..93b6a34
+--- /dev/null
++++ b/src/ir/landing-pad-inst.h
+@@ -0,0 +1,38 @@
++//
++// Created by tutyne on 01.06.22.
++//
++
++#ifndef LLVM_NODE_LANDING_PAD_INST_H
++#define LLVM_NODE_LANDING_PAD_INST_H
++
++#include "instruction.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/Instructions.h"
++#include <nan.h>
++
++class LandingPadInstWrapper : public InstructionWrapper, FromValueMixin<LandingPadInstWrapper> {
++public:
++    using FromValueMixin<LandingPadInstWrapper>::FromValue;
++
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::LandingPadInst *landingPadInst);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::LandingPadInst *getLandingPadInst();
++
++protected:
++    explicit LandingPadInstWrapper(llvm::LandingPadInst *landingPadInst);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++    static NAN_METHOD(addClause);
++    static NAN_METHOD(setCleanup);
++};
++
++
++#endif //LLVM_NODE_LANDING_PAD_INST_H
+diff --git a/src/ir/llvm-constants.cc b/src/ir/llvm-constants.cc
+new file mode 100644
+index 0000000..7887d99
+--- /dev/null
++++ b/src/ir/llvm-constants.cc
+@@ -0,0 +1,16 @@
++//
++// Created by tutyne on 29.04.22.
++//
++
++#include "llvm-constants.h"
++
++#include "llvm/IR/Metadata.h"
++
++NAN_MODULE_INIT(InitLLVMConstants) {
++    auto object = Nan::New<v8::Object>();
++
++    Nan::Set(object, Nan::New("DEBUG_METADATA_VERSION").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::LLVMConstants::DEBUG_METADATA_VERSION)));
++
++    Nan::Set(target, Nan::New("LLVMConstants").ToLocalChecked(), object);
++}
+diff --git a/src/ir/llvm-constants.h b/src/ir/llvm-constants.h
+new file mode 100644
+index 0000000..08dd619
+--- /dev/null
++++ b/src/ir/llvm-constants.h
+@@ -0,0 +1,12 @@
++//
++// Created by tutyne on 29.04.22.
++//
++
++#ifndef LLVM_NODE_LLVM_CONSTANTS_H
++#define LLVM_NODE_LLVM_CONSTANTS_H
++
++#include <nan.h>
++
++NAN_MODULE_INIT(InitLLVMConstants);
++
++#endif //LLVM_NODE_LLVM_CONSTANTS_H
+diff --git a/src/ir/md-node.cc b/src/ir/md-node.cc
+new file mode 100755
+index 0000000..b7762af
+--- /dev/null
++++ b/src/ir/md-node.cc
+@@ -0,0 +1,54 @@
++//
++// Created by tutyne on 12.04.2022.
++//
++
++#include "md-node.h"
++
++void MDNodeWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto mdNode = Nan::GetFunction(Nan::New(MDNodeWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("MDNode").ToLocalChecked(), mdNode);
++}
++
++v8::Local <v8::Object> MDNodeWrapper::of(llvm::MDNode *mdNode) {
++    auto constructorFunction = Nan::GetFunction(Nan::New(MDNodeWrapper::Constructor())).ToLocalChecked();
++    v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(mdNode)};
++    auto instance = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(instance);
++}
++
++bool MDNodeWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(MDNodeWrapper::Constructor())->HasInstance(value);
++}
++
++llvm::MDNode *MDNodeWrapper::getMDNode() {
++    return static_cast<llvm::MDNode *>(getMetadata());
++}
++
++MDNodeWrapper::MDNodeWrapper(llvm::MDNode *mdNode) : MetadataWrapper{mdNode} {}
++
++Nan::Persistent<v8::FunctionTemplate> &MDNodeWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(MDNodeWrapper::New);
++        tpl->SetClassName(Nan::New("MDNode").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        tpl->Inherit(Nan::New(MetadataWrapper::Constructor()));
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++Nan::NAN_METHOD_RETURN_TYPE MDNodeWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor MDNode cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("MDNode constructor requires: constant: External");
++    }
++    auto *mdNode = static_cast<llvm::MDNode *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new MDNodeWrapper{mdNode};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+\ No newline at end of file
+diff --git a/src/ir/md-node.h b/src/ir/md-node.h
+new file mode 100755
+index 0000000..4b2425a
+--- /dev/null
++++ b/src/ir/md-node.h
+@@ -0,0 +1,36 @@
++//
++// Created by tutyne on 12.04.2022.
++//
++
++#ifndef LLVM_NODE_MD_NODE_H
++#define LLVM_NODE_MD_NODE_H
++
++#include "metadata.h"
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/Metadata.h"
++#include <nan.h>
++
++class MDNodeWrapper : public MetadataWrapper, public FromValueMixin<MDNodeWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::MDNode *mdNode);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::MDNode *getMDNode();
++
++    using FromValueMixin<MDNodeWrapper>::FromValue;
++
++protected:
++    explicit MDNodeWrapper(llvm::MDNode *mdNode);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++};
++
++
++#endif //LLVM_NODE_MD_NODE_H
+diff --git a/src/ir/metadata.cc b/src/ir/metadata.cc
+new file mode 100755
+index 0000000..bb3747b
+--- /dev/null
++++ b/src/ir/metadata.cc
+@@ -0,0 +1,87 @@
++
++#include "metadata.h"
++#include "md-node.h"
++#include "di-node.h"
++#include "di-scope.h"
++#include "di-local-scope.h"
++#include "di-location.h"
++#include "di-file.h"
++#include "di-compile-unit.h"
++#include "di-type.h"
++#include "di-comp-type.h"
++#include "di-subroutine-type.h"
++#include "di-subprogram.h"
++
++llvm::Metadata *MetadataWrapper::getMetadata() {
++    return metadata_;
++}
++
++void MetadataWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto metadata = Nan::GetFunction(Nan::New(MetadataWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("Metadata").ToLocalChecked(), metadata);
++}
++
++Nan::Persistent<v8::FunctionTemplate> &MetadataWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(MetadataWrapper::New);
++        tpl->SetClassName(Nan::New("Metadata").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++        constructor.Reset(tpl);
++    }
++    return constructor;
++}
++
++MetadataWrapper::MetadataWrapper(llvm::Metadata *metadata) : Nan::ObjectWrap{}, metadata_{metadata} {
++    assert(metadata && "metadata pointer is missing");
++}
++
++v8::Local <v8::Object> MetadataWrapper::of(llvm::Metadata *metadata) {
++    v8::Local <v8::Object> result{};
++
++    if (llvm::MDNode::classof(metadata)) {
++        result = MDNodeWrapper::of(static_cast<llvm::MDNode *>(metadata));
++    } else if (llvm::DINode::classof(metadata)) {
++        result = DINodeWrapper::of(static_cast<llvm::DINode *>(metadata));
++    } else if (llvm::DIScope::classof(metadata)) {
++        result = DIScopeWrapper::of(static_cast<llvm::DIScope *>(metadata));
++    } else if (llvm::DILocalScope::classof(metadata)) {
++        result = DILocalScopeWrapper::of(static_cast<llvm::DILocalScope *>(metadata));
++    } else if (llvm::DILocation::classof(metadata)) {
++        result = DILocationWrapper::of(static_cast<llvm::DILocation *>(metadata));
++    } else if (llvm::DIFile::classof(metadata)) {
++        result = DIFileWrapper::of(static_cast<llvm::DIFile *>(metadata));
++    } else if (llvm::DICompileUnit::classof(metadata)) {
++        result = DICompileUnitWrapper::of(static_cast<llvm::DICompileUnit *>(metadata));
++    } else if (llvm::DIType::classof(metadata)) {
++        result = DITypeWrapper::of(static_cast<llvm::DIType *>(metadata));
++    } else if (llvm::DISubroutineType::classof(metadata)) {
++        result = DISubroutineTypeWrapper::of(static_cast<llvm::DISubroutineType *>(metadata));
++    } else if (llvm::DISubprogram::classof(metadata)) {
++        result = DISubprogramWrapper::of(static_cast<llvm::DISubprogram *>(metadata));
++    } else {
++        auto constructorFunction = Nan::GetFunction(Nan::New(MetadataWrapper::Constructor())).ToLocalChecked();
++        v8::Local <v8::Value> argv[1] = {Nan::New<v8::External>(metadata)};
++        result = Nan::NewInstance(constructorFunction, 1, argv).ToLocalChecked();
++    }
++    Nan::EscapableHandleScope escapeScope{};
++    return escapeScope.Escape(result);
++}
++
++bool MetadataWrapper::isInstance(v8::Local <v8::Value> value) {
++    return Nan::New(Constructor())->HasInstance(value);
++}
++
++Nan::NAN_METHOD_RETURN_TYPE MetadataWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Class Constructor Metadata cannot be invoked without new");
++    }
++    if (info.Length() != 1 || !info[0]->IsExternal()) {
++        return Nan::ThrowTypeError("External Metadata Pointer required");
++    }
++    llvm::Metadata *metadata = static_cast<llvm::Metadata *>(v8::External::Cast(*info[0])->Value());
++    auto *wrapper = new MetadataWrapper{metadata};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
+diff --git a/src/ir/metadata.h b/src/ir/metadata.h
+new file mode 100755
+index 0000000..96e1865
+--- /dev/null
++++ b/src/ir/metadata.h
+@@ -0,0 +1,37 @@
++//
++// Created by tutyne on 12.04.2022.
++//
++
++#ifndef LLVM_NODE_METADATA_H
++#define LLVM_NODE_METADATA_H
++
++#include "../util/from-value-mixin.h"
++
++#include "llvm/IR/Metadata.h"
++#include <nan.h>
++
++class MetadataWrapper : public Nan::ObjectWrap, public FromValueMixin<MetadataWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    static v8::Local <v8::Object> of(llvm::Metadata *metadata);
++
++    static bool isInstance(v8::Local <v8::Value> value);
++
++    llvm::Metadata *getMetadata();
++
++protected:
++
++    explicit MetadataWrapper(llvm::Metadata *metadata);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    // static
++    static NAN_METHOD(New);
++
++private:
++    llvm::Metadata *metadata_;
++};
++
++#endif //LLVM_NODE_METADATA_H
+diff --git a/src/ir/module.cc b/src/ir/module.cc
+index d27d11f..289712c 100644
+--- a/src/ir/module.cc
++++ b/src/ir/module.cc
+@@ -3,6 +3,8 @@
+ //
+ 
+ #include <llvm/Support/raw_ostream.h>
++#include <llvm/Support/FileSystem.h>
++#include <llvm/Support/Path.h>
+ #include "module.h"
+ #include "../util/string.h"
+ #include "./llvm-context.h"
+@@ -17,6 +19,28 @@ NAN_MODULE_INIT(ModuleWrapper::Init) {
+     functionTemplate->SetClassName(Nan::New("Module").ToLocalChecked());
+     functionTemplate->InstanceTemplate()->SetInternalFieldCount(1);
+ 
++    // ModFlagBehavior flags
++    auto modFlagBehavior = Nan::New<v8::Object>();
++
++    Nan::Set(modFlagBehavior, Nan::New("Error").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::Error)));
++    Nan::Set(modFlagBehavior, Nan::New("Warning").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::Warning)));
++    Nan::Set(modFlagBehavior, Nan::New("Require").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::Require)));
++    Nan::Set(modFlagBehavior, Nan::New("Override").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::Override)));
++    Nan::Set(modFlagBehavior, Nan::New("Append").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::Append)));
++    Nan::Set(modFlagBehavior, Nan::New("AppendUnique").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::AppendUnique)));
++    Nan::Set(modFlagBehavior, Nan::New("Max").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::Max)));
++    Nan::Set(modFlagBehavior, Nan::New("ModFlagBehaviorFirstVal").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::ModFlagBehaviorFirstVal)));
++    Nan::Set(modFlagBehavior, Nan::New("ModFlagBehaviorLastVal").ToLocalChecked(),
++             Nan::New(static_cast<uint32_t>(llvm::Module::ModFlagBehavior::ModFlagBehaviorLastVal)));
++
+ #if LLVM_NODE_DEBUG
+     Nan::SetPrototypeMethod(functionTemplate, "dump", dump);
+ #endif
+@@ -32,9 +56,13 @@ NAN_MODULE_INIT(ModuleWrapper::Init) {
+     Nan::SetAccessor(functionTemplate->InstanceTemplate(), Nan::New("sourceFileName").ToLocalChecked(), getSourceFileName, setSourceFileName);
+     Nan::SetAccessor(functionTemplate->InstanceTemplate(), Nan::New("targetTriple").ToLocalChecked(), getTargetTriple, setTargetTriple);
+     Nan::SetPrototypeMethod(functionTemplate, "print", ModuleWrapper::print);
++    Nan::SetPrototypeMethod(functionTemplate, "addModuleFlag", ModuleWrapper::addModuleFlag);
+     moduleTemplate().Reset(functionTemplate);
+ 
+     auto constructorFunction = Nan::GetFunction(functionTemplate).ToLocalChecked();
++
++    Nan::Set(constructorFunction, Nan::New("ModFlagBehavior").ToLocalChecked(), modFlagBehavior);
++
+     Nan::Set(target, Nan::New("Module").ToLocalChecked(), constructorFunction);
+ }
+ 
+@@ -227,6 +255,17 @@ NAN_METHOD(ModuleWrapper::print) {
+     info.GetReturnValue().Set(Nan::New(str).ToLocalChecked());
+ }
+ 
++NAN_METHOD(ModuleWrapper::addModuleFlag) {
++    if (info.Length() != 3 || !info[0]->IsUint32() || !info[1]->IsString() || !info[2]->IsUint32()) {
++        return Nan::ThrowTypeError("addModuleFlag needs to be called with: behavior: number, key: string, val: number");
++    }
++    auto behavior = static_cast<llvm::Module::ModFlagBehavior>(Nan::To<unsigned>(info[0]).FromJust());
++    auto key = ToString(info[1]);
++    auto val = Nan::To<unsigned>(info[2]).FromJust();
++    auto* module = ModuleWrapper::FromValue(info.Holder())->getModule();
++    module->addModuleFlag(behavior, key, val);
++}
++
+ llvm::Module *ModuleWrapper::getModule() {
+     return module;
+ }
+diff --git a/src/ir/module.h b/src/ir/module.h
+index 6376c64..2ea73f1 100644
+--- a/src/ir/module.h
++++ b/src/ir/module.h
+@@ -45,6 +45,7 @@ private:
+     static NAN_GETTER(getTargetTriple);
+     static NAN_SETTER(setTargetTriple);
+     static NAN_METHOD(print);
++    static NAN_METHOD(addModuleFlag);
+ 
+     static inline Nan::Persistent<v8::FunctionTemplate>& moduleTemplate() {
+         static Nan::Persistent<v8::FunctionTemplate> functionTemplate {};
+diff --git a/src/ir/value.cc b/src/ir/value.cc
+index eeface4..1e1b8f6 100644
+--- a/src/ir/value.cc
++++ b/src/ir/value.cc
+@@ -41,6 +41,7 @@ Nan::Persistent<v8::FunctionTemplate> &ValueWrapper::valueTemplate()
+         Nan::SetPrototypeMethod(localTemplate, "deleteValue", ValueWrapper::deleteValue);
+         Nan::SetPrototypeMethod(localTemplate, "replaceAllUsesWith", ValueWrapper::replaceAllUsesWith);
+         Nan::SetPrototypeMethod(localTemplate, "useEmpty", ValueWrapper::useEmpty);
++        Nan::SetPrototypeMethod(localTemplate, "address", ValueWrapper::address);
+ 
+         auto function = Nan::GetFunction(localTemplate).ToLocalChecked();
+         Nan::Set(function, Nan::New("MaxAlignmentExponent").ToLocalChecked(), Nan::New(llvm::Value::MaxAlignmentExponent));
+@@ -169,6 +170,12 @@ bool ValueWrapper::isInstance(v8::Local<v8::Value> value)
+     return Nan::New(valueTemplate())->HasInstance(value);
+ }
+ 
++NAN_METHOD(ValueWrapper::address)
++{
++    auto *value = ValueWrapper::FromValue(info.Holder())->getValue();
++    info.GetReturnValue().Set(Nan::New(static_cast<double>(reinterpret_cast<intptr_t>(value))));
++}
++
+ llvm::Value *ValueWrapper::getValue()
+ {
+     return value;
+diff --git a/src/ir/value.h b/src/ir/value.h
+index e16b612..7c03800 100644
+--- a/src/ir/value.h
++++ b/src/ir/value.h
+@@ -37,6 +37,7 @@ private:
+     static NAN_METHOD(deleteValue);
+     static NAN_METHOD(replaceAllUsesWith);
+     static NAN_METHOD(useEmpty);
++    static NAN_METHOD(address);
+ };
+ 
+ 
+diff --git a/src/llvm-node.cc b/src/llvm-node.cc
+index bc7c36c..4e42b2b 100644
+--- a/src/llvm-node.cc
++++ b/src/llvm-node.cc
+@@ -14,4 +14,4 @@ NAN_MODULE_INIT(InitAll) {
+     InitTarget(target);
+ }
+ 
+-NODE_MODULE(llvm, InitAll)
+\ No newline at end of file
++NODE_MODULE(llvm, InitAll);
+\ No newline at end of file
+diff --git a/src/support/support.cc b/src/support/support.cc
+index 9785562..90d7b0c 100644
+--- a/src/support/support.cc
++++ b/src/support/support.cc
+@@ -1,4 +1,5 @@
+ #include <llvm/Support/TargetSelect.h>
++#include <llvm/Support/Host.h>
+ #include "support.h"
+ #include "atomic-ordering.h"
+ 
+@@ -22,15 +23,21 @@ NAN_METHOD(InitializeAllAsmPrinters) {
+     llvm::InitializeAllAsmPrinters();
+ }
+ 
++NAN_METHOD(getProcessTriple) {
++    auto triple = llvm::sys::getProcessTriple();
++    auto res = Nan::New(triple).ToLocalChecked();
++    info.GetReturnValue().Set(res);
++}
++
+ NAN_MODULE_INIT(InitSupport) {
+     Nan::Set(target,
+-        Nan::New<v8::String>("initializeAllTargetInfos").ToLocalChecked(),
+-        Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllTargetInfos)).ToLocalChecked()
++             Nan::New<v8::String>("initializeAllTargetInfos").ToLocalChecked(),
++             Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllTargetInfos)).ToLocalChecked()
+     );
+ 
+     Nan::Set(target,
+-        Nan::New<v8::String>("initializeAllTargets").ToLocalChecked(),
+-        Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllTargets)).ToLocalChecked()
++             Nan::New<v8::String>("initializeAllTargets").ToLocalChecked(),
++             Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllTargets)).ToLocalChecked()
+     );
+ 
+      Nan::Set(target,
+@@ -38,14 +45,19 @@ NAN_MODULE_INIT(InitSupport) {
+         Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllTargetMCs)).ToLocalChecked()
+     );
+ 
+-     Nan::Set(target,
+-        Nan::New<v8::String>("initializeAllAsmParsers").ToLocalChecked(),
+-        Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllAsmParsers)).ToLocalChecked()
++    Nan::Set(target,
++             Nan::New<v8::String>("initializeAllAsmParsers").ToLocalChecked(),
++             Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllAsmParsers)).ToLocalChecked()
+     );
+ 
+-     Nan::Set(target,
+-        Nan::New<v8::String>("initializeAllAsmPrinters").ToLocalChecked(),
+-        Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllAsmPrinters)).ToLocalChecked()
++    Nan::Set(target,
++             Nan::New<v8::String>("initializeAllAsmPrinters").ToLocalChecked(),
++             Nan::GetFunction(Nan::New<v8::FunctionTemplate>(InitializeAllAsmPrinters)).ToLocalChecked()
++    );
++
++    Nan::Set(target,
++             Nan::New<v8::String>("getProcessTriple").ToLocalChecked(),
++             Nan::GetFunction(Nan::New<v8::FunctionTemplate>(getProcessTriple)).ToLocalChecked()
+     );
+ 
+     InitAtomicOrdering(target);
+diff --git a/src/support/support.h b/src/support/support.h
+index 3269b2c..3b2aa73 100644
+--- a/src/support/support.h
++++ b/src/support/support.h
+@@ -1,14 +1,21 @@
+ #ifndef SUPPORT_H
+ #define SUPPORT_H
++
+ #include <nan.h>
+ #include "target-registry.h"
+ 
+ NAN_METHOD(InitializeAllTargetInfos);
++
+ NAN_METHOD(InitializeAllTargets);
++
+ NAN_METHOD(InitializeAllTargetMCs);
++
+ NAN_METHOD(InitializeAllAsmParsers);
++
+ NAN_METHOD(InitializeAllAsmPrinters);
+ 
++NAN_METHOD(getProcessTriple);
++
+ NAN_MODULE_INIT(InitSupport);
+ 
+ #endif
+\ No newline at end of file
+diff --git a/src/target/target.h b/src/target/target.h
+index 23ec2fc..d110bc4 100644
+--- a/src/target/target.h
++++ b/src/target/target.h
+@@ -7,9 +7,11 @@
+ 
+ #include <nan.h>
+ #include "target-machine.h"
++#include "triple.h"
+ 
+ NAN_MODULE_INIT(InitTarget) {
+     TargetMachineWrapper::Init(target);
++    TripleWrapper::Init(target);
+ }
+ 
+ #endif //LLVM_NODE_TARGET_H
+diff --git a/src/target/triple.cc b/src/target/triple.cc
+new file mode 100644
+index 0000000..98a394d
+--- /dev/null
++++ b/src/target/triple.cc
+@@ -0,0 +1,101 @@
++
++#include "triple.h"
++#include "../util/string.h"
++
++void TripleWrapper::Init(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target) {
++    auto triple = Nan::GetFunction(Nan::New(TripleWrapper::Constructor())).ToLocalChecked();
++    Nan::Set(target, Nan::New("Triple").ToLocalChecked(), triple);
++}
++
++Nan::Persistent<v8::FunctionTemplate> &TripleWrapper::Constructor() {
++    static Nan::Persistent<v8::FunctionTemplate> constructor{};
++
++    if (constructor.IsEmpty()) {
++        v8::Local <v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(TripleWrapper::New);
++        tpl->SetClassName(Nan::New("Triple").ToLocalChecked());
++        tpl->InstanceTemplate()->SetInternalFieldCount(1);
++
++        Nan::SetPrototypeMethod(tpl, "isOSDarwin", TripleWrapper::isOSDarwin);
++        Nan::SetPrototypeMethod(tpl, "isOSWindows", TripleWrapper::isOSWindows);
++        Nan::SetPrototypeMethod(tpl, "isOSLinux", TripleWrapper::isOSLinux);
++        Nan::SetPrototypeMethod(tpl, "isAndroid", TripleWrapper::isAndroid);
++        Nan::SetPrototypeMethod(tpl, "getTriple", TripleWrapper::getTriple);
++        Nan::SetPrototypeMethod(tpl, "getArchName", TripleWrapper::getArchName);
++        Nan::SetPrototypeMethod(tpl, "getVendorName", TripleWrapper::getVendorName);
++        Nan::SetPrototypeMethod(tpl, "getOSName", TripleWrapper::getOSName);
++        Nan::SetPrototypeMethod(tpl, "getEnvironmentName", TripleWrapper::getEnvironmentName);
++
++        constructor.Reset(tpl);
++    }
++    return constructor;;
++}
++
++TripleWrapper::TripleWrapper(std::string twine) : triple_{twine} {}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::New(Nan::NAN_METHOD_ARGS_TYPE info) {
++    if (!info.IsConstructCall()) {
++        return Nan::ThrowTypeError("Triple constructor needs to be called with new");
++    }
++    if (info.Length() != 1 || !info[0]->IsString()) {
++        return Nan::ThrowTypeError("Triple require twine is string");
++    }
++    auto twine = ToString(info[0]);
++    auto *wrapper = new TripleWrapper{twine};
++    wrapper->Wrap(info.This());
++    info.GetReturnValue().Set(info.This());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::isOSDarwin(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++
++    info.GetReturnValue().Set(Nan::New(triple.isOSDarwin()));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::isOSWindows(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++
++    info.GetReturnValue().Set(Nan::New(triple.isOSWindows()));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::isOSLinux(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++
++    info.GetReturnValue().Set(Nan::New(triple.isOSLinux()));
++}
++
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::isAndroid(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++
++    info.GetReturnValue().Set(Nan::New(triple.isAndroid()));
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::getTriple(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++    info.GetReturnValue().Set(Nan::New(triple.getTriple()).ToLocalChecked());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::getArchName(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++    info.GetReturnValue().Set(Nan::New(triple.getArchName().str()).ToLocalChecked());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::getVendorName(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++    info.GetReturnValue().Set(Nan::New(triple.getVendorName().str()).ToLocalChecked());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::getOSName(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++    info.GetReturnValue().Set(Nan::New(triple.getOSName().str()).ToLocalChecked());
++}
++
++Nan::NAN_METHOD_RETURN_TYPE TripleWrapper::getEnvironmentName(Nan::NAN_METHOD_ARGS_TYPE info) {
++    auto &triple = TripleWrapper::FromValue(info.Holder())->geTriple();
++    info.GetReturnValue().Set(Nan::New(triple.getEnvironmentName().str()).ToLocalChecked());
++}
++
++llvm::Triple &TripleWrapper::geTriple() {
++    return triple_;
++}
++
+diff --git a/src/target/triple.h b/src/target/triple.h
+new file mode 100644
+index 0000000..80d517f
+--- /dev/null
++++ b/src/target/triple.h
+@@ -0,0 +1,46 @@
++
++#ifndef LLVM_NODE_TRIPLE_H
++#define LLVM_NODE_TRIPLE_H
++
++#include "nan.h"
++#include "../util/from-value-mixin.h"
++#include "llvm/ADT/Triple.h"
++
++class TripleWrapper : public Nan::ObjectWrap, public FromValueMixin<TripleWrapper> {
++public:
++    static NAN_MODULE_INIT(Init);
++
++    llvm::Triple &geTriple();
++
++protected:
++    explicit TripleWrapper(std::string twine);
++
++    static Nan::Persistent<v8::FunctionTemplate> &Constructor();
++
++private:
++    static NAN_METHOD(New);
++
++    static NAN_METHOD(isOSDarwin);
++
++    static NAN_METHOD(isOSWindows);
++
++    static NAN_METHOD(isOSLinux);
++
++    static NAN_METHOD(isAndroid);
++
++    static NAN_METHOD(getTriple);
++
++    static NAN_METHOD(getArchName);
++
++    static NAN_METHOD(getVendorName);
++
++    static NAN_METHOD(getOSName);
++
++    static NAN_METHOD(getEnvironmentName);
++
++private:
++    llvm::Triple triple_;
++};
++
++
++#endif //LLVM_NODE_TRIPLE_H
+diff --git a/src/win_delay_load_hook.cc b/src/win_delay_load_hook.cc
+new file mode 100644
+index 0000000..e75954b
+--- /dev/null
++++ b/src/win_delay_load_hook.cc
+@@ -0,0 +1,36 @@
++/*
++ * When this file is linked to a DLL, it sets up a delay-load hook that
++ * intervenes when the DLL is trying to load 'node.exe' or 'iojs.exe'
++ * dynamically. Instead of trying to locate the .exe file it'll just return
++ * a handle to the process image.
++ *
++ * This allows compiled addons to work when node.exe or iojs.exe is renamed.
++ */
++
++#ifdef _MSC_VER
++
++#ifndef WIN32_LEAN_AND_MEAN
++#define WIN32_LEAN_AND_MEAN
++#endif
++
++#include <windows.h>
++
++#include <delayimp.h>
++#include <string.h>
++
++static FARPROC WINAPI load_exe_hook(unsigned int event, DelayLoadInfo* info) {
++  HMODULE m;
++  if (event != dliNotePreLoadLibrary)
++    return NULL;
++
++  if (_stricmp(info->szDll, "iojs.exe") != 0 &&
++      _stricmp(info->szDll, "node.exe") != 0)
++    return NULL;
++
++  m = GetModuleHandle(NULL);
++  return (FARPROC) m;
++}
++
++decltype(__pfnDliNotifyHook2) __pfnDliNotifyHook2 = load_exe_hook;
++
++#endif
+-- 
+2.43.0
+

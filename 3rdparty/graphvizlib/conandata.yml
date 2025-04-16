@@ -1,0 +1,18 @@
+patches:
+  "1.0.0":
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0002-add-cmake-files.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0003-make-c-14-compatible.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0004-change-install-dir.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0005-add-install-headers.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0006-use-lower-case-for-library-name.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0007-fix-producing-invalid-graphviz-file-in-node-text-con.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0008-add-ability-to-specify-node-properties.patch"
+    - base_path: "source_subfolder"
+      patch_file: "patches/1.0.0/0009-adapt-example.patch"
