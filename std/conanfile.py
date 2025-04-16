@@ -17,7 +17,7 @@ from conans.client.tools.env import environment_append
 
 import os
 
-required_conan_version = "==1.50"
+required_conan_version = ">=1.50"
 
 class TSNativeStdConan(ConanFile):
     name = "tsnative-std"
@@ -44,9 +44,9 @@ class TSNativeStdConan(ConanFile):
     }
 
     def requirements(self):
-        self.requires("abseil/20211102.0#0")
-        self.requires("gtest/1.11.0#0")
-        self.requires("libuv/1.43.0#0")
+        self.requires("abseil/20211102.0")
+        self.requires("gtest/1.11.0")
+        self.requires("libuv/1.43.0")
         self.requires("graphvizlib/1.0.0")
 
     def build_requirements(self):

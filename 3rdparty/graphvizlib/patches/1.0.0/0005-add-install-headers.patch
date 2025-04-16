@@ -1,0 +1,31 @@
+From 097db245a42b2386f57afbc945034688a9e693d5 Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Thu, 26 Jan 2023 17:23:10 +0300
+Subject: [PATCH 5/5] add install headers
+
+---
+ CMakeLists.txt | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b8cae1a..d5aa0d2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -25,9 +25,13 @@ install(
+         EXPORT ${PROJECT_NAME}_export
+         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-        PUBLIC_HEADER DESTINATION include
++        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/include"
+ )
+ 
++install(DIRECTORY include
++        DESTINATION "${INCLUDE_INSTALL_DIR}"
++        COMPONENT dev)
++
+ install(
+         EXPORT      ${PROJECT_NAME}_export
+         FILE        ${PROJECT_NAME}Targets.cmake
+-- 
+2.34.1
+

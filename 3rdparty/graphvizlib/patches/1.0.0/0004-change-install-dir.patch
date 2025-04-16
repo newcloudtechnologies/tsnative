@@ -1,0 +1,28 @@
+From 4a2caad7ed8e146c2ef585081c77498dea93cc38 Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Thu, 26 Jan 2023 17:10:32 +0300
+Subject: [PATCH 4/4] change install dir
+
+---
+ CMakeLists.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c7d1326..b8cae1a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -39,7 +39,9 @@ configure_file(graphvizlibConfig.cmake.in
+         ${PROJECT_BINARY_DIR}/graphvizlibConfig.cmake @ONLY
+         )
+ 
++message("Install dir: " ${CMAKE_INSTALL_LIBDIR})
++
+ install(
+         FILES       ${PROJECT_BINARY_DIR}/graphvizlibConfig.cmake
+-        DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/GraphVizLib
++        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/GraphVizLib
+ )
+\ No newline at end of file
+-- 
+2.34.1
+

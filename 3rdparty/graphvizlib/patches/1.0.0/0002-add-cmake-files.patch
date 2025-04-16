@@ -1,0 +1,81 @@
+From 66283622e1a1ed6c5e48cf8ceb88429742483e00 Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Thu, 26 Jan 2023 16:47:17 +0300
+Subject: [PATCH 2/3] add cmake files
+
+---
+ CMakeLists.txt             | 45 ++++++++++++++++++++++++++++++++++++++
+ graphvizlibConfig.cmake.in |  7 ++++++
+ 2 files changed, 52 insertions(+)
+ create mode 100644 CMakeLists.txt
+ create mode 100644 graphvizlibConfig.cmake.in
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..c7d1326
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,45 @@
++cmake_minimum_required(VERSION 3.14)
++
++project(GraphVizLib)
++
++set(CMAKE_CXX_STANDARD 14)
++
++add_library(GraphVizLib STATIC src/gvl.cpp)
++
++target_include_directories(GraphVizLib PUBLIC
++        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
++        $<INSTALL_INTERFACE:include> )
++
++option(CREATE_EXAMPLE "Creating a simple example using GraphVizLib" OFF)
++
++if (CREATE_EXAMPLE)
++    add_executable(GraphVizLibExample example/example.cpp)
++    target_link_libraries(GraphVizLibExample PRIVATE GraphVizLib)
++endif()
++
++SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "The directory the headers are installed in")
++SET(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE STRING "Directory where lib will install")
++
++install(
++        TARGETS ${PROJECT_NAME}
++        EXPORT ${PROJECT_NAME}_export
++        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++        PUBLIC_HEADER DESTINATION include
++)
++
++install(
++        EXPORT      ${PROJECT_NAME}_export
++        FILE        ${PROJECT_NAME}Targets.cmake
++        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
++)
++
++set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
++configure_file(graphvizlibConfig.cmake.in
++        ${PROJECT_BINARY_DIR}/graphvizlibConfig.cmake @ONLY
++        )
++
++install(
++        FILES       ${PROJECT_BINARY_DIR}/graphvizlibConfig.cmake
++        DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/GraphVizLib
++)
+\ No newline at end of file
+diff --git a/graphvizlibConfig.cmake.in b/graphvizlibConfig.cmake.in
+new file mode 100644
+index 0000000..97ad6d4
+--- /dev/null
++++ b/graphvizlibConfig.cmake.in
+@@ -0,0 +1,7 @@
++get_filename_component(_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
++
++set(GraphVizLib_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
++
++include("${GraphVizLib_CMAKE_DIR}/GraphVizLibTargets.cmake")
++
++set(GraphVizLib_LIBRARIES GraphVizLib)
+\ No newline at end of file
+-- 
+2.34.1
+

@@ -1,0 +1,29 @@
+From cbbe7a5a7cee9c51534a30b68d6e131c45b222f3 Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Tue, 31 Jan 2023 16:01:32 +0300
+Subject: [PATCH 8/8] add ability to specify node properties
+
+---
+ include/gvl.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/include/gvl.h b/include/gvl.h
+index a2da559..0ed104e 100644
+--- a/include/gvl.h
++++ b/include/gvl.h
+@@ -70,9 +70,9 @@ class Graph {
+    * Add a new node to the list of nodes with default properties
+    * @param node name and port.
+    */
+-  void AddNode(const NodeId& node) {
+-    const std::vector<Property> default_node_properties = {{"label", node.name}};
+-    nodes_.emplace_back(node, default_node_properties);
++  void AddNode(const NodeId& node, std::vector<Property> props = {}) {
++  	props.emplace_back("label", node.name);
++    nodes_.emplace_back(node, props);
+   }
+ 
+   /*!
+-- 
+2.34.1
+

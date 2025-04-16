@@ -1,0 +1,65 @@
+From 58a10c73cb2a1efca59146239f1c1ee456520521 Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Fri, 27 Jan 2023 17:15:07 +0300
+Subject: [PATCH 6/6] use lower case for library name
+
+---
+ CMakeLists.txt             | 10 +++++-----
+ graphvizlibConfig.cmake.in |  4 ++--
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d5aa0d2..b40a282 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,12 +1,12 @@
+ cmake_minimum_required(VERSION 3.14)
+ 
+-project(GraphVizLib)
++project(graphvizlib)
+ 
+ set(CMAKE_CXX_STANDARD 14)
+ 
+-add_library(GraphVizLib STATIC src/gvl.cpp)
++add_library(${PROJECT_NAME} STATIC src/gvl.cpp)
+ 
+-target_include_directories(GraphVizLib PUBLIC
++target_include_directories(${PROJECT_NAME} PUBLIC
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include> )
+ 
+@@ -14,7 +14,7 @@ option(CREATE_EXAMPLE "Creating a simple example using GraphVizLib" OFF)
+ 
+ if (CREATE_EXAMPLE)
+     add_executable(GraphVizLibExample example/example.cpp)
+-    target_link_libraries(GraphVizLibExample PRIVATE GraphVizLib)
++    target_link_libraries(GraphVizLibExample PRIVATE ${PROJECT_NAME})
+ endif()
+ 
+ SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "The directory the headers are installed in")
+@@ -47,5 +47,5 @@ message("Install dir: " ${CMAKE_INSTALL_LIBDIR})
+ 
+ install(
+         FILES       ${PROJECT_BINARY_DIR}/graphvizlibConfig.cmake
+-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/GraphVizLib
++        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/graphvizlib
+ )
+\ No newline at end of file
+diff --git a/graphvizlibConfig.cmake.in b/graphvizlibConfig.cmake.in
+index 97ad6d4..90765bb 100644
+--- a/graphvizlibConfig.cmake.in
++++ b/graphvizlibConfig.cmake.in
+@@ -2,6 +2,6 @@ get_filename_component(_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+ 
+ set(GraphVizLib_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+ 
+-include("${GraphVizLib_CMAKE_DIR}/GraphVizLibTargets.cmake")
++include("${GraphVizLib_CMAKE_DIR}/graphvizlibTargets.cmake")
+ 
+-set(GraphVizLib_LIBRARIES GraphVizLib)
+\ No newline at end of file
++set(GraphVizLib_LIBRARIES graphvizlib)
+\ No newline at end of file
+-- 
+2.34.1
+

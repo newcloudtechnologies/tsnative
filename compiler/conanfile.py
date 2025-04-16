@@ -14,7 +14,7 @@ class TSNativeCompilerConan(ConanFile):
 
     def requirements(self):
         self.requires("llvm-node/3.0.9", private=True)
-        self.requires("llvm/11.1.0#0", private=True)
+        self.requires("llvm/11.1.0", private=True)
 
     def export_sources(self):
         self.copy("package.json")

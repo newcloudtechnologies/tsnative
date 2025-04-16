@@ -1,0 +1,88 @@
+From 33b002cece5f991c40d646c7b1eb4974524fb2b4 Mon Sep 17 00:00:00 2001
+From: "boris.khabarov" <Boris.Khabarov@myoffice.team>
+Date: Thu, 26 Jan 2023 16:48:55 +0300
+Subject: [PATCH 3/3] make c++14 compatible
+
+---
+ include/gvl.h | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/include/gvl.h b/include/gvl.h
+index e403032..5ae40bc 100644
+--- a/include/gvl.h
++++ b/include/gvl.h
+@@ -4,20 +4,20 @@
+ #include <utility>
+ #include <vector>
+ #include <unordered_set>
+-#include <string_view>
++#include <string>
+ #include <ostream>
+ 
+ namespace gvl {
+ 
+ struct Property {
+-  std::string_view name;
+-  std::string_view value;
+-  Property(const std::string_view& name, const std::string_view& value) : name(name), value(value) {}
++  std::string name;
++  std::string value;
++  Property(const std::string& name, const std::string& value) : name(name), value(value) {}
+ };
+ 
+ struct NodeId {
+-  std::string_view name;
+-  std::string_view port;
++  std::string name;
++  std::string port;
+ 
+   NodeId(const char* name, const char* port = "") : name(name), port(port) {}
+ };
+@@ -49,7 +49,7 @@ class Graph {
+    * Create empty graph
+    * @param graph_name name of created graph
+    */
+-  explicit Graph(const std::string_view& graph_name)
++  explicit Graph(const std::string& graph_name)
+       : nodes_(),
+         edges_(),
+         graph_name_(graph_name),
+@@ -87,7 +87,7 @@ class Graph {
+    * @param name property name
+    * @param value property value
+    */
+-  void AddGraphProperty(const std::string_view& name, const std::string_view& value) {
++  void AddGraphProperty(const std::string& name, const std::string& value) {
+     graph_props_.emplace_back(name, value);
+   }
+ 
+@@ -96,7 +96,7 @@ class Graph {
+    * @param name property name
+    * @param value property value
+    */
+-  void AddCommonEdgeProperty(const std::string_view& name, const std::string_view& value) {
++  void AddCommonEdgeProperty(const std::string& name, const std::string& value) {
+     common_edge_props_.emplace_back(name, value);
+   }
+ 
+@@ -105,7 +105,7 @@ class Graph {
+    * @param name property name
+    * @param value property value
+    */
+-  void AddCommonNodeProperty(const std::string_view& name, const std::string_view& value) {
++  void AddCommonNodeProperty(const std::string& name, const std::string& value) {
+     common_node_props_.emplace_back(name, value);
+   }
+ 
+@@ -121,7 +121,7 @@ class Graph {
+  private:
+   std::vector<Node> nodes_;
+   std::vector<Edge> edges_;
+-  std::string_view graph_name_;
++  std::string graph_name_;
+   std::vector<Property> graph_props_;
+   std::vector<Property> common_edge_props_;
+   std::vector<Property> common_node_props_;
+-- 
+2.34.1
+
