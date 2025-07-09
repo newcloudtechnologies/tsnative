@@ -64,8 +64,6 @@ void GCValidator::onObjectAboutToDelete(void* ptr) const
         throw std::runtime_error("Deleting object not in the heap");
     }
 
-    (*obj);
-
     checkRoots(
         [obj](const Object* el)
         {
