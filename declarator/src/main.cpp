@@ -1,14 +1,3 @@
-/*
- * Copyright (c) New Cloud Technologies, Ltd., 2014-2023
- *
- * You can not use the contents of the file in any way without
- * New Cloud Technologies, Ltd. written permission.
- *
- * To obtain such a permit, you should contact New Cloud Technologies, Ltd.
- * at http://ncloudtech.com/contact.html
- *
- */
-
 #include "analyzer/Analyzer.h"
 #include "analyzer/TsUtils.h"
 #include "analyzer/TypeUtils.h"
@@ -43,26 +32,11 @@
 
 namespace
 {
-
-const std::string file_head =
-
-    "Copyright (c) New Cloud Technologies, Ltd., 2014-%d\n\n"
-
-    "You can not use the contents of the file in any way without\n"
-    "New Cloud Technologies, Ltd. written permission.\n\n"
-
-    "To obtain such a permit, you should contact New Cloud Technologies, Ltd.\n"
-    "at http://ncloudtech.com/contact.html\n\n"
-
-    "This file is created automatically.\n"
-    "Don't edit this file.\n";
-
 const std::string stdImportSignatures =
 
     R"(import { pointer } from "tsnative/std/definitions/lib.std.numeric";)"
     R"(import { VTable, VTableSize, VirtualDestructor, Virtual } from "tsnative/std/decorators/decorators";)"
     R"(import { TSClosure } from "tsnative/std/definitions/tsclosure";)";
-
 } //  namespace
 
 std::string getDeclarationName(const std::string& source)
@@ -87,26 +61,8 @@ std::string getDeclarationName(const std::string& source)
 generator::ts::block_t<generator::ts::File> makeFile()
 {
     using namespace generator::ts;
-    using namespace utils;
 
-    std::time_t t = std::time(0); // get time now
-    std::tm* now = std::localtime(&t);
-    int current_year = now->tm_year + 1900;
-
-    auto file = AbstractBlock::make<File>();
-
-    std::string DECLARATOR_NO_HEAD = utils::toUpperCase(utils::getEnv("DECLARATOR_NO_HEAD"));
-
-    if (!(DECLARATOR_NO_HEAD == "TRUE" || DECLARATOR_NO_HEAD == "ON" || DECLARATOR_NO_HEAD == "YES"))
-    {
-        std::string head = strprintf(file_head.c_str(), current_year);
-
-        auto comment = AbstractBlock::make<CommentBlock>(head);
-
-        file->add(comment);
-    }
-
-    return file;
+    return AbstractBlock::make<File>();
 }
 
 std::vector<generator::ts::import_block_t> getImports(const std::string& signatures,
