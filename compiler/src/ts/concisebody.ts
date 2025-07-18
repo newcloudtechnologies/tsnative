@@ -38,7 +38,7 @@ export class ConciseBody {
   }
 
   // IMPORTANT TO READ!
-  // https://jira.ncloudtech.ru:8090/browse/AN-1170
+  // TODO AN-1170
   // This method simply collects global variables relative to the local function body with respect to the nested functions
   // Here is an algorithm:
   // 1. Open new scope to collect local variables. Scope is used as a simple container, nothing more

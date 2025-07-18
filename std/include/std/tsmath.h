@@ -41,11 +41,11 @@ public:
     TS_METHOD static Number* floor(Number* x) noexcept;
     TS_METHOD static Number* fround(Number* x) noexcept;
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
+    // TODO AN-1062
     // Support multiple arguments passing
     TS_METHOD static Number* hypot(Number* x, Number* y) noexcept;
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
+    // TODO AN-1062
     // Support multiple arguments passing
     TS_METHOD static Number* imul(Number* x, Number* y) noexcept;
 
@@ -54,19 +54,19 @@ public:
     TS_METHOD static Number* log10(Number* x) noexcept;
     TS_METHOD static Number* log2(Number* x) noexcept;
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
+    // TODO AN-1062
     // Support multiple arguments passing
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/AN-1064
+    // TODO AN-1064
     // Max without arguments should return INFINITY(==Number.PositiveInfinity) constant
     // It is based on Number.PositiveInfinity which is not supported in Number class.
     // Arithmetic operations with infinity should be correctly supported by Number class.
     TS_METHOD static Number* max(Number* a, Number* b) noexcept;
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/AN-1062
+    // TODO AN-1062
     // Support multiple arguments passing
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/AN-1064
+    // TODO AN-1064
     // Min without arguments should return INFINITY(==Number.PositiveInfinity) constant
     // It is based on Number.PositiveInfinity which is not supported in Number class.
     // Arithmetic operations with infinity should be correctly supported by Number class.

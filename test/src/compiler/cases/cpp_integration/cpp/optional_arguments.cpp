@@ -59,6 +59,6 @@ String* WithOptionalArgs::getDefaultString() const
 Array<Number*>* WithOptionalArgs::getItems() const
 {
     // dynamic_cast doesn't work with rest params because the way it created
-    // see https://jira.ncloudtech.ru:8090/browse/TSN-594
+    // TODO see TSN-594
     return static_cast<Array<Number*>*>(get("items"));
 }

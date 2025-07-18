@@ -155,8 +155,7 @@ TEST_F(TreeNodeGCTestFixture, simpleCycleBreak)
 {
     const auto garbageMaker = [this]
     {
-        // Memory leak is here. Will be fixed after
-        // https://jira.ncloudtech.ru:8090/browse/TSN-231
+        // TODO Memory leak is here. Will be fixed after TSN-231
         auto A = new TreeNode* {new TreeNode{'A'}};
         auto B = new TreeNode{'B'};
 
@@ -339,8 +338,7 @@ TEST_F(TreeNodeGCTestFixture, twoEdgesOneDestroyed)
 {
     const auto createNodes = [this]
     {
-        // Memory leak is here. Will be fixed after
-        // https://jira.ncloudtech.ru:8090/browse/TSN-231
+        // TODO Memory leak is here. Will be fixed after TSN-231
         auto A = new TreeNode* {new TreeNode{'A'}};
         auto B = new TreeNode{'B'};
         auto C = new TreeNode{'C'};
@@ -439,8 +437,7 @@ TEST_F(TreeNodeGCTestFixture, selfCycleDeleteEdgeNoGarbage)
 {
     const auto createNodes = [this]
     {
-        // Memory leak is here. Will be fixed after
-        // https://jira.ncloudtech.ru:8090/browse/TSN-231
+        // TODO Memory leak is here. Will be fixed after TSN-231
         auto A = new TreeNode* {new TreeNode{'A'}};
         getGC().addRoot(Object::asObjectPtrPtr(A), nullptr);
 

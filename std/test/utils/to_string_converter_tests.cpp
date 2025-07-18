@@ -253,7 +253,7 @@ TEST_F(ToStringConverterTest, Date)
     auto date = new Date(new test::String("1995-12-17T07:24:00"));
     auto converted = ToStringConverter::convert(date);
 
-    // Need to fix https://jira.ncloudtech.ru:8090/browse/TSN-456
+    // TODO Need to fix TSN-456
 
     // // date formatting is platform dependent
     // EXPECT_TRUE(converted.find("95") != std::string::npos);

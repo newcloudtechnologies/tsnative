@@ -52,7 +52,7 @@ function checkExceptionsFromFunctions() {
     const e1 = tryCatchInside();
     console.assert(e1 === 10, "GC exceptions: e1 alive check");
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/TSN-388
+    // TODO TSN-388
     // const throwCatchInsideLambda = () => {
     //     let a = 30;
     //     try {
@@ -80,7 +80,7 @@ function checkExceptionsFromFunctions() {
     const strError = c.foo();
     console.assert(strError === "abacaba", "GC exceptions: error alive check");
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/TSN-388
+    // TODO TSN-388
     // const arr = [1, 2, 3];
     // try {
     //     for (let a of arr) {

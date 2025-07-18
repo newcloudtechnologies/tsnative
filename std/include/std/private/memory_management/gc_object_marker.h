@@ -20,5 +20,5 @@ public:
 private:
     UniqueConstObjects _marked;
     const Roots& _roots;
-    TimerStorage& _timers; // TODO remove -  https://jira.ncloudtech.ru:8090/browse/TSN-551
+    TimerStorage& _timers; // TODO remove - TSN-551
 };

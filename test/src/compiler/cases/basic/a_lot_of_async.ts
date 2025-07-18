@@ -40,5 +40,5 @@ spawnObjectUsingTimers();
 
 // works so slow that test failed (probably killed by test framework timer)
 // probaly gc cleans up promises very slow for some reason
-// need to fix https://jira.ncloudtech.ru:8090/browse/TSN-585
+// TODO need to fix TSN-585
 //spawnObjectUsingPromises();
