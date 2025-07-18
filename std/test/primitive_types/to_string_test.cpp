@@ -133,7 +133,7 @@ TEST_F(ToStringTest, Promise)
 }
 
 //
-// Need to fix https://jira.ncloudtech.ru:8090/browse/TSN-456
+// TODO Need to fix TSN-456
 
 // TEST_F(ToStringTest, Date)
 // {

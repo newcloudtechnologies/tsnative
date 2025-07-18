@@ -121,7 +121,7 @@ function checkForOf() {
         }
     }
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/TSN-388
+    // TODO TSN-388
     // {
     //     const arr = [1, 2, 3];
     //     for (const value of arr) {
@@ -206,7 +206,7 @@ function checkWhile() {
         }
     }
 
-    // TODO https://jira.ncloudtech.ru:8090/browse/TSN-388
+    // TODO TSN-388
     // const arr = [1, 2]
 
     // let counter = 0;

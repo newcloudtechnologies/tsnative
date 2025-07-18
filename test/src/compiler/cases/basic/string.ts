@@ -266,7 +266,7 @@
     return "fun";
   }
   let result = 'function () {\nreturn "fun";\n}';
-  // need to fix https://jira.ncloudtech.ru:8090/browse/TSN-441
+  // TODO need to fix TSN-441
   // console.assert(fn.toString() === result, "Check fn to string");
   // console.assert("aaa" + fn === "aaa" + result, "Check string + function");
   // console.assert(fn + "aaa" === result + "aaa", "Check function + string");
@@ -298,7 +298,7 @@
     }
   }
 
-  // won't even compile. Need to fix https://jira.ncloudtech.ru:8090/browse/TSN-441
+  // TODO won't even compile. Need to fix TSN-441
   //let str = "" + B;
   // let str2 = B.toString();
 

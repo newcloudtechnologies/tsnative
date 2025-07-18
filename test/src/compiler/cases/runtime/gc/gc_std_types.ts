@@ -72,7 +72,7 @@ function checkTuples() {
     primitivesTuple[0] = 10;
     primitivesTuple[0] += primitivesTuple[0]
 
-    // TODO Blocked by https://jira.ncloudtech.ru:8090/browse/TSN-381
+    // TODO Blocked by TSN-381
     // let [v1, v2] = primitivesTuple;
     // v1 = 0;
     // v2 = "";
@@ -88,7 +88,7 @@ function checkTuples() {
     let nonPrimitivesTuple: [A, B] = [new A, new B];
     nonPrimitivesTuple[0] = new A();
 
-    // TODO Blocked by https://jira.ncloudtech.ru:8090/browse/TSN-381
+    // TODO Blocked by TSN-381
     // let [a, b] = nonPrimitivesTuple;
     // b = new B();
 }

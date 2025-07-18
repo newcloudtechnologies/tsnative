@@ -12,7 +12,7 @@ class BadCast final : public std::runtime_error
 };
 
 // Safe cast + check. Throw exception in case of failed convertation.
-// Note: doesn't work with rest arguments ( https://jira.ncloudtech.ru:8090/browse/TSN-594 )
+// Note: doesn't work with rest arguments (TODO TSN-594)
 template <class T>
 T assertCast(Object* obj)
 {
