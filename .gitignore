@@ -1,6 +1,8 @@
 node_modules/
 out/
 declarator/build/
+boilerplate/out/
+boilerplate/node_modules/
 *.log
 .idea/
 .vscode/

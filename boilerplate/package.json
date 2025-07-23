@@ -1,0 +1,20 @@
+{
+  "name": "tsnative-boilerplate",
+  "version": "0.1.0",
+  "description": "A boilerplate for tsnative-based projects",
+  "config": {
+    "TSNATIVE_VERSION": "0.3",
+    "BUILD_TYPE": "Debug",
+    "CONAN_PROFILE_BUILD": "linux_x86_64_gcc9",
+    "CONAN_PROFILE_HOST": "linux_x86_64_gcc9_debug",
+    "TSNATIVE_USE_CUSTOM_SEED": false
+  },
+  "devDependencies": {
+    "npm": "~7.20.3"
+  },
+  "scripts": {
+    "build": "cmake . -B out/ && cmake --build out/",
+    "clean": "rm -rf out/ && rm -rf node_modules/",
+    "rebuild": "npm run clean && npm run build"
+  }
+}
