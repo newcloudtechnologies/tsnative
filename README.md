@@ -1,9 +1,12 @@
-## Обзор ##
-Проект tsnative (TypeScript *Native Compiler*) представляет собой компилятор языка [TypeScript](https://www.typescriptlang.org/), в процессе работы которого получается бинарный исполняемый файл. В отличие от [Babel](https://babeljs.io/) и аналогичных ему [транспайлеров](https://ru.wikipedia.org/wiki/%D0%A2%D1%80%D0%B0%D0%BD%D1%81%D0%BF%D0%B0%D0%B9%D0%BB%D0%B5%D1%80) компиляция происходит путём преобразования [AST](https://ru.wikipedia.org/wiki/%D0%90%D0%B1%D1%81%D1%82%D1%80%D0%B0%D0%BA%D1%82%D0%BD%D0%BE%D0%B5_%D1%81%D0%B8%D0%BD%D1%82%D0%B0%D0%BA%D1%81%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE) TypeScript кода в [LLVM](https://llvm.org/docs/LangRef.html) IR с дальнейшей компиляцией его с помощью llc и линковкой со стандартной библиотекой [tsnative-std](https://github.com/newcloudtechnologies/tsnative/tree/master/std) и другими бинарными зависимостями. При этом линковка ничем не отличается от линковки С++ приложения.
-
-Компонент [tsnative-std](https://github.com/newcloudtechnologies/tsnative/tree/master/std) реализует сущности языка TypeScript, доступные пользователю по умолчанию, такие как типы данных, строки, массивы, итераторы, и т д. Библиотека TypeScript может быть расширена за счет добавления новых типов, объектов, функций и т.п. Такие расширения создаются на C++, объявляются обычными [TS-модулями](https://www.typescriptlang.org/docs/handbook/modules.html), и прозрачно линкуются (в отличии от [Node C++ addons](https://nodejs.org/api/addons.html), где расширения работают за счет runtime API и встраиваются в V8).
-
-Создание cxx-расширения предполагает генерацию [декларации](https://www.typescriptlang.org/docs/handbook/declaration-files/templates/module-d-ts.html). Этот процесс происходит автоматически на основе заголовочных файлов cxx-расширения с помощью утилиты [tsnative-declarator](https://github.com/newcloudtechnologies/tsnative/tree/master/declarator), входящей в состав tsnative.
+## О проекте ##
+* Кроссплатформенный AOT транслятор языка Typescript в нативный LLVM код
+* Прямая интеграция с нативным С++-кодом
+* Набор платформенных абстракций (GC, EventLoop, Runtime)
+* Своя реализация ECMA
+* Linux, Windows, Android, Mac OS
+* Целевая аудитория:
+    - Web-разработчики, мимикрия под web-DX (Developer eXperience)
+    - C++ разработчики, желающие удешевить разработку бизнес логики
 
 ## Цели ## 
 * Создать бесшовный (или с минимальным барьером) инструментарий для написания нативных приложений на TS и C++ в одном приложении
@@ -79,7 +82,7 @@ conan create std/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o build_
 conan create compiler/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 ```
 
-## Ззапуск тестов ##
+## Запуск тестов ##
 ```bash
 # -o runmode и -o test_filter - опциональны
 conan create test/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o run_mode=compile -o test_filter=for
@@ -87,18 +90,6 @@ conan create test/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o run_m
 
 ## Пример использования ##
 В репозитории находится тестовый проект [бойлерплейт](https://github.com/newcloudtechnologies/tsnative/tree/master/boilerplate). Он представляет собой каркас приложения, основанного на TypeScript Native. 
-
-C++ код, который может быть вызван на стороне TypeScript желательно располагать в директории cxx. Экспортируемые классы и функции должны быть помечены соответствующими макросами из TS.h. В CMakeLists.txt необходимо:
-* Использовать функцию ts_generate_declarations для получения *.d.ts файлов деклараций, которые будут импортироваться в коде приложения
-* Расширение должно быть добавлено в список расширений с помощью макроса add_extension
-* Сгенерированные декларации должны быть скопированы с помощью макроса copy_to_node_modules
-
-В секции config корневого package.json указываются следующие параметры:
-* TSNATIVE_VERSION - версия TSNative, которой будет производиться сборка проекта. Поддерживается только указание конкретной версии, без диапазона версий
-* BUILD_TYPE - тип сборки. Допустимые значения совпадают с допустимыми значениями [CMAKE_BUILD_TYPE](https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html)
-* CONAN_PROFILE_BUILD - conan-профиль сборочной платформы
-* CONAN_PROFILE_HOST - conan-профиль целевой платформы
-* TSNATIVE_USE_CUSTOM_SEED - выбор использования точки входа в приложение
 
 Для запуска сборки вызываем команду:
 ```bash
