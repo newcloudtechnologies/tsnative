@@ -1,0 +1,16 @@
+[settings]
+os=Linux
+os_build=Linux
+arch=x86
+arch_build=x86
+target_abi=i686-pc-linux-gnu
+compiler=gcc
+compiler.version=7
+compiler.libcxx=libstdc++11
+build_type=Release
+
+[options]
+[build_requires]
+[env]
+CONAN_V2_MODE=true
+

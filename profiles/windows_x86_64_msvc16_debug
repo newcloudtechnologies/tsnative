@@ -1,0 +1,15 @@
+[settings]
+os=Windows
+os_build=Windows
+arch=x86_64
+arch_build=x86_64
+target_abi=x86_64-w64-mingw32
+compiler=Visual Studio
+compiler.version=16
+compiler.runtime=MD
+build_type=Debug
+
+[options]
+[build_requires]
+[env]
+CONAN_V2_MODE=true

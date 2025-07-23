@@ -1,0 +1,9 @@
+[settings]
+compiler=clang
+compiler.version=12
+compiler.libcxx=c++_static
+os=Android
+os.api_level=24
+build_type=Release
+[conf]
+tools.android:ndk_path={{ os.getenv("ANDROID_NDK", "/opt/android_sdk/ndk/23.1.7779620") }}

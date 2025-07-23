@@ -1,0 +1,6 @@
+include(android.inc.jinja)
+[settings]
+arch=x86
+target_abi=i686-none-linux-android24
+[env]
+CONAN_CMAKE_TOOLCHAIN_FILE={{ os.path.join(profile_dir, "toolchains", "android_toolchain_x86.cmake") }}

@@ -1,0 +1,8 @@
+set(ANDROID_PLATFORM 24)
+set(ANDROID_SDK_ROOT $ENV{ANDROID_SDK})
+set(ANDROID_ABI x86)
+include($ENV{ANDROID_NDK}/build/cmake/android.toolchain.cmake)
+if(EXISTS conan_paths.cmake)
+    include(conan_paths.cmake)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+endif()

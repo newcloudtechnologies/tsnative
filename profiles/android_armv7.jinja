@@ -1,0 +1,6 @@
+include(android.inc.jinja)
+[settings]
+arch=armv7
+target_abi=armv7a-none-linux-android24
+[env]
+CONAN_CMAKE_TOOLCHAIN_FILE={{ os.path.join(profile_dir, "toolchains", "android_toolchain_armv7.cmake") }}
