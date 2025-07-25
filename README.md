@@ -5,7 +5,7 @@
 * Своя реализация ECMA
 * Linux, Windows, Android, MacOS
 * Целевая аудитория:
-    - Web-разработчики, мимикрия под web-DX (Developer eXperience)
+    - Web разработчики, мимикрия под web-DX (Developer eXperience)
     - C++ разработчики, желающие удешевить разработку бизнес логики
 
 ## Цели ## 
