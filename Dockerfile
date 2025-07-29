@@ -35,29 +35,28 @@ RUN python3.11 -m pip install conan==1.52 --ignore-installed
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
     apt-get install -y nodejs
 
-# Clone the repository
-WORKDIR /project
-
-RUN git clone --depth 1 --branch master git@github.com:newcloudtechnologies/tsnative.git
+# Copy the project
+COPY . /tsnative
+WORKDIR /tsnative
 
 # Set up the settings and profiles for conan
-RUN conan config install tsnative/settings.yml
-RUN conan config install -tf profiles tsnative/profiles/linux_x86_64_gcc9
-RUN conan config install -tf profiles tsnative/profiles/linux_x86_64_gcc9_debug
+RUN conan config install settings.yml
+RUN conan config install -tf profiles profiles/linux_x86_64_gcc9
+RUN conan config install -tf profiles profiles/linux_x86_64_gcc9_debug
 
 # Build 3rdparty
-RUN conan create tsnative/3rdparty/zlib 1.2.12@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/3rdparty/llvm 11.1.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/3rdparty/abseil 20211102.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/3rdparty/gtest 1.11.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/3rdparty/libuv 1.43.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/3rdparty/graphvizlib 1.0.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/3rdparty/llvm-node 3.0.9@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/zlib 1.2.12@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/llvm 11.1.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/abseil 20211102.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/gtest 1.11.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/libuv 1.43.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/graphvizlib 1.0.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create 3rdparty/llvm-node 3.0.9@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 
 # Build targets
-RUN conan create tsnative/declarator/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
-RUN conan create tsnative/std/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o build_tests=True -o enable_logs=all
-RUN conan create tsnative/compiler/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create declarator/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
+RUN conan create std/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o build_tests=True -o enable_logs=all
+RUN conan create compiler/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 
 # Specify the default command
 CMD [ "bash" ]
