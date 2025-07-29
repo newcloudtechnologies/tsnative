@@ -1,65 +1,79 @@
-## 🔹 О проекте
-**tsnative** — это кроссплатформенный AOT-компилятор, позволяющий запускать TypeScript как нативный код через LLVM.  
-Проект ориентирован на разработчиков, которым важно сочетать **удобство TypeScript** с **производительностью C++**.
+# tsnative
 
-Основные особенности:
-- **Интеграция с C++** — seamless вызовы между TS и C++ без glue-кода
-- **Набор системных абстракций** — GC, EventLoop, runtime API
-- **Собственная реализация подмножества ECMAScript**
-- **AOT-компиляция через LLVM** — без интерпретатора и JS-движка
-- Поддержка: **Linux**
+> A cross-platform AOT compiler that enables running TypeScript as native code via LLVM.  
+It targets developers who want the **ergonomics of TypeScript** with the **performance of C++**.
 
-Целевая аудитория:
-- Web-разработчики, желающие использовать TS вне браузера
-- C++-разработчики, которым нужно ускорить разработку бизнес-логики без потери производительности
+## 🔹 About
 
-## 🎯 Цели
-- Обеспечить **бесшовную интеграцию** TypeScript и C++ в одном приложении
-- Дать возможность **двусторонней отладки**: как TS, так и C++ кода
-- Поддержать **максимум платформ**
-- Совместимость с:
+Key features:
+- **C++ integration** — seamless calls between TS and C++ with no glue code
+- **System-level abstractions** — GC, EventLoop, and runtime APIs
+- **Custom subset implementation of ECMAScript**
+- **AOT compilation via LLVM** — no interpreter or JS engine
+- Platform support: **Linux**
+
+Target audience:
+- Web developers looking to run TypeScript outside the browser
+- C++ developers aiming to speed up business logic development without sacrificing performance
+
+## 🎯 Goals
+
+- Provide **seamless integration** between TypeScript and C++ in a single application
+- Enable **bidirectional debugging** of both TS and C++ code
+- Support **as many platforms as possible**
+- Maintain compatibility with:
   - TypeScript ≥ 4.5
   - ECMAScript ≥ 2016
   - C++ ≥ 14
 
-## 🚀 Быстрый старт
-Используйте готовый Docker-образ с установленными зависимостями и уже собранным проектом:
+## 🚀 Quick Start
+
+Use the prebuilt Docker image with all dependencies and compiled project:
+
 ```bash
-# скачиваем образ
+# pull the image
 docker pull ghcr.io/newcloudtechnologies/tsnative:latest
-# запускаем
+# run it
 docker run -it ghcr.io/newcloudtechnologies/tsnative
-# собираем пример
+# build the sample project
 cd boilerplate/
 npm run build
 ```
-Вы также можете собрать образ локально из исходников:
+
+You can also build the image locally from source:
+
 ```bash
 docker build -t tsnative .
 docker run -it tsnative
 ```
 
-## 📦 Зависимости
-Клонируем репозиторий:
+## 📦 Dependencies
+
+Clone the repository:
+
 ```bash
 git clone --depth 1 --branch master git@github.com:newcloudtechnologies/tsnative.git
 cd tsnative
 ```
 
-Выполните:
+Install system dependencies:
+
 ```bash
 ./scripts/setup.sh
 ```
 
-Устанавливаем файлы с настройками и профилями для conan:
+Install Conan settings and profiles:
+
 ```bash
 conan config install ./settings.yml
 conan config install -tf profiles ./profiles/linux_x86_64_gcc9
 conan config install -tf profiles ./profiles/linux_x86_64_gcc9_debug
 ```
 
-## 🛠️ Сборка
-Cобираем 3rd party:
+## 🛠️ Build
+
+Build third-party dependencies:
+
 ```bash
 conan create 3rdparty/zlib 1.2.12@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 conan create 3rdparty/llvm 11.1.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
@@ -70,34 +84,41 @@ conan create 3rdparty/graphvizlib 1.0.0@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86
 conan create 3rdparty/llvm-node 3.0.9@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 ```
 
-Cобираем основные цели:
+Build main packages:
+
 ```bash
 conan create declarator/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 conan create std/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o build_tests=True -o enable_logs=all
 conan create compiler/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9
 ```
 
-## 🧪 Тесты
+## 🧪 Tests
+
 ```bash
-# -o runmode и -o test_filter - опциональны
+# -o runmode and -o test_filter are optional
 conan create test/ 0.3@ -pr:b linux_x86_64_gcc9 -pr:h linux_x86_64_gcc9 -o run_mode=compile -o test_filter=for
 ```
 
-## 📁 Пример
-В репозитории находится тестовый проект [`boilerplate`](./boilerplate), демонстрирующий работу TypeScript Native.
+## 📁 Example
 
-Основные команды:
+The [`boilerplate`](./boilerplate) folder contains a test project demonstrating tsnative usage.
+
+Basic commands:
+
 ```bash
-npm run build    # сборка
-npm run clean    # очистка артефактов
-npm run rebuild  # пересборка
+npm run build    # build
+npm run clean    # clean artifacts
+npm run rebuild  # rebuild
 ```
-Собранный бинарный файл будет в директории: `boilerplate/out/<cmake_project_name>`
 
-## ⚠️ Ограничения
-Проект реализует подмножество возможностей TypeScript и имеет ряд ограничений при интеграции с C++.
-Краткий список ограничений доступен в [LIMITATIONS.md](./LIMITATIONS.md)
+The compiled binary will be located at: `boilerplate/out/<cmake_project_name>`
 
-## 🤝 Контрибуция
-Мы рады любым улучшениям — будь то код, тесты, документация или идеи.  
-Перед отправкой изменений ознакомьтесь с [CONTRIBUTING.md](./CONTRIBUTING.md).
+## ⚠️ Limitations
+
+The project implements a subset of TypeScript and has certain limitations when integrating with C++.  
+A summary is available in [LIMITATIONS.en.md](./LIMITATIONS.en.md)
+
+## 🤝 Contributing
+
+We welcome all contributions — code, tests, docs, or ideas.  
+Please read [CONTRIBUTING.en.md](./CONTRIBUTING.en.md) before submitting changes.
