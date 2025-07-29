@@ -116,9 +116,9 @@ The compiled binary will be located at: `boilerplate/out/<cmake_project_name>`
 ## ⚠️ Limitations
 
 The project implements a subset of TypeScript and has certain limitations when integrating with C++.  
-A summary is available in [LIMITATIONS.en.md](./LIMITATIONS.md)
+A summary is available in [LIMITATIONS.md](./LIMITATIONS.md)
 
 ## 🤝 Contributing
 
 We welcome all contributions — code, tests, docs, or ideas.  
-Please read [CONTRIBUTING.en.md](./CONTRIBUTING.md) before submitting changes.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting changes.
