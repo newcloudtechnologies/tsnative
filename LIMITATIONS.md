@@ -23,5 +23,4 @@ See also: [TypeScript Do's and Don'ts](https://www.typescriptlang.org/docs/handb
 - **Pointer-based API and inheritance from `Object` required**  
   All exported arguments and return types must be pointers to classes with `Object` as the first base class.
 - **Function overloading is not supported for exports**
-- **Stack objects cannot be captured or passed to TS**  
-  Use `make_closure` and allocate objects on the heap.
+- **Stack objects cannot be captured or passed to TS**
