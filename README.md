@@ -113,6 +113,15 @@ npm run rebuild  # rebuild
 
 The compiled binary will be located at: `boilerplate/out/<cmake_project_name>`
 
+## 🔧 How it works?
+
+The project consists of 3 parts.
+1. std library. This is where TS standard library is implemented.
+2. declarator. This thing allows generation of .dts files from C++ code.
+3. tsnative compiler. It looks into TS code and generates LLVM IR. It also matches ts calls with C++ calls from C++ libraries like TS native.
+
+Compiler's output is LLVM IR and then it compiled via LLVM into a platform executable file.
+
 ## ⚠️ Limitations
 
 The project implements a subset of TypeScript and has certain limitations when integrating with C++.  
