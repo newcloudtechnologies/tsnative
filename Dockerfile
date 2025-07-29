@@ -1,5 +1,5 @@
 # Use official Ubuntu base image
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 LABEL maintainer="tsnative docker maintainer"
 LABEL description="Image for building and testing the tsnative C++ library"
@@ -15,10 +15,6 @@ RUN apt-get update && apt-get upgrade -y && \
     pkg-config \
     binutils-dev \
     zlib1g-dev \
-    libxkbcommon-dev \
-    libxkbcommon-x11-dev \
-    libiberty-dev \
-    libxfixes-dev \
     gcc-9 \
     g++-9
 

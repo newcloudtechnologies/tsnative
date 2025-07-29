@@ -12,10 +12,6 @@ ccache \
 pkg-config \
 binutils-dev \
 zlib1g-dev \
-libxkbcommon-dev \
-libxkbcommon-x11-dev \
-libiberty-dev \
-libxfixes-dev \
 gcc-9 \
 g++-9
 
