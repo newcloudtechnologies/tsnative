@@ -132,5 +132,5 @@ A summary is available in [LIMITATIONS.md](./LIMITATIONS.md)
 We welcome all contributions — code, tests, docs, or ideas.  
 Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting changes.
 
-## Support
+## ❓ Support
 We've [a telegram channel](https://t.me/antiqmyoffice) to support, please, join and send your question.
