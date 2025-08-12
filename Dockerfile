@@ -1,5 +1,5 @@
 # Use official Ubuntu base image
-FROM ubuntu:24.04
+FROM --platform=linux/amd64 ubuntu:24.04
 
 LABEL maintainer="tsnative docker maintainer"
 LABEL description="Image for building and testing the tsnative C++ library"
